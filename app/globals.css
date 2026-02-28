@@ -236,6 +236,51 @@
     .chat-input-wrap { padding: 12px 32px 16px; }
   }
 
+  /* ── PORTRAIT ── */
+  .portrait-container { width: 100%; max-width: var(--content-w); margin: 0 auto; padding-bottom: 80px; }
+  .portrait-header { margin-bottom: 28px; }
+  .portrait-title { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+  .portrait-progress-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .portrait-progress-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .portrait-progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; min-width: 0; }
+
+  .portrait-section { margin-bottom: 24px; }
+  .portrait-section-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+
+  .portrait-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
+  .portrait-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .portrait-card-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .portrait-card-context { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+  .portrait-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+  .portrait-badge--high { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-border); }
+  .portrait-badge--medium { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+  .portrait-badge--noticed { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-light); }
+
+  .portrait-insight { display: flex; gap: 10px; margin-bottom: 12px; }
+  .portrait-insight-dot { width: 4px; height: 4px; min-width: 4px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex-shrink: 0; display: block; }
+  .portrait-insight-text { font-size: 14px; color: var(--text-primary); line-height: 1.5; }
+  .portrait-insight-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .portrait-text { font-size: 14px; line-height: 1.7; color: var(--text-primary); }
+
+  .portrait-mechanism { margin-bottom: 10px; }
+  .portrait-mechanism-name { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+  .portrait-mechanism-example { font-size: 13px; color: var(--text-secondary); font-style: italic; line-height: 1.5; }
+
+  .portrait-observation { display: flex; gap: 10px; margin-bottom: 10px; }
+  .portrait-observation-check { color: var(--status-done); font-size: 14px; font-weight: 600; margin-top: 1px; flex-shrink: 0; }
+  .portrait-observation-text { font-size: 14px; color: var(--text-primary); line-height: 1.5; }
+  .portrait-observation-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .portrait-hint { font-size: 12px; color: var(--text-muted); text-align: center; padding-top: 8px; }
+
+  .portrait-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 48px 16px; }
+  .portrait-empty-icon { font-size: 40px; color: var(--text-muted); margin-bottom: 16px; line-height: 1; }
+  .portrait-empty-text { font-size: 14px; line-height: 1.6; color: var(--text-secondary); max-width: 320px; margin-bottom: 20px; }
+  .portrait-empty-btn { display: inline-block; padding: 10px 24px; background: var(--accent); color: #fff; border-radius: 24px; font-family: var(--font-body); font-size: 14px; font-weight: 500; text-decoration: none; transition: opacity 0.15s; }
+  .portrait-empty-btn:active { opacity: 0.85; }
+
   /* ── SAFE AREA ── */
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .mobile-tabs { padding-bottom: env(safe-area-inset-bottom); }
