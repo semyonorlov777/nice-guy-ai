@@ -26,11 +26,13 @@ export default async function ExercisePage({
   // Load exercise
   const { data: exercise } = await supabase
     .from("exercises")
-    .select("id, number, title, description, chapter")
+    .select("id, number, title, description, chapter, config")
     .eq("program_id", program.id)
     .eq("number", parseInt(number))
     .single();
   if (!exercise) redirect(`/program/${slug}/exercises`);
+
+  const config = (exercise.config || {}) as { welcome_message?: string; quick_replies?: string[] };
 
   // User initial for avatar
   const { data: userData } = await supabase
@@ -82,6 +84,8 @@ export default async function ExercisePage({
       programId={program.id}
       exerciseId={exercise.id}
       userInitial={userInitial}
+      welcomeMessage={config.welcome_message}
+      quickReplies={config.quick_replies}
     >
       <div className="exercise-intro">
         <div className="exercise-intro-label">
