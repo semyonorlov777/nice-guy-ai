@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -37,9 +38,10 @@ export function ChatWindow({
   );
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isUserScrolledUp = useRef(false);
 
   const scrollToBottom = useCallback(() => {
-    if (messagesRef.current) {
+    if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
   }, []);
@@ -47,6 +49,13 @@ export function ChatWindow({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  function handleScroll() {
+    const el = messagesRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    isUserScrolledUp.current = !atBottom;
+  }
 
   function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(e.target.value);
@@ -75,6 +84,7 @@ export function ChatWindow({
     }
 
     setShowQuickReplies(false);
+    isUserScrolledUp.current = false;
 
     // Add user message + empty AI message for streaming
     setMessages((prev) => [
@@ -164,11 +174,28 @@ export function ChatWindow({
     }
   }
 
-  function renderContent(content: string) {
+  function renderContent(content: string, isAi: boolean) {
     if (!content) return null;
+    if (isAi) {
+      return <ReactMarkdown>{content}</ReactMarkdown>;
+    }
     return content.split("\n\n").map((paragraph, i) => (
       <p key={i}>{paragraph}</p>
     ));
+  }
+
+  function handleRetry() {
+    // Find the last user message
+    const lastUserIdx = messages.findLastIndex((m) => m.role === "user");
+    if (lastUserIdx === -1) return;
+    const lastUserText = messages[lastUserIdx].content;
+    // Remove the last AI message
+    setMessages((prev) => prev.slice(0, -1));
+    sendMessage(lastUserText);
+  }
+
+  function isErrorMessage(content: string) {
+    return /Ошибка|Недостаточно/.test(content);
   }
 
   // Show welcome AI message when no history exists
@@ -176,7 +203,7 @@ export function ChatWindow({
 
   return (
     <div className="chat-zone">
-      <div className="chat-messages" ref={messagesRef}>
+      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll}>
         <div className="chat-inner">
           {children}
 
@@ -184,7 +211,7 @@ export function ChatWindow({
             <div className="msg msg-ai">
               <div className="msg-avatar ai">НС</div>
               <div className="msg-bubble">
-                {renderContent(welcomeMessage)}
+                {renderContent(welcomeMessage, true)}
               </div>
             </div>
           )}
@@ -204,26 +231,47 @@ export function ChatWindow({
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`msg ${msg.role === "assistant" ? "msg-ai" : "msg-user"}`}
-            >
+          {messages.map((msg, i) => {
+            const isAi = msg.role === "assistant";
+            const isLast = i === messages.length - 1;
+            return (
               <div
-                className={`msg-avatar ${msg.role === "assistant" ? "ai" : "user"}`}
+                key={i}
+                className={`msg ${isAi ? "msg-ai" : "msg-user"}`}
               >
-                {msg.role === "assistant" ? "НС" : userInitial}
-              </div>
-              <div className="msg-bubble">
-                {renderContent(msg.content)}
-                {isStreaming &&
-                  i === messages.length - 1 &&
-                  msg.role === "assistant" && (
+                <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
+                  {isAi ? "НС" : userInitial}
+                </div>
+                <div className="msg-bubble">
+                  {renderContent(msg.content, isAi)}
+                  {isStreaming && isLast && isAi && (
                     <span className="streaming-cursor">{"▊"}</span>
                   )}
+                  {!isStreaming && isLast && isAi && isErrorMessage(msg.content) && (
+                    <button className="retry-btn" onClick={handleRetry}>
+                      Повторить
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+
+          {isStreaming &&
+            messages.length > 0 &&
+            messages[messages.length - 1]?.content === "" && (
+              <div className="msg msg-ai">
+                <div className="msg-avatar ai">НС</div>
+                <div className="msg-bubble thinking-bubble">
+                  думаю
+                  <span className="thinking-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </div>
+              </div>
+            )}
         </div>
       </div>
 
