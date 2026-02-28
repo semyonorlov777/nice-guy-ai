@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import type { PortraitContent } from "@/types/portrait";
-import { EMPTY_PORTRAIT } from "@/types/portrait";
 
 const TOTAL_EXERCISES = 46;
 
@@ -33,17 +32,19 @@ export default async function PortraitPage({
     .eq("program_id", program.id)
     .maybeSingle();
 
-  const content = (portrait?.content || EMPTY_PORTRAIT) as PortraitContent;
-  const isEmpty = content.exercises_completed === 0;
-  const progressPct = Math.round((content.exercises_completed / TOTAL_EXERCISES) * 100);
+  const content = portrait?.content as PortraitContent | null;
 
-  const hasPatterns = content.nice_guy_patterns.patterns.length > 0;
-  const hasInsights = content.key_insights.length > 0;
-  const hasFamily = content.family_system.summary.length > 0;
-  const hasDefense = content.defense_mechanisms.mechanisms.length > 0;
-  const hasGrowth = content.growth_zones.observations.length > 0;
-  const isPartial = !isEmpty && content.exercises_completed <= 3;
-  const hasAnySections = hasPatterns || hasInsights || hasFamily || hasDefense || hasGrowth;
+  const hasPatterns = (content?.nice_guy_patterns?.patterns?.length ?? 0) > 0;
+  const hasInsights = (content?.key_insights?.length ?? 0) > 0;
+  const hasFamily = (content?.family_system?.summary?.length ?? 0) > 0;
+  const hasDefense = (content?.defense_mechanisms?.mechanisms?.length ?? 0) > 0;
+  const hasGrowth = (content?.growth_zones?.observations?.length ?? 0) > 0;
+
+  const hasAnyContent = hasPatterns || hasInsights || hasFamily || hasDefense || hasGrowth;
+  const isEmpty = !content || !hasAnyContent;
+
+  const exercisesCompleted = content?.exercises_completed || 0;
+  const progressPct = Math.round((exercisesCompleted / TOTAL_EXERCISES) * 100);
 
   return (
     <div className="content-scroll">
@@ -51,15 +52,19 @@ export default async function PortraitPage({
         {/* Header */}
         <div className="portrait-header">
           <h1 className="portrait-title">Портрет</h1>
-          <div className="portrait-progress-label">
-            Пройдено упражнений: {content.exercises_completed} / {TOTAL_EXERCISES}
-          </div>
-          <div className="portrait-progress-track">
-            <div
-              className="portrait-progress-bar"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+          {exercisesCompleted > 0 && (
+            <>
+              <div className="portrait-progress-label">
+                Пройдено упражнений: {exercisesCompleted} / {TOTAL_EXERCISES}
+              </div>
+              <div className="portrait-progress-track">
+                <div
+                  className="portrait-progress-bar"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {isEmpty ? (
@@ -67,8 +72,8 @@ export default async function PortraitPage({
           <div className="portrait-empty">
             <div className="portrait-empty-icon">&#x25CE;</div>
             <div className="portrait-empty-text">
-              Твой портрет формируется по мере прохождения упражнений.
-              Каждый разговор помогает AI лучше понять твои паттерны и зоны роста.
+              Портрет пока пуст. Пройди несколько упражнений,
+              и AI начнёт собирать твой психологический профиль.
             </div>
             <Link href={`/program/${slug}/exercises`} className="portrait-empty-btn">
               Перейти к упражнениям
@@ -81,7 +86,7 @@ export default async function PortraitPage({
               <div className="portrait-section">
                 <h2 className="portrait-section-title">Паттерны</h2>
                 <div className="portrait-patterns">
-                  {content.nice_guy_patterns.patterns.map((p, i) => (
+                  {content!.nice_guy_patterns.patterns.map((p, i) => (
                     <div key={i} className="portrait-card">
                       <div className="portrait-card-head">
                         <span className="portrait-card-name">{p.name}</span>
@@ -105,7 +110,7 @@ export default async function PortraitPage({
               <div className="portrait-section">
                 <h2 className="portrait-section-title">Инсайты</h2>
                 <div className="portrait-insights">
-                  {content.key_insights.map((ins, i) => (
+                  {content!.key_insights.map((ins, i) => (
                     <div key={i} className="portrait-insight">
                       <span className="portrait-insight-dot" />
                       <div>
@@ -124,7 +129,7 @@ export default async function PortraitPage({
             {hasFamily && (
               <div className="portrait-section">
                 <h2 className="portrait-section-title">Семейная система</h2>
-                <p className="portrait-text">{content.family_system.summary}</p>
+                <p className="portrait-text">{content!.family_system.summary}</p>
               </div>
             )}
 
@@ -133,7 +138,7 @@ export default async function PortraitPage({
               <div className="portrait-section">
                 <h2 className="portrait-section-title">Защитные механизмы</h2>
                 <div className="portrait-mechanisms">
-                  {content.defense_mechanisms.mechanisms.map((m, i) => (
+                  {content!.defense_mechanisms.mechanisms.map((m, i) => (
                     <div key={i} className="portrait-mechanism">
                       <div className="portrait-mechanism-name">{m.name}</div>
                       <div className="portrait-mechanism-example">{m.example}</div>
@@ -148,7 +153,7 @@ export default async function PortraitPage({
               <div className="portrait-section">
                 <h2 className="portrait-section-title">Зоны роста</h2>
                 <div className="portrait-growth">
-                  {content.growth_zones.observations.map((obs, i) => (
+                  {content!.growth_zones.observations.map((obs, i) => (
                     <div key={i} className="portrait-observation">
                       <span className="portrait-observation-check">&#x2713;</span>
                       <div>
@@ -161,10 +166,10 @@ export default async function PortraitPage({
               </div>
             )}
 
-            {/* Partial state hint */}
-            {isPartial && (
+            {/* Hint when some sections are still empty */}
+            {!(hasPatterns && hasInsights && hasFamily && hasDefense && hasGrowth) && (
               <div className="portrait-hint">
-                Остальные секции появятся по мере прохождения упражнений
+                Остальные секции появятся по мере общения с AI
               </div>
             )}
           </>

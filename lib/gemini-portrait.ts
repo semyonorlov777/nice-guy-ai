@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
-const PORTRAIT_MODEL = process.env.GEMINI_PORTRAIT_MODEL || "gemini-2.5-pro-preview-05-06";
+const PORTRAIT_MODEL = process.env.GEMINI_PORTRAIT_MODEL || "gemini-2.5-pro";
 
 export async function analyzeForPortrait(
   systemPrompt: string,

@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { streamChat } from "@/lib/gemini";
+import { updatePortrait } from "@/app/api/portrait/update/route";
 import type { Content } from "@google/generative-ai";
 
 const DEFAULT_BALANCE = 1000;
@@ -151,7 +152,10 @@ export async function POST(request: Request) {
     systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;
   }
   if (portrait?.content) {
-    systemPrompt += `\n\n---\nПОРТРЕТ ПОЛЬЗОВАТЕЛЯ:\n${JSON.stringify(portrait.content)}`;
+    const p = portrait.content as { ai_context?: string };
+    if (p.ai_context) {
+      systemPrompt += `\n\n---\nКОНТЕКСТ ПОЛЬЗОВАТЕЛЯ (из предыдущих упражнений):\n${p.ai_context}`;
+    }
   }
 
   // 10. Convert to Gemini format
@@ -240,6 +244,28 @@ export async function POST(request: Request) {
             `data: ${JSON.stringify({ type: "done", tokensUsed })}\n\n`
           )
         );
+
+        // Portrait auto-update: every 5 user messages
+        try {
+          const svc = createServiceClient();
+          const { count: userMsgCount, error: countError } = await svc
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("chat_id", currentChatId)
+            .eq("role", "user");
+
+          console.log("[PORTRAIT] Message count:", userMsgCount, "Trigger:", userMsgCount && userMsgCount % 5 === 0, "error:", countError);
+
+          if (userMsgCount && userMsgCount > 0 && userMsgCount % 5 === 0) {
+            console.log("[PORTRAIT] Triggering update for chat:", currentChatId);
+            // Fire and forget — don't await, don't block the user
+            updatePortrait(currentChatId, "message_count").catch((err) => {
+              console.error("[PORTRAIT] Background update failed:", err);
+            });
+          }
+        } catch (err) {
+          console.error("[PORTRAIT] Trigger check error:", err);
+        }
       } catch (error) {
         console.error("[chat] Streaming error:", error);
         if (fullResponse) {
