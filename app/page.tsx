@@ -9,7 +9,6 @@ interface Program {
   slug: string;
   title: string;
   description: string;
-  cover_url: string | null;
 }
 
 export default function HomePage() {
@@ -18,23 +17,35 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    async function load() {
+      const supabase = createClient();
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      console.log("[auth] getSession:", { session: sessionData.session, sessionError });
+
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      console.log("[auth] getUser:", { user: userData.user, userError });
+
+      if (!userData.user) {
         router.push("/auth");
         return;
       }
 
-      supabase
+      const { data, error, status, statusText } = await supabase
         .from("programs")
-        .select("id, slug, title, description, cover_url")
-        .order("created_at")
-        .then(({ data }) => {
-          setPrograms(data || []);
-          setLoading(false);
-        });
-    });
+        .select("id, slug, title, description")
+        .eq("is_active", true)
+        .order("created_at");
+
+      console.log("[programs] query result:", { data, error, status, statusText });
+
+      setPrograms(data || []);
+      setLoading(false);
+    }
+
+    load();
   }, [router]);
 
   if (loading) {
