@@ -9,12 +9,10 @@ export async function streamChat(
 ) {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
-    systemInstruction: systemPrompt,
+    ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
   });
 
   const chat = model.startChat({ history });
 
-  const result = await chat.sendMessageStream(userMessage);
-
-  return result.stream;
+  return chat.sendMessageStream(userMessage);
 }
