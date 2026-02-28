@@ -175,12 +175,12 @@
   .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 2px; }
   .msg-avatar.ai { background: linear-gradient(135deg, var(--accent), #8a6e24); color: #fff; }
   .msg-avatar.user { background: var(--bg-elevated); border: 1.5px solid var(--border); color: var(--text-muted); font-size: 11px; }
-  .msg-bubble { flex: 1; min-width: 0; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; line-height: 1.6; }
+  .msg-bubble { flex: 1; min-width: 0; padding: 12px 16px; border-radius: var(--radius); font-family: var(--font-body); font-size: 14px; line-height: 1.6; color: var(--text-primary); }
   .msg-ai .msg-bubble { background: var(--msg-ai-bg); border: 1px solid var(--msg-ai-border); }
   .msg-user .msg-bubble { background: var(--msg-user-bg); border: 1px solid var(--msg-user-border); }
   .msg-bubble p { margin-bottom: 8px; }
   .msg-bubble p:last-child { margin-bottom: 0; }
-  .msg-bubble strong { color: var(--accent); font-weight: 600; }
+  .msg-bubble strong { font-weight: 600; }
   .msg-bubble em { color: var(--text-secondary); }
   .streaming-cursor { display: inline; animation: blink 0.8s step-end infinite; margin-left: 1px; color: var(--accent); }
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
@@ -192,7 +192,7 @@
   .msg-bubble pre { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 10px 12px; margin: 8px 0; overflow-x: auto; }
   .msg-bubble pre code { background: none; padding: 0; font-size: 13px; }
   .msg-bubble blockquote { border-left: 3px solid var(--accent); padding-left: 12px; margin: 8px 0; color: var(--text-secondary); }
-  .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 { font-family: var(--font-display); margin: 10px 0 4px; font-weight: 600; }
+  .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 { font-family: var(--font-display); margin: 10px 0 4px; font-weight: 600; color: var(--accent); }
   .msg-bubble h1 { font-size: 18px; }
   .msg-bubble h2 { font-size: 16px; }
   .msg-bubble h3 { font-size: 15px; }
@@ -205,7 +205,7 @@
   .retry-btn:active { transform: scale(0.97); }
 
   /* ── THINKING INDICATOR ── */
-  .thinking-bubble { color: var(--text-muted); font-size: 14px; }
+  .thinking-indicator { font-size: 12px; color: var(--text-muted); padding-left: 54px; }
   .thinking-dots span { display: inline-block; animation: thinkingBounce 1.2s ease-in-out infinite; }
   .thinking-dots span:nth-child(1) { animation-delay: 0s; }
   .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }

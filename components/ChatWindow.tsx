@@ -234,6 +234,8 @@ export function ChatWindow({
           {messages.map((msg, i) => {
             const isAi = msg.role === "assistant";
             const isLast = i === messages.length - 1;
+            const isThinking = isStreaming && isLast && isAi && !msg.content;
+            if (isThinking) return null;
             return (
               <div
                 key={i}
@@ -260,16 +262,13 @@ export function ChatWindow({
           {isStreaming &&
             messages.length > 0 &&
             messages[messages.length - 1]?.content === "" && (
-              <div className="msg msg-ai">
-                <div className="msg-avatar ai">НС</div>
-                <div className="msg-bubble thinking-bubble">
-                  думаю
-                  <span className="thinking-dots">
-                    <span>.</span>
-                    <span>.</span>
-                    <span>.</span>
-                  </span>
-                </div>
+              <div className="thinking-indicator">
+                думаю
+                <span className="thinking-dots">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
               </div>
             )}
         </div>
