@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>НеСлавный — Прототип v7</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #f2f0ed;
+    --bg-card: #ffffff;
+    --bg-elevated: #f0efec;
+    --bg-input: #ffffff;
+    --bg-chat-zone: #faf9f7;
+    --bg-sidebar: #ffffff;
+    --border: #e5e3de;
+    --border-light: #eceae5;
+    --text-primary: #1a1917;
+    --text-secondary: #6b6860;
+    --text-muted: #9e9b93;
+    --accent: #b8973a;
+    --accent-soft: rgba(184, 151, 58, 0.10);
+    --accent-border: rgba(184, 151, 58, 0.25);
+    --msg-user-bg: #f3efdf;
+    --msg-user-border: #e8e0c8;
+    --msg-ai-bg: #ffffff;
+    --msg-ai-border: #e5e3de;
+    --status-done: #5a8c5a;
+    --status-done-bg: rgba(90, 140, 90, 0.10);
+    --status-active-bg: rgba(184, 151, 58, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+    --radius: 16px;
+    --radius-sm: 12px;
+    --radius-xs: 8px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
+    --header-h: 56px;
+    --tabs-h: 52px;
+    --sidebar-w: 240px;
+    --sidebar-collapsed-w: 60px;
+    --content-w: 720px;
+    --chat-w: 640px;
+  }
+  [data-theme="dark"] {
+    --bg-main: #0b0c0e;
+    --bg-card: #191c21;
+    --bg-elevated: #1e2126;
+    --bg-input: #191c21;
+    --bg-chat-zone: #111318;
+    --bg-sidebar: #14161a;
+    --border: #2a2d33;
+    --border-light: #232629;
+    --text-primary: #e8e6e1;
+    --text-secondary: #9a978f;
+    --text-muted: #5f5d57;
+    --accent: #c9a84c;
+    --accent-soft: rgba(201, 168, 76, 0.10);
+    --accent-border: rgba(201, 168, 76, 0.22);
+    --msg-user-bg: rgba(201, 168, 76, 0.08);
+    --msg-user-border: rgba(201, 168, 76, 0.15);
+    --msg-ai-bg: #191c21;
+    --msg-ai-border: #2a2d33;
+    --status-done: #6aae6a;
+    --status-done-bg: rgba(106, 174, 106, 0.12);
+    --status-active-bg: rgba(201, 168, 76, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family: var(--font-body); background: var(--bg-main); color: var(--text-primary); height: 100dvh; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+  .layout { display: flex; height: 100dvh; }
+
+  /* ═══ SIDEBAR ═══ */
+  .sidebar { width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border-light); display: none; flex-direction: column; flex-shrink: 0; transition: width 0.25s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }
+  .sidebar.collapsed { width: var(--sidebar-collapsed-w); }
+  .sidebar-header { height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 16px; border-bottom: 1px solid var(--border-light); flex-shrink: 0; overflow: hidden; }
+  .sidebar-logo { display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; min-width: 0; }
+  .sidebar-logo-mark { width: 30px; height: 30px; min-width: 30px; background: linear-gradient(135deg, var(--accent), #8a6e24); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+  .sidebar-logo-text { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--text-primary); transition: opacity 0.2s; }
+  .collapsed .sidebar-logo-text { opacity: 0; width: 0; }
+  .sidebar-collapse-btn { width: 28px; height: 28px; min-width: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 14px; transition: color 0.12s, background 0.12s, transform 0.25s; }
+  .sidebar-collapse-btn:hover { color: var(--text-primary); background: var(--border); }
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-xs); cursor: pointer; color: var(--text-secondary); font-size: 14px; white-space: nowrap; overflow: hidden; transition: background 0.12s, color 0.12s; border: none; background: none; width: 100%; text-align: left; font-family: var(--font-body); }
+  .sidebar-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .sidebar-item-icon { width: 28px; min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 16px; border-radius: 6px; }
+  .sidebar-item-label { overflow: hidden; text-overflow: ellipsis; transition: opacity 0.2s; }
+  .collapsed .sidebar-item-label { opacity: 0; width: 0; }
+  .collapsed .sidebar-item { padding: 10px 8px; justify-content: center; }
+  .collapsed .sidebar-header { padding: 0 8px; justify-content: center; }
+  .sidebar-bottom { padding: 8px; border-top: 1px solid var(--border-light); }
+  .sidebar-bottom-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-xs); cursor: pointer; color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; border: none; background: none; width: 100%; text-align: left; font-family: var(--font-body); transition: color 0.12s; }
+  .sidebar-bottom-item:hover { color: var(--text-primary); }
+  .collapsed .sidebar-bottom-item { justify-content: center; }
+  .collapsed .sidebar-bottom-item span:last-child { opacity: 0; width: 0; }
+
+  /* ═══ MAIN ═══ */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+
+  /* ═══ MOBILE TABS ═══ */
+  .mobile-tabs { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabs-h); display: flex; background: var(--bg-card); border-top: 1px solid var(--border-light); z-index: 9999; }
+  .mobile-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-family: var(--font-body); color: var(--text-muted); border: none; background: none; cursor: pointer; }
+  .mobile-tab.active { color: var(--accent); font-weight: 600; }
+  .mobile-tab-icon { font-size: 18px; }
+
+  /* ═══ SCREENS ═══ */
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg-main); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease; }
+  .screen.hidden { display: none; }
+  .screen.slide-right { transform: translateX(100%); }
+  .screen.slide-right.visible { transform: translateX(0); z-index: 10; }
+
+  /* ═══ HEADER (mobile) ═══ */
+  .header-inner { height: var(--header-h); display: flex; align-items: center; padding: 0 12px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); flex-shrink: 0; gap: 8px; }
+  .back-btn { width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 20px; flex-shrink: 0; }
+  .header-title { flex: 1; min-width: 0; }
+  .header-title h1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-title small { font-size: 12px; color: var(--text-muted); }
+  .header-balance { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 20px; font-size: 13px; font-weight: 500; color: var(--accent); }
+
+  /* ═══ CONTENT CONTAINER (720px, centered, top-left aligned) ═══ */
+  .content-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 24px 24px 40px; }
+  .content-container { width: 100%; max-width: var(--content-w); margin: 0 auto; }
+
+  /* ═══ CHAT ZONE ═══ */
+  .chat-zone { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat-zone); min-height: 0; }
+  .chat-messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; }
+  .chat-inner { width: 100%; max-width: var(--chat-w); display: flex; flex-direction: column; gap: 12px; }
+  .chat-input-wrap { padding: 10px 16px 12px; background: var(--bg-card); border-top: 1px solid var(--border-light); flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+  .chat-input-inner { width: 100%; max-width: var(--chat-w); }
+  .chat-input-row { display: flex; align-items: flex-end; gap: 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 24px; padding: 4px 4px 4px 16px; transition: border-color 0.2s; }
+  .chat-input-row:focus-within { border-color: var(--accent); }
+  .chat-input { flex: 1; border: none; outline: none; background: none; font-family: var(--font-body); font-size: 15px; color: var(--text-primary); padding: 10px 0; resize: none; line-height: 1.4; max-height: 100px; }
+  .chat-input::placeholder { color: var(--text-muted); }
+  .send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .send-btn:active { transform: scale(0.92); }
+  .input-privacy { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* ═══ WELCOME ═══ */
+  .welcome-card { text-align: center; padding: 24px 16px 16px; margin-bottom: 4px; }
+  .welcome-emoji { font-size: 36px; margin-bottom: 10px; }
+  .welcome-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .welcome-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .welcome-desc { font-size: 13px; line-height: 1.55; color: var(--text-secondary); max-width: 360px; margin: 0 auto; }
+
+  /* ═══ EXERCISE INTRO ═══ */
+  .exercise-intro { padding: 14px 16px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); margin-bottom: 4px; }
+  .exercise-intro-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent); margin-bottom: 4px; }
+  .exercise-intro-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .exercise-intro-desc { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+
+  /* ═══ MESSAGES ═══ */
+  .msg { display: flex; gap: 10px; max-width: 100%; animation: msgIn 0.25s ease-out; }
+  @keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 2px; }
+  .msg-avatar.ai { background: linear-gradient(135deg, var(--accent), #8a6e24); color: #fff; }
+  .msg-avatar.user { background: var(--bg-elevated); border: 1.5px solid var(--border); color: var(--text-muted); font-size: 11px; }
+  .msg-bubble { flex: 1; min-width: 0; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; line-height: 1.6; }
+  .msg-ai .msg-bubble { background: var(--msg-ai-bg); border: 1px solid var(--msg-ai-border); }
+  .msg-user .msg-bubble { background: var(--msg-user-bg); border: 1px solid var(--msg-user-border); }
+  .msg-bubble p { margin-bottom: 8px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+  .msg-bubble strong { color: var(--accent); font-weight: 600; }
+  .msg-bubble em { color: var(--text-secondary); }
+  .msg-question { display: block; margin-top: 10px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 var(--radius-xs) var(--radius-xs) 0; font-size: 13.5px; color: var(--text-primary); line-height: 1.5; }
+  .quick-replies { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 8px; margin-left: 38px; }
+  .quick-reply-btn { display: inline-block; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--accent-border); border-radius: 20px; font-family: var(--font-body); font-size: 13.5px; color: var(--accent); cursor: pointer; text-align: left; width: fit-content; max-width: 85%; transition: background 0.15s, transform 0.1s; }
+  .quick-reply-btn:active { transform: scale(0.97); background: var(--accent-soft); }
+  .msg-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 10px 18px; background: var(--accent); color: #fff; font-family: var(--font-body); font-size: 13.5px; font-weight: 500; border-radius: 20px; cursor: pointer; border: none; }
+  .msg-cta:active { transform: scale(0.96); }
+
+  /* ═══ EXERCISE LIST ═══ */
+  .chapter-group { margin-top: 24px; }
+  .chapter-group:first-child { margin-top: 0; }
+  .chapter-header { padding: 0 0 8px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .chapter-progress { font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .exercise-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; transition: background 0.12s; border-radius: var(--radius-xs); margin: 0 -8px; }
+  .exercise-item:active { background: var(--bg-elevated); }
+  .exercise-item.is-active { background: var(--accent-soft); }
+  .ex-status { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; font-weight: 600; }
+  .ex-done { background: var(--status-done-bg); color: var(--status-done); }
+  .ex-active { background: var(--status-active-bg); color: var(--accent); font-size: 11px; }
+  .ex-locked { background: var(--bg-elevated); border: 1.5px solid var(--border); color: var(--text-muted); font-size: 11px; }
+  .ex-info { flex: 1; min-width: 0; }
+  .ex-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .exercise-item.is-active .ex-title { font-weight: 500; }
+  .ex-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .ex-arrow { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
+
+  /* ═══ PORTRAIT ═══ */
+  .portrait-section { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 18px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+  .portrait-section:last-child { margin-bottom: 0; }
+  .portrait-section-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
+  .portrait-section-text { font-size: 13.5px; line-height: 1.65; color: var(--text-secondary); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { padding: 4px 10px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 14px; font-size: 12px; color: var(--text-secondary); }
+  .tag.accent { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+
+  .portrait-progress-bar { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 16px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+  .progress-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .progress-count { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--accent); }
+  .progress-count span { font-size: 14px; color: var(--text-muted); font-family: var(--font-body); font-weight: 400; }
+  .progress-pct { font-size: 13px; color: var(--text-muted); }
+  .progress-track { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #8a6e24, var(--accent)); border-radius: 3px; }
+
+  /* ═══ BALANCE ═══ */
+  .balance-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 24px; box-shadow: var(--shadow-sm); margin-bottom: 16px; display: flex; align-items: center; gap: 20px; }
+  .balance-icon { font-size: 36px; }
+  .balance-amount { font-family: var(--font-display); font-size: 32px; font-weight: 600; color: var(--accent); }
+  .balance-label { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .balance-action { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; background: var(--accent); color: #fff; border: none; border-radius: 24px; font-family: var(--font-body); font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 16px; }
+  .balance-action:active { transform: scale(0.97); }
+  .balance-hint { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-top: 12px; }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .sidebar { display: none !important; }
+    .mobile-tabs { display: flex; }
+    .main { padding-bottom: 0; }
+    .screen { bottom: var(--tabs-h); }
+    .content-scroll { padding: 16px 16px 32px; }
+  }
+  @media (min-width: 769px) {
+    .sidebar { display: flex; }
+    .mobile-tabs { display: none; }
+    .back-btn { display: none; }
+    .chat-messages { padding: 24px 32px; }
+    .chat-input-wrap { padding: 12px 32px 16px; }
+    .content-scroll { padding: 58px 32px 40px; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  @supports (padding-bottom: env(safe-area-inset-bottom)) { .mobile-tabs { padding-bottom: env(safe-area-inset-bottom); } @media (max-width: 768px) { .screen { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom)); } } }
+  .proto-label { position: fixed; top: 8px; right: 8px; font-size: 10px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; z-index: 10000; opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-mark">НС</div>
+        <div class="sidebar-logo-text">НеСлавный</div>
+      </div>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebar()" id="collapseBtn" title="Свернуть">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L5 8L10 13"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-nav">
+      <button class="sidebar-item active" onclick="navigateTo('chat')" id="navChat"><div class="sidebar-item-icon">💬</div><span class="sidebar-item-label">Свободный чат</span></button>
+      <button class="sidebar-item" onclick="navigateTo('exercises')" id="navExercises"><div class="sidebar-item-icon">📋</div><span class="sidebar-item-label">Упражнения</span></button>
+      <button class="sidebar-item" onclick="navigateTo('portrait')" id="navPortrait"><div class="sidebar-item-icon">📊</div><span class="sidebar-item-label">Мой портрет</span></button>
+      <button class="sidebar-item" onclick="navigateTo('balance')" id="navBalance"><div class="sidebar-item-icon">⚡</div><span class="sidebar-item-label">Баланс · 847</span></button>
+    </div>
+    <div class="sidebar-bottom">
+      <button class="sidebar-bottom-item" onclick="toggleTheme()" id="themeBtn"><span>☀️</span><span>Тема</span></button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+
+    <!-- CHAT -->
+    <div class="screen" id="screenChat">
+      <div class="header-inner" style="display:none;" id="chatMobileHeader"><div class="header-title"><h1>НеСлавный</h1></div><div class="header-balance">⚡ 50</div></div>
+      <div class="chat-zone">
+        <div class="chat-messages">
+          <div class="chat-inner">
+            <div class="welcome-card">
+              <div class="welcome-emoji">📖</div>
+              <div class="welcome-title">Хватит быть славным парнем</div>
+              <div class="welcome-sub">Роберт Гловер · 46 упражнений</div>
+              <div class="welcome-desc">AI-ассистент проведёт тебя через каждое упражнение и поможет разобраться в себе.</div>
+            </div>
+            <div class="msg msg-ai"><div class="msg-avatar ai">НС</div><div class="msg-bubble"><p>Привет! Расскажи — что привело тебя сюда?</p><p>Может, чувствуешь что живёшь не для себя, или что окружающие не ценят то, что ты для них делаешь? А может, просто ощущение что что-то идёт не так — но сложно сформулировать что именно?</p></div></div>
+            <div class="quick-replies" id="quickReplies">
+              <button class="quick-reply-btn" onclick="sendQuickReply(this)">Все сидят на шее, а я терплю</button>
+              <button class="quick-reply-btn" onclick="sendQuickReply(this)">Проблемы в отношениях</button>
+              <button class="quick-reply-btn" onclick="sendQuickReply(this)">Просто чувствую что живу не так</button>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-wrap"><div class="chat-input-inner"><div class="chat-input-row"><textarea class="chat-input" placeholder="Или напиши своими словами..." rows="1" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea><button class="send-btn">↑</button></div><div class="input-privacy">🔒 Всё, что ты напишешь, остаётся между нами</div></div></div>
+      </div>
+    </div>
+
+    <!-- EXERCISES -->
+    <div class="screen hidden" id="screenExercises">
+      <div class="header-inner" id="exercisesMobileHeader" style="display:none;"><div class="header-title"><h1>Упражнения</h1><small>Глава 2–9 · 46 упражнений</small></div></div>
+      <div class="content-scroll">
+        <div class="content-container">
+          <div class="chapter-group">
+            <div class="chapter-header">Глава 2 · Синдром славного парня<span class="chapter-progress">2 / 5 ✓</span></div>
+            <div class="exercise-item" onclick="openExercise()"><div class="ex-status ex-done">✓</div><div class="ex-info"><div class="ex-title">Почему я «славный парень»?</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item" onclick="openExercise()"><div class="ex-status ex-done">✓</div><div class="ex-info"><div class="ex-title">Список моих характеристик</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item is-active" onclick="openExercise()"><div class="ex-status ex-active">▶</div><div class="ex-info"><div class="ex-title">Почему я скрываю себя?</div><div class="ex-subtitle">В процессе</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item"><div class="ex-status ex-locked">4</div><div class="ex-info"><div class="ex-title">Ищу одобрения</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item"><div class="ex-status ex-locked">5</div><div class="ex-info"><div class="ex-title">Стратегия скрытых сделок</div></div><div class="ex-arrow">›</div></div>
+          </div>
+          <div class="chapter-group">
+            <div class="chapter-header">Глава 3 · Научись нравиться себе<span class="chapter-progress">0 / 5</span></div>
+            <div class="exercise-item"><div class="ex-status ex-locked">6</div><div class="ex-info"><div class="ex-title">Что мне нравится в себе?</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item"><div class="ex-status ex-locked">7</div><div class="ex-info"><div class="ex-title">Позаботься о себе</div></div><div class="ex-arrow">›</div></div>
+            <div class="exercise-item"><div class="ex-status ex-locked">8</div><div class="ex-info"><div class="ex-title">Мужская дружба</div></div><div class="ex-arrow">›</div></div>
+          </div>
+          <div class="chapter-group"><div class="chapter-header" style="opacity:0.5;">Главы 4–9 · ещё 33 упражнения</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXERCISE CHAT -->
+    <div class="screen hidden slide-right" id="screenExerciseChat">
+      <div class="header-inner"><button class="back-btn" onclick="closeExercise()">←</button><div class="header-title"><h1>Упр. 3 · Почему я скрываю себя?</h1><small>Глава 2 · Синдром славного парня</small></div></div>
+      <div class="chat-zone">
+        <div class="chat-messages">
+          <div class="chat-inner">
+            <div class="exercise-intro">
+              <div class="exercise-intro-label">Упражнение 3 из 46</div>
+              <div class="exercise-intro-title">Почему я скрываю настоящего себя?</div>
+              <div class="exercise-intro-desc">Разберём, что ты прячешь от других и почему. Цель — увидеть свои защитные механизмы.</div>
+            </div>
+            <div class="msg msg-ai"><div class="msg-avatar ai">НС</div><div class="msg-bubble"><p>Давай поработаем с третьим упражнением. Оно про то, что мы скрываем от окружающих — и почему.</p><p>Подумай: есть ли что-то в тебе — качества, привычки, мысли — что ты <em>сознательно скрываешь</em> от других?</p><div class="msg-question">Расскажи хотя бы об одной такой вещи. Начни с того, что готов.</div></div></div>
+            <div class="msg msg-user"><div class="msg-avatar user">С</div><div class="msg-bubble"><p>Я скрываю что мне важно что обо мне думают. Изображаю что мне похуй, а на самом деле очень важна оценка. Особенно от отца.</p></div></div>
+            <div class="msg msg-ai"><div class="msg-avatar ai">НС</div><div class="msg-bubble"><p>Очень честный ответ.</p><p>Ты описал <strong>двойную маску</strong>: снаружи — «мне всё равно», внутри — жажда одобрения. В первом упражнении ты говорил, что отец был эмоционально отстранённым. Если ребёнок не получает признания, он начинает делать вид, что оно ему не нужно.</p><div class="msg-question">Когда ты в последний раз хотел одобрение — и сделал вид, что всё равно? Конкретная ситуация.</div></div></div>
+            <div class="msg msg-user"><div class="msg-avatar user">С</div><div class="msg-bubble"><p>На прошлой неделе. Сделал презу для клиента, вложился. Показал — он «ну норм». А я «да ок». А внутри прям сжалось, как будто мне 10 лет и батя смотрит дневник.</p></div></div>
+            <div class="msg msg-ai"><div class="msg-avatar ai">НС</div><div class="msg-bubble"><p><strong>«Как будто мне 10 лет и батя смотрит дневник»</strong> — ты сам увидел связь. Это <strong>перенос</strong> — ты неосознанно ставишь клиента в роль отца.</p><p>Мы разобрали ключевой паттерн. Я обновил твой портрет — там теперь зафиксирован этот механизм.</p><p>Готов двигаться дальше? Следующее упражнение — <strong>«Ищу одобрения»</strong>. Оно как раз углубит то, что мы сейчас нашли.</p><button class="msg-cta" onclick="alert('→ Открывается упражнение 4')">Начать упражнение 4 →</button></div></div>
+          </div>
+        </div>
+        <div class="chat-input-wrap"><div class="chat-input-inner"><div class="chat-input-row"><textarea class="chat-input" placeholder="Напиши..." rows="1"></textarea><button class="send-btn">↑</button></div><div class="input-privacy">🔒 Всё, что ты напишешь, остаётся между нами</div></div></div>
+      </div>
+    </div>
+
+    <!-- PORTRAIT -->
+    <div class="screen hidden" id="screenPortrait">
+      <div class="header-inner" id="portraitMobileHeader" style="display:none;"><div class="header-title"><h1>Мой портрет</h1><small>Обновлён после упражнения 3</small></div></div>
+      <div class="content-scroll">
+        <div class="content-container">
+          <div class="portrait-progress-bar"><div class="progress-top"><div class="progress-count">3 <span>из 46</span></div><div class="progress-pct">7%</div></div><div class="progress-track"><div class="progress-fill" style="width:7%;"></div></div></div>
+          <div class="portrait-section"><div class="portrait-section-title">🧠 Ключевые паттерны</div><div class="portrait-section-text">Выраженный паттерн поиска одобрения с одновременным подавлением этой потребности. Создаёт образ независимого человека, при этом остро реагирует на оценку. Переносит динамику отношений с отцом на рабочие контексты.</div><div class="tags"><span class="tag accent">Поиск одобрения</span><span class="tag accent">Подавление потребностей</span><span class="tag">Перенос</span><span class="tag">Избегание уязвимости</span></div></div>
+          <div class="portrait-section"><div class="portrait-section-title">👨‍👦 Семейная система</div><div class="portrait-section-text">Отец — эмоционально отстранённый, скупой на похвалу. Стратегия: «если не покажу, что мне нужно одобрение, меня нельзя отвергнуть». Работает до сих пор.</div></div>
+          <div class="portrait-section"><div class="portrait-section-title">🔄 Защитные механизмы</div><div class="portrait-section-text">Фасад равнодушия — говорит «да ок» когда на самом деле больно. Гиперфункционирование — вкладывает много усилий, чтобы «заслужить» одобрение.</div></div>
+          <div class="portrait-section"><div class="portrait-section-title">🎯 Зоны роста</div><div class="portrait-section-text">Научиться открыто выражать потребности. Практиковать прямые просьбы об обратной связи. Упражнения 4–5 углубят тему.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BALANCE -->
+    <div class="screen hidden" id="screenBalance">
+      <div class="header-inner" id="balanceMobileHeader" style="display:none;"><div class="header-title"><h1>Баланс</h1></div></div>
+      <div class="content-scroll">
+        <div class="content-container">
+          <div class="balance-card">
+            <div class="balance-icon">⚡</div>
+            <div>
+              <div class="balance-amount">847</div>
+              <div class="balance-label">токенов на балансе</div>
+            </div>
+          </div>
+          <button class="balance-action">Пополнить баланс</button>
+          <div class="balance-hint">Один запрос к AI стоит ~3–8 токенов. Пробный баланс — 50 токенов бесплатно.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MOBILE TABS -->
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="mobile-tab active" onclick="navigateTo('chat')" id="mChat"><div class="mobile-tab-icon">💬</div>Чат</button>
+  <button class="mobile-tab" onclick="navigateTo('exercises')" id="mExercises"><div class="mobile-tab-icon">📋</div>Упражнения</button>
+  <button class="mobile-tab" onclick="navigateTo('portrait')" id="mPortrait"><div class="mobile-tab-icon">📊</div>Портрет</button>
+  <button class="mobile-tab" onclick="navigateTo('balance')" id="mBalance"><div class="mobile-tab-icon">⚡</div>Баланс</button>
+</div>
+
+<div class="proto-label">Прототип v7</div>
+
+<script>
+const screens = ['screenChat','screenExercises','screenExerciseChat','screenPortrait','screenBalance'];
+const sidebarItems = { chat:'navChat', exercises:'navExercises', portrait:'navPortrait', balance:'navBalance' };
+const mobileItems = { chat:'mChat', exercises:'mExercises', portrait:'mPortrait', balance:'mBalance' };
+
+function navigateTo(name) {
+  screens.forEach(id => { const el=document.getElementById(id); el.classList.add('hidden'); el.classList.remove('visible'); });
+  const map = { chat:'screenChat', exercises:'screenExercises', portrait:'screenPortrait', balance:'screenBalance' };
+  document.getElementById(map[name]).classList.remove('hidden');
+  Object.values(sidebarItems).forEach(id => document.getElementById(id).classList.remove('active'));
+  if (sidebarItems[name]) document.getElementById(sidebarItems[name]).classList.add('active');
+  Object.values(mobileItems).forEach(id => document.getElementById(id).classList.remove('active'));
+  if (mobileItems[name]) document.getElementById(mobileItems[name]).classList.add('active');
+  const m = window.innerWidth <= 768;
+  document.getElementById('chatMobileHeader').style.display = (m && name==='chat') ? 'flex' : 'none';
+  document.getElementById('exercisesMobileHeader').style.display = (m && name==='exercises') ? 'flex' : 'none';
+  document.getElementById('portraitMobileHeader').style.display = (m && name==='portrait') ? 'flex' : 'none';
+  document.getElementById('balanceMobileHeader').style.display = (m && name==='balance') ? 'flex' : 'none';
+}
+
+function openExercise() {
+  const c=document.getElementById('screenExerciseChat'), l=document.getElementById('screenExercises');
+  if (window.innerWidth<=768) { c.classList.remove('hidden'); requestAnimationFrame(()=>c.classList.add('visible')); }
+  else { l.classList.add('hidden'); c.classList.remove('hidden','slide-right'); }
+}
+
+function closeExercise() {
+  const c=document.getElementById('screenExerciseChat'), l=document.getElementById('screenExercises');
+  if (window.innerWidth<=768) { c.classList.remove('visible'); setTimeout(()=>c.classList.add('hidden'),300); }
+  else { c.classList.add('hidden'); l.classList.remove('hidden'); }
+}
+
+function toggleSidebar() {
+  const s=document.getElementById('sidebar'), b=document.getElementById('collapseBtn');
+  s.classList.toggle('collapsed');
+  b.style.transform = s.classList.contains('collapsed') ? 'rotate(180deg)' : '';
+}
+
+function toggleTheme() {
+  const b=document.getElementById('themeBtn');
+  if (document.body.getAttribute('data-theme')==='dark') { document.body.removeAttribute('data-theme'); b.querySelector('span').textContent='☀️'; }
+  else { document.body.setAttribute('data-theme','dark'); b.querySelector('span').textContent='🌙'; }
+}
+
+function sendQuickReply(btn) {
+  const t=btn.textContent, ci=btn.closest('.chat-inner'), cm=btn.closest('.chat-messages');
+  document.getElementById('quickReplies').remove();
+  const u=document.createElement('div'); u.className='msg msg-user';
+  u.innerHTML='<div class="msg-avatar user">С</div><div class="msg-bubble"><p>'+t+'</p></div>';
+  ci.appendChild(u);
+  setTimeout(()=>{
+    const a=document.createElement('div'); a.className='msg msg-ai';
+    a.innerHTML='<div class="msg-avatar ai">НС</div><div class="msg-bubble"><p>Понимаю. Многие мужчины чувствуют именно это — и не понимают почему.</p><p>Расскажи чуть подробнее — в какой ситуации это проявляется сильнее всего? На работе, дома, с друзьями?</p></div>';
+    ci.appendChild(a); cm.scrollTop=cm.scrollHeight;
+  },800);
+  cm.scrollTop=cm.scrollHeight;
+}
+
+navigateTo('chat');
+</script>
+
+</body>
+</html>
