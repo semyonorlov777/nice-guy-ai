@@ -29,17 +29,19 @@ export function FAQAccordion() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <div className="landing-faq-list">
+    <div className="max-w-[640px] mx-auto">
       {items.map((item, i) => (
-        <div key={i} className="landing-faq-item">
+        <div key={i} className="border-b border-[#2a2d35]">
           <button
-            className="landing-faq-question"
+            className="w-full flex justify-between items-center py-5 bg-transparent border-none cursor-pointer text-base font-medium text-[#e0e0e0] text-left"
             onClick={() => setOpen(open === i ? null : i)}
             aria-expanded={open === i}
           >
             <span>{item.q}</span>
             <svg
-              className={`landing-faq-chevron ${open === i ? "open" : ""}`}
+              className={`shrink-0 text-[#5f5d57] transition-transform duration-200 ${
+                open === i ? "rotate-180" : ""
+              }`}
               width="20"
               height="20"
               viewBox="0 0 20 20"
@@ -55,7 +57,9 @@ export function FAQAccordion() {
             </svg>
           </button>
           {open === i && (
-            <div className="landing-faq-answer">{item.a}</div>
+            <div className="pb-5 text-sm leading-relaxed text-[#9a978f] animate-[fadeIn_0.2s_ease]">
+              {item.a}
+            </div>
           )}
         </div>
       ))}

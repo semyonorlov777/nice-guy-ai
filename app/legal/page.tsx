@@ -5,23 +5,38 @@ export const metadata: Metadata = {
   title: "Правовая информация — НеСлавный",
 };
 
+const dFont = { fontFamily: "var(--font-display)" } as const;
+
 export default function LegalPage() {
   return (
-    <div className="legal-page">
-      <nav className="legal-nav">
-        <Link href="/program/nice-guy" className="landing-logo">
+    <div className="legal-page min-h-screen bg-[#0f1114] text-[#e0e0e0] pt-20 pb-16 px-6">
+      <nav className="flex items-center justify-between max-w-[720px] mx-auto mb-10">
+        <Link
+          href="/program/nice-guy"
+          className="text-[22px] font-semibold text-[#c9a84c] no-underline"
+          style={dFont}
+        >
           НеСлавный
         </Link>
-        <Link href="/program/nice-guy" className="legal-back">
+        <Link
+          href="/program/nice-guy"
+          className="text-[13px] text-[#c9a84c] underline"
+        >
           ← На главную
         </Link>
       </nav>
 
-      <div className="legal-container">
-        <h1 className="legal-title">Правовая информация</h1>
+      <div className="max-w-[720px] mx-auto [&_h2]:text-[22px] [&_h2]:font-semibold [&_h2]:text-[#c9a84c] [&_h2]:mt-8 [&_h2]:mb-3 [&_p]:text-sm [&_p]:leading-7 [&_p]:text-[#9a978f] [&_p]:mb-3 [&_ul]:pl-6 [&_ul]:mb-4 [&_li]:text-sm [&_li]:leading-7 [&_li]:text-[#9a978f] [&_li]:mb-1.5 [&_strong]:text-[#e0e0e0] [&_strong]:font-semibold"
+        style={{ fontFamily: "var(--font-body)" }}
+      >
+        <h1
+          className="text-[32px] font-semibold mb-10 text-[#e0e0e0]"
+          style={dFont}
+        >
+          Правовая информация
+        </h1>
 
-        {/* 1. Общие положения */}
-        <h2>1. Общие положения</h2>
+        <h2 className="!mt-0" style={dFont}>1. Общие положения</h2>
         <p>
           Настоящий документ является публичной офертой индивидуального
           предпринимателя Орлова Семёна Вячеславовича (далее — Исполнитель)
@@ -34,8 +49,7 @@ export default function LegalPage() {
           со ст. 437 Гражданского кодекса Российской Федерации.
         </p>
 
-        {/* 2. Предмет оферты */}
-        <h2>2. Предмет оферты</h2>
+        <h2 style={dFont}>2. Предмет оферты</h2>
         <p>
           Исполнитель предоставляет Заказчику (далее — Пользователь) доступ к
           онлайн-платформе с AI-тренажёрами для самостоятельной работы по
@@ -50,8 +64,7 @@ export default function LegalPage() {
           консультацию квалифицированного специалиста.
         </p>
 
-        {/* 3. Тарифы и стоимость */}
-        <h2>3. Тарифы и стоимость услуг</h2>
+        <h2 style={dFont}>3. Тарифы и стоимость услуг</h2>
         <p><strong>Подписки (ежемесячная оплата):</strong></p>
         <ul>
           <li>Старт — 990 ₽/мес</li>
@@ -70,16 +83,14 @@ export default function LegalPage() {
           уведомив Пользователей не менее чем за 14 дней.
         </p>
 
-        {/* 4. Порядок оказания услуг */}
-        <h2>4. Порядок оказания услуг</h2>
+        <h2 style={dFont}>4. Порядок оказания услуг</h2>
         <p>
           Доступ к Сервису предоставляется мгновенно после подтверждения
           оплаты. Пользователь получает доступ к функционалу в соответствии
           с выбранным тарифом или объёмом приобретённых токенов.
         </p>
 
-        {/* 5. Оплата */}
-        <h2>5. Оплата</h2>
+        <h2 style={dFont}>5. Оплата</h2>
         <p>
           Оплата осуществляется через платёжный сервис ЮKassa. Принимаются
           карты Visa, Mastercard, МИР, а также СБП, SberPay, T-Pay и ЮMoney.
@@ -89,8 +100,7 @@ export default function LegalPage() {
           требованиями Федерального закона № 54-ФЗ.
         </p>
 
-        {/* 6. Возврат */}
-        <h2>6. Возврат средств</h2>
+        <h2 style={dFont}>6. Возврат средств</h2>
         <p>
           Полный возврат возможен в течение 14 календарных дней с момента
           оплаты при условии, что услуга не была использована (не было
@@ -106,8 +116,7 @@ export default function LegalPage() {
           указанной в реквизитах.
         </p>
 
-        {/* 7. Конфиденциальность */}
-        <h2>7. Конфиденциальность</h2>
+        <h2 style={dFont}>7. Конфиденциальность</h2>
         <p>
           Обработка персональных данных осуществляется в соответствии с
           Федеральным законом № 152-ФЗ «О персональных данных».
@@ -123,8 +132,7 @@ export default function LegalPage() {
           предоставления услуг Сервиса.
         </p>
 
-        {/* 8. Ограничение ответственности */}
-        <h2>8. Ограничение ответственности</h2>
+        <h2 style={dFont}>8. Ограничение ответственности</h2>
         <p>
           Сервис предоставляется «как есть» (as is). Исполнитель не
           гарантирует достижение каких-либо конкретных результатов от
@@ -136,8 +144,7 @@ export default function LegalPage() {
           психологической диагностикой.
         </p>
 
-        {/* 9. Прочие условия */}
-        <h2>9. Прочие условия</h2>
+        <h2 style={dFont}>9. Прочие условия</h2>
         <p>
           Исполнитель вправе вносить изменения в условия настоящей оферты.
           Актуальная редакция публикуется на данной странице Сервиса.
@@ -149,19 +156,19 @@ export default function LegalPage() {
         </p>
 
         {/* Реквизиты */}
-        <div className="legal-requisites">
-          <h2>Реквизиты</h2>
+        <div className="mt-12 pt-8 border-t border-[#2a2d35] [&_h2]:!mt-0">
+          <h2 style={dFont}>Реквизиты</h2>
           <p><strong>ИП Орлов Семён Вячеславович</strong></p>
-          <p>ИНН: 381914223321</p>
-          <p>ОГРНИП: 321385000066066</p>
-          <p>
+          <p className="!mb-1">ИНН: 381914223321</p>
+          <p className="!mb-1">ОГРНИП: 321385000066066</p>
+          <p className="!mb-1">
             Адрес: 665462, Россия, Иркутская обл., г. Усолье-Сибирское,
             проезд Фестивальный, д. 1, кв. 14
           </p>
-          <p>Р/с: 40802810902500135634</p>
-          <p>Банк: ООО «Банк Точка»</p>
-          <p>БИК: 044525104</p>
-          <p>Корр. счёт: 30101810745374525104</p>
+          <p className="!mb-1">Р/с: 40802810902500135634</p>
+          <p className="!mb-1">Банк: ООО «Банк Точка»</p>
+          <p className="!mb-1">БИК: 044525104</p>
+          <p className="!mb-1">Корр. счёт: 30101810745374525104</p>
         </div>
       </div>
     </div>

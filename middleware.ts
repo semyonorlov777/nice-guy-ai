@@ -1,7 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Public routes that don't need auth token refresh
+const PUBLIC_PATHS = ["/auth", "/legal"];
+
+function isPublic(pathname: string) {
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return true;
+  // /program/<slug> (landing) but not /program/<slug>/chat etc.
+  if (/^\/program\/[^/]+\/?$/.test(pathname)) return true;
+  return false;
+}
+
 export async function middleware(request: NextRequest) {
+  if (isPublic(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
