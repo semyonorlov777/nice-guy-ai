@@ -1,176 +1,170 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
-const dFont = { fontFamily: "var(--font-display)" } as const;
+const D = "var(--font-display)";
 
-const subscriptions = [
+const subs = [
   {
     name: "Старт",
     price: "990",
     period: "/мес",
-    features: [
-      "Доступ ко всем упражнениям",
-      "AI-ассистент",
-      "Портрет",
-      "Свободный чат",
-    ],
+    desc: "Для знакомства с платформой",
+    features: ["Доступ ко всем упражнениям", "AI-ассистент по методологии", "Психологический портрет", "Свободный чат"],
+    pop: false,
   },
   {
     name: "Стандарт",
     price: "2 900",
     period: "/мес",
-    label: "Популярный",
-    features: [
-      "Всё из Старт",
-      "Увеличенный лимит",
-      "Интенсивные сессии",
-      "Приоритетная поддержка",
-    ],
+    desc: "Для глубокой проработки",
+    features: ["Всё из тарифа Старт", "Увеличенный лимит сообщений", "Интенсивные сессии", "Приоритетная поддержка"],
+    pop: true,
   },
   {
     name: "Премиум",
     price: "7 900",
     period: "/мес",
-    features: [
-      "Всё из Стандарт",
-      "Максимальный лимит",
-      "Доступ к новым тренажёрам",
-      "Персональные рекомендации",
-    ],
+    desc: "Для максимального результата",
+    features: ["Всё из тарифа Стандарт", "Максимальный лимит сообщений", "Доступ к новым тренажёрам", "Персональные рекомендации"],
+    pop: false,
   },
 ];
 
-const tokenPacks = [
-  {
-    name: "Стартовый",
-    tokens: "1 000 000",
-    price: "1 290",
-    desc: "Протестировать платформу",
-  },
-  {
-    name: "Стандартный",
-    tokens: "5 000 000",
-    price: "3 790",
-    label: "Выгодно",
-    desc: "Глубокое изучение 1 книги",
-  },
-  {
-    name: "Мега",
-    tokens: "50 000 000",
-    price: "14 990",
-    desc: "Для активных пользователей",
-  },
+const packs = [
+  { name: "Стартовый", tokens: "1M", price: "1 290", desc: "Протестировать платформу", pop: false },
+  { name: "Стандартный", tokens: "5M", price: "3 790", desc: "Глубокое изучение 1 книги", pop: true },
+  { name: "Мега", tokens: "50M", price: "14 990", desc: "Для активных пользователей", pop: false },
 ];
-
-type Tab = "subscriptions" | "tokens";
 
 export function PricingTabs() {
-  const [tab, setTab] = useState<Tab>("subscriptions");
+  const [tab, setTab] = useState<"sub" | "tok">("sub");
+
+  const tabBtn = (id: "sub" | "tok", label: string) => (
+    <button
+      key={id}
+      onClick={() => setTab(id)}
+      style={{
+        padding: "10px 24px",
+        borderRadius: 8,
+        border: "none",
+        background: tab === id ? "#c9a84c" : "#1c1f26",
+        color: tab === id ? "#0f1114" : "#888",
+        fontSize: 14,
+        fontWeight: tab === id ? 600 : 400,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        transition: "all 0.2s",
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <>
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-[#1c1f26] rounded-xl p-1 w-fit mx-auto mb-8">
-        <button
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-            tab === "subscriptions"
-              ? "bg-[#c9a84c] text-white"
-              : "bg-transparent text-[#9a978f] hover:text-[#e0e0e0]"
-          }`}
-          onClick={() => setTab("subscriptions")}
-        >
-          Подписка
-        </button>
-        <button
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
-            tab === "tokens"
-              ? "bg-[#c9a84c] text-white"
-              : "bg-transparent text-[#9a978f] hover:text-[#e0e0e0]"
-          }`}
-          onClick={() => setTab("tokens")}
-        >
-          Пакеты токенов
-        </button>
+      <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 32 }}>
+        {tabBtn("sub", "Подписка")}
+        {tabBtn("tok", "Пакеты токенов")}
       </div>
 
-      {/* Subscriptions */}
-      {tab === "subscriptions" && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-          {subscriptions.map((plan) => (
+      {tab === "sub" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          {subs.map((p) => (
             <div
-              key={plan.name}
-              className={`relative flex flex-col gap-4 bg-[#16181d] border rounded-2xl py-7 px-6 ${
-                plan.label ? "border-[#c9a84c]" : "border-[#2a2d35]"
-              }`}
+              key={p.name}
+              style={{
+                padding: "28px 24px",
+                background: p.pop ? "rgba(201,168,76,0.06)" : "#16181d",
+                borderRadius: 16,
+                border: p.pop ? "1.5px solid rgba(201,168,76,0.4)" : "1px solid #2a2d35",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative",
+              }}
             >
-              {plan.label && (
-                <span className="absolute -top-2.5 left-6 bg-[#c9a84c] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
-                  {plan.label}
-                </span>
+              {p.pop && (
+                <div style={{ position: "absolute", top: -10, right: 16, background: "#c9a84c", color: "#0f1114", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Популярный
+                </div>
               )}
-              <h3 className="text-xl font-semibold text-[#e0e0e0]" style={dFont}>
-                {plan.name}
-              </h3>
-              <div className="text-[32px] font-semibold text-[#c9a84c]" style={dFont}>
-                {plan.price} ₽
-                <span className="text-base text-[#9a978f] font-normal">{plan.period}</span>
+              <div style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>{p.name}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                <span style={{ fontFamily: D, fontSize: 36, fontWeight: 700, color: "#e0e0e0" }}>{p.price}</span>
+                <span style={{ fontSize: 16, color: "#e0e0e0" }}>₽</span>
+                <span style={{ fontSize: 14, color: "#555" }}>{p.period}</span>
               </div>
-              <ul className="flex flex-col gap-2">
-                {plan.features.map((f) => (
-                  <li key={f} className="text-sm text-[#9a978f] pl-5 relative before:content-['✓'] before:absolute before:left-0 before:text-[#c9a84c] before:font-semibold">
-                    {f}
-                  </li>
+              <div style={{ fontSize: 13, color: "#666", marginBottom: 20 }}>{p.desc}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, flex: 1 }}>
+                {p.features.map((f) => (
+                  <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "#999" }}>
+                    <span style={{ color: "#c9a84c", flexShrink: 0, marginTop: 1 }}>✓</span>
+                    <span>{f}</span>
+                  </div>
                 ))}
-              </ul>
-              <a
+              </div>
+              <Link
                 href="/auth"
-                className="w-full text-center px-6 py-2.5 rounded-3xl text-sm font-medium text-[#c9a84c] border border-[#c9a84c] hover:bg-[rgba(201,168,76,0.1)] transition mt-auto"
+                style={{
+                  display: "block", textAlign: "center", padding: 12, borderRadius: 10,
+                  background: p.pop ? "#c9a84c" : "transparent",
+                  border: p.pop ? "none" : "1.5px solid #2a2d35",
+                  color: p.pop ? "#0f1114" : "#999",
+                  fontSize: 14, fontWeight: 600, textDecoration: "none",
+                }}
               >
                 Выбрать
-              </a>
+              </Link>
             </div>
           ))}
         </div>
       )}
 
-      {/* Token packs */}
-      {tab === "tokens" && (
-        <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-            {tokenPacks.map((pack) => (
-              <div
-                key={pack.name}
-                className={`relative flex flex-col gap-4 bg-[#16181d] border rounded-2xl py-7 px-6 ${
-                  pack.label ? "border-[#c9a84c]" : "border-[#2a2d35]"
-                }`}
-              >
-                {pack.label && (
-                  <span className="absolute -top-2.5 left-6 bg-[#c9a84c] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
-                    {pack.label}
-                  </span>
-                )}
-                <h3 className="text-xl font-semibold text-[#e0e0e0]" style={dFont}>
-                  {pack.name}
-                </h3>
-                <p className="text-sm text-[#9a978f]">{pack.tokens} токенов</p>
-                <div className="text-[32px] font-semibold text-[#c9a84c]" style={dFont}>
-                  {pack.price} ₽
+      {tab === "tok" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          {packs.map((p) => (
+            <div
+              key={p.name}
+              style={{
+                padding: "28px 24px",
+                background: p.pop ? "rgba(201,168,76,0.06)" : "#16181d",
+                borderRadius: 16,
+                border: p.pop ? "1.5px solid rgba(201,168,76,0.4)" : "1px solid #2a2d35",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                textAlign: "center", position: "relative",
+              }}
+            >
+              {p.pop && (
+                <div style={{ position: "absolute", top: -10, right: 16, background: "#c9a84c", color: "#0f1114", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Выгодно
                 </div>
-                <p className="text-[13px] text-[#5f5d57]">{pack.desc}</p>
-                <a
-                  href="/auth"
-                  className="w-full text-center px-6 py-2.5 rounded-3xl text-sm font-medium text-[#c9a84c] border border-[#c9a84c] hover:bg-[rgba(201,168,76,0.1)] transition mt-auto"
-                >
-                  Купить
-                </a>
+              )}
+              <div style={{ fontSize: 14, color: "#888", marginBottom: 16 }}>{p.name}</div>
+              <div style={{ padding: "12px 24px", background: "rgba(201,168,76,0.08)", borderRadius: 10, border: "1px solid rgba(201,168,76,0.15)", marginBottom: 16 }}>
+                <div style={{ fontFamily: D, fontSize: 32, fontWeight: 700, color: "#c9a84c" }}>{p.tokens}</div>
+                <div style={{ fontSize: 12, color: "#777" }}>токенов</div>
               </div>
-            ))}
-          </div>
-          <p className="text-center text-[13px] text-[#5f5d57] mt-4">
-            Токены не сгорают &middot; Единоразовая оплата
-          </p>
-        </>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 8 }}>
+                <span style={{ fontFamily: D, fontSize: 28, fontWeight: 700, color: "#e0e0e0" }}>{p.price}</span>
+                <span style={{ fontSize: 16, color: "#e0e0e0" }}>₽</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 20 }}>{p.desc}</div>
+              <div style={{ fontSize: 11, color: "#555", marginBottom: 16 }}>Токены не сгорают · Единоразовая оплата</div>
+              <Link
+                href="/auth"
+                style={{
+                  display: "block", width: "100%", textAlign: "center", padding: 12,
+                  borderRadius: 10, border: "1.5px solid #2a2d35",
+                  background: "transparent", color: "#999",
+                  fontSize: 14, fontWeight: 600, textDecoration: "none",
+                }}
+              >
+                Купить токены
+              </Link>
+            </div>
+          ))}
+        </div>
       )}
     </>
   );
