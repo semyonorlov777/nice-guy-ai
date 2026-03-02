@@ -10,9 +10,10 @@ interface ProfileMenuProps {
     username: string | null;
     avatarUrl: string | null;
   } | null;
+  slug: string;
 }
 
-export function ProfileMenu({ user }: ProfileMenuProps) {
+export function ProfileMenu({ user, slug }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -152,6 +153,34 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
             animation: "profileMenuIn 0.15s ease-out",
           }}
         >
+          <button
+            onClick={() => { setOpen(false); router.push(`/program/${slug}/balance`); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              width: "100%",
+              padding: "12px 16px",
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              fontSize: 13,
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-body)",
+              transition: "background 0.1s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-elevated)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+            <span>Тариф и оплата</span>
+          </button>
+
+          <div style={{ height: 1, background: "var(--border-light)", margin: "0 12px" }} />
+
           <button
             onClick={toggleTheme}
             style={{

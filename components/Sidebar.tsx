@@ -9,7 +9,6 @@ const navItems = [
   { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Свободный чат" },
   { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Упражнения" },
   { key: "portrait", path: "/portrait", icon: "\u{1F4CA}", label: "Мой портрет" },
-  { key: "balance", path: "/balance", icon: "\u26A1", label: "Баланс" },
 ];
 
 interface UserInfo {
@@ -65,7 +64,7 @@ export function Sidebar({ slug, user }: { slug: string; user?: UserInfo | null }
         ))}
       </div>
 
-      <ProfileMenu user={user ?? null} />
+      <ProfileMenu user={user ?? null} slug={slug} />
     </nav>
   );
 }
