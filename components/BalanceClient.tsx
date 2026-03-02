@@ -14,30 +14,30 @@ interface Payment {
 
 const subscriptions = [
   {
-    name: "Старт",
+    name: "Про",
     price: 990,
-    tokens: "3 000",
-    features: ["3 000 токенов в месяц", "Все упражнения", "Психологический портрет"],
+    tokens: "500",
+    features: ["500 токенов в месяц", "Все упражнения", "Психологический портрет"],
   },
   {
-    name: "Стандарт",
+    name: "Макс",
     price: 2900,
-    tokens: "10 000",
+    tokens: "2 000",
     recommended: true,
     features: [
-      "10 000 токенов в месяц",
+      "2 000 токенов в месяц",
       "Все упражнения",
       "Психологический портрет",
       "Свободный чат",
     ],
   },
   {
-    name: "Премиум",
+    name: "Ультра",
     price: 7900,
-    tokens: "50 000",
+    tokens: "7 000",
     features: [
-      "50 000 токенов в месяц",
-      "Всё из Стандарта",
+      "7 000 токенов в месяц",
+      "Всё из Макса",
       "Приоритетная поддержка",
     ],
   },
@@ -100,7 +100,7 @@ export function BalanceClient({
                 className={`balance-card${sub.recommended ? " recommended" : ""}`}
               >
                 {sub.recommended && (
-                  <div className="balance-card-badge">Рекомендуем</div>
+                  <div className="balance-card-badge">Популярный</div>
                 )}
                 <div className="balance-card-name">{sub.name}</div>
                 <div className="balance-card-price">
@@ -123,6 +123,32 @@ export function BalanceClient({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Anti-fear block */}
+        <div className="balance-trust">
+          <div className="balance-trust-item">
+            <svg className="balance-trust-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M15 9L9 15" />
+              <path d="M9 9L15 15" />
+            </svg>
+            <span>Отмена в 1 клик — прямо в личном кабинете, без звонков</span>
+          </div>
+          <div className="balance-trust-item">
+            <svg className="balance-trust-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span>Напомним за 3 дня до списания</span>
+          </div>
+          <div className="balance-trust-item">
+            <svg className="balance-trust-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            <span>Без скрытых условий и штрафов за отмену</span>
           </div>
         </div>
 
