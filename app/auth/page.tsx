@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase";
 
 const D = "var(--font-display)";
 const DEFAULT_REDIRECT = "/program/nice-guy/chat";
-const TELEGRAM_BOT_ID = "8544302305";
+const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 
 declare global {
   interface Window {
