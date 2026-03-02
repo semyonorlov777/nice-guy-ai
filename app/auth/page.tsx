@@ -22,6 +22,14 @@ declare global {
   }
 }
 
+function YandexIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12zm11.3 7V7.95h-1.07c-1.98 0-3.02 1.07-3.02 2.66 0 1.82.72 2.66 2.18 3.63l1.2.8L9.9 19h-1.9l2.3-3.96c-1.74-1.23-2.65-2.38-2.65-4.25 0-2.42 1.67-4.04 4.58-4.04H15V19h-1.7z" />
+    </svg>
+  );
+}
+
 function TelegramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -254,7 +262,8 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
         >
           НеСлавный
         </h1>
-        <p style={{ fontSize: 15, color: "#888" }}>Войди или зарегистрируйся</p>
+        <p style={{ fontSize: 15, color: "#888", marginBottom: 4 }}>Войди или зарегистрируйся</p>
+        <p style={{ fontSize: 12, color: "#555" }}>Без пароля. Вход в один клик.</p>
       </div>
 
       {/* URL error */}
@@ -275,7 +284,9 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
             ? "Сессия авторизации истекла. Попробуй ещё раз."
             : urlError === "telegram_auth_failed" || urlError === "token_exchange_failed"
               ? "Не удалось войти через Telegram. Попробуй ещё раз."
-              : "Ссылка истекла или недействительна. Попробуй ещё раз."}
+              : urlError === "yandex_auth_failed" || urlError === "yandex_missing_code" || urlError === "yandex_session_failed"
+                ? "Не удалось войти через Яндекс. Попробуй ещё раз."
+                : "Ссылка истекла или недействительна. Попробуй ещё раз."}
         </div>
       )}
 
@@ -341,17 +352,33 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
           </>
         )}
       </button>
-      <p
+
+      {/* Yandex button */}
+      <button
+        onClick={() => {
+          window.location.href = "/api/auth/yandex";
+        }}
         style={{
-          fontSize: 12,
-          color: "#555",
-          textAlign: "center",
-          lineHeight: 1.5,
-          marginTop: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          width: "100%",
+          padding: 14,
+          borderRadius: 10,
+          border: "none",
+          background: "#FC3F1D",
+          color: "#ffffff",
+          fontSize: 15,
+          fontWeight: 600,
+          fontFamily: "inherit",
+          cursor: "pointer",
+          marginTop: 12,
         }}
       >
-        Без пароля. Подтверди вход в приложении Telegram.
-      </p>
+        <YandexIcon />
+        Войти через Яндекс
+      </button>
 
       {/* Divider */}
       <div
