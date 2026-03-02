@@ -14,6 +14,8 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
 });
 
+const BUILD_TIME = new Date().toISOString();
+
 export const metadata: Metadata = {
   title: "НеСлавный — AI-тренажёр",
   description: "AI-тренажёр по книге «Хватит быть славным парнем»",
@@ -42,6 +44,9 @@ export default function RootLayout({
         <noscript>
           <div><img src="https://mc.yandex.ru/watch/107079376" style={{position:"absolute",left:"-9999px"}} alt="" /></div>
         </noscript>
+        <div style={{ textAlign: "center", padding: "8px 0", fontSize: 10, opacity: 0.3, color: "inherit" }}>
+          build: {BUILD_TIME}
+        </div>
       </body>
     </html>
   );
