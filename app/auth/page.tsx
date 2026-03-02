@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabase";
 const D = "var(--font-display)";
 const DEFAULT_REDIRECT = "/program/nice-guy/chat";
 
+function TelegramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
+
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -15,6 +23,7 @@ function AuthForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
 
   const urlError = searchParams.get("error");
   const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
@@ -96,19 +105,6 @@ function AuthForm() {
     outline: "none",
   } as const;
 
-  const btnStyle = {
-    width: "100%",
-    padding: "14px",
-    borderRadius: 10,
-    border: "none",
-    background: "#c9a84c",
-    color: "#0f1114",
-    fontSize: 15,
-    fontWeight: 600,
-    fontFamily: "inherit",
-    cursor: "pointer",
-  } as const;
-
   // ---------- VIEW: Check your email ----------
   if (view === "sent") {
     return (
@@ -141,9 +137,17 @@ function AuthForm() {
           onClick={handleResend}
           disabled={countdown > 0 || loading}
           style={{
-            ...btnStyle,
-            opacity: countdown > 0 || loading ? 0.5 : 1,
+            width: "100%",
+            padding: 14,
+            borderRadius: 10,
+            border: "none",
+            background: "#c9a84c",
+            color: "#0f1114",
+            fontSize: 15,
+            fontWeight: 600,
+            fontFamily: "inherit",
             cursor: countdown > 0 || loading ? "default" : "pointer",
+            opacity: countdown > 0 || loading ? 0.5 : 1,
             marginBottom: 16,
           }}
         >
@@ -179,7 +183,8 @@ function AuthForm() {
   // ---------- VIEW: Form ----------
   return (
     <div>
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
         <h1
           style={{
             fontFamily: D,
@@ -208,53 +213,144 @@ function AuthForm() {
             lineHeight: 1.5,
           }}
         >
-          Ссылка истекла или недействительна. Попробуй ещё раз.
+          {urlError === "invalid_state" || urlError === "missing_verifier"
+            ? "Сессия авторизации истекла. Попробуй ещё раз."
+            : urlError === "telegram_auth_failed" || urlError === "token_exchange_failed"
+              ? "Не удалось войти через Telegram. Попробуй ещё раз."
+              : "Ссылка истекла или недействительна. Попробуй ещё раз."}
         </div>
       )}
 
-      {/* Magic Link form */}
-      <form onSubmit={handleMagicLink}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-          style={{ ...inputStyle, marginBottom: 12 }}
-        />
+      {/* Telegram button */}
+      <a
+        href="/api/auth/telegram"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          width: "100%",
+          padding: 14,
+          borderRadius: 10,
+          border: "none",
+          background: "#2CA5E0",
+          color: "#ffffff",
+          fontSize: 15,
+          fontWeight: 600,
+          fontFamily: "inherit",
+          textDecoration: "none",
+          cursor: "pointer",
+        }}
+      >
+        <TelegramIcon />
+        Войти через Telegram
+      </a>
+      <p
+        style={{
+          fontSize: 12,
+          color: "#555",
+          textAlign: "center",
+          lineHeight: 1.5,
+          marginTop: 10,
+        }}
+      >
+        Без пароля. Подтверди вход в приложении Telegram.
+      </p>
 
-        {error && (
-          <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
-        )}
+      {/* Divider */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          margin: "24px 0",
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "#2a2d35" }} />
+        <span style={{ fontSize: 12, color: "#555" }}>или</span>
+        <div style={{ flex: 1, height: 1, background: "#2a2d35" }} />
+      </div>
 
-        <button type="submit" disabled={loading} style={{ ...btnStyle, opacity: loading ? 0.6 : 1, marginBottom: 12 }}>
-          {loading ? (
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 16,
-                  height: 16,
-                  border: "2px solid rgba(15,17,20,0.3)",
-                  borderTopColor: "#0f1114",
-                  borderRadius: "50%",
-                  animation: "spin 0.6s linear infinite",
-                  verticalAlign: "middle",
-                  marginRight: 8,
-                }}
-              />
-              Отправляем...
-            </span>
-          ) : (
-            "Продолжить"
+      {/* Email Magic Link toggle */}
+      {!showEmailLogin ? (
+        <div style={{ textAlign: "center" }}>
+          <button
+            onClick={() => setShowEmailLogin(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c9a84c",
+              fontSize: 14,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Войти по email
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleMagicLink}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            style={{ ...inputStyle, marginBottom: 12 }}
+          />
+
+          {error && (
+            <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
           )}
-        </button>
 
-        <p style={{ fontSize: 12, color: "#555", textAlign: "center", lineHeight: 1.5 }}>
-          Без пароля. Мы пришлём ссылку для входа на почту.
-        </p>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 14,
+              borderRadius: 10,
+              border: "none",
+              background: "#c9a84c",
+              color: "#0f1114",
+              fontSize: 15,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.6 : 1,
+              marginBottom: 10,
+            }}
+          >
+            {loading ? (
+              <span>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 16,
+                    height: 16,
+                    border: "2px solid rgba(15,17,20,0.3)",
+                    borderTopColor: "#0f1114",
+                    borderRadius: "50%",
+                    animation: "spin 0.6s linear infinite",
+                    verticalAlign: "middle",
+                    marginRight: 8,
+                  }}
+                />
+                Отправляем...
+              </span>
+            ) : (
+              "Получить ссылку"
+            )}
+          </button>
+
+          <p style={{ fontSize: 12, color: "#555", textAlign: "center", lineHeight: 1.5 }}>
+            Мы пришлём ссылку для входа на почту.
+          </p>
+        </form>
+      )}
 
       {/* Spinner keyframes */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -26,9 +26,23 @@ export default async function ProgramLayout({
 
   if (!program) redirect("/");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name, telegram_username, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  const userInfo = profile
+    ? {
+        name: profile.name || "",
+        username: profile.telegram_username || null,
+        avatarUrl: profile.avatar_url || null,
+      }
+    : null;
+
   return (
     <div className="program-layout">
-      <Sidebar slug={slug} />
+      <Sidebar slug={slug} user={userInfo} />
       <main className="program-main">{children}</main>
       <MobileTabs slug={slug} />
     </div>
