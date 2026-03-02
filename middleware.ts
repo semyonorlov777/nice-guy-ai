@@ -1,21 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Public routes that don't need auth token refresh
-const PUBLIC_PATHS = ["/auth", "/legal"];
+const DEFAULT_REDIRECT = "/program/nice-guy/exercise/1";
 
-function isPublic(pathname: string) {
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return true;
-  // /program/<slug> (landing) but not /program/<slug>/chat etc.
-  if (/^\/program\/[^/]+\/?$/.test(pathname)) return true;
+function isProtected(pathname: string): boolean {
+  // /program/<slug>/<subpage> (chat, exercise, exercises, portrait, balance)
+  if (/^\/program\/[^/]+\/.+/.test(pathname)) return true;
+  if (pathname.startsWith("/balance")) return true;
   return false;
 }
 
 export async function middleware(request: NextRequest) {
-  if (isPublic(request.nextUrl.pathname)) {
-    return NextResponse.next();
-  }
+  const { pathname } = request.nextUrl;
 
+  // Always create Supabase client and refresh auth token
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -28,19 +26,36 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
-  // Refreshes the auth token if expired; sets updated cookies on response.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Logged-in user on /auth → redirect to app
+  if (pathname === "/auth" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = DEFAULT_REDIRECT;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // Non-logged user on protected path → redirect to /auth with redirect param
+  if (isProtected(pathname) && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth";
+    url.search = `?redirect=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

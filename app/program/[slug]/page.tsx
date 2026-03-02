@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingTabs } from "@/components/landing/PricingTabs";
 import { FAQAccordion } from "@/components/landing/FAQAccordion";
+import { createClient } from "@/lib/supabase-server";
+
+const APP_LINK = "/program/nice-guy/exercise/1";
 
 export const metadata: Metadata = {
   title: "НеСлавный — AI-тренажёр по книге «No More Mr. Nice Guy»",
@@ -51,7 +54,12 @@ const stats = [
   { num: "46", label: "упражнений с AI" },
 ];
 
-export default function ProgramLanding() {
+export default async function ProgramLanding() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
   return (
     <div
       className="landing"
@@ -86,7 +94,7 @@ export default function ProgramLanding() {
           НеСлавный
         </div>
         <Link
-          href="/auth"
+          href={isLoggedIn ? APP_LINK : "/auth"}
           style={{
             padding: "8px 20px",
             borderRadius: 8,
@@ -98,7 +106,7 @@ export default function ProgramLanding() {
             textDecoration: "none",
           }}
         >
-          Войти
+          {isLoggedIn ? "В приложение" : "Войти"}
         </Link>
       </nav>
 
@@ -152,7 +160,7 @@ export default function ProgramLanding() {
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link
-            href="/auth"
+            href={isLoggedIn ? APP_LINK : "/auth"}
             style={{
               padding: "14px 32px",
               borderRadius: 10,
@@ -163,7 +171,7 @@ export default function ProgramLanding() {
               textDecoration: "none",
             }}
           >
-            Начать бесплатно
+            {isLoggedIn ? "Продолжить" : "Начать бесплатно"}
           </Link>
           <a
             href="#how"
@@ -450,7 +458,7 @@ export default function ProgramLanding() {
             Попробуй бесплатно. Без привязки карты.
           </p>
           <Link
-            href="/auth"
+            href={isLoggedIn ? APP_LINK : "/auth"}
             style={{
               display: "inline-block",
               padding: "14px 40px",
@@ -462,7 +470,7 @@ export default function ProgramLanding() {
               textDecoration: "none",
             }}
           >
-            Начать бесплатно
+            {isLoggedIn ? "Продолжить" : "Начать бесплатно"}
           </Link>
         </div>
       </section>
