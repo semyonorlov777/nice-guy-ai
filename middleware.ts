@@ -13,6 +13,11 @@ function isProtected(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Skip middleware for Telegram verify endpoint (manages its own auth)
+  if (pathname.startsWith("/api/auth/telegram")) {
+    return NextResponse.next();
+  }
+
   // Always create Supabase client and refresh auth token
   let supabaseResponse = NextResponse.next({ request });
 

@@ -2,19 +2,44 @@
 
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Script from "next/script";
 import { createClient } from "@/lib/supabase";
 
 const D = "var(--font-display)";
 const DEFAULT_REDIRECT = "/program/nice-guy/chat";
+const TELEGRAM_BOT_ID = "8544302305";
 
-function AuthForm() {
+declare global {
+  interface Window {
+    Telegram?: {
+      Login: {
+        auth: (
+          options: { client_id: string; request_access?: string[] },
+          callback: (result: { id_token?: string; error?: string }) => void,
+        ) => void;
+      };
+    };
+  }
+}
+
+function TelegramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
+
+function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"form" | "sent">("form");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tgLoading, setTgLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
 
   const urlError = searchParams.get("error");
   const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
@@ -34,6 +59,48 @@ function AuthForm() {
     return () => clearTimeout(t);
   }, [countdown]);
 
+  // ---------- Telegram popup login ----------
+  const handleTelegramLogin = useCallback(() => {
+    if (!window.Telegram?.Login?.auth) {
+      setError("Telegram SDK не загружен. Попробуй обновить страницу.");
+      return;
+    }
+
+    setError("");
+    setTgLoading(true);
+
+    window.Telegram.Login.auth(
+      { client_id: TELEGRAM_BOT_ID, request_access: ["write"] },
+      async (result) => {
+        if (result.error || !result.id_token) {
+          setTgLoading(false);
+          setError("Не удалось войти через Telegram. Попробуй ещё раз.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/auth/telegram/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_token: result.id_token }),
+          });
+
+          if (res.ok) {
+            router.push(DEFAULT_REDIRECT);
+          } else {
+            const data = await res.json().catch(() => ({}));
+            setError(data.error || "Ошибка авторизации. Попробуй ещё раз.");
+            setTgLoading(false);
+          }
+        } catch {
+          setError("Ошибка сети. Попробуй ещё раз.");
+          setTgLoading(false);
+        }
+      },
+    );
+  }, [router]);
+
+  // ---------- Magic Link ----------
   const handleMagicLink = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -96,19 +163,6 @@ function AuthForm() {
     outline: "none",
   } as const;
 
-  const btnStyle = {
-    width: "100%",
-    padding: "14px",
-    borderRadius: 10,
-    border: "none",
-    background: "#c9a84c",
-    color: "#0f1114",
-    fontSize: 15,
-    fontWeight: 600,
-    fontFamily: "inherit",
-    cursor: "pointer",
-  } as const;
-
   // ---------- VIEW: Check your email ----------
   if (view === "sent") {
     return (
@@ -141,9 +195,17 @@ function AuthForm() {
           onClick={handleResend}
           disabled={countdown > 0 || loading}
           style={{
-            ...btnStyle,
-            opacity: countdown > 0 || loading ? 0.5 : 1,
+            width: "100%",
+            padding: 14,
+            borderRadius: 10,
+            border: "none",
+            background: "#c9a84c",
+            color: "#0f1114",
+            fontSize: 15,
+            fontWeight: 600,
+            fontFamily: "inherit",
             cursor: countdown > 0 || loading ? "default" : "pointer",
+            opacity: countdown > 0 || loading ? 0.5 : 1,
             marginBottom: 16,
           }}
         >
@@ -179,7 +241,8 @@ function AuthForm() {
   // ---------- VIEW: Form ----------
   return (
     <div>
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
         <h1
           style={{
             fontFamily: D,
@@ -195,7 +258,7 @@ function AuthForm() {
       </div>
 
       {/* URL error */}
-      {urlError && (
+      {urlError && !error && (
         <div
           style={{
             padding: "12px 16px",
@@ -208,53 +271,178 @@ function AuthForm() {
             lineHeight: 1.5,
           }}
         >
-          Ссылка истекла или недействительна. Попробуй ещё раз.
+          {urlError === "invalid_state" || urlError === "missing_verifier"
+            ? "Сессия авторизации истекла. Попробуй ещё раз."
+            : urlError === "telegram_auth_failed" || urlError === "token_exchange_failed"
+              ? "Не удалось войти через Telegram. Попробуй ещё раз."
+              : "Ссылка истекла или недействительна. Попробуй ещё раз."}
         </div>
       )}
 
-      {/* Magic Link form */}
-      <form onSubmit={handleMagicLink}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-          style={{ ...inputStyle, marginBottom: 12 }}
-        />
+      {/* Inline error */}
+      {error && (
+        <div
+          style={{
+            padding: "12px 16px",
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 10,
+            fontSize: 13,
+            color: "#ef4444",
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
+      {/* Telegram button */}
+      <button
+        onClick={handleTelegramLogin}
+        disabled={tgLoading || !tgScriptReady}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          width: "100%",
+          padding: 14,
+          borderRadius: 10,
+          border: "none",
+          background: "#2CA5E0",
+          color: "#ffffff",
+          fontSize: 15,
+          fontWeight: 600,
+          fontFamily: "inherit",
+          cursor: tgLoading || !tgScriptReady ? "default" : "pointer",
+          opacity: tgLoading ? 0.7 : !tgScriptReady ? 0.5 : 1,
+        }}
+      >
+        {tgLoading ? (
+          <>
+            <span
+              style={{
+                display: "inline-block",
+                width: 16,
+                height: 16,
+                border: "2px solid rgba(255,255,255,0.3)",
+                borderTopColor: "#fff",
+                borderRadius: "50%",
+                animation: "spin 0.6s linear infinite",
+              }}
+            />
+            Подтверди вход в Telegram...
+          </>
+        ) : (
+          <>
+            <TelegramIcon />
+            Войти через Telegram
+          </>
         )}
+      </button>
+      <p
+        style={{
+          fontSize: 12,
+          color: "#555",
+          textAlign: "center",
+          lineHeight: 1.5,
+          marginTop: 10,
+        }}
+      >
+        Без пароля. Подтверди вход в приложении Telegram.
+      </p>
 
-        <button type="submit" disabled={loading} style={{ ...btnStyle, opacity: loading ? 0.6 : 1, marginBottom: 12 }}>
-          {loading ? (
-            <span>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 16,
-                  height: 16,
-                  border: "2px solid rgba(15,17,20,0.3)",
-                  borderTopColor: "#0f1114",
-                  borderRadius: "50%",
-                  animation: "spin 0.6s linear infinite",
-                  verticalAlign: "middle",
-                  marginRight: 8,
-                }}
-              />
-              Отправляем...
-            </span>
-          ) : (
-            "Продолжить"
-          )}
-        </button>
+      {/* Divider */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          margin: "24px 0",
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "#2a2d35" }} />
+        <span style={{ fontSize: 12, color: "#555" }}>или</span>
+        <div style={{ flex: 1, height: 1, background: "#2a2d35" }} />
+      </div>
 
-        <p style={{ fontSize: 12, color: "#555", textAlign: "center", lineHeight: 1.5 }}>
-          Без пароля. Мы пришлём ссылку для входа на почту.
-        </p>
-      </form>
+      {/* Email Magic Link toggle */}
+      {!showEmailLogin ? (
+        <div style={{ textAlign: "center" }}>
+          <button
+            onClick={() => setShowEmailLogin(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c9a84c",
+              fontSize: 14,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Войти или зарегистрироваться по email
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleMagicLink}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            style={{ ...inputStyle, marginBottom: 12 }}
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 14,
+              borderRadius: 10,
+              border: "none",
+              background: "#c9a84c",
+              color: "#0f1114",
+              fontSize: 15,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.6 : 1,
+              marginBottom: 10,
+            }}
+          >
+            {loading ? (
+              <span>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 16,
+                    height: 16,
+                    border: "2px solid rgba(15,17,20,0.3)",
+                    borderTopColor: "#0f1114",
+                    borderRadius: "50%",
+                    animation: "spin 0.6s linear infinite",
+                    verticalAlign: "middle",
+                    marginRight: 8,
+                  }}
+                />
+                Отправляем...
+              </span>
+            ) : (
+              "Получить ссылку"
+            )}
+          </button>
+
+          <p style={{ fontSize: 12, color: "#555", textAlign: "center", lineHeight: 1.5 }}>
+            Мы пришлём ссылку для входа на почту.
+          </p>
+        </form>
+      )}
 
       {/* Spinner keyframes */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -263,6 +451,8 @@ function AuthForm() {
 }
 
 export default function AuthPage() {
+  const [scriptReady, setScriptReady] = useState(false);
+
   return (
     <div
       style={{
@@ -275,6 +465,11 @@ export default function AuthPage() {
         padding: "24px 16px",
       }}
     >
+      <Script
+        src="https://telegram.org/js/telegram-widget.js"
+        strategy="lazyOnload"
+        onLoad={() => setScriptReady(true)}
+      />
       <div
         style={{
           width: "100%",
@@ -290,9 +485,13 @@ export default function AuthPage() {
             <div style={{ textAlign: "center", color: "#555", padding: 40 }}>Загрузка...</div>
           }
         >
-          <AuthForm />
+          <AuthFormWrapper scriptReady={scriptReady} />
         </Suspense>
       </div>
     </div>
   );
+}
+
+function AuthFormWrapper({ scriptReady }: { scriptReady: boolean }) {
+  return <AuthForm key="auth" tgScriptReady={scriptReady} />;
 }

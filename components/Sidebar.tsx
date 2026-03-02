@@ -11,7 +11,13 @@ const navItems = [
   { key: "balance", path: "/balance", icon: "\u26A1", label: "Баланс" },
 ];
 
-export function Sidebar({ slug }: { slug: string }) {
+interface UserInfo {
+  name: string;
+  username: string | null;
+  avatarUrl: string | null;
+}
+
+export function Sidebar({ slug, user }: { slug: string; user?: UserInfo | null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -76,6 +82,24 @@ export function Sidebar({ slug }: { slug: string }) {
       </div>
 
       <div className="sidebar-bottom">
+        {user && (
+          <div className="sidebar-bottom-item" style={{ cursor: "default", gap: 10 }}>
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+              />
+            ) : (
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, color: "var(--accent)", flexShrink: 0 }}>
+                {(user.name || "?")[0].toUpperCase()}
+              </div>
+            )}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "var(--text-secondary)" }}>
+              {user.username ? `@${user.username}` : user.name || "Пользователь"}
+            </span>
+          </div>
+        )}
         <button className="sidebar-bottom-item" onClick={toggleTheme}>
           <span>{isDark ? "\u{1F319}" : "\u2600\uFE0F"}</span>
           <span>Тема</span>
