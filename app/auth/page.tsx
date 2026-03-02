@@ -12,10 +12,8 @@ function AuthForm() {
   const searchParams = useSearchParams();
   const [view, setView] = useState<"form" | "sent">("form");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   const urlError = searchParams.get("error");
@@ -61,30 +59,6 @@ function AuthForm() {
       setCountdown(60);
     },
     [email, redirectTo],
-  );
-
-  const handlePasswordLogin = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError("");
-      setLoading(true);
-
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      setLoading(false);
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      router.push(redirectTo);
-    },
-    [email, password, redirectTo, router],
   );
 
   const handleResend = useCallback(async () => {
@@ -250,7 +224,7 @@ function AuthForm() {
           style={{ ...inputStyle, marginBottom: 12 }}
         />
 
-        {error && !showPasswordLogin && (
+        {error && (
           <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
         )}
 
@@ -281,59 +255,6 @@ function AuthForm() {
           Без пароля. Мы пришлём ссылку для входа на почту.
         </p>
       </form>
-
-      {/* Password fallback */}
-      <div style={{ marginTop: 28, borderTop: "1px solid #2a2d35", paddingTop: 20 }}>
-        {!showPasswordLogin ? (
-          <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: 13, color: "#555" }}>Уже есть пароль? </span>
-            <button
-              onClick={() => setShowPasswordLogin(true)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#c9a84c",
-                fontSize: 13,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >
-              Войти по паролю
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handlePasswordLogin}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              style={{ ...inputStyle, marginBottom: 10 }}
-            />
-            <input
-              type="password"
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              style={{ ...inputStyle, marginBottom: 12 }}
-            />
-
-            {error && showPasswordLogin && (
-              <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
-            )}
-
-            <button type="submit" disabled={loading} style={{ ...btnStyle, opacity: loading ? 0.6 : 1, background: "transparent", border: "1.5px solid #c9a84c", color: "#c9a84c" }}>
-              {loading ? "Вход..." : "Войти"}
-            </button>
-          </form>
-        )}
-      </div>
 
       {/* Spinner keyframes */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
