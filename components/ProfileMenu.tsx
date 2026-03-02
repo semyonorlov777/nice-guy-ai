@@ -154,7 +154,7 @@ export function ProfileMenu({ user, slug }: ProfileMenuProps) {
           }}
         >
           <button
-            onClick={() => { setOpen(false); router.push(`/program/${slug}/balance`); }}
+            onClick={() => { setOpen(false); router.push("/balance"); }}
             style={{
               display: "flex",
               alignItems: "center",
