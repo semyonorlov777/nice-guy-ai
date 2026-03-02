@@ -2,10 +2,25 @@
 
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Script from "next/script";
 import { createClient } from "@/lib/supabase";
 
 const D = "var(--font-display)";
 const DEFAULT_REDIRECT = "/program/nice-guy/chat";
+const TELEGRAM_BOT_ID = "8544302305";
+
+declare global {
+  interface Window {
+    Telegram?: {
+      Login: {
+        auth: (
+          options: { client_id: string; request_access?: string[] },
+          callback: (result: { id_token?: string; error?: string }) => void,
+        ) => void;
+      };
+    };
+  }
+}
 
 function TelegramIcon() {
   return (
@@ -15,18 +30,18 @@ function TelegramIcon() {
   );
 }
 
-function AuthForm() {
+function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"form" | "sent">("form");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tgLoading, setTgLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
 
   const urlError = searchParams.get("error");
-  const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
 
   // Check if already logged in
   useEffect(() => {
@@ -43,6 +58,48 @@ function AuthForm() {
     return () => clearTimeout(t);
   }, [countdown]);
 
+  // ---------- Telegram popup login ----------
+  const handleTelegramLogin = useCallback(() => {
+    if (!window.Telegram?.Login?.auth) {
+      setError("Telegram SDK не загружен. Попробуй обновить страницу.");
+      return;
+    }
+
+    setError("");
+    setTgLoading(true);
+
+    window.Telegram.Login.auth(
+      { client_id: TELEGRAM_BOT_ID, request_access: ["write"] },
+      async (result) => {
+        if (result.error || !result.id_token) {
+          setTgLoading(false);
+          setError("Не удалось войти через Telegram. Попробуй ещё раз.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/auth/telegram/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_token: result.id_token }),
+          });
+
+          if (res.ok) {
+            router.push(DEFAULT_REDIRECT);
+          } else {
+            const data = await res.json().catch(() => ({}));
+            setError(data.error || "Ошибка авторизации. Попробуй ещё раз.");
+            setTgLoading(false);
+          }
+        } catch {
+          setError("Ошибка сети. Попробуй ещё раз.");
+          setTgLoading(false);
+        }
+      },
+    );
+  }, [router]);
+
+  // ---------- Magic Link ----------
   const handleMagicLink = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -50,6 +107,7 @@ function AuthForm() {
       setLoading(true);
 
       const supabase = createClient();
+      const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
       const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
 
       const { error } = await supabase.auth.signInWithOtp({
@@ -67,7 +125,7 @@ function AuthForm() {
       setView("sent");
       setCountdown(60);
     },
-    [email, redirectTo],
+    [email, searchParams],
   );
 
   const handleResend = useCallback(async () => {
@@ -76,6 +134,7 @@ function AuthForm() {
     setLoading(true);
 
     const supabase = createClient();
+    const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
     const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -91,7 +150,7 @@ function AuthForm() {
     }
 
     setCountdown(60);
-  }, [countdown, email, redirectTo]);
+  }, [countdown, email, searchParams]);
 
   const inputStyle = {
     width: "100%",
@@ -200,7 +259,7 @@ function AuthForm() {
       </div>
 
       {/* URL error */}
-      {urlError && (
+      {urlError && !error && (
         <div
           style={{
             padding: "12px 16px",
@@ -221,9 +280,28 @@ function AuthForm() {
         </div>
       )}
 
+      {/* Inline error */}
+      {error && (
+        <div
+          style={{
+            padding: "12px 16px",
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 10,
+            fontSize: 13,
+            color: "#ef4444",
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Telegram button */}
-      <a
-        href="/api/auth/telegram"
+      <button
+        onClick={handleTelegramLogin}
+        disabled={tgLoading || !tgScriptReady}
         style={{
           display: "flex",
           alignItems: "center",
@@ -238,13 +316,32 @@ function AuthForm() {
           fontSize: 15,
           fontWeight: 600,
           fontFamily: "inherit",
-          textDecoration: "none",
-          cursor: "pointer",
+          cursor: tgLoading || !tgScriptReady ? "default" : "pointer",
+          opacity: tgLoading ? 0.7 : !tgScriptReady ? 0.5 : 1,
         }}
       >
-        <TelegramIcon />
-        Войти через Telegram
-      </a>
+        {tgLoading ? (
+          <>
+            <span
+              style={{
+                display: "inline-block",
+                width: 16,
+                height: 16,
+                border: "2px solid rgba(255,255,255,0.3)",
+                borderTopColor: "#fff",
+                borderRadius: "50%",
+                animation: "spin 0.6s linear infinite",
+              }}
+            />
+            Подтверди вход в Telegram...
+          </>
+        ) : (
+          <>
+            <TelegramIcon />
+            Войти через Telegram
+          </>
+        )}
+      </button>
       <p
         style={{
           fontSize: 12,
@@ -287,7 +384,7 @@ function AuthForm() {
               textUnderlineOffset: 3,
             }}
           >
-            Войти по email
+            Войти или зарегистрироваться по email
           </button>
         </div>
       ) : (
@@ -301,10 +398,6 @@ function AuthForm() {
             autoComplete="email"
             style={{ ...inputStyle, marginBottom: 12 }}
           />
-
-          {error && (
-            <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 12 }}>{error}</p>
-          )}
 
           <button
             type="submit"
@@ -359,6 +452,8 @@ function AuthForm() {
 }
 
 export default function AuthPage() {
+  const [scriptReady, setScriptReady] = useState(false);
+
   return (
     <div
       style={{
@@ -371,6 +466,11 @@ export default function AuthPage() {
         padding: "24px 16px",
       }}
     >
+      <Script
+        src="https://telegram.org/js/telegram-widget.js"
+        strategy="lazyOnload"
+        onLoad={() => setScriptReady(true)}
+      />
       <div
         style={{
           width: "100%",
@@ -386,9 +486,13 @@ export default function AuthPage() {
             <div style={{ textAlign: "center", color: "#555", padding: 40 }}>Загрузка...</div>
           }
         >
-          <AuthForm />
+          <AuthFormWrapper scriptReady={scriptReady} />
         </Suspense>
       </div>
     </div>
   );
+}
+
+function AuthFormWrapper({ scriptReady }: { scriptReady: boolean }) {
+  return <AuthForm key="auth" tgScriptReady={scriptReady} />;
 }

@@ -13,11 +13,8 @@ function isProtected(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware entirely for Telegram OAuth routes (they manage their own auth)
-  if (
-    pathname.startsWith("/auth/telegram/callback") ||
-    pathname.startsWith("/api/auth/telegram")
-  ) {
+  // Skip middleware for Telegram verify endpoint (manages its own auth)
+  if (pathname.startsWith("/api/auth/telegram")) {
     return NextResponse.next();
   }
 
