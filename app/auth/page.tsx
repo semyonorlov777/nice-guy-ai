@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 
 const D = "var(--font-display)";
-const DEFAULT_REDIRECT = "/program/nice-guy/exercise/1";
+const DEFAULT_REDIRECT = "/program/nice-guy/chat";
 
 function AuthForm() {
   const router = useRouter();

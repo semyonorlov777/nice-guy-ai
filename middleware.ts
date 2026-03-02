@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const DEFAULT_REDIRECT = "/program/nice-guy/exercise/1";
+const DEFAULT_REDIRECT = "/program/nice-guy/chat";
 
 function isProtected(pathname: string): boolean {
   // /program/<slug>/<subpage> (chat, exercise, exercises, portrait, balance)

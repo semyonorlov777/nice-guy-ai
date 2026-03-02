@@ -4,7 +4,7 @@ import { PricingTabs } from "@/components/landing/PricingTabs";
 import { FAQAccordion } from "@/components/landing/FAQAccordion";
 import { createClient } from "@/lib/supabase-server";
 
-const APP_LINK = "/program/nice-guy/exercise/1";
+const APP_LINK = "/program/nice-guy/chat";
 
 export const metadata: Metadata = {
   title: "НеСлавный — AI-тренажёр по книге «No More Mr. Nice Guy»",
@@ -106,7 +106,7 @@ export default async function ProgramLanding() {
             textDecoration: "none",
           }}
         >
-          {isLoggedIn ? "В приложение" : "Войти"}
+          {isLoggedIn ? "В приложение" : "Начать бесплатно"}
         </Link>
       </nav>
 
