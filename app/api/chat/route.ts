@@ -170,10 +170,14 @@ export async function POST(request: Request) {
   }
 
   // 10. Convert to Gemini format
-  const history: Content[] = (dbMessages || []).map((msg) => ({
-    role: msg.role === "assistant" ? "model" : "user",
+  // Filter out leading "model" messages (e.g. welcome messages) —
+  // Gemini requires history to start with "user"
+  const allMessages = (dbMessages || []).map((msg) => ({
+    role: (msg.role === "assistant" ? "model" : "user") as "model" | "user",
     parts: [{ text: msg.content }],
   }));
+  const firstUserIdx = allMessages.findIndex((m) => m.role === "user");
+  const history: Content[] = firstUserIdx >= 0 ? allMessages.slice(firstUserIdx) : [];
 
   // 11. Save user message
   const { error: msgError } = await supabase.from("messages").insert({
