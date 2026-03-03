@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   // 4. Load program
   const { data: program, error: programError } = await supabase
     .from("programs")
-    .select("id, system_prompt")
+    .select("id, system_prompt, free_chat_welcome")
     .eq("id", programId)
     .single();
 
@@ -70,12 +70,12 @@ export async function POST(request: Request) {
   }
 
   // 5. Load exercise (if exercise chat)
-  let exercise: { id: string; system_prompt: string; title: string } | null =
+  let exercise: { id: string; system_prompt: string; title: string; welcome_message: string | null } | null =
     null;
   if (exerciseId) {
     const { data } = await supabase
       .from("exercises")
-      .select("id, system_prompt, title")
+      .select("id, system_prompt, title, welcome_message")
       .eq("id", exerciseId)
       .single();
     exercise = data;
@@ -136,6 +136,17 @@ export async function POST(request: Request) {
 
       currentChatId = newChat.id;
       isNewChat = true;
+
+      // Insert welcome message as first message in the new chat
+      const welcomeText = exercise?.welcome_message || program.free_chat_welcome;
+      if (welcomeText) {
+        await supabase.from("messages").insert({
+          chat_id: currentChatId,
+          role: "assistant",
+          content: welcomeText,
+          tokens_used: 0,
+        });
+      }
     }
   }
 

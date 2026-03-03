@@ -26,7 +26,7 @@ export default async function ExercisePage({
   // Load exercise
   const { data: exercise } = await supabase
     .from("exercises")
-    .select("id, number, title, description, chapter, config")
+    .select("id, number, title, description, chapter, config, welcome_message")
     .eq("program_id", program.id)
     .eq("number", parseInt(number))
     .single();
@@ -84,7 +84,7 @@ export default async function ExercisePage({
       programId={program.id}
       exerciseId={exercise.id}
       userInitial={userInitial}
-      welcomeMessage={config.welcome_message}
+      welcomeMessage={exercise.welcome_message || config.welcome_message}
       quickReplies={config.quick_replies}
     >
       <div className="exercise-intro">

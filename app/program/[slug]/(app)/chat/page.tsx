@@ -20,7 +20,7 @@ export default async function ChatPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, description, config")
+    .select("id, title, description, config, free_chat_welcome")
     .eq("slug", slug)
     .single();
 
@@ -72,7 +72,7 @@ export default async function ChatPage({
       chatId={chat?.id || null}
       programId={program.id}
       userInitial={userInitial}
-      welcomeMessage={config.welcome_message}
+      welcomeMessage={program.free_chat_welcome || config.welcome_message}
       quickReplies={config.quick_replies}
     >
       <div className="welcome-card">
