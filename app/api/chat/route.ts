@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   // 3. Get or create user record + check balance
-  let { data: userData, error: userError } = await supabase
+  let { data: userData } = await supabase
     .from("profiles")
     .select("balance_tokens")
     .eq("id", user.id)

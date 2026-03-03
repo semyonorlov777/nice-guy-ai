@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 
@@ -10,18 +10,16 @@ interface ProfileMenuProps {
     username: string | null;
     avatarUrl: string | null;
   } | null;
-  slug: string;
 }
 
-export function ProfileMenu({ user, slug }: ProfileMenuProps) {
+export function ProfileMenu({ user }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return document.documentElement.getAttribute("data-theme") === "dark";
+  });
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.getAttribute("data-theme") === "dark");
-  }, []);
 
   // Close on outside click
   useEffect(() => {

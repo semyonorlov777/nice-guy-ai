@@ -64,7 +64,7 @@ export function Sidebar({ slug, user }: { slug: string; user?: UserInfo | null }
         ))}
       </div>
 
-      <ProfileMenu user={user ?? null} slug={slug} />
+      <ProfileMenu user={user ?? null} />
     </nav>
   );
 }

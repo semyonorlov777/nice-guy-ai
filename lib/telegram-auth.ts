@@ -1,6 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { createServiceClient } from "@/lib/supabase-server";
-import crypto from "crypto";
+import { findOrCreateOAuthUser } from "@/lib/oauth-common";
 
 const TELEGRAM_JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json";
 const TELEGRAM_ISSUER = "https://oauth.telegram.org";
@@ -35,78 +34,27 @@ export async function verifyTelegramToken(
   };
 }
 
-// ---------- Deterministic password from Telegram ID ----------
-
-function generatePassword(telegramId: string, secret: string): string {
-  return crypto
-    .createHmac("sha256", secret)
-    .update(telegramId)
-    .digest("base64url");
-}
-
 // ---------- Find or create Supabase user ----------
 
 export async function findOrCreateUser(tgUser: TelegramUser) {
-  const supabase = createServiceClient();
-  const clientSecret = process.env.TELEGRAM_CLIENT_SECRET!;
-
-  const fakeEmail = `tg_${tgUser.id}@niceguy.local`;
-  const password = generatePassword(tgUser.id, clientSecret);
-
-  // Check if profile with this telegram_id exists
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("telegram_id", Number(tgUser.id))
-    .maybeSingle();
-
-  if (existingProfile) {
-    // --- Existing user: login ---
-    const { data: signInData, error: signInError } =
-      await supabase.auth.signInWithPassword({ email: fakeEmail, password });
-
-    if (signInError) throw new Error(`Telegram login failed: ${signInError.message}`);
-
-    // Update profile with latest Telegram data
-    await supabase
-      .from("profiles")
-      .update({
-        telegram_username: tgUser.username,
-        avatar_url: tgUser.picture,
-        name: tgUser.name || undefined,
-      })
-      .eq("id", existingProfile.id);
-
-    return signInData.session;
-  }
-
-  // --- New user: create ---
-  const { data: createData, error: createError } =
-    await supabase.auth.admin.createUser({
-      email: fakeEmail,
-      password,
-      email_confirm: true,
-    });
-
-  if (createError) throw new Error(`User creation failed: ${createError.message}`);
-
-  // Update the profile created by handle_new_user trigger
-  await supabase
-    .from("profiles")
-    .update({
-      email: null, // profiles.email = NULL for Telegram users
+  return findOrCreateOAuthUser({
+    provider: "Telegram",
+    emailPrefix: "tg",
+    hmacInput: tgUser.id,
+    secret: process.env.TELEGRAM_CLIENT_SECRET!,
+    lookupField: "telegram_id",
+    lookupValue: Number(tgUser.id),
+    existingProfileUpdate: {
+      telegram_username: tgUser.username,
+      avatar_url: tgUser.picture,
+      name: tgUser.name || undefined,
+    },
+    newProfileData: {
+      email: null,
       telegram_id: Number(tgUser.id),
       telegram_username: tgUser.username,
       avatar_url: tgUser.picture,
       name: tgUser.name || "",
-    })
-    .eq("id", createData.user.id);
-
-  // Login the new user to get a session
-  const { data: signInData, error: signInError } =
-    await supabase.auth.signInWithPassword({ email: fakeEmail, password });
-
-  if (signInError) throw new Error(`Login after creation failed: ${signInError.message}`);
-
-  return signInData.session;
+    },
+  });
 }
