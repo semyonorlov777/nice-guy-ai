@@ -606,12 +606,16 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   }
   .landing-v2 .positioning p em { color: var(--accent); font-style: normal; font-weight: 600; }
 
+  /* ── LANDING SCROLL SNAP ── */
+  html:has(.landing-v2) { scroll-snap-type: y proximity; }
+
   /* ── CHAT BLOCK (full-viewport screen) ── */
   .landing-v2 .chat-block {
     position: relative; z-index: 2;
     height: 100vh; height: 100dvh;
     display: flex; flex-direction: column;
     background: #0f1114;
+    scroll-snap-align: start;
   }
   .landing-v2 .chat-block-header {
     text-align: center; padding: 20px 16px 0; flex-shrink: 0;
@@ -623,7 +627,7 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
 
   /* Chat zone overrides inside landing */
   .landing-v2 .chat-zone { background: #0f1114; }
-  .landing-v2 .chat-messages { background: #0f1114; padding-bottom: 100px; }
+  .landing-v2 .chat-messages { background: #0f1114; padding-bottom: 100px; overscroll-behavior: contain; }
   .landing-v2 .chat-inner { justify-content: flex-end; flex: 1; }
 
   /* Fixed input bar at bottom of viewport */
