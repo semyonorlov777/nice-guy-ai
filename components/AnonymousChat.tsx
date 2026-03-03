@@ -13,12 +13,14 @@ interface AnonymousChatProps {
   programSlug: string;
   welcomeMessage: string;
   quickReplies: string[];
+  scrollToSectionId?: string;
 }
 
 export function AnonymousChat({
   programSlug,
   welcomeMessage,
   quickReplies,
+  scrollToSectionId,
 }: AnonymousChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -73,8 +75,18 @@ export function AnonymousChat({
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+      // On landing: scroll page to chat section if it's not visible
+      if (scrollToSectionId) {
+        const section = document.getElementById(scrollToSectionId);
+        if (section) {
+          const rect = section.getBoundingClientRect();
+          if (rect.top > window.innerHeight || rect.bottom < 0) {
+            section.scrollIntoView({ behavior: "smooth" });
+          }
+        }
+      }
     }
-  }, []);
+  }, [scrollToSectionId]);
 
   useEffect(() => {
     scrollToBottom();
