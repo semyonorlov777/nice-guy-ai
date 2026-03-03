@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PricingTabs } from "@/components/landing/PricingTabs";
 import { FAQAccordion } from "@/components/landing/FAQAccordion";
-import { createClient } from "@/lib/supabase-server";
+import { AnonymousChat } from "@/components/AnonymousChat";
+import { createClient, createServiceClient } from "@/lib/supabase-server";
 
 const APP_LINK = "/program/nice-guy/chat";
 
@@ -54,12 +55,33 @@ const stats = [
   { num: "46", label: "упражнений с AI" },
 ];
 
-export default async function ProgramLanding() {
+export default async function ProgramLanding({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
+
+  // Load program data for anonymous chat
+  let welcomeMessage = "";
+  let anonymousQuickReplies: string[] = [];
+  if (!isLoggedIn) {
+    const svc = createServiceClient();
+    const { data: program } = await svc
+      .from("programs")
+      .select("free_chat_welcome, anonymous_quick_replies")
+      .eq("slug", slug)
+      .single();
+    if (program) {
+      welcomeMessage = program.free_chat_welcome || "";
+      anonymousQuickReplies = (program.anonymous_quick_replies as string[]) || [];
+    }
+  }
   return (
     <div
       className="landing"
@@ -190,6 +212,32 @@ export default async function ProgramLanding() {
           </a>
         </div>
       </section>
+
+      {/* ANONYMOUS CHAT for non-logged users */}
+      {!isLoggedIn && welcomeMessage && (
+        <section
+          style={{
+            padding: "0 24px 60px",
+            maxWidth: 720,
+            margin: "0 auto",
+          }}
+        >
+          <div
+            style={{
+              border: "1px solid #2a2d35",
+              borderRadius: 16,
+              overflow: "hidden",
+              height: 520,
+            }}
+          >
+            <AnonymousChat
+              programSlug={slug}
+              welcomeMessage={welcomeMessage}
+              quickReplies={anonymousQuickReplies}
+            />
+          </div>
+        </section>
+      )}
 
       {/* SOCIAL PROOF */}
       <section
