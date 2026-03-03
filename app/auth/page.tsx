@@ -51,14 +51,28 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
 
   const urlError = searchParams.get("error");
   const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
+  const isPopup = searchParams.get("popup") === "true";
+
+  function closePopupWithSuccess() {
+    try {
+      window.opener?.postMessage({ type: "auth-success" }, window.location.origin);
+    } catch { /* cross-origin fallback — opener will detect via polling */ }
+    window.close();
+  }
 
   // Check if already logged in
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace(DEFAULT_REDIRECT);
+      if (user) {
+        if (isPopup) {
+          closePopupWithSuccess();
+        } else {
+          router.replace(DEFAULT_REDIRECT);
+        }
+      }
     });
-  }, [router]);
+  }, [router, isPopup]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -94,7 +108,11 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
           });
 
           if (res.ok) {
-            router.push(DEFAULT_REDIRECT);
+            if (isPopup) {
+              closePopupWithSuccess();
+            } else {
+              router.push(DEFAULT_REDIRECT);
+            }
           } else {
             const data = await res.json().catch(() => ({}));
             setError(data.error || "Ошибка авторизации. Попробуй ещё раз.");
@@ -106,7 +124,7 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
         }
       },
     );
-  }, [router]);
+  }, [router, isPopup]);
 
   // ---------- Magic Link ----------
   const handleMagicLink = useCallback(
@@ -356,7 +374,9 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
       {/* Yandex button */}
       <button
         onClick={() => {
-          window.location.href = "/api/auth/yandex";
+          window.location.href = isPopup
+            ? "/api/auth/yandex?popup=true"
+            : "/api/auth/yandex";
         }}
         style={{
           display: "flex",

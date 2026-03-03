@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import Link from "next/link";
+import { InChatAuth } from "@/components/InChatAuth";
 
 interface Message {
   role: "user" | "assistant";
@@ -232,6 +232,36 @@ export function AnonymousChat({
     return /Ошибка|Недостаточно/.test(content);
   }
 
+  async function handleAuthSuccess() {
+    try {
+      const res = await fetch("/api/chat/migrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          program_slug: programSlug,
+          messages,
+          session_id: sessionIdRef.current,
+        }),
+      });
+
+      // Clear localStorage regardless of migration result
+      try {
+        localStorage.removeItem(storageKeyMessages);
+        localStorage.removeItem(storageKeySession);
+      } catch { /* ignore */ }
+
+      if (res.ok) {
+        window.location.href = `/program/${programSlug}/chat`;
+      } else {
+        // Migration failed but user is authenticated — redirect anyway
+        window.location.href = `/program/${programSlug}/chat`;
+      }
+    } catch {
+      // Network error — user is authenticated, just redirect
+      window.location.href = `/program/${programSlug}/chat`;
+    }
+  }
+
   // Don't render until mounted (avoid hydration mismatch with localStorage)
   if (!mounted) return null;
 
@@ -305,14 +335,7 @@ export function AnonymousChat({
             )}
 
           {requiresAuth && (
-            <div className="anon-auth-prompt">
-              <div className="anon-auth-prompt-text">
-                Чтобы продолжить общение — войдите в аккаунт. Это бесплатно.
-              </div>
-              <Link href="/auth" className="anon-auth-prompt-btn">
-                Войти
-              </Link>
-            </div>
+            <InChatAuth onAuthSuccess={handleAuthSuccess} />
           )}
         </div>
       </div>

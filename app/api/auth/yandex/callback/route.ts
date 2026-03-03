@@ -6,6 +6,7 @@ const DEFAULT_REDIRECT = "/program/nice-guy/chat";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
+  const isPopup = request.nextUrl.searchParams.get("state") === "popup";
 
   if (!code) {
     const url = request.nextUrl.clone();
@@ -52,8 +53,13 @@ export async function GET(request: NextRequest) {
     });
 
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = DEFAULT_REDIRECT;
-    redirectUrl.search = "";
+    if (isPopup) {
+      redirectUrl.pathname = "/auth";
+      redirectUrl.search = "?popup=true";
+    } else {
+      redirectUrl.pathname = DEFAULT_REDIRECT;
+      redirectUrl.search = "";
+    }
 
     const response = NextResponse.redirect(redirectUrl);
     cookiesToSet.forEach(({ name, value, options }) =>
