@@ -606,29 +606,34 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   }
   .landing-v2 .positioning p em { color: var(--accent); font-style: normal; font-weight: 600; }
 
-  /* ── LANDING SCROLL SNAP ── */
-  html:has(.landing-v2) { scroll-snap-type: y proximity; }
-
-  /* ── CHAT BLOCK (full-viewport screen) ── */
-  .landing-v2 .chat-block {
-    position: relative; z-index: 2;
+  /* ── CHAT SECTION (full-viewport last section) ── */
+  .landing-v2 .landing-chat-section {
     height: 100vh; height: 100dvh;
     display: flex; flex-direction: column;
     background: #0f1114;
-    scroll-snap-align: start;
+    position: relative; z-index: 2;
+    padding-top: 56px; /* clear fixed header */
   }
-  .landing-v2 .chat-block-header {
-    text-align: center; padding: 20px 16px 0; flex-shrink: 0;
+  .landing-v2 .landing-chat-section .chat-zone { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .landing-v2 .landing-chat-section .chat-messages { flex: 1; min-height: 0; overscroll-behavior: contain; }
+
+  /* ── LANDING CONTAINER ── */
+  .landing-v2 {
+    background: #0f1114; color: #e0e0e0;
+    font-family: var(--font-body);
   }
-  .landing-v2 .chat-block-header h2 {
-    font-family: var(--font-display); font-size: 28px; font-weight: 600; margin-bottom: 4px; color: #e0e0e0;
-  }
-  .landing-v2 .chat-block-header p { font-size: 14px; color: #8a8a8a; margin-bottom: 0; }
 
   /* Chat zone overrides inside landing */
   .landing-v2 .chat-zone { background: #0f1114; }
-  .landing-v2 .chat-messages { background: #0f1114; padding-bottom: 100px; overscroll-behavior: contain; }
-  .landing-v2 .chat-inner { justify-content: flex-end; flex: 1; }
+  .landing-v2 .chat-messages { background: #0f1114; padding-bottom: 120px; }
+  .landing-v2 .chat-section-header {
+    text-align: center; margin-bottom: 24px;
+  }
+  .landing-v2 .chat-section-header h2 {
+    font-family: var(--font-display); font-size: 28px; font-weight: 600; color: #e0e0e0; margin-bottom: 4px;
+  }
+  .landing-v2 .chat-section-header p { font-size: 14px; color: #8a8a8a; }
+  .landing-v2 .chat-inner { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
 
   /* Fixed input bar at bottom of viewport */
   .landing-v2 .chat-input-wrap {

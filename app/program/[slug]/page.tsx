@@ -101,10 +101,10 @@ export default async function ProgramLanding({
   }
 
   return (
-    <div className="landing landing-v2" style={{ background: "#0f1114", color: "#e0e0e0", fontFamily: "var(--font-body)", overflowX: "hidden" }}>
+    <div className="landing landing-v2">
       <LandingHeader
         ctaText={isLoggedIn ? "В приложение" : "Попробовать бесплатно"}
-        ctaHref={isLoggedIn ? `/program/${slug}/chat` : "#chat-block"}
+        ctaHref={authHref}
       />
 
       <HeroSection
@@ -135,19 +135,15 @@ export default async function ProgramLanding({
         positioning={landingData.solution.positioning}
       />
 
-      {/* Chat block — full viewport screen, forced dark theme */}
-      <section className="chat-block" id="chat-block" data-theme="dark">
-        <div className="chat-block-header">
-          <h2>{landingData.chat_header.title}</h2>
-          <p>{landingData.chat_header.subtitle}</p>
-        </div>
-
+      <div className="landing-chat-section" id="chat-block" data-theme="dark">
         {!isLoggedIn && welcomeMessage ? (
           <AnonymousChat
             programSlug={slug}
             welcomeMessage={welcomeMessage}
             quickReplies={anonymousQuickReplies}
             scrollToSectionId="chat-block"
+            headerTitle={landingData.chat_header.title}
+            headerSubtitle={landingData.chat_header.subtitle}
           />
         ) : isLoggedIn ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -159,7 +155,7 @@ export default async function ProgramLanding({
             </Link>
           </div>
         ) : null}
-      </section>
+      </div>
 
     </div>
   );

@@ -14,6 +14,8 @@ interface AnonymousChatProps {
   welcomeMessage: string;
   quickReplies: string[];
   scrollToSectionId?: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
 }
 
 export function AnonymousChat({
@@ -21,6 +23,8 @@ export function AnonymousChat({
   welcomeMessage,
   quickReplies,
   scrollToSectionId,
+  headerTitle,
+  headerSubtitle,
 }: AnonymousChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -281,6 +285,13 @@ export function AnonymousChat({
     <div className="chat-zone">
       <div className="chat-messages" ref={messagesRef} onScroll={handleScroll}>
         <div className="chat-inner">
+          {headerTitle && (
+            <div className="chat-section-header">
+              <h2>{headerTitle}</h2>
+              {headerSubtitle && <p>{headerSubtitle}</p>}
+            </div>
+          )}
+
           {messages.length === 0 && (
             <div className="msg msg-ai">
               <div className="msg-avatar ai">НС</div>
