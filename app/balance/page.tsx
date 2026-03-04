@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { BalanceClient } from "@/components/BalanceClient";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export default async function BalancePage() {
   const supabase = await createClient();
@@ -26,5 +27,12 @@ export default async function BalancePage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  return <BalanceClient balance={balance} payments={payments ?? []} />;
+  return (
+    <>
+      <PublicHeader />
+      <div style={{ paddingTop: 56 }}>
+        <BalanceClient balance={balance} payments={payments ?? []} />
+      </div>
+    </>
+  );
 }

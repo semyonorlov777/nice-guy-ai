@@ -7,7 +7,7 @@ interface LandingHeaderProps {
 
 export function LandingHeader({ ctaText, ctaHref }: LandingHeaderProps) {
   return (
-    <header className="header">
+    <header className="public-header">
       <div className="logo">
         <div className="logo-icon">HC</div>
         <div className="logo-text">

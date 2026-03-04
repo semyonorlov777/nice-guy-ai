@@ -24,15 +24,16 @@ declare global {
 
 function YandexIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12zm11.3 7V7.95h-1.07c-1.98 0-3.02 1.07-3.02 2.66 0 1.82.72 2.66 2.18 3.63l1.2.8L9.9 19h-1.9l2.3-3.96c-1.74-1.23-2.65-2.38-2.65-4.25 0-2.42 1.67-4.04 4.58-4.04H15V19h-1.7z" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="12" fill="white"/>
+      <path d="M13.3 19V7.95h-1.07c-1.98 0-3.02 1.07-3.02 2.66 0 1.82.72 2.66 2.18 3.63l1.2.8L9.9 19H8l2.3-3.96c-1.74-1.23-2.65-2.38-2.65-4.25 0-2.42 1.67-4.04 4.58-4.04H15V19h-1.7z" fill="#FC3F1D"/>
     </svg>
   );
 }
 
 function TelegramIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
       <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
     </svg>
   );
@@ -334,41 +335,24 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
+          gap: 12,
           width: "100%",
-          padding: 14,
-          borderRadius: 10,
+          padding: "14px 20px",
+          borderRadius: 12,
           border: "none",
           background: "#2CA5E0",
           color: "#ffffff",
-          fontSize: 15,
-          fontWeight: 600,
+          fontSize: 16,
+          fontWeight: 500,
           fontFamily: "inherit",
           cursor: tgLoading || !tgScriptReady ? "default" : "pointer",
           opacity: tgLoading ? 0.7 : !tgScriptReady ? 0.5 : 1,
         }}
       >
-        {tgLoading ? (
-          <>
-            <span
-              style={{
-                display: "inline-block",
-                width: 16,
-                height: 16,
-                border: "2px solid rgba(255,255,255,0.3)",
-                borderTopColor: "#fff",
-                borderRadius: "50%",
-                animation: "spin 0.6s linear infinite",
-              }}
-            />
-            Подтверди вход в Telegram...
-          </>
-        ) : (
-          <>
-            <TelegramIcon />
-            Войти через Telegram
-          </>
-        )}
+        <span style={{ width: 28, height: 28, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <TelegramIcon />
+        </span>
+        <span>{tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}</span>
       </button>
 
       {/* Yandex button */}
@@ -382,22 +366,24 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
+          gap: 12,
           width: "100%",
-          padding: 14,
-          borderRadius: 10,
+          padding: "14px 20px",
+          borderRadius: 12,
           border: "none",
           background: "#FC3F1D",
           color: "#ffffff",
-          fontSize: 15,
-          fontWeight: 600,
+          fontSize: 16,
+          fontWeight: 500,
           fontFamily: "inherit",
           cursor: "pointer",
           marginTop: 12,
         }}
       >
-        <YandexIcon />
-        Войти через Яндекс
+        <span style={{ width: 28, height: 28, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <YandexIcon />
+        </span>
+        <span>Войти через Яндекс</span>
       </button>
 
       {/* Divider */}
@@ -509,7 +495,7 @@ export default function AuthPage() {
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "var(--font-body)",
-        padding: "24px 16px",
+        padding: "80px 16px 24px",
       }}
     >
       <Script

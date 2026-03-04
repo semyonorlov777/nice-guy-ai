@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export const metadata: Metadata = {
   title: "Публичная оферта — НеСлавный",
@@ -28,6 +29,8 @@ const sectionStyle = { marginBottom: 32 } as const;
 
 export default function LegalPage() {
   return (
+    <>
+    <PublicHeader />
     <div
       className="legal-page"
       style={{
@@ -35,7 +38,7 @@ export default function LegalPage() {
         background: "#0f1114",
         color: "#e0e0e0",
         fontFamily: "var(--font-body)",
-        padding: "24px 16px 60px",
+        padding: "80px 16px 60px",
       }}
     >
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
@@ -309,5 +312,6 @@ export default function LegalPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
