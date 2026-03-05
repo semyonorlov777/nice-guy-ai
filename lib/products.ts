@@ -14,7 +14,7 @@ export const PRODUCTS: Record<string, Product> = {
     type: "token_pack",
     name: "500 токенов",
     description: "Пакет 500 токенов",
-    amount: 1290,
+    amount: 1, // TEMP: тест боевых платежей, вернуть 1290
     tokens: 500,
   },
   tokens_2000: {
