@@ -12,6 +12,12 @@ interface Payment {
   status: string;
 }
 
+const PLAN_NAMES: Record<string, { name: string; tokens: string }> = {
+  sub_pro: { name: "Про", tokens: "500" },
+  sub_max: { name: "Макс", tokens: "2 000" },
+  sub_ultra: { name: "Ультра", tokens: "7 000" },
+};
+
 const subscriptions = [
   {
     name: "Про",
@@ -55,11 +61,13 @@ const tokenPacks = [
 export function BalanceClient({
   balance,
   payments,
+  subscription,
   paymentComplete,
   orderId,
 }: {
   balance: number;
   payments: Payment[];
+  subscription?: { plan: string; expiresAt: string | null } | null;
   paymentComplete?: boolean;
   orderId?: string;
 }) {
@@ -144,6 +152,7 @@ export function BalanceClient({
   };
 
   const isAnyLoading = loadingProduct !== null;
+  const activePlan = subscription?.plan ? PLAN_NAMES[subscription.plan] : null;
 
   return (
     <div className="content-scroll">
@@ -189,40 +198,97 @@ export function BalanceClient({
           </div>
         )}
 
+        {/* Active subscription */}
+        {activePlan && subscription && (
+          <div className="balance-subscription">
+            <div className="balance-subscription-header">
+              <span className="balance-subscription-badge">Активна</span>
+              <span className="balance-subscription-name">
+                Подписка: {activePlan.name}
+              </span>
+            </div>
+            <div className="balance-subscription-details">
+              {subscription.expiresAt && (
+                <div className="balance-subscription-expires">
+                  Активна до{" "}
+                  {new Date(subscription.expiresAt).toLocaleDateString("ru-RU", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </div>
+              )}
+              <div className="balance-subscription-tokens">
+                {activePlan.tokens} токенов / месяц
+              </div>
+            </div>
+            <div className="balance-subscription-actions">
+              <button
+                className="balance-subscription-btn"
+                onClick={() => showToast("Скоро будет доступно")}
+              >
+                Изменить
+              </button>
+              <button
+                className="balance-subscription-btn secondary"
+                onClick={() =>
+                  showToast("Напишите в поддержку для отмены")
+                }
+              >
+                Отменить
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Subscriptions */}
         <div className="balance-section">
           <h2 className="balance-section-title">Подписки</h2>
           <div className="balance-cards">
-            {subscriptions.map((sub) => (
-              <div
-                key={sub.name}
-                className={`balance-card${sub.recommended ? " recommended" : ""}`}
-              >
-                {sub.recommended && (
-                  <div className="balance-card-badge">Популярный</div>
-                )}
-                <div className="balance-card-name">{sub.name}</div>
-                <div className="balance-card-price">
-                  {sub.price.toLocaleString("ru-RU")} ₽
-                  <span className="balance-card-period">/мес</span>
-                </div>
-                <div className="balance-card-tokens">{sub.tokens} токенов</div>
-                <ul className="balance-card-features">
-                  {sub.features.map((f) => (
-                    <li key={f}>{f}</li>
-                  ))}
-                </ul>
-                <button
-                  className={`balance-card-btn${sub.recommended ? " primary" : ""}`}
-                  disabled={isAnyLoading}
-                  onClick={() => handlePurchase(sub.productKey)}
+            {subscriptions.map((sub) => {
+              const isActive = subscription?.plan === sub.productKey;
+              return (
+                <div
+                  key={sub.name}
+                  className={`balance-card${sub.recommended ? " recommended" : ""}`}
                 >
-                  {loadingProduct === sub.productKey
-                    ? "Переход к оплате..."
-                    : "Подключить"}
-                </button>
-              </div>
-            ))}
+                  {sub.recommended && !isActive && (
+                    <div className="balance-card-badge">Популярный</div>
+                  )}
+                  {isActive && (
+                    <div className="balance-card-badge active">Активна</div>
+                  )}
+                  <div className="balance-card-name">{sub.name}</div>
+                  <div className="balance-card-price">
+                    {sub.price.toLocaleString("ru-RU")} ₽
+                    <span className="balance-card-period">/мес</span>
+                  </div>
+                  <div className="balance-card-tokens">
+                    {sub.tokens} токенов
+                  </div>
+                  <ul className="balance-card-features">
+                    {sub.features.map((f) => (
+                      <li key={f}>{f}</li>
+                    ))}
+                  </ul>
+                  {isActive ? (
+                    <div className="balance-card-btn active-label">
+                      Текущий план
+                    </div>
+                  ) : (
+                    <button
+                      className={`balance-card-btn${sub.recommended ? " primary" : ""}`}
+                      disabled={isAnyLoading}
+                      onClick={() => handlePurchase(sub.productKey)}
+                    >
+                      {loadingProduct === sub.productKey
+                        ? "Переход к оплате..."
+                        : "Подключить"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

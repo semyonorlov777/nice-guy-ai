@@ -56,6 +56,7 @@ export async function POST(request: Request) {
           currency: "RUB",
         },
         capture: true,
+        ...(product.type === "subscription" ? { save_payment_method: true } : {}),
         confirmation: {
           type: "redirect",
           return_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://nice-guy-ai.vercel.app"}/balance?payment=complete&order=${order.id}`,

@@ -107,6 +107,31 @@ export async function POST(request: Request) {
           status: "completed",
         });
 
+        // Активация подписки
+        if (order.type === "subscription") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const paymentMethodId = (verifiedPayment as any).payment_method?.id;
+
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+
+          await supabase
+            .from("profiles")
+            .update({
+              subscription_plan: order.product_key,
+              subscription_expires_at: expiresAt.toISOString(),
+              subscription_payment_method_id: paymentMethodId || null,
+            })
+            .eq("id", order.user_id);
+
+          console.log(
+            "[webhook] Subscription activated:",
+            order.product_key,
+            "until",
+            expiresAt.toISOString()
+          );
+        }
+
         console.log(
           "[webhook] Payment processed:",
           orderId,

@@ -17,11 +17,18 @@ export default async function BalancePage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("balance_tokens")
+    .select("balance_tokens, subscription_plan, subscription_expires_at")
     .eq("id", user.id)
     .single();
 
   const balance = profile?.balance_tokens ?? 0;
+
+  const subscription = profile?.subscription_plan
+    ? {
+        plan: profile.subscription_plan as string,
+        expiresAt: profile.subscription_expires_at as string | null,
+      }
+    : null;
 
   // Payment history
   const { data: payments } = await supabase
@@ -40,6 +47,7 @@ export default async function BalancePage({
         <BalanceClient
           balance={balance}
           payments={payments ?? []}
+          subscription={subscription}
           paymentComplete={params.payment === "complete"}
           orderId={params.order}
         />

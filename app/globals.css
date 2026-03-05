@@ -344,6 +344,21 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .balance-history-amount { font-weight: 600; white-space: nowrap; color: var(--status-done); }
 
   .balance-card-btn:disabled { opacity: 0.6; cursor: default; }
+  .balance-card-btn.active-label { text-align: center; color: var(--accent); font-weight: 500; border-color: var(--accent-border); background: var(--accent-soft); cursor: default; }
+  .balance-card-badge.active { background: var(--accent); color: #0f1114; }
+
+  .balance-subscription { padding: 20px 24px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); margin-bottom: 32px; }
+  .balance-subscription-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .balance-subscription-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; background: var(--accent); color: #0f1114; }
+  .balance-subscription-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); }
+  .balance-subscription-details { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; }
+  .balance-subscription-expires { margin-bottom: 2px; }
+  .balance-subscription-tokens { color: var(--text-muted); }
+  .balance-subscription-actions { display: flex; gap: 10px; }
+  .balance-subscription-btn { padding: 8px 20px; border-radius: 20px; border: 1px solid var(--accent-border); background: none; color: var(--accent); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: background 0.15s; }
+  .balance-subscription-btn:hover { background: rgba(201,168,76,0.08); }
+  .balance-subscription-btn.secondary { color: var(--text-muted); border-color: var(--border-light); }
+  .balance-subscription-btn.secondary:hover { background: rgba(255,255,255,0.04); }
 
   .balance-payment-status { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border: 1px solid var(--accent-border); color: var(--text-primary); font-family: var(--font-body); font-size: 14px; padding: 14px 20px; border-radius: 12px; margin-bottom: 16px; }
   .balance-payment-status-spinner { width: 16px; height: 16px; border: 2px solid var(--accent-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
