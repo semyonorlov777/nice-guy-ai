@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { BalanceClient } from "@/components/BalanceClient";
 import { PublicHeader } from "@/components/PublicHeader";
 
-export default async function BalancePage() {
+export default async function BalancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string; order?: string }>;
+}) {
   const supabase = await createClient();
 
   const {
@@ -19,19 +23,26 @@ export default async function BalancePage() {
 
   const balance = profile?.balance_tokens ?? 0;
 
-  // Payment history (table may not exist yet)
+  // Payment history
   const { data: payments } = await supabase
     .from("payments")
-    .select("id, created_at, amount, tokens, type, status")
+    .select("id, created_at, amount, tokens_added, yookassa_id, status")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
+
+  const params = await searchParams;
 
   return (
     <>
       <PublicHeader />
       <div style={{ paddingTop: 56 }}>
-        <BalanceClient balance={balance} payments={payments ?? []} />
+        <BalanceClient
+          balance={balance}
+          payments={payments ?? []}
+          paymentComplete={params.payment === "complete"}
+          orderId={params.order}
+        />
       </div>
     </>
   );

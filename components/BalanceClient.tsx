@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Payment {
   id: string;
   created_at: string;
   amount: number;
-  tokens: number;
-  type: string;
+  tokens_added: number;
+  yookassa_id: string;
   status: string;
 }
 
@@ -17,12 +17,14 @@ const subscriptions = [
     name: "Про",
     price: 990,
     tokens: "500",
+    productKey: "sub_pro",
     features: ["500 токенов в месяц", "Все упражнения", "Психологический портрет"],
   },
   {
     name: "Макс",
     price: 2900,
     tokens: "2 000",
+    productKey: "sub_max",
     recommended: true,
     features: [
       "2 000 токенов в месяц",
@@ -35,6 +37,7 @@ const subscriptions = [
     name: "Ультра",
     price: 7900,
     tokens: "7 000",
+    productKey: "sub_ultra",
     features: [
       "7 000 токенов в месяц",
       "Всё из Макса",
@@ -44,25 +47,103 @@ const subscriptions = [
 ];
 
 const tokenPacks = [
-  { amount: "500", price: 1290 },
-  { amount: "2 000", price: 3790 },
-  { amount: "7 000", price: 14990 },
+  { amount: "500", price: 1290, productKey: "tokens_500" },
+  { amount: "2 000", price: 3790, productKey: "tokens_2000" },
+  { amount: "7 000", price: 14990, productKey: "tokens_7000" },
 ];
 
 export function BalanceClient({
   balance,
   payments,
+  paymentComplete,
+  orderId,
 }: {
   balance: number;
   payments: Payment[];
+  paymentComplete?: boolean;
+  orderId?: string;
 }) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
+  const [loadingProduct, setLoadingProduct] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<
+    "polling" | "succeeded" | "timeout" | null
+  >(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  // Payment return polling
+  useEffect(() => {
+    if (!paymentComplete || !orderId) return;
+
+    setPaymentStatus("polling");
+    const startTime = Date.now();
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(
+          `/api/payments/status?order_id=${encodeURIComponent(orderId)}`
+        );
+        const data = await res.json();
+
+        if (data.status === "succeeded") {
+          setPaymentStatus("succeeded");
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setTimeout(() => router.refresh(), 2000);
+          return;
+        }
+
+        if (data.status === "canceled") {
+          setPaymentStatus(null);
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          showToast("Платёж отменён");
+          return;
+        }
+      } catch {
+        // ignore network errors, keep polling
+      }
+
+      if (Date.now() - startTime > 30000) {
+        setPaymentStatus("timeout");
+        if (pollingRef.current) clearInterval(pollingRef.current);
+      }
+    };
+
+    checkStatus();
+    pollingRef.current = setInterval(checkStatus, 3000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [paymentComplete, orderId, router, showToast]);
+
+  const handlePurchase = async (productKey: string) => {
+    setLoadingProduct(productKey);
+    try {
+      const res = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productKey }),
+      });
+      const data = await res.json();
+
+      if (data.confirmation_url) {
+        window.location.href = data.confirmation_url;
+      } else {
+        showToast(data.error || "Ошибка создания платежа");
+      }
+    } catch {
+      showToast("Ошибка сети");
+    } finally {
+      setLoadingProduct(null);
+    }
+  };
+
+  const isAnyLoading = loadingProduct !== null;
 
   return (
     <div className="content-scroll">
@@ -90,6 +171,24 @@ export function BalanceClient({
           </div>
         </div>
 
+        {/* Payment status banner */}
+        {paymentStatus && (
+          <div className="balance-payment-status">
+            {paymentStatus === "polling" && (
+              <>
+                <span className="balance-payment-status-spinner" />
+                Платёж обрабатывается...
+              </>
+            )}
+            {paymentStatus === "succeeded" && (
+              <>Оплата прошла! Баланс пополнен</>
+            )}
+            {paymentStatus === "timeout" && (
+              <>Платёж обрабатывается, токены скоро появятся на балансе</>
+            )}
+          </div>
+        )}
+
         {/* Subscriptions */}
         <div className="balance-section">
           <h2 className="balance-section-title">Подписки</h2>
@@ -115,11 +214,12 @@ export function BalanceClient({
                 </ul>
                 <button
                   className={`balance-card-btn${sub.recommended ? " primary" : ""}`}
-                  onClick={() =>
-                    showToast("Оплата подписок скоро будет доступна")
-                  }
+                  disabled={isAnyLoading}
+                  onClick={() => handlePurchase(sub.productKey)}
                 >
-                  Подключить
+                  {loadingProduct === sub.productKey
+                    ? "Переход к оплате..."
+                    : "Подключить"}
                 </button>
               </div>
             ))}
@@ -164,11 +264,12 @@ export function BalanceClient({
                 </div>
                 <button
                   className="balance-card-btn"
-                  onClick={() =>
-                    showToast("Покупка токенов скоро будет доступна")
-                  }
+                  disabled={isAnyLoading}
+                  onClick={() => handlePurchase(pack.productKey)}
                 >
-                  Купить
+                  {loadingProduct === pack.productKey
+                    ? "Переход к оплате..."
+                    : "Купить"}
                 </button>
               </div>
             ))}
@@ -187,10 +288,11 @@ export function BalanceClient({
                   <div className="balance-history-date">
                     {new Date(p.created_at).toLocaleDateString("ru-RU")}
                   </div>
-                  <div className="balance-history-desc">{p.type}</div>
+                  <div className="balance-history-desc">
+                    +{p.tokens_added.toLocaleString("ru-RU")} токенов
+                  </div>
                   <div className="balance-history-amount">
-                    {p.tokens > 0 ? "+" : ""}
-                    {p.tokens.toLocaleString("ru-RU")}
+                    {p.amount.toLocaleString("ru-RU")} ₽
                   </div>
                 </div>
               ))}
