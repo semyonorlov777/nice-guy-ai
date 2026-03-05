@@ -58,7 +58,10 @@ export async function middleware(request: NextRequest) {
   if (isProtected(pathname) && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
-    url.search = `?redirect=${encodeURIComponent(pathname)}`;
+    const fullPath = request.nextUrl.search
+      ? `${pathname}${request.nextUrl.search}`
+      : pathname;
+    url.search = `?redirect=${encodeURIComponent(fullPath)}`;
     return NextResponse.redirect(url);
   }
 
