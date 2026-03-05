@@ -110,7 +110,9 @@ export async function POST(request: Request) {
         // Активация подписки
         if (order.type === "subscription") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const paymentMethodId = (verifiedPayment as any).payment_method?.id;
+          const pm = (verifiedPayment as any).payment_method;
+          const paymentMethodId = pm?.id;
+          const cardLast4 = pm?.card?.last4 || null;
 
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + 30);
@@ -121,6 +123,7 @@ export async function POST(request: Request) {
               subscription_plan: order.product_key,
               subscription_expires_at: expiresAt.toISOString(),
               subscription_payment_method_id: paymentMethodId || null,
+              card_last4: cardLast4,
             })
             .eq("id", order.user_id);
 

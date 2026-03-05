@@ -67,13 +67,18 @@ export function BalanceClient({
 }: {
   balance: number;
   payments: Payment[];
-  subscription?: { plan: string; expiresAt: string | null } | null;
+  subscription?: {
+    plan: string | null;
+    expiresAt: string | null;
+    cardLast4: string | null;
+  } | null;
   paymentComplete?: boolean;
   orderId?: string;
 }) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [loadingProduct, setLoadingProduct] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<
     "polling" | "succeeded" | "timeout" | null
   >(null);
@@ -151,8 +156,63 @@ export function BalanceClient({
     }
   };
 
+  const handleUnlinkCard = async () => {
+    const last4 = subscription?.cardLast4 || "";
+    if (!confirm(`Отвязать карту •••• ${last4}? Автопродление будет отключено.`)) return;
+
+    setLoadingAction("unlink");
+    try {
+      await fetch("/api/payments/unlink-card", { method: "POST" });
+      showToast("Карта отвязана");
+      router.refresh();
+    } catch {
+      showToast("Ошибка сети");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm("Отменить подписку? Доступ сохранится до конца оплаченного периода.")) return;
+
+    setLoadingAction("cancel");
+    try {
+      await fetch("/api/payments/cancel-subscription", { method: "POST" });
+      showToast("Подписка отменена");
+      router.refresh();
+    } catch {
+      showToast("Ошибка сети");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const isAnyLoading = loadingProduct !== null;
-  const activePlan = subscription?.plan ? PLAN_NAMES[subscription.plan] : null;
+
+  // Subscription state
+  const isSubExpired =
+    !subscription?.expiresAt ||
+    new Date(subscription.expiresAt) <= new Date();
+  const hasPlan = !!subscription?.plan;
+  const hasCard = !!subscription?.cardLast4;
+  const showSubBlock = subscription && !isSubExpired;
+
+  // Resolve plan name from plan key or fallback
+  const subPlanKey = subscription?.plan;
+  const activePlan = subPlanKey ? PLAN_NAMES[subPlanKey] : null;
+
+  // For states Б and В — find plan name by matching expiresAt existence
+  // If plan was canceled but expiresAt still in future, show last known plan info
+  const displayPlan = activePlan;
+
+  // State: A = hasPlan && hasCard, B = hasPlan && !hasCard, C = !hasPlan (but expiresAt in future)
+  const subState: "A" | "B" | "C" | null = showSubBlock
+    ? hasPlan && hasCard
+      ? "A"
+      : hasPlan && !hasCard
+        ? "B"
+        : "C"
+    : null;
 
   return (
     <div className="content-scroll">
@@ -198,19 +258,28 @@ export function BalanceClient({
           </div>
         )}
 
-        {/* Active subscription */}
-        {activePlan && subscription && (
-          <div className="balance-subscription">
+        {/* Active subscription block */}
+        {subState && (
+          <div className={`balance-subscription${subState === "C" ? " canceled" : ""}`}>
             <div className="balance-subscription-header">
-              <span className="balance-subscription-badge">Активна</span>
+              {subState === "A" && (
+                <span className="balance-subscription-badge">Активна</span>
+              )}
+              {subState === "B" && (
+                <span className="balance-subscription-badge warning">Не продлится</span>
+              )}
+              {subState === "C" && (
+                <span className="balance-subscription-badge muted">Отменена</span>
+              )}
               <span className="balance-subscription-name">
-                Подписка: {activePlan.name}
+                Подписка {displayPlan?.name || ""}
               </span>
             </div>
+
             <div className="balance-subscription-details">
-              {subscription.expiresAt && (
+              {subscription?.expiresAt && (
                 <div className="balance-subscription-expires">
-                  Активна до{" "}
+                  {subState === "C" ? "Доступ до" : "Активна до"}{" "}
                   {new Date(subscription.expiresAt).toLocaleDateString("ru-RU", {
                     day: "numeric",
                     month: "long",
@@ -218,26 +287,57 @@ export function BalanceClient({
                   })}
                 </div>
               )}
-              <div className="balance-subscription-tokens">
-                {activePlan.tokens} токенов / месяц
+              {displayPlan && (
+                <div className="balance-subscription-tokens">
+                  {displayPlan.tokens} токенов / месяц
+                </div>
+              )}
+            </div>
+
+            {subState === "A" && (
+              <>
+                <div className="balance-subscription-card">
+                  <span className="balance-subscription-card-info">
+                    {"\uD83D\uDCB3"} •••• {subscription?.cardLast4}
+                  </span>
+                  <button
+                    className="balance-subscription-unlink"
+                    disabled={loadingAction !== null}
+                    onClick={handleUnlinkCard}
+                  >
+                    {loadingAction === "unlink" ? "..." : "Отвязать"}
+                  </button>
+                </div>
+                <button
+                  className="balance-subscription-cancel"
+                  disabled={loadingAction !== null}
+                  onClick={handleCancelSubscription}
+                >
+                  {loadingAction === "cancel" ? "Отмена..." : "Отменить подписку"}
+                </button>
+              </>
+            )}
+
+            {subState === "B" && (
+              <>
+                <div className="balance-subscription-note">
+                  Карта не привязана. Автопродление отключено.
+                </div>
+                <button
+                  className="balance-subscription-cancel"
+                  disabled={loadingAction !== null}
+                  onClick={handleCancelSubscription}
+                >
+                  {loadingAction === "cancel" ? "Отмена..." : "Отменить подписку"}
+                </button>
+              </>
+            )}
+
+            {subState === "C" && (
+              <div className="balance-subscription-note">
+                Подписка отменена. Доступ сохранится до конца оплаченного периода.
               </div>
-            </div>
-            <div className="balance-subscription-actions">
-              <button
-                className="balance-subscription-btn"
-                onClick={() => showToast("Скоро будет доступно")}
-              >
-                Изменить
-              </button>
-              <button
-                className="balance-subscription-btn secondary"
-                onClick={() =>
-                  showToast("Напишите в поддержку для отмены")
-                }
-              >
-                Отменить
-              </button>
-            </div>
+            )}
           </div>
         )}
 
@@ -246,7 +346,7 @@ export function BalanceClient({
           <h2 className="balance-section-title">Подписки</h2>
           <div className="balance-cards">
             {subscriptions.map((sub) => {
-              const isActive = subscription?.plan === sub.productKey;
+              const isActive = hasPlan && subscription?.plan === sub.productKey;
               return (
                 <div
                   key={sub.name}

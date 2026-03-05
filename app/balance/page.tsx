@@ -17,16 +17,22 @@ export default async function BalancePage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("balance_tokens, subscription_plan, subscription_expires_at")
+    .select("balance_tokens, subscription_plan, subscription_expires_at, card_last4")
     .eq("id", user.id)
     .single();
 
   const balance = profile?.balance_tokens ?? 0;
 
-  const subscription = profile?.subscription_plan
+  const hasSubscriptionData =
+    profile?.subscription_plan ||
+    (profile?.subscription_expires_at &&
+      new Date(profile.subscription_expires_at as string) > new Date());
+
+  const subscription = hasSubscriptionData
     ? {
-        plan: profile.subscription_plan as string,
-        expiresAt: profile.subscription_expires_at as string | null,
+        plan: (profile?.subscription_plan as string) || null,
+        expiresAt: (profile?.subscription_expires_at as string) || null,
+        cardLast4: (profile?.card_last4 as string) || null,
       }
     : null;
 

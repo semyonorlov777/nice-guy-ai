@@ -348,17 +348,24 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .balance-card-badge.active { background: var(--accent); color: #0f1114; }
 
   .balance-subscription { padding: 20px 24px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); margin-bottom: 32px; }
+  .balance-subscription.canceled { background: var(--bg-card); border-color: var(--border-light); }
   .balance-subscription-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .balance-subscription-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; background: var(--accent); color: #0f1114; }
+  .balance-subscription-badge.warning { background: #d97706; }
+  .balance-subscription-badge.muted { background: var(--text-muted); color: #0f1114; }
   .balance-subscription-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); }
   .balance-subscription-details { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; }
   .balance-subscription-expires { margin-bottom: 2px; }
   .balance-subscription-tokens { color: var(--text-muted); }
-  .balance-subscription-actions { display: flex; gap: 10px; }
-  .balance-subscription-btn { padding: 8px 20px; border-radius: 20px; border: 1px solid var(--accent-border); background: none; color: var(--accent); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: background 0.15s; }
-  .balance-subscription-btn:hover { background: rgba(201,168,76,0.08); }
-  .balance-subscription-btn.secondary { color: var(--text-muted); border-color: var(--border-light); }
-  .balance-subscription-btn.secondary:hover { background: rgba(255,255,255,0.04); }
+  .balance-subscription-card { display: flex; align-items: center; gap: 12px; padding: 10px 0; margin-bottom: 12px; border-top: 1px solid var(--border-light); }
+  .balance-subscription-card-info { font-size: 14px; color: var(--text-primary); flex: 1; }
+  .balance-subscription-unlink { background: none; border: none; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px 0; transition: color 0.15s; }
+  .balance-subscription-unlink:hover { color: var(--text-secondary); }
+  .balance-subscription-unlink:disabled { opacity: 0.5; cursor: default; }
+  .balance-subscription-cancel { width: 100%; padding: 10px 16px; border-radius: 24px; border: 1px solid rgba(239,68,68,0.3); background: none; color: #ef4444; font-family: var(--font-body); font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+  .balance-subscription-cancel:hover { background: rgba(239,68,68,0.06); }
+  .balance-subscription-cancel:disabled { opacity: 0.5; cursor: default; }
+  .balance-subscription-note { font-size: 13px; color: var(--text-muted); padding: 10px 0; margin-bottom: 12px; border-top: 1px solid var(--border-light); line-height: 1.5; }
 
   .balance-payment-status { display: flex; align-items: center; gap: 10px; background: var(--bg-card); border: 1px solid var(--accent-border); color: var(--text-primary); font-family: var(--font-body); font-size: 14px; padding: 14px 20px; border-radius: 12px; margin-bottom: 16px; }
   .balance-payment-status-spinner { width: 16px; height: 16px; border: 2px solid var(--accent-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
