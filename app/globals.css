@@ -171,6 +171,7 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .welcome-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
   .welcome-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
   .welcome-desc { font-size: 13px; line-height: 1.55; color: var(--text-secondary); max-width: 360px; margin: 0 auto; }
+  .test-last-result { font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; display: inline-block; }
 
   /* ── EXERCISE INTRO ── */
   .exercise-intro { padding: 14px 16px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); margin-bottom: 4px; }

@@ -6,9 +6,10 @@ import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
 
 const navItems = [
+  { key: "test", path: "/test", icon: "\u{1F4CA}", label: "Пройти тест" },
   { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Свободный чат" },
   { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Упражнения" },
-  { key: "portrait", path: "/portrait", icon: "\u{1F4CA}", label: "Мой портрет" },
+  { key: "portrait", path: "/portrait", icon: "\u{1F9D1}\u200D\u{1F4BB}", label: "Мой портрет" },
 ];
 
 interface UserInfo {
@@ -23,6 +24,7 @@ export function Sidebar({ slug, user }: { slug: string; user?: UserInfo | null }
   const base = `/program/${slug}`;
 
   function getActiveKey() {
+    if (pathname.startsWith(`${base}/test`)) return "test";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
     for (const item of navItems) {
       if (pathname.startsWith(`${base}${item.path}`)) return item.key;

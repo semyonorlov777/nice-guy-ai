@@ -1,6 +1,10 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { streamChat } from "@/lib/gemini";
 import { updatePortrait } from "@/app/api/portrait/update/route";
+import { parseAIResponse } from "@/lib/issp-parser";
+import { calculateISSP } from "@/lib/issp-scoring";
+import { ISSP_QUESTIONS } from "@/lib/issp-config";
+import type { TestAnswer } from "@/lib/issp-scoring";
 import type { Content } from "@google/generative-ai";
 
 const DEFAULT_BALANCE = 1000;
@@ -17,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   // 2. Parse body
-  const { message, chatId, programId, exerciseId } = await request.json();
+  const { message, chatId, programId, exerciseId, chatType } = await request.json();
   if (!message || !programId) {
     return Response.json({ error: "Не указано сообщение или программа" }, { status: 400 });
   }
@@ -60,7 +64,7 @@ export async function POST(request: Request) {
   // 4. Load program
   const { data: program, error: programError } = await supabase
     .from("programs")
-    .select("id, system_prompt, free_chat_welcome")
+    .select("id, system_prompt, free_chat_welcome, test_system_prompt")
     .eq("id", programId)
     .single();
 
@@ -92,37 +96,72 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   // 7. Find or create chat
+  const isTestMode = chatType === "test";
   let currentChatId = chatId;
   let isNewChat = false;
+  let currentChatType = isTestMode ? "test" : exerciseId ? "exercise" : "free";
 
   if (!currentChatId) {
-    // Build query — chain properly to avoid mutation issues
-    let findQuery = supabase
-      .from("chats")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("program_id", programId)
-      .eq("status", "active");
+    if (isTestMode) {
+      // For test mode: find active test chat
+      const { data: existingChat } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("program_id", programId)
+        .eq("chat_type", "test")
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
 
-    if (exerciseId) {
-      findQuery = findQuery.eq("exercise_id", exerciseId);
+      if (existingChat) {
+        currentChatId = existingChat.id;
+      }
     } else {
-      findQuery = findQuery.is("exercise_id", null);
+      // Build query — chain properly to avoid mutation issues
+      let findQuery = supabase
+        .from("chats")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("program_id", programId)
+        .eq("status", "active");
+
+      if (exerciseId) {
+        findQuery = findQuery.eq("exercise_id", exerciseId);
+      } else {
+        findQuery = findQuery.is("exercise_id", null);
+      }
+
+      const { data: existingChat } = await findQuery.limit(1).maybeSingle();
+      if (existingChat) {
+        currentChatId = existingChat.id;
+      }
     }
 
-    const { data: existingChat } = await findQuery.limit(1).maybeSingle();
+    if (!currentChatId) {
+      // Create new chat
+      const insertData: Record<string, unknown> = {
+        user_id: user.id,
+        program_id: programId,
+        status: "active",
+      };
 
-    if (existingChat) {
-      currentChatId = existingChat.id;
-    } else {
+      if (isTestMode) {
+        insertData.chat_type = "test";
+        insertData.test_state = {
+          current_question: 0,
+          status: "in_progress",
+          started_at: new Date().toISOString(),
+          answers: [],
+        };
+      } else {
+        insertData.exercise_id = exerciseId || null;
+        insertData.chat_type = exerciseId ? "exercise" : "free";
+      }
+
       const { data: newChat, error: chatError } = await supabase
         .from("chats")
-        .insert({
-          user_id: user.id,
-          program_id: programId,
-          exercise_id: exerciseId || null,
-          status: "active",
-        })
+        .insert(insertData)
         .select("id")
         .single();
 
@@ -137,16 +176,28 @@ export async function POST(request: Request) {
       currentChatId = newChat.id;
       isNewChat = true;
 
-      // Insert welcome message as first message in the new chat
-      const welcomeText = exercise?.welcome_message || program.free_chat_welcome;
-      if (welcomeText) {
-        await supabase.from("messages").insert({
-          chat_id: currentChatId,
-          role: "assistant",
-          content: welcomeText,
-          tokens_used: 0,
-        });
+      // Insert welcome message (not for test — AI generates its own)
+      if (!isTestMode) {
+        const welcomeText = exercise?.welcome_message || program.free_chat_welcome;
+        if (welcomeText) {
+          await supabase.from("messages").insert({
+            chat_id: currentChatId,
+            role: "assistant",
+            content: welcomeText,
+            tokens_used: 0,
+          });
+        }
       }
+    }
+  } else {
+    // Determine chat type from existing chat
+    const { data: chatData } = await supabase
+      .from("chats")
+      .select("chat_type")
+      .eq("id", currentChatId)
+      .single();
+    if (chatData?.chat_type) {
+      currentChatType = chatData.chat_type;
     }
   }
 
@@ -158,14 +209,19 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: true });
 
   // 9. Build system prompt
-  let systemPrompt = program.system_prompt || "";
-  if (exercise?.system_prompt) {
-    systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;
-  }
-  if (portrait?.content) {
-    const p = portrait.content as { ai_context?: string };
-    if (p.ai_context) {
-      systemPrompt += `\n\n---\nКОНТЕКСТ ПОЛЬЗОВАТЕЛЯ (из предыдущих упражнений):\n${p.ai_context}`;
+  let systemPrompt = "";
+  if (currentChatType === "test") {
+    systemPrompt = program.test_system_prompt || "";
+  } else {
+    systemPrompt = program.system_prompt || "";
+    if (exercise?.system_prompt) {
+      systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;
+    }
+    if (portrait?.content) {
+      const p = portrait.content as { ai_context?: string };
+      if (p.ai_context) {
+        systemPrompt += `\n\n---\nКОНТЕКСТ ПОЛЬЗОВАТЕЛЯ (из предыдущих упражнений):\n${p.ai_context}`;
+      }
     }
   }
 
@@ -260,8 +316,82 @@ export async function POST(request: Request) {
           )
         );
 
-        // Portrait auto-update: every 5 user messages
-        try {
+        // Test mode: parse AI response and update test state
+        if (currentChatType === "test") {
+          try {
+            const svc = createServiceClient();
+            const { data: chatRow } = await svc
+              .from("chats")
+              .select("test_state")
+              .eq("id", currentChatId)
+              .single();
+
+            if (chatRow?.test_state) {
+              const testState = chatRow.test_state as {
+                current_question: number;
+                status: string;
+                started_at: string;
+                answers: TestAnswer[];
+              };
+
+              const parsed = parseAIResponse(fullResponse, message);
+              if (parsed.isConfirmation && parsed.scores.length > 0) {
+                for (const score of parsed.scores) {
+                  const qIdx = testState.current_question;
+                  if (qIdx >= ISSP_QUESTIONS.length) break;
+                  const question = ISSP_QUESTIONS[qIdx];
+                  testState.answers.push({
+                    q: question.q,
+                    scale: question.scale,
+                    type: question.type,
+                    rawAnswer: score,
+                    score: question.type === "reverse" ? 6 - score : score,
+                    text: /^\d$/.test(message.trim()) ? undefined : message,
+                  });
+                  testState.current_question++;
+                }
+
+                // Check if test is complete
+                if (testState.answers.length >= 35) {
+                  testState.status = "completed";
+                  const result = calculateISSP(testState.answers);
+
+                  // Save test result
+                  await svc.from("test_results").insert({
+                    user_id: user.id,
+                    program_id: programId,
+                    chat_id: currentChatId,
+                    total_score: result.totalScore,
+                    total_raw: result.totalRaw,
+                    scores_by_scale: result.scoresByScale,
+                    answers: testState.answers,
+                    recommended_exercises: result.recommendedExercises,
+                    top_scales: result.topScales,
+                  });
+
+                  // Mark chat as completed
+                  await svc
+                    .from("chats")
+                    .update({ test_state: testState, status: "completed" })
+                    .eq("id", currentChatId);
+
+                  console.log("[ISSP] Test completed for user:", user.id, "score:", result.totalScore);
+                } else {
+                  // Update test state with new answers
+                  await svc
+                    .from("chats")
+                    .update({ test_state: testState })
+                    .eq("id", currentChatId);
+                }
+              }
+            }
+          } catch (err) {
+            console.error("[ISSP] Test state update error:", err);
+          }
+        }
+
+        // Portrait auto-update: every 5 user messages (skip for test chats)
+        if (currentChatType !== "test") try {
           const svc = createServiceClient();
           const { count: userMsgCount, error: countError } = await svc
             .from("messages")

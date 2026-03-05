@@ -13,6 +13,7 @@ interface ChatWindowProps {
   chatId: string | null;
   programId: string;
   exerciseId?: string;
+  chatType?: "exercise" | "free" | "test";
   userInitial: string;
   welcomeMessage?: string;
   quickReplies?: string[];
@@ -24,6 +25,7 @@ export function ChatWindow({
   chatId: initialChatId,
   programId,
   exerciseId,
+  chatType,
   userInitial,
   welcomeMessage,
   quickReplies,
@@ -103,6 +105,7 @@ export function ChatWindow({
           chatId,
           programId,
           exerciseId,
+          chatType,
         }),
       });
 
