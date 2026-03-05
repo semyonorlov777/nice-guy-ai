@@ -102,8 +102,8 @@ export async function POST(request: Request) {
         await supabase.from("payments").insert({
           user_id: order.user_id,
           amount: order.amount,
-          tokens: order.tokens_to_add,
-          type: order.product_key,
+          tokens_added: order.tokens_to_add,
+          yookassa_id: order.yookassa_payment_id,
           status: "completed",
         });
 
