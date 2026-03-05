@@ -39,7 +39,7 @@ export const PRODUCTS: Record<string, Product> = {
     type: "subscription",
     name: "Подписка Про",
     description: "Подписка Про — 500 токенов/мес",
-    amount: 990,
+    amount: 5, // TEMP: тест, вернуть 990
     tokens: 500,
   },
   sub_max: {
