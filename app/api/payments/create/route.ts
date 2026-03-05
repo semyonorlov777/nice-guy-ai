@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       order_id: order.id,
     });
   } catch (err) {
-    console.error("[payments/create] YooKassa error:", err);
+    console.error("[payments/create] YooKassa error:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
     await serviceClient.from("orders").delete().eq("id", order.id);
     return Response.json(
       { error: "Ошибка платёжной системы" },
