@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
-import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
 export async function PublicHeader() {
   const supabase = await createClient();
@@ -17,7 +16,7 @@ export async function PublicHeader() {
         </div>
       </Link>
       {user ? (
-        <Link href={`/program/${DEFAULT_PROGRAM_SLUG}/chat`} className="header-cta">
+        <Link href="/" className="header-cta">
           В приложение
         </Link>
       ) : (

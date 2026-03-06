@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
-
-const DEFAULT_REDIRECT = `/program/${DEFAULT_PROGRAM_SLUG}/chat`;
+import { DEFAULT_REDIRECT } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
