@@ -85,10 +85,13 @@ export default async function ChatPage({
       <div className="welcome-card">
         <div className="welcome-emoji">{"📖"}</div>
         <div className="welcome-title">{program.title}</div>
-        <div className="welcome-sub">{exerciseCount || 0} упражнений</div>
+        {(exerciseCount || 0) > 0 && (
+          <div className="welcome-sub">{exerciseCount} упражнений</div>
+        )}
         <div className="welcome-desc">
-          AI-ассистент проведёт тебя через каждое упражнение и поможет
-          разобраться в себе.
+          {(exerciseCount || 0) > 0
+            ? "AI-ассистент проведёт тебя через каждое упражнение и поможет разобраться в себе."
+            : "Свободный чат с AI-ассистентом по теме книги. Задавай вопросы и обсуждай идеи."}
         </div>
       </div>
     </ChatWindow>

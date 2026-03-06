@@ -87,6 +87,16 @@ export default async function ExercisesPage({
           </small>
         </div>
 
+        {sortedChapters.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">{"📚"}</div>
+            <div className="empty-state-title">Упражнения скоро появятся</div>
+            <div className="empty-state-text">
+              Мы работаем над программой. Пока можешь попробовать свободный чат.
+            </div>
+          </div>
+        )}
+
         {sortedChapters.map(([chapter, exs]) => {
           const doneCount = exs.filter(
             (e) => getStatus(e.id) === "done"
