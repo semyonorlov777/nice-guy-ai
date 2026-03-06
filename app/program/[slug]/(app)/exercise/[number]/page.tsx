@@ -89,7 +89,7 @@ export default async function ExercisePage({
     >
       <div className="exercise-intro">
         <div className="exercise-intro-label">
-          Упражнение {exercise.number} из {count || 46}
+          Упражнение {exercise.number} из {count || 0}
         </div>
         <div className="exercise-intro-title">{exercise.title}</div>
         <div className="exercise-intro-desc">{exercise.description}</div>

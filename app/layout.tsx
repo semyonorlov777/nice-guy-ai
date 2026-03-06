@@ -17,8 +17,8 @@ const cormorant = Cormorant_Garamond({
 const BUILD_TIME = new Date().toISOString();
 
 export const metadata: Metadata = {
-  title: "НеСлавный — AI-тренажёр",
-  description: "AI-тренажёр по книге «Хватит быть славным парнем»",
+  title: "AI-тренажёры по книгам",
+  description: "Платформа AI-тренажёров для работы над собой",
 };
 
 export default function RootLayout({

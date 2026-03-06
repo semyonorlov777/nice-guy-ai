@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { exchangeCodeAndGetUser, findOrCreateYandexUser } from "@/lib/yandex-auth";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
-const DEFAULT_REDIRECT = "/program/nice-guy/chat";
+const DEFAULT_REDIRECT = `/program/${DEFAULT_PROGRAM_SLUG}/chat`;
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

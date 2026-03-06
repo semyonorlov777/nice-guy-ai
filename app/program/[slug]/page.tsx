@@ -8,11 +8,24 @@ import { SolutionSection } from "@/components/landing/SolutionSection";
 import { AnonymousChat } from "@/components/AnonymousChat";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 
-export const metadata: Metadata = {
-  title: "НеСлавный — AI-тренажёр по книге «No More Mr. Nice Guy»",
-  description:
-    "46 упражнений из книги Роберта Гловера с AI-ассистентом. Психологический портрет, персональные вопросы, полная конфиденциальность.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const svc = createServiceClient();
+  const { data: program } = await svc
+    .from("programs")
+    .select("meta_title, meta_description")
+    .eq("slug", slug)
+    .single();
+
+  return {
+    title: program?.meta_title || "AI-тренажёры по книгам",
+    description: program?.meta_description || "Платформа AI-тренажёров для работы над собой",
+  };
+}
 
 interface LandingData {
   hero_tag: string;

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { PublicHeader } from "@/components/PublicHeader";
 
 export const metadata: Metadata = {
-  title: "Публичная оферта — НеСлавный",
-  description: "Публичная оферта и условия использования сервиса НеСлавный.",
+  title: "Публичная оферта",
+  description: "Публичная оферта и условия использования сервиса.",
 };
 
 const D = "var(--font-display)";
@@ -44,7 +44,7 @@ export default function LegalPage() {
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         {/* Back link */}
         <Link
-          href="/program/nice-guy"
+          href="/"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -304,7 +304,7 @@ export default function LegalPage() {
         {/* Footer link */}
         <div style={{ marginTop: 32, textAlign: "center" }}>
           <Link
-            href="/program/nice-guy"
+            href="/"
             style={{ color: "#c9a84c", fontSize: 14, textDecoration: "none" }}
           >
             ← Вернуться на главную

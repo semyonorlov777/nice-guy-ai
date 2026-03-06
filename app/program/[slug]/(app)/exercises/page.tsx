@@ -1,22 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 
-const CHAPTER_TITLES: Record<number, string> = {
-  1: "Синдром славного парня",
-  2: "Формирование славного парня",
-  3: "Учитесь радовать единственного важного человека",
-  4: "Сделайте свои потребности приоритетом",
-  5: "Верните себе свою силу",
-  6: "Верните себе свою мужественность",
-  7: "Постройте отношения, которые работают",
-  8: "Получите тот секс, которого заслуживаете",
-  9: "Станьте тем, кем хотите быть",
-};
-
 interface Exercise {
   id: string;
   number: number;
   chapter: number;
+  chapter_title: string | null;
   title: string;
   description: string;
 }
@@ -45,7 +34,7 @@ export default async function ExercisesPage({
 
   const { data: exercises } = await supabase
     .from("exercises")
-    .select("id, number, chapter, title, description")
+    .select("id, number, chapter, chapter_title, title, description")
     .eq("program_id", program.id)
     .order("number");
 
@@ -106,7 +95,7 @@ export default async function ExercisesPage({
           return (
             <div key={chapter} className="chapter-group">
               <div className="chapter-header">
-                Глава {chapter} &middot; {CHAPTER_TITLES[chapter] || ""}
+                Глава {chapter} &middot; {exs[0]?.chapter_title || ""}
                 <span className="chapter-progress">
                   {doneCount} / {exs.length}{" "}
                   {doneCount > 0 ? "\u2713" : ""}

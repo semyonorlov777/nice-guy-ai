@@ -40,6 +40,12 @@ export default async function ChatPage({
     user.email?.[0]?.toUpperCase() ||
     "?";
 
+  // Count exercises for this program
+  const { count: exerciseCount } = await supabase
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("program_id", program.id);
+
   // Find existing free chat
   const { data: chat } = await supabase
     .from("chats")
@@ -78,7 +84,7 @@ export default async function ChatPage({
       <div className="welcome-card">
         <div className="welcome-emoji">{"📖"}</div>
         <div className="welcome-title">{program.title}</div>
-        <div className="welcome-sub">46 упражнений</div>
+        <div className="welcome-sub">{exerciseCount || 0} упражнений</div>
         <div className="welcome-desc">
           AI-ассистент проведёт тебя через каждое упражнение и поможет
           разобраться в себе.

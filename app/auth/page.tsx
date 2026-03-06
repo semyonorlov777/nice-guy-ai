@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { createClient } from "@/lib/supabase";
 
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+
 const D = "var(--font-display)";
-const DEFAULT_REDIRECT = "/program/nice-guy/chat";
+const DEFAULT_REDIRECT = `/program/${DEFAULT_PROGRAM_SLUG}/chat`;
 const TELEGRAM_BOT_ID = "8544302305";
 
 declare global {
@@ -279,7 +281,7 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
             marginBottom: 8,
           }}
         >
-          НеСлавный
+          Вход
         </h1>
         <p style={{ fontSize: 15, color: "#888", marginBottom: 4 }}>Войди или зарегистрируйся</p>
         <p style={{ fontSize: 12, color: "#555" }}>Без пароля. Вход в один клик.</p>
