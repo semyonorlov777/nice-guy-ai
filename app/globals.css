@@ -283,6 +283,9 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .portrait-observation-text { font-size: 14px; color: var(--text-primary); line-height: 1.5; }
   .portrait-observation-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
+  .portrait-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .portrait-tag { font-size: 13px; padding: 4px 12px; border-radius: 16px; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-light); }
+
   .portrait-hint { font-size: 12px; color: var(--text-muted); text-align: center; padding-top: 8px; }
 
   .portrait-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 48px 16px; }

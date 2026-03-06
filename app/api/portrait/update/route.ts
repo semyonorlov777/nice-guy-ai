@@ -47,7 +47,15 @@ export async function updatePortrait(chatId: string, trigger: string): Promise<{
   const currentPortrait = portrait?.content || {};
   console.log("[PORTRAIT] Current portrait exists:", !!portrait);
 
-  // 4. Determine source label
+  // 4. Load program's portrait_prompt (fallback to file)
+  const { data: programRow } = await supabase
+    .from("programs")
+    .select("portrait_prompt")
+    .eq("id", chat.program_id)
+    .single();
+  const promptToUse = programRow?.portrait_prompt || PORTRAIT_ANALYST_PROMPT;
+
+  // 5. Determine source label
   let sourceLabel = "свободный чат";
   if (chat.exercise_id) {
     const { data: exercise } = await supabase
@@ -85,7 +93,7 @@ ${chatTranscript}
   console.log("[PORTRAIT] Calling Gemini Pro...");
   let responseText: string;
   try {
-    responseText = await analyzeForPortrait(PORTRAIT_ANALYST_PROMPT, userMessage);
+    responseText = await analyzeForPortrait(promptToUse, userMessage);
     console.log("[PORTRAIT] Gemini Pro response received, length:", responseText.length);
   } catch (err) {
     console.error("[PORTRAIT] Gemini Pro error:", err);

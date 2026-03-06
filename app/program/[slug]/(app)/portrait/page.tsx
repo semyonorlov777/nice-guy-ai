@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import type { PortraitContent } from "@/types/portrait";
-
-const TOTAL_EXERCISES = 46;
+import type { PortraitContent, PortraitSection } from "@/types/portrait";
+import { isLegacyPortrait, convertLegacyPortrait } from "@/types/portrait";
 
 export default async function PortraitPage({
   params,
@@ -25,6 +24,12 @@ export default async function PortraitPage({
     .single();
   if (!program) redirect("/");
 
+  // COUNT exercises for this program
+  const { count: totalExercises } = await supabase
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("program_id", program.id);
+
   const { data: portrait } = await supabase
     .from("portraits")
     .select("content")
@@ -32,19 +37,19 @@ export default async function PortraitPage({
     .eq("program_id", program.id)
     .maybeSingle();
 
-  const content = portrait?.content as PortraitContent | null;
+  const raw = portrait?.content;
+  let content: PortraitContent | null = null;
 
-  const hasPatterns = (content?.nice_guy_patterns?.patterns?.length ?? 0) > 0;
-  const hasInsights = (content?.key_insights?.length ?? 0) > 0;
-  const hasFamily = (content?.family_system?.summary?.length ?? 0) > 0;
-  const hasDefense = (content?.defense_mechanisms?.mechanisms?.length ?? 0) > 0;
-  const hasGrowth = (content?.growth_zones?.observations?.length ?? 0) > 0;
+  if (isLegacyPortrait(raw)) {
+    content = convertLegacyPortrait(raw);
+  } else if (raw && typeof raw === "object" && "sections" in raw) {
+    content = raw as PortraitContent;
+  }
 
-  const hasAnyContent = hasPatterns || hasInsights || hasFamily || hasDefense || hasGrowth;
-  const isEmpty = !content || !hasAnyContent;
-
+  const isEmpty = !content || content.sections.length === 0;
   const exercisesCompleted = content?.exercises_completed || 0;
-  const progressPct = Math.round((exercisesCompleted / TOTAL_EXERCISES) * 100);
+  const total = totalExercises || 0;
+  const progressPct = total > 0 ? Math.round((exercisesCompleted / total) * 100) : 0;
 
   return (
     <div className="content-scroll">
@@ -52,10 +57,10 @@ export default async function PortraitPage({
         {/* Header */}
         <div className="portrait-header">
           <h1 className="portrait-title">Портрет</h1>
-          {exercisesCompleted > 0 && (
+          {exercisesCompleted > 0 && total > 0 && (
             <>
               <div className="portrait-progress-label">
-                Пройдено упражнений: {exercisesCompleted} / {TOTAL_EXERCISES}
+                Пройдено упражнений: {exercisesCompleted} / {total}
               </div>
               <div className="portrait-progress-track">
                 <div
@@ -81,93 +86,11 @@ export default async function PortraitPage({
           </div>
         ) : (
           <>
-            {/* Patterns */}
-            {hasPatterns && (
-              <div className="portrait-section">
-                <h2 className="portrait-section-title">Паттерны</h2>
-                <div className="portrait-patterns">
-                  {content!.nice_guy_patterns.patterns.map((p, i) => (
-                    <div key={i} className="portrait-card">
-                      <div className="portrait-card-head">
-                        <span className="portrait-card-name">{p.name}</span>
-                        <span className={`portrait-badge portrait-badge--${p.intensity}`}>
-                          {p.intensity === "high"
-                            ? "выражен сильно"
-                            : p.intensity === "medium"
-                              ? "выражен"
-                              : "замечен"}
-                        </span>
-                      </div>
-                      <div className="portrait-card-context">{p.context}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {content!.sections.map((section) => (
+              <SectionRenderer key={section.id} section={section} />
+            ))}
 
-            {/* Insights */}
-            {hasInsights && (
-              <div className="portrait-section">
-                <h2 className="portrait-section-title">Инсайты</h2>
-                <div className="portrait-insights">
-                  {content!.key_insights.map((ins, i) => (
-                    <div key={i} className="portrait-insight">
-                      <span className="portrait-insight-dot" />
-                      <div>
-                        <div className="portrait-insight-text">{ins.text}</div>
-                        <div className="portrait-insight-meta">
-                          {ins.source_title} &middot; {ins.added_at}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Family system */}
-            {hasFamily && (
-              <div className="portrait-section">
-                <h2 className="portrait-section-title">Семейная система</h2>
-                <p className="portrait-text">{content!.family_system.summary}</p>
-              </div>
-            )}
-
-            {/* Defense mechanisms */}
-            {hasDefense && (
-              <div className="portrait-section">
-                <h2 className="portrait-section-title">Защитные механизмы</h2>
-                <div className="portrait-mechanisms">
-                  {content!.defense_mechanisms.mechanisms.map((m, i) => (
-                    <div key={i} className="portrait-mechanism">
-                      <div className="portrait-mechanism-name">{m.name}</div>
-                      <div className="portrait-mechanism-example">{m.example}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Growth zones */}
-            {hasGrowth && (
-              <div className="portrait-section">
-                <h2 className="portrait-section-title">Зоны роста</h2>
-                <div className="portrait-growth">
-                  {content!.growth_zones.observations.map((obs, i) => (
-                    <div key={i} className="portrait-observation">
-                      <span className="portrait-observation-check">&#x2713;</span>
-                      <div>
-                        <div className="portrait-observation-text">{obs.text}</div>
-                        <div className="portrait-observation-meta">{obs.added_at}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Hint when some sections are still empty */}
-            {!(hasPatterns && hasInsights && hasFamily && hasDefense && hasGrowth) && (
+            {content!.sections.length < 5 && (
               <div className="portrait-hint">
                 Остальные секции появятся по мере общения с AI
               </div>
@@ -177,4 +100,86 @@ export default async function PortraitPage({
       </div>
     </div>
   );
+}
+
+function SectionRenderer({ section }: { section: PortraitSection }) {
+  switch (section.type) {
+    case "patterns":
+      return (
+        <div className="portrait-section">
+          <h2 className="portrait-section-title">
+            {section.icon && <span>{section.icon} </span>}
+            {section.title}
+          </h2>
+          <div className="portrait-patterns">
+            {section.data.items.map((p, i) => (
+              <div key={i} className="portrait-card">
+                <div className="portrait-card-head">
+                  <span className="portrait-card-name">{p.name}</span>
+                  <span className={`portrait-badge portrait-badge--${p.intensity}`}>
+                    {p.intensity === "high"
+                      ? "выражен сильно"
+                      : p.intensity === "medium"
+                        ? "выражен"
+                        : "замечен"}
+                  </span>
+                </div>
+                <div className="portrait-card-context">{p.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "insights":
+      return (
+        <div className="portrait-section">
+          <h2 className="portrait-section-title">
+            {section.icon && <span>{section.icon} </span>}
+            {section.title}
+          </h2>
+          <div className="portrait-insights">
+            {section.data.items.map((ins, i) => (
+              <div key={i} className="portrait-insight">
+                <span className="portrait-insight-dot" />
+                <div>
+                  <div className="portrait-insight-text">{ins.text}</div>
+                  {(ins.source || ins.date) && (
+                    <div className="portrait-insight-meta">
+                      {[ins.source, ins.date].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "text":
+      return (
+        <div className="portrait-section">
+          <h2 className="portrait-section-title">
+            {section.icon && <span>{section.icon} </span>}
+            {section.title}
+          </h2>
+          <p className="portrait-text">{section.data.text}</p>
+        </div>
+      );
+
+    case "tags":
+      return (
+        <div className="portrait-section">
+          <h2 className="portrait-section-title">
+            {section.icon && <span>{section.icon} </span>}
+            {section.title}
+          </h2>
+          <div className="portrait-tags">
+            {section.data.items.map((tag, i) => (
+              <span key={i} className="portrait-tag">{tag}</span>
+            ))}
+          </div>
+        </div>
+      );
+  }
 }
