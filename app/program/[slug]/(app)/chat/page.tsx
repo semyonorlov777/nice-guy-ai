@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { ChatWindow } from "@/components/ChatWindow";
+import { toUIMessages } from "@/lib/utils";
 
 interface ProgramConfig {
   welcome_message?: string;
@@ -58,7 +59,7 @@ export default async function ChatPage({
     .maybeSingle();
 
   // Load messages if chat exists
-  let initialMessages: { role: "user" | "assistant"; content: string }[] = [];
+  let initialMessages: { role: string; content: string }[] = [];
   if (chat) {
     const { data: messages } = await supabase
       .from("messages")
@@ -67,14 +68,14 @@ export default async function ChatPage({
       .order("created_at", { ascending: true });
 
     initialMessages = (messages || []).map((m) => ({
-      role: m.role as "user" | "assistant",
+      role: m.role,
       content: m.content,
     }));
   }
 
   return (
     <ChatWindow
-      initialMessages={initialMessages}
+      initialMessages={toUIMessages(initialMessages)}
       chatId={chat?.id || null}
       programId={program.id}
       userInitial={userInitial}

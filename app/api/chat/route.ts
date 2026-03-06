@@ -1,11 +1,11 @@
+import { streamText } from "ai";
+import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { streamChat } from "@/lib/gemini";
 import { updatePortrait } from "@/app/api/portrait/update/route";
 import { parseAIResponse } from "@/lib/issp-parser";
 import { calculateISSP } from "@/lib/issp-scoring";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
-import type { Content } from "@google/generative-ai";
 
 const DEFAULT_BALANCE = 1000;
 
@@ -20,10 +20,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "Не авторизован" }, { status: 401 });
   }
 
-  // 2. Parse body
-  const { message, chatId, programId, exerciseId, chatType } = await request.json();
+  // 2. Parse body — useChat отправляет { messages: UIMessage[], ...body }
+  const body = await request.json();
+  const { messages: clientMessages, chatId, programId, exerciseId, chatType } =
+    body;
+
+  // Извлекаем текст последнего user-сообщения из UIMessage parts
+  const lastClientMsg = clientMessages?.[clientMessages.length - 1];
+  const message =
+    lastClientMsg?.parts
+      ?.filter((p: { type: string }) => p.type === "text")
+      ?.map((p: { text: string }) => p.text)
+      ?.join("") || lastClientMsg?.content;
+
   if (!message || !programId) {
-    return Response.json({ error: "Не указано сообщение или программа" }, { status: 400 });
+    return Response.json(
+      { error: "Не указано сообщение или программа" },
+      { status: 400 }
+    );
   }
 
   // 3. Get or create user record + check balance
@@ -34,7 +48,6 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!userData) {
-    // Auto-create user record with service client (bypasses RLS)
     console.log("[chat] Creating users record for", user.id);
     const serviceClient = createServiceClient();
     const { data: newUser, error: createError } = await serviceClient
@@ -74,8 +87,12 @@ export async function POST(request: Request) {
   }
 
   // 5. Load exercise (if exercise chat)
-  let exercise: { id: string; system_prompt: string; title: string; welcome_message: string | null } | null =
-    null;
+  let exercise: {
+    id: string;
+    system_prompt: string;
+    title: string;
+    welcome_message: string | null;
+  } | null = null;
   if (exerciseId) {
     const { data } = await supabase
       .from("exercises")
@@ -99,11 +116,14 @@ export async function POST(request: Request) {
   const isTestMode = chatType === "test";
   let currentChatId = chatId;
   let isNewChat = false;
-  let currentChatType = isTestMode ? "test" : exerciseId ? "exercise" : "free";
+  let currentChatType = isTestMode
+    ? "test"
+    : exerciseId
+      ? "exercise"
+      : "free";
 
   if (!currentChatId) {
     if (isTestMode) {
-      // For test mode: find active test chat
       const { data: existingChat } = await supabase
         .from("chats")
         .select("id")
@@ -118,7 +138,6 @@ export async function POST(request: Request) {
         currentChatId = existingChat.id;
       }
     } else {
-      // Build query — chain properly to avoid mutation issues
       let findQuery = supabase
         .from("chats")
         .select("id")
@@ -139,7 +158,6 @@ export async function POST(request: Request) {
     }
 
     if (!currentChatId) {
-      // Create new chat
       const insertData: Record<string, unknown> = {
         user_id: user.id,
         program_id: programId,
@@ -176,9 +194,9 @@ export async function POST(request: Request) {
       currentChatId = newChat.id;
       isNewChat = true;
 
-      // Insert welcome message (not for test — AI generates its own)
       if (!isTestMode) {
-        const welcomeText = exercise?.welcome_message || program.free_chat_welcome;
+        const welcomeText =
+          exercise?.welcome_message || program.free_chat_welcome;
         if (welcomeText) {
           await supabase.from("messages").insert({
             chat_id: currentChatId,
@@ -190,7 +208,6 @@ export async function POST(request: Request) {
       }
     }
   } else {
-    // Determine chat type from existing chat
     const { data: chatData } = await supabase
       .from("chats")
       .select("chat_type")
@@ -201,7 +218,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // 8. Load message history
+  // 8. Load message history from DB
   const { data: dbMessages } = await supabase
     .from("messages")
     .select("role, content")
@@ -225,17 +242,23 @@ export async function POST(request: Request) {
     }
   }
 
-  // 10. Convert to Gemini format
-  // Filter out leading "model" messages (e.g. welcome messages) —
-  // Gemini requires history to start with "user"
-  const allMessages = (dbMessages || []).map((msg) => ({
-    role: (msg.role === "assistant" ? "model" : "user") as "model" | "user",
-    parts: [{ text: msg.content }],
+  // 10. Build messages for AI SDK
+  // Фильтруем leading assistant messages (Gemini требует начинать с user)
+  const allDbMessages = (dbMessages || []).map((msg) => ({
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
   }));
-  const firstUserIdx = allMessages.findIndex((m) => m.role === "user");
-  const history: Content[] = firstUserIdx >= 0 ? allMessages.slice(firstUserIdx) : [];
+  const firstUserIdx = allDbMessages.findIndex((m) => m.role === "user");
+  const historyMessages =
+    firstUserIdx >= 0 ? allDbMessages.slice(firstUserIdx) : [];
 
-  // 11. Save user message
+  // Добавляем текущее сообщение
+  const aiMessages = [
+    ...historyMessages,
+    { role: "user" as const, content: message },
+  ];
+
+  // 11. Save user message BEFORE streaming
   const { error: msgError } = await supabase.from("messages").insert({
     chat_id: currentChatId,
     role: "user",
@@ -251,192 +274,142 @@ export async function POST(request: Request) {
     );
   }
 
-  // 12. Stream response from Gemini
-  let result;
-  try {
-    result = await streamChat(systemPrompt, history, message);
-  } catch (error) {
-    console.error("[chat] Gemini API error:", error);
-    return Response.json(
-      { error: "Ошибка AI. Проверьте API ключ." },
-      { status: 502 }
-    );
-  }
+  // 12. Stream with Vercel AI SDK
+  //
+  // Стратегия onFinish:
+  // - Save AI message + deduct tokens — критичные, await
+  // - ISSP parsing + portrait update — fire-and-forget через .catch()
+  //
+  // Fallback: если ISSP/portrait не сохраняются — вынести в
+  // отдельный POST endpoint, который клиент вызывает из onFinish useChat.
+  //
+  const result = streamText({
+    model: google("gemini-2.5-flash"),
+    system: systemPrompt || undefined,
+    messages: aiMessages,
+    onFinish: async ({ text, usage }) => {
+      const tokensUsed = usage.totalTokens || 0;
 
-  const encoder = new TextEncoder();
-  let fullResponse = "";
+      // Save AI message (критичная операция — await)
+      await supabase.from("messages").insert({
+        chat_id: currentChatId,
+        role: "assistant",
+        content: text,
+        tokens_used: tokensUsed,
+      });
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      if (isNewChat) {
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "chat_id", chatId: currentChatId })}\n\n`
-          )
-        );
+      // Deduct tokens (критичная операция — await)
+      if (tokensUsed > 0) {
+        const newBalance = Math.max(0, userData.balance_tokens - tokensUsed);
+        await supabase
+          .from("profiles")
+          .update({ balance_tokens: newBalance })
+          .eq("id", user.id);
       }
 
-      try {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            fullResponse += text;
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "delta", content: text })}\n\n`
-              )
-            );
-          }
-        }
+      // ISSP test parsing (fire-and-forget)
+      if (currentChatType === "test") {
+        const isspPromise = (async () => {
+          const svc = createServiceClient();
+          const { data: chatRow } = await svc
+            .from("chats")
+            .select("test_state")
+            .eq("id", currentChatId)
+            .single();
 
-        // Get usage metadata
-        const response = await result.response;
-        const tokensUsed = response.usageMetadata?.totalTokenCount || 0;
+          if (chatRow?.test_state) {
+            const testState = chatRow.test_state as {
+              current_question: number;
+              status: string;
+              started_at: string;
+              answers: TestAnswer[];
+            };
 
-        // Save AI message
-        await supabase.from("messages").insert({
-          chat_id: currentChatId,
-          role: "assistant",
-          content: fullResponse,
-          tokens_used: tokensUsed,
-        });
+            const parsed = parseAIResponse(text, message);
+            if (parsed.isConfirmation && parsed.scores.length > 0) {
+              for (const score of parsed.scores) {
+                const qIdx = testState.current_question;
+                if (qIdx >= ISSP_QUESTIONS.length) break;
+                const question = ISSP_QUESTIONS[qIdx];
+                testState.answers.push({
+                  q: question.q,
+                  scale: question.scale,
+                  type: question.type,
+                  rawAnswer: score,
+                  score: question.type === "reverse" ? 6 - score : score,
+                  text: /^\d$/.test(message.trim()) ? undefined : message,
+                });
+                testState.current_question++;
+              }
 
-        // Deduct tokens
-        if (tokensUsed > 0) {
-          const newBalance = Math.max(0, userData.balance_tokens - tokensUsed);
-          await supabase
-            .from("profiles")
-            .update({ balance_tokens: newBalance })
-            .eq("id", user.id);
-        }
+              if (testState.answers.length >= 35) {
+                testState.status = "completed";
+                const isspResult = calculateISSP(testState.answers);
 
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "done", tokensUsed })}\n\n`
-          )
-        );
+                await svc.from("test_results").insert({
+                  user_id: user.id,
+                  program_id: programId,
+                  chat_id: currentChatId,
+                  total_score: isspResult.totalScore,
+                  total_raw: isspResult.totalRaw,
+                  scores_by_scale: isspResult.scoresByScale,
+                  answers: testState.answers,
+                  recommended_exercises: isspResult.recommendedExercises,
+                  top_scales: isspResult.topScales,
+                });
 
-        // Test mode: parse AI response and update test state
-        if (currentChatType === "test") {
-          try {
-            const svc = createServiceClient();
-            const { data: chatRow } = await svc
-              .from("chats")
-              .select("test_state")
-              .eq("id", currentChatId)
-              .single();
+                await svc
+                  .from("chats")
+                  .update({ test_state: testState, status: "completed" })
+                  .eq("id", currentChatId);
 
-            if (chatRow?.test_state) {
-              const testState = chatRow.test_state as {
-                current_question: number;
-                status: string;
-                started_at: string;
-                answers: TestAnswer[];
-              };
-
-              const parsed = parseAIResponse(fullResponse, message);
-              if (parsed.isConfirmation && parsed.scores.length > 0) {
-                for (const score of parsed.scores) {
-                  const qIdx = testState.current_question;
-                  if (qIdx >= ISSP_QUESTIONS.length) break;
-                  const question = ISSP_QUESTIONS[qIdx];
-                  testState.answers.push({
-                    q: question.q,
-                    scale: question.scale,
-                    type: question.type,
-                    rawAnswer: score,
-                    score: question.type === "reverse" ? 6 - score : score,
-                    text: /^\d$/.test(message.trim()) ? undefined : message,
-                  });
-                  testState.current_question++;
-                }
-
-                // Check if test is complete
-                if (testState.answers.length >= 35) {
-                  testState.status = "completed";
-                  const result = calculateISSP(testState.answers);
-
-                  // Save test result
-                  await svc.from("test_results").insert({
-                    user_id: user.id,
-                    program_id: programId,
-                    chat_id: currentChatId,
-                    total_score: result.totalScore,
-                    total_raw: result.totalRaw,
-                    scores_by_scale: result.scoresByScale,
-                    answers: testState.answers,
-                    recommended_exercises: result.recommendedExercises,
-                    top_scales: result.topScales,
-                  });
-
-                  // Mark chat as completed
-                  await svc
-                    .from("chats")
-                    .update({ test_state: testState, status: "completed" })
-                    .eq("id", currentChatId);
-
-                  console.log("[ISSP] Test completed for user:", user.id, "score:", result.totalScore);
-                } else {
-                  // Update test state with new answers
-                  await svc
-                    .from("chats")
-                    .update({ test_state: testState })
-                    .eq("id", currentChatId);
-                }
+                console.log(
+                  "[ISSP] Test completed for user:",
+                  user.id
+                );
+              } else {
+                await svc
+                  .from("chats")
+                  .update({ test_state: testState })
+                  .eq("id", currentChatId);
               }
             }
-          } catch (err) {
-            console.error("[ISSP] Test state update error:", err);
           }
-        }
+        })();
+        isspPromise.catch((err) => {
+          console.error("[ISSP] Test state update error:", err);
+        });
+      }
 
-        // Portrait auto-update: every 5 user messages (skip for test chats)
-        if (currentChatType !== "test") try {
+      // Portrait auto-update (fire-and-forget)
+      if (currentChatType !== "test") {
+        const portraitPromise = (async () => {
           const svc = createServiceClient();
-          const { count: userMsgCount, error: countError } = await svc
+          const { count: userMsgCount } = await svc
             .from("messages")
             .select("id", { count: "exact", head: true })
             .eq("chat_id", currentChatId)
             .eq("role", "user");
 
-          console.log("[PORTRAIT] Message count:", userMsgCount, "Trigger:", userMsgCount && userMsgCount % 5 === 0, "error:", countError);
-
           if (userMsgCount && userMsgCount > 0 && userMsgCount % 5 === 0) {
-            console.log("[PORTRAIT] Triggering update for chat:", currentChatId);
-            // Fire and forget — don't await, don't block the user
-            updatePortrait(currentChatId, "message_count").catch((err) => {
-              console.error("[PORTRAIT] Background update failed:", err);
-            });
+            console.log(
+              "[PORTRAIT] Triggering update for chat:",
+              currentChatId
+            );
+            await updatePortrait(currentChatId, "message_count");
           }
-        } catch (err) {
-          console.error("[PORTRAIT] Trigger check error:", err);
-        }
-      } catch (error) {
-        console.error("[chat] Streaming error:", error);
-        if (fullResponse) {
-          await supabase.from("messages").insert({
-            chat_id: currentChatId,
-            role: "assistant",
-            content: fullResponse,
-            tokens_used: 0,
-          });
-        }
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message: "Ошибка при генерации ответа" })}\n\n`
-          )
-        );
+        })();
+        portraitPromise.catch((err) => {
+          console.error("[PORTRAIT] Background update failed:", err);
+        });
       }
-
-      controller.close();
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+  // 13. Return stream response with metadata
+  return result.toUIMessageStreamResponse({
+    messageMetadata: () => {
+      return { chatId: currentChatId };
     },
   });
 }

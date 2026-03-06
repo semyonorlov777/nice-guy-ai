@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import { InChatAuth } from "@/components/InChatAuth";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import type { UIMessage } from "ai";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -26,9 +24,7 @@ export function AnonymousChat({
   headerTitle,
   headerSubtitle,
 }: AnonymousChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -40,46 +36,103 @@ export function AnonymousChat({
   const storageKeyMessages = `anon_chat_${programSlug}_messages`;
   const storageKeySession = `anon_chat_${programSlug}_session_id`;
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Инициализируем session ID синхронно при рендере (до создания транспорта)
+  if (!sessionIdRef.current && typeof window !== "undefined") {
     try {
-      const savedSession = localStorage.getItem(storageKeySession);
-      if (savedSession) {
-        sessionIdRef.current = savedSession;
+      const saved = localStorage.getItem(storageKeySession);
+      if (saved) {
+        sessionIdRef.current = saved;
       } else {
         const newId = crypto.randomUUID();
         sessionIdRef.current = newId;
         localStorage.setItem(storageKeySession, newId);
       }
+    } catch {
+      sessionIdRef.current = crypto.randomUUID();
+    }
+  }
 
+  const { messages, sendMessage, status, error, setMessages } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat/anonymous",
+      body: {
+        session_id: sessionIdRef.current,
+        program_slug: programSlug,
+      },
+      fetch: async (url, options) => {
+        const response = await globalThis.fetch(
+          url as string | URL | Request,
+          options as RequestInit
+        );
+        if (response.status === 429) {
+          const data = await response.clone().json();
+          if (data.requiresAuth) {
+            throw new Error("AUTH_REQUIRED");
+          }
+        }
+        return response;
+      },
+    }),
+    onError: (err) => {
+      if (err.message === "AUTH_REQUIRED") {
+        setRequiresAuth(true);
+      } else {
+        console.error("[anon-chat] Error:", err.message);
+      }
+    },
+  });
+
+  // Загружаем сохранённые сообщения из localStorage при маунте
+  useEffect(() => {
+    try {
       const savedMessages = localStorage.getItem(storageKeyMessages);
       if (savedMessages) {
-        const parsed = JSON.parse(savedMessages) as Message[];
+        const parsed = JSON.parse(savedMessages) as Array<{
+          role: string;
+          content: string;
+        }>;
         if (parsed.length > 0) {
-          setMessages(parsed);
+          const uiMessages: UIMessage[] = parsed.map((msg, i) => ({
+            id: `saved-${i}`,
+            role: msg.role as "user" | "assistant",
+            parts: [{ type: "text" as const, text: msg.content }],
+          }));
+          setMessages(uiMessages);
           setShowQuickReplies(false);
         }
       }
     } catch {
-      sessionIdRef.current = crypto.randomUUID();
+      /* ignore */
     }
     setMounted(true);
-  }, [storageKeyMessages, storageKeySession]);
+  }, [storageKeyMessages, setMessages]);
 
-  // Save messages to localStorage on change
+  // Сохраняем сообщения в localStorage после завершения стриминга
   useEffect(() => {
-    if (!mounted) return;
-    try {
-      localStorage.setItem(storageKeyMessages, JSON.stringify(messages));
-    } catch {
-      // localStorage full or unavailable
+    if (messages.length > 0 && status === "ready") {
+      try {
+        const simplified = messages.map((m) => ({
+          role: m.role,
+          content: m.parts
+            .filter(
+              (p): p is { type: "text"; text: string } => p.type === "text"
+            )
+            .map((p) => p.text)
+            .join(""),
+        }));
+        localStorage.setItem(storageKeyMessages, JSON.stringify(simplified));
+      } catch {
+        /* localStorage full */
+      }
     }
-  }, [messages, mounted, storageKeyMessages]);
+  }, [messages, status, storageKeyMessages]);
 
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  // --- Scroll (включая landing page scroll) ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-      // On landing: scroll page to chat section if it's not visible
       if (scrollToSectionId) {
         const section = document.getElementById(scrollToSectionId);
         if (section) {
@@ -113,11 +166,11 @@ export function AnonymousChat({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSend();
     }
   }
 
-  async function sendMessage(text?: string) {
+  function handleSend(text?: string) {
     const msgText = (text || input).trim();
     if (!msgText || isStreaming || requiresAuth) return;
 
@@ -130,160 +183,62 @@ export function AnonymousChat({
 
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
+    sendMessage({ text: msgText });
+  }
 
-    const userMsg: Message = { role: "user", content: msgText };
-    const aiMsg: Message = { role: "assistant", content: "" };
-
-    const updatedMessages = [...messages, userMsg];
-
-    setMessages([...updatedMessages, aiMsg]);
-    setIsStreaming(true);
-
-    try {
-      const response = await fetch("/api/chat/anonymous", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionIdRef.current,
-          messages: updatedMessages,
-          program_slug: programSlug,
-        }),
-      });
-
-      if (response.status === 429) {
-        const data = await response.json();
-        if (data.requiresAuth) {
-          setRequiresAuth(true);
-          // Remove the empty AI message
-          setMessages(updatedMessages);
-          return;
-        }
-      }
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Ошибка сервера");
-      }
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === "delta") {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: last.content + data.content,
-                };
-                return updated;
-              });
-            } else if (data.type === "error") {
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: data.message || "Произошла ошибка",
-                };
-                return updated;
-              });
-            }
-          } catch {
-            // skip malformed SSE lines
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Anonymous chat error:", error);
-      const errorMsg =
-        error instanceof Error ? error.message : "Произошла ошибка";
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last?.role === "assistant" && !last.content) {
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: errorMsg,
-          };
-        }
-        return updated;
-      });
-    } finally {
-      setIsStreaming(false);
-    }
+  function getMessageText(msg: UIMessage): string {
+    return msg.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("");
   }
 
   function renderContent(content: string, isAi: boolean) {
     if (!content) return null;
-    if (isAi) {
-      return <ReactMarkdown>{content}</ReactMarkdown>;
-    }
-    return content.split("\n\n").map((paragraph, i) => (
-      <p key={i}>{paragraph}</p>
-    ));
-  }
-
-  function handleRetry() {
-    const lastUserIdx = messages.findLastIndex((m) => m.role === "user");
-    if (lastUserIdx === -1) return;
-    const lastUserText = messages[lastUserIdx].content;
-    setMessages((prev) => prev.slice(0, -1));
-    sendMessage(lastUserText);
-  }
-
-  function isErrorMessage(content: string) {
-    return /Ошибка|Недостаточно/.test(content);
+    if (isAi) return <ReactMarkdown>{content}</ReactMarkdown>;
+    return content.split("\n\n").map((paragraph, i) => <p key={i}>{paragraph}</p>);
   }
 
   async function handleAuthSuccess() {
     try {
-      const res = await fetch("/api/chat/migrate", {
+      // Конвертируем UIMessage → простой формат для миграции
+      const simplifiedMessages = messages.map((m) => ({
+        role: m.role,
+        content: getMessageText(m),
+      }));
+
+      await fetch("/api/chat/migrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           program_slug: programSlug,
-          messages,
+          messages: simplifiedMessages,
           session_id: sessionIdRef.current,
         }),
       });
-
-      // Clear localStorage regardless of migration result
-      try {
-        localStorage.removeItem(storageKeyMessages);
-        localStorage.removeItem(storageKeySession);
-      } catch { /* ignore */ }
-
-      if (res.ok) {
-        window.location.href = `/program/${programSlug}/chat`;
-      } else {
-        // Migration failed but user is authenticated — redirect anyway
-        window.location.href = `/program/${programSlug}/chat`;
-      }
     } catch {
-      // Network error — user is authenticated, just redirect
-      window.location.href = `/program/${programSlug}/chat`;
+      /* ignore */
     }
+
+    try {
+      localStorage.removeItem(storageKeyMessages);
+      localStorage.removeItem(storageKeySession);
+    } catch {
+      /* ignore */
+    }
+
+    window.location.href = `/program/${programSlug}/chat`;
   }
 
-  // Don't render until mounted (avoid hydration mismatch with localStorage)
   if (!mounted) return null;
 
   return (
     <div className="chat-zone">
-      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll}>
+      <div
+        className="chat-messages"
+        ref={messagesRef}
+        onScroll={handleScroll}
+      >
         <div className="chat-inner">
           {headerTitle && (
             <div className="chat-section-header">
@@ -307,7 +262,7 @@ export function AnonymousChat({
                 <button
                   key={i}
                   className="quick-reply-btn"
-                  onClick={() => sendMessage(text)}
+                  onClick={() => handleSend(text)}
                   disabled={isStreaming}
                 >
                   {text}
@@ -316,50 +271,53 @@ export function AnonymousChat({
             </div>
           )}
 
-          {messages.map((msg, i) => {
+          {messages.map((msg) => {
             const isAi = msg.role === "assistant";
-            const isLast = i === messages.length - 1;
-            const isThinking = isStreaming && isLast && isAi && !msg.content;
+            const text = getMessageText(msg);
+            const isLast = msg.id === messages[messages.length - 1]?.id;
+            const isThinking =
+              status === "submitted" && isLast && isAi && !text;
             if (isThinking) return null;
+
             return (
               <div
-                key={i}
+                key={msg.id}
                 className={`msg ${isAi ? "msg-ai" : "msg-user"}`}
               >
                 <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
                   {isAi ? "НС" : "?"}
                 </div>
                 <div className="msg-bubble">
-                  {renderContent(msg.content, isAi)}
-                  {isStreaming && isLast && isAi && (
+                  {renderContent(text, isAi)}
+                  {status === "streaming" && isLast && isAi && (
                     <span className="streaming-cursor">{"▊"}</span>
-                  )}
-                  {!isStreaming && isLast && isAi && isErrorMessage(msg.content) && (
-                    <button className="retry-btn" onClick={handleRetry}>
-                      Повторить
-                    </button>
                   )}
                 </div>
               </div>
             );
           })}
 
-          {isStreaming &&
-            messages.length > 0 &&
-            messages[messages.length - 1]?.content === "" && (
-              <div className="thinking-indicator">
-                думаю
-                <span className="thinking-dots">
-                  <span>.</span>
-                  <span>.</span>
-                  <span>.</span>
-                </span>
-              </div>
-            )}
-
-          {requiresAuth && (
-            <InChatAuth onAuthSuccess={handleAuthSuccess} />
+          {status === "submitted" && messages.length > 0 && (
+            <div className="thinking-indicator">
+              думаю
+              <span className="thinking-dots">
+                <span>.</span>
+                <span>.</span>
+                <span>.</span>
+              </span>
+            </div>
           )}
+
+          {error && !requiresAuth && (
+            <div className="msg msg-ai">
+              <div className="msg-avatar ai">НС</div>
+              <div className="msg-bubble">
+                <p>{error.message || "Произошла ошибка"}</p>
+              </div>
+            </div>
+          )}
+
+          {requiresAuth && <InChatAuth onAuthSuccess={handleAuthSuccess} />}
         </div>
       </div>
 
@@ -378,7 +336,7 @@ export function AnonymousChat({
             />
             <button
               className="send-btn"
-              onClick={() => sendMessage()}
+              onClick={() => handleSend()}
               disabled={isStreaming || !input.trim() || requiresAuth}
             >
               {"↑"}

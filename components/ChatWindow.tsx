@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import type { UIMessage } from "ai";
 
 interface ChatWindowProps {
-  initialMessages: Message[];
+  initialMessages: UIMessage[];
   chatId: string | null;
   programId: string;
   exerciseId?: string;
@@ -31,17 +29,45 @@ export function ChatWindow({
   quickReplies,
   children,
 }: ChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
+  const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [chatId, setChatId] = useState<string | null>(initialChatId);
-  const [showQuickReplies, setShowQuickReplies] = useState(
-    initialMessages.length === 0
-  );
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
 
+  const {
+    messages,
+    sendMessage,
+    status,
+    error,
+    regenerate,
+  } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: {
+        chatId: currentChatId,
+        programId,
+        exerciseId,
+        chatType,
+      },
+    }),
+    messages: initialMessages,
+    onFinish: ({ message }) => {
+      // Получаем chatId из metadata ответа
+      const meta = message as UIMessage & { metadata?: Record<string, unknown> };
+      if (meta.metadata?.chatId) {
+        setCurrentChatId(meta.metadata.chatId as string);
+      }
+    },
+    onError: (err) => {
+      console.error("Chat error:", err);
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  // --- Scroll logic ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
@@ -59,6 +85,7 @@ export function ChatWindow({
     isUserScrolledUp.current = !atBottom;
   }
 
+  // --- Input handling ---
   function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(e.target.value);
     const el = e.target;
@@ -69,16 +96,16 @@ export function ChatWindow({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSend();
     }
   }
 
-  async function sendMessage(text?: string) {
+  // --- Send ---
+  function handleSend(text?: string) {
     const msgText = (text || input).trim();
     if (!msgText || isStreaming) return;
 
     if (!text) {
-      // Only clear input if not a quick reply
       setInput("");
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
@@ -88,93 +115,17 @@ export function ChatWindow({
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
 
-    // Add user message + empty AI message for streaming
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: msgText },
-      { role: "assistant", content: "" },
-    ]);
-    setIsStreaming(true);
+    sendMessage({
+      text: msgText,
+    });
+  }
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: msgText,
-          chatId,
-          programId,
-          exerciseId,
-          chatType,
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Ошибка сервера");
-      }
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === "chat_id") {
-              setChatId(data.chatId);
-            } else if (data.type === "delta") {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                updated[updated.length - 1] = {
-                  ...last,
-                  content: last.content + data.content,
-                };
-                return updated;
-              });
-            } else if (data.type === "error") {
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: data.message || "Произошла ошибка",
-                };
-                return updated;
-              });
-            }
-          } catch {
-            // skip malformed SSE lines
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Chat error:", error);
-      const errorMsg =
-        error instanceof Error ? error.message : "Произошла ошибка";
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last?.role === "assistant" && !last.content) {
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: errorMsg,
-          };
-        }
-        return updated;
-      });
-    } finally {
-      setIsStreaming(false);
-    }
+  // --- Render helpers ---
+  function getMessageText(msg: UIMessage): string {
+    return msg.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("");
   }
 
   function renderContent(content: string, isAi: boolean) {
@@ -185,16 +136,6 @@ export function ChatWindow({
     return content.split("\n\n").map((paragraph, i) => (
       <p key={i}>{paragraph}</p>
     ));
-  }
-
-  function handleRetry() {
-    // Find the last user message
-    const lastUserIdx = messages.findLastIndex((m) => m.role === "user");
-    if (lastUserIdx === -1) return;
-    const lastUserText = messages[lastUserIdx].content;
-    // Remove the last AI message
-    setMessages((prev) => prev.slice(0, -1));
-    sendMessage(lastUserText);
   }
 
   function isErrorMessage(content: string) {
@@ -214,7 +155,7 @@ export function ChatWindow({
             <div className="msg msg-ai">
               <div className="msg-avatar ai">НС</div>
               <div className="msg-bubble">
-                {renderContent(welcomeMessage, true)}
+                <ReactMarkdown>{welcomeMessage}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -225,7 +166,7 @@ export function ChatWindow({
                 <button
                   key={i}
                   className="quick-reply-btn"
-                  onClick={() => sendMessage(text)}
+                  onClick={() => handleSend(text)}
                   disabled={isStreaming}
                 >
                   {text}
@@ -234,26 +175,26 @@ export function ChatWindow({
             </div>
           )}
 
-          {messages.map((msg, i) => {
+          {messages.map((msg) => {
             const isAi = msg.role === "assistant";
-            const isLast = i === messages.length - 1;
-            const isThinking = isStreaming && isLast && isAi && !msg.content;
+            const text = getMessageText(msg);
+            const isLast = msg.id === messages[messages.length - 1]?.id;
+            const isThinking = status === "submitted" && isLast && isAi && !text;
+
             if (isThinking) return null;
+
             return (
-              <div
-                key={i}
-                className={`msg ${isAi ? "msg-ai" : "msg-user"}`}
-              >
+              <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`}>
                 <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
                   {isAi ? "НС" : userInitial}
                 </div>
                 <div className="msg-bubble">
-                  {renderContent(msg.content, isAi)}
-                  {isStreaming && isLast && isAi && (
+                  {renderContent(text, isAi)}
+                  {status === "streaming" && isLast && isAi && (
                     <span className="streaming-cursor">{"▊"}</span>
                   )}
-                  {!isStreaming && isLast && isAi && isErrorMessage(msg.content) && (
-                    <button className="retry-btn" onClick={handleRetry}>
+                  {!isStreaming && isLast && isAi && isErrorMessage(text) && (
+                    <button className="retry-btn" onClick={() => regenerate()}>
                       Повторить
                     </button>
                   )}
@@ -262,18 +203,28 @@ export function ChatWindow({
             );
           })}
 
-          {isStreaming &&
-            messages.length > 0 &&
-            messages[messages.length - 1]?.content === "" && (
-              <div className="thinking-indicator">
-                думаю
-                <span className="thinking-dots">
-                  <span>.</span>
-                  <span>.</span>
-                  <span>.</span>
-                </span>
+          {status === "submitted" && messages.length > 0 && (
+            <div className="thinking-indicator">
+              думаю
+              <span className="thinking-dots">
+                <span>.</span>
+                <span>.</span>
+                <span>.</span>
+              </span>
+            </div>
+          )}
+
+          {error && (
+            <div className="msg msg-ai">
+              <div className="msg-avatar ai">НС</div>
+              <div className="msg-bubble">
+                <p>{error.message || "Произошла ошибка"}</p>
+                <button className="retry-btn" onClick={() => regenerate()}>
+                  Повторить
+                </button>
               </div>
-            )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,7 +243,7 @@ export function ChatWindow({
             />
             <button
               className="send-btn"
-              onClick={() => sendMessage()}
+              onClick={() => handleSend()}
               disabled={isStreaming || !input.trim()}
             >
               {"↑"}
