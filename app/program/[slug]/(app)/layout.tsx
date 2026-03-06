@@ -20,7 +20,7 @@ export default async function ProgramLayout({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, slug, title")
+    .select("id, slug, title, features")
     .eq("slug", slug)
     .single();
 
@@ -42,9 +42,9 @@ export default async function ProgramLayout({
 
   return (
     <div className="program-layout">
-      <Sidebar slug={slug} user={userInfo} />
+      <Sidebar slug={slug} user={userInfo} features={program.features as Record<string, boolean> | null} />
       <main className="program-main">{children}</main>
-      <MobileTabs slug={slug} />
+      <MobileTabs slug={slug} features={program.features as Record<string, boolean> | null} />
     </div>
   );
 }

@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
 
-const navItems = [
-  { key: "test", path: "/test", icon: "\u{1F4CA}", label: "Пройти тест" },
+const baseItems = [
   { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Свободный чат" },
   { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Упражнения" },
+];
+
+const featureItems = [
   { key: "portrait", path: "/portrait", icon: "\u{1F9D1}\u200D\u{1F4BB}", label: "Мой портрет" },
+  { key: "test", path: "/test", icon: "\u{1F4CA}", label: "Пройти тест" },
 ];
 
 interface UserInfo {
@@ -18,10 +21,15 @@ interface UserInfo {
   avatarUrl: string | null;
 }
 
-export function Sidebar({ slug, user }: { slug: string; user?: UserInfo | null }) {
+export function Sidebar({ slug, user, features }: { slug: string; user?: UserInfo | null; features?: Record<string, boolean> | null }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const base = `/program/${slug}`;
+
+  const navItems = [
+    ...baseItems,
+    ...featureItems.filter((item) => features?.[item.key] === true),
+  ];
 
   function getActiveKey() {
     if (pathname.startsWith(`${base}/test`)) return "test";
