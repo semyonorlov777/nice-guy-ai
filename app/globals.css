@@ -73,6 +73,7 @@
 
 /* ── Public pages: force dark body ── */
 body:has(.landing) { background: #0f1114 !important; color: #e0e0e0 !important; }
+body:has(.catalog-page) { background: #0f1114 !important; color: #e0e0e0 !important; }
 body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !important; }
 
 @keyframes fadeIn {

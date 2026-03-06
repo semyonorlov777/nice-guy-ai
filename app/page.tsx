@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { PublicHeader } from "@/components/PublicHeader";
 
 export const metadata: Metadata = {
@@ -14,12 +14,13 @@ interface LandingData {
 
 export default async function CatalogPage() {
   const supabase = await createClient();
+  const serviceClient = createServiceClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: programs } = await supabase
+  const { data: programs } = await serviceClient
     .from("programs")
     .select("id, slug, title, landing_data, meta_description")
     .order("created_at");
