@@ -53,7 +53,7 @@ export type VoiceBackend = "web-speech" | "media-recorder" | "none";
 export interface UseVoiceInputOptions {
   lang?: string;
   maxDuration?: number; // секунды
-  onTranscript: (text: string, durationSec: number) => void;
+  onTranscript: (text: string) => void;
   paidFallbackEnabled?: boolean;
 }
 
@@ -331,7 +331,30 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
         stateRef.current = "error";
         return;
       }
-      console.error("[useVoiceInput] Speech error:", event.error);
+      if (event.error === "network") {
+        // Сетевая ошибка — доставить накопленный текст если есть
+        const text = transcriptRef.current.trim();
+        fullCleanup();
+        setDuration(0);
+        if (text) {
+          setState("idle");
+          stateRef.current = "idle";
+          onTranscriptRef.current(text);
+        } else {
+          setErrorMsg("Ошибка сети при распознавании речи");
+          setState("error");
+          stateRef.current = "error";
+          setTimeout(() => {
+            if (stateRef.current === "error") {
+              setErrorMsg(null);
+              setState("idle");
+              stateRef.current = "idle";
+            }
+          }, 3000);
+        }
+        return;
+      }
+      console.error("[VOICE] error:", event.error);
     };
 
     recognition.onend = () => {
@@ -444,13 +467,25 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
       }
       // Deliver transcript
       const text = transcriptRef.current.trim();
-      const recordedDuration = durationRef.current;
       setInterimText("");
-      setState("idle");
-      stateRef.current = "idle";
-      setDuration(0);
       if (text) {
-        onTranscriptRef.current(text, recordedDuration);
+        setState("idle");
+        stateRef.current = "idle";
+        setDuration(0);
+        onTranscriptRef.current(text);
+      } else {
+        // Пустой текст — показать ошибку, auto-clear через 3 сек
+        setErrorMsg("Не удалось распознать речь");
+        setState("error");
+        stateRef.current = "error";
+        setDuration(0);
+        setTimeout(() => {
+          if (stateRef.current === "error") {
+            setErrorMsg(null);
+            setState("idle");
+            stateRef.current = "idle";
+          }
+        }, 3000);
       }
       cleanupRecognition();
     } else if (backendRef.current === "media-recorder") {
@@ -501,11 +536,22 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
             return;
           }
 
-          setState("idle");
-          stateRef.current = "idle";
           setDuration(0);
           if (data.text) {
-            onTranscriptRef.current(data.text, recordingDuration);
+            setState("idle");
+            stateRef.current = "idle";
+            onTranscriptRef.current(data.text);
+          } else {
+            setErrorMsg("Не удалось распознать речь");
+            setState("error");
+            stateRef.current = "error";
+            setTimeout(() => {
+              if (stateRef.current === "error") {
+                setErrorMsg(null);
+                setState("idle");
+                stateRef.current = "idle";
+              }
+            }, 3000);
           }
         } catch (e) {
           console.error("[useVoiceInput] Transcribe error:", e);
@@ -535,6 +581,20 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     setState("locked");
     stateRef.current = "locked";
   }, []);
+
+  // Auto-stop when tab goes hidden
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (
+        document.hidden &&
+        (stateRef.current === "recording" || stateRef.current === "locked")
+      ) {
+        stopRecording();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [stopRecording]);
 
   // --- Derived state ---
 

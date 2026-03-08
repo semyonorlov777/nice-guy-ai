@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { UseVoiceInputReturn } from "@/hooks/useVoiceInput";
 
 interface VoiceOverlayProps {
@@ -11,11 +11,25 @@ interface VoiceOverlayProps {
 const SWIPE_CANCEL_THRESHOLD = 60; // px
 
 export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
-  const { state, backend, duration, interimText, waveformData, isNearLimit, isPaidBackend } =
+  const { state, backend, duration, interimText, waveformData, isNearLimit, isPaidBackend, error } =
     voiceInput;
 
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const touchStartX = useRef(0);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleCancelAttempt = useCallback(() => {
+    if (duration > 5) {
+      setConfirmingCancel(true);
+    } else {
+      onCancel();
+    }
+  }, [duration, onCancel]);
+
+  const confirmCancel = useCallback(() => {
+    setConfirmingCancel(false);
+    onCancel();
+  }, [onCancel]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -25,13 +39,21 @@ export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
     (e: React.TouchEvent) => {
       const dx = e.touches[0].clientX - touchStartX.current;
       if (dx < -SWIPE_CANCEL_THRESHOLD) {
-        onCancel();
-        // Haptic feedback
+        handleCancelAttempt();
         if (navigator.vibrate) navigator.vibrate(30);
       }
     },
-    [onCancel]
+    [handleCancelAttempt]
   );
+
+  // Error state — show briefly then auto-clears
+  if (state === "error" && error) {
+    return (
+      <div className="voice-overlay">
+        <span className="voice-error-text">{error}</span>
+      </div>
+    );
+  }
 
   if (state !== "recording" && state !== "locked" && state !== "processing") {
     return null;
@@ -41,6 +63,21 @@ export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
     return (
       <div className="voice-overlay">
         <span className="voice-processing-text">Распознаю речь...</span>
+      </div>
+    );
+  }
+
+  // Cancel confirmation dialog
+  if (confirmingCancel) {
+    return (
+      <div className="voice-overlay">
+        <span className="voice-confirm-text">Отменить запись?</span>
+        <button className="voice-confirm-btn voice-confirm-yes" onClick={confirmCancel} type="button">
+          Да
+        </button>
+        <button className="voice-confirm-btn voice-confirm-no" onClick={() => setConfirmingCancel(false)} type="button">
+          Нет
+        </button>
       </div>
     );
   }
@@ -58,7 +95,7 @@ export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
     >
       <button
         className="voice-cancel"
-        onClick={onCancel}
+        onClick={handleCancelAttempt}
         type="button"
         aria-label="Отменить запись"
       >
