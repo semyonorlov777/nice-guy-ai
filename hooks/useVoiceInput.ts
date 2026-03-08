@@ -415,6 +415,9 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     stateRef.current = "recording";
     startTimer();
 
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(50);
+
     if (backendRef.current === "web-speech") {
       startWebSpeech();
     } else if (backendRef.current === "media-recorder") {

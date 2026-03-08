@@ -863,6 +863,12 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   gap: 8px;
   min-height: 24px;
   overflow: hidden;
+  animation: voice-overlay-in 0.2s ease-out;
+}
+
+@keyframes voice-overlay-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .voice-cancel {
@@ -943,4 +949,14 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   margin-left: auto;
+}
+
+/* Near-limit timer pulse animation */
+.voice-timer.near-limit {
+  animation: timer-warn 1s ease-in-out infinite;
+}
+
+@keyframes timer-warn {
+  0%, 100% { color: #ff9800; }
+  50% { color: #f44336; }
 }

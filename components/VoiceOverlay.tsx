@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useCallback } from "react";
 import type { UseVoiceInputReturn } from "@/hooks/useVoiceInput";
 
 interface VoiceOverlayProps {
@@ -7,9 +8,30 @@ interface VoiceOverlayProps {
   onCancel: () => void;
 }
 
+const SWIPE_CANCEL_THRESHOLD = 60; // px
+
 export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
   const { state, backend, duration, interimText, waveformData, isNearLimit, isPaidBackend } =
     voiceInput;
+
+  const touchStartX = useRef(0);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const dx = e.touches[0].clientX - touchStartX.current;
+      if (dx < -SWIPE_CANCEL_THRESHOLD) {
+        onCancel();
+        // Haptic feedback
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    },
+    [onCancel]
+  );
 
   if (state !== "recording" && state !== "locked" && state !== "processing") {
     return null;
@@ -28,7 +50,12 @@ export function VoiceOverlay({ voiceInput, onCancel }: VoiceOverlayProps) {
   const timeStr = `${minutes}:${seconds.toString().padStart(2, "0")}`;
 
   return (
-    <div className="voice-overlay">
+    <div
+      className="voice-overlay"
+      ref={overlayRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
       <button
         className="voice-cancel"
         onClick={onCancel}
