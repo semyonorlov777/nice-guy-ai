@@ -178,6 +178,12 @@ export function AnonymousChat({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+
+      if (voiceInput.state === "recording" || voiceInput.state === "locked") {
+        voiceInput.stopRecording();
+        return;
+      }
+
       handleSend();
     }
   }
