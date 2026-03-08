@@ -170,6 +170,11 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .send-btn:active { transform: scale(0.92); }
   .send-btn:disabled { opacity: 0.4; cursor: default; }
+  .send-btn.send-highlight { animation: sendPulseGold 0.5s ease-in-out 3; }
+  @keyframes sendPulseGold {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+    50% { box-shadow: 0 0 0 8px rgba(201, 168, 76, 0.4); }
+  }
   .input-privacy { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
   /* ── WELCOME ── */

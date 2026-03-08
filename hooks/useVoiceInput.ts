@@ -53,7 +53,7 @@ export type VoiceBackend = "web-speech" | "media-recorder" | "none";
 export interface UseVoiceInputOptions {
   lang?: string;
   maxDuration?: number; // секунды
-  onTranscript: (text: string) => void;
+  onTranscript: (text: string, durationSec: number) => void;
   paidFallbackEnabled?: boolean;
 }
 
@@ -444,12 +444,13 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
       }
       // Deliver transcript
       const text = transcriptRef.current.trim();
+      const recordedDuration = durationRef.current;
       setInterimText("");
       setState("idle");
       stateRef.current = "idle";
       setDuration(0);
       if (text) {
-        onTranscriptRef.current(text);
+        onTranscriptRef.current(text, recordedDuration);
       }
       cleanupRecognition();
     } else if (backendRef.current === "media-recorder") {
@@ -504,7 +505,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
           stateRef.current = "idle";
           setDuration(0);
           if (data.text) {
-            onTranscriptRef.current(data.text);
+            onTranscriptRef.current(data.text, recordingDuration);
           }
         } catch (e) {
           console.error("[useVoiceInput] Transcribe error:", e);

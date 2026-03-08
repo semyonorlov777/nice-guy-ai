@@ -35,9 +35,11 @@ export function ChatWindow({
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [input, setInput] = useState("");
+  const [sendHighlight, setSendHighlight] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
+  const sendHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     messages,
@@ -73,16 +75,26 @@ export function ChatWindow({
   const voiceInput = useVoiceInput({
     lang: "ru-RU",
     maxDuration: 3600,
-    onTranscript: (text) => {
-      setInput((prev) => (prev ? prev + " " + text : text));
-      // Обновить высоту textarea после вставки
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "auto";
-          textareaRef.current.style.height =
-            Math.min(textareaRef.current.scrollHeight, 100) + "px";
-        }
-      }, 0);
+    onTranscript: (text, durationSec) => {
+      if (durationSec < 3) {
+        // Короткая запись — автоотправка
+        handleSend(text);
+      } else {
+        // Длинная запись — вставить в textarea, фокус, подсветка send
+        setInput((prev) => (prev ? prev + " " + text : text));
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height =
+              Math.min(textareaRef.current.scrollHeight, 100) + "px";
+            textareaRef.current.focus();
+          }
+        }, 0);
+        // Золотой пульс на кнопке send
+        if (sendHighlightTimer.current) clearTimeout(sendHighlightTimer.current);
+        setSendHighlight(true);
+        sendHighlightTimer.current = setTimeout(() => setSendHighlight(false), 2000);
+      }
     },
     paidFallbackEnabled: true,
   });
@@ -272,6 +284,7 @@ export function ChatWindow({
               voiceInput={voiceInput}
               hasText={!!input.trim()}
               isStreaming={isStreaming}
+              highlight={sendHighlight}
               onSend={() => handleSend()}
             />
           </div>

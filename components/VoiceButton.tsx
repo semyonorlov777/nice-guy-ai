@@ -8,6 +8,7 @@ interface VoiceButtonProps {
   hasText: boolean;
   isStreaming: boolean;
   disabled?: boolean;
+  highlight?: boolean;
   onSend: () => void;
 }
 
@@ -16,6 +17,7 @@ export function VoiceButton({
   hasText,
   isStreaming,
   disabled = false,
+  highlight = false,
   onSend,
 }: VoiceButtonProps) {
   const startY = useRef(0);
@@ -52,7 +54,7 @@ export function VoiceButton({
   if (!isSupported) {
     return (
       <button
-        className="send-btn"
+        className={`send-btn${highlight ? " send-highlight" : ""}`}
         onClick={onSend}
         disabled={isStreaming || !hasText || disabled}
       >
@@ -65,7 +67,7 @@ export function VoiceButton({
   if (hasText && state === "idle") {
     return (
       <button
-        className="send-btn"
+        className={`send-btn${highlight ? " send-highlight" : ""}`}
         onClick={onSend}
         disabled={isStreaming || disabled}
       >

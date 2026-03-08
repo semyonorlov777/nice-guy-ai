@@ -31,10 +31,12 @@ export function AnonymousChat({
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [sendHighlight, setSendHighlight] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
   const sessionIdRef = useRef<string>("");
+  const sendHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const storageKeyMessages = `anon_chat_${programSlug}_messages`;
   const storageKeySession = `anon_chat_${programSlug}_session_id`;
@@ -135,15 +137,26 @@ export function AnonymousChat({
   const voiceInput = useVoiceInput({
     lang: "ru-RU",
     maxDuration: 300,
-    onTranscript: (text) => {
-      setInput((prev) => (prev ? prev + " " + text : text));
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "auto";
-          textareaRef.current.style.height =
-            Math.min(textareaRef.current.scrollHeight, 100) + "px";
-        }
-      }, 0);
+    onTranscript: (text, durationSec) => {
+      if (durationSec < 3) {
+        // Короткая запись — автоотправка
+        handleSend(text);
+      } else {
+        // Длинная запись — вставить в textarea, фокус, подсветка send
+        setInput((prev) => (prev ? prev + " " + text : text));
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height =
+              Math.min(textareaRef.current.scrollHeight, 100) + "px";
+            textareaRef.current.focus();
+          }
+        }, 0);
+        // Золотой пульс на кнопке send
+        if (sendHighlightTimer.current) clearTimeout(sendHighlightTimer.current);
+        setSendHighlight(true);
+        sendHighlightTimer.current = setTimeout(() => setSendHighlight(false), 2000);
+      }
     },
     paidFallbackEnabled: false,
   });
@@ -365,6 +378,7 @@ export function AnonymousChat({
               hasText={!!input.trim()}
               isStreaming={isStreaming}
               disabled={requiresAuth}
+              highlight={sendHighlight}
               onSend={() => handleSend()}
             />
           </div>
