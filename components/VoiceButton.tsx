@@ -24,6 +24,30 @@ export function VoiceButton({
   const { state, isSupported, startRecording, stopRecording, lockRecording } =
     voiceInput;
 
+  // All hooks MUST be before any conditional returns (Rules of Hooks)
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      startY.current = e.clientY;
+      didLock.current = false;
+      startRecording();
+    },
+    [startRecording]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (didLock.current) return;
+      const dy = startY.current - e.clientY;
+      if (dy > 40) {
+        didLock.current = true;
+        lockRecording();
+      }
+    },
+    [lockRecording]
+  );
+
   // --- If voice not supported, always show send button ---
   if (!isSupported) {
     return (
@@ -110,29 +134,6 @@ export function VoiceButton({
   }
 
   // --- Idle state, no text — show mic button ---
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      startY.current = e.clientY;
-      didLock.current = false;
-      startRecording();
-    },
-    [startRecording]
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (didLock.current) return;
-      const dy = startY.current - e.clientY;
-      if (dy > 40) {
-        didLock.current = true;
-        lockRecording();
-      }
-    },
-    [lockRecording]
-  );
-
   return (
     <button
       className="voice-btn"
