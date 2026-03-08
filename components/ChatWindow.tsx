@@ -5,6 +5,9 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { VoiceButton } from "@/components/VoiceButton";
+import { VoiceOverlay } from "@/components/VoiceOverlay";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -66,6 +69,23 @@ export function ChatWindow({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  const voiceInput = useVoiceInput({
+    lang: "ru-RU",
+    maxDuration: 3600,
+    onTranscript: (text) => {
+      setInput((prev) => (prev ? prev + " " + text : text));
+      // Обновить высоту textarea после вставки
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+          textareaRef.current.style.height =
+            Math.min(textareaRef.current.scrollHeight, 100) + "px";
+        }
+      }, 0);
+    },
+    paidFallbackEnabled: true,
+  });
 
   // --- Scroll logic ---
   const scrollToBottom = useCallback(() => {
@@ -231,23 +251,29 @@ export function ChatWindow({
       <div className="chat-input-wrap">
         <div className="chat-input-inner">
           <div className="chat-input-row">
-            <textarea
-              ref={textareaRef}
-              className="chat-input"
-              placeholder="Или напиши своими словами..."
-              rows={1}
-              value={input}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              disabled={isStreaming}
+            {voiceInput.state !== "idle" ? (
+              <VoiceOverlay
+                voiceInput={voiceInput}
+                onCancel={() => voiceInput.cancelRecording()}
+              />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                className="chat-input"
+                placeholder="Или напиши своими словами..."
+                rows={1}
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                disabled={isStreaming}
+              />
+            )}
+            <VoiceButton
+              voiceInput={voiceInput}
+              hasText={!!input.trim()}
+              isStreaming={isStreaming}
+              onSend={() => handleSend()}
             />
-            <button
-              className="send-btn"
-              onClick={() => handleSend()}
-              disabled={isStreaming || !input.trim()}
-            >
-              {"↑"}
-            </button>
           </div>
           <div className="input-privacy">
             {"🔒 Всё, что ты напишешь, остаётся между нами"}

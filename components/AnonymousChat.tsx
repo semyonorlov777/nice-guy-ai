@@ -6,6 +6,9 @@ import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import { InChatAuth } from "@/components/InChatAuth";
 import type { UIMessage } from "ai";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { VoiceButton } from "@/components/VoiceButton";
+import { VoiceOverlay } from "@/components/VoiceOverlay";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -128,6 +131,22 @@ export function AnonymousChat({
   }, [messages, status, storageKeyMessages]);
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  const voiceInput = useVoiceInput({
+    lang: "ru-RU",
+    maxDuration: 300,
+    onTranscript: (text) => {
+      setInput((prev) => (prev ? prev + " " + text : text));
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+          textareaRef.current.style.height =
+            Math.min(textareaRef.current.scrollHeight, 100) + "px";
+        }
+      }, 0);
+    },
+    paidFallbackEnabled: false,
+  });
 
   // --- Scroll (включая landing page scroll) ---
   const scrollToBottom = useCallback(() => {
@@ -324,23 +343,30 @@ export function AnonymousChat({
       <div className="chat-input-wrap">
         <div className="chat-input-inner">
           <div className="chat-input-row">
-            <textarea
-              ref={textareaRef}
-              className="chat-input"
-              placeholder="Напиши сообщение..."
-              rows={1}
-              value={input}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              disabled={isStreaming || requiresAuth}
+            {voiceInput.state !== "idle" ? (
+              <VoiceOverlay
+                voiceInput={voiceInput}
+                onCancel={() => voiceInput.cancelRecording()}
+              />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                className="chat-input"
+                placeholder="Напиши сообщение..."
+                rows={1}
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                disabled={isStreaming || requiresAuth}
+              />
+            )}
+            <VoiceButton
+              voiceInput={voiceInput}
+              hasText={!!input.trim()}
+              isStreaming={isStreaming}
+              disabled={requiresAuth}
+              onSend={() => handleSend()}
             />
-            <button
-              className="send-btn"
-              onClick={() => handleSend()}
-              disabled={isStreaming || !input.trim() || requiresAuth}
-            >
-              {"↑"}
-            </button>
           </div>
           <div className="input-privacy">
             {"🔒 Анонимный чат. Данные не сохраняются на сервере."}
