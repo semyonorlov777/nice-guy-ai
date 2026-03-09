@@ -178,15 +178,24 @@ export function AnonymousChat({
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-
-      if (voiceInput.state === "recording" || voiceInput.state === "locked") {
-        voiceInput.stopRecording();
-        return;
-      }
-
       handleSend();
     }
   }
+
+  // Enter during voice recording (textarea is replaced by overlay, so use document listener)
+  useEffect(() => {
+    if (voiceInput.state !== "recording" && voiceInput.state !== "locked") return;
+
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        voiceInput.stopRecording();
+      }
+    }
+
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [voiceInput.state, voiceInput.stopRecording]);
 
   function handleSend(text?: string) {
     const msgText = (text || input).trim();
