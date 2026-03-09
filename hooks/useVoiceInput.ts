@@ -40,6 +40,8 @@ interface SpeechRecognitionInstance extends EventTarget {
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onspeechstart: (() => void) | null;
   start(): void;
   stop(): void;
   abort(): void;
@@ -62,6 +64,7 @@ export interface UseVoiceInputReturn {
   backend: VoiceBackend;
   isPaidBackend: boolean;
   isSupported: boolean;
+  isIOS: boolean;
 
   duration: number;
   interimText: string;
@@ -119,6 +122,13 @@ function pickMimeType(): string {
   }
   return "audio/webm";
 }
+
+// --- iOS detection ---
+
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
 // --- Hook ---
 
@@ -303,12 +313,29 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
 
     const recognition = new SRCtor();
     recognition.lang = lang;
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    if (isIOS) {
+      recognition.continuous = false;
+      recognition.interimResults = false;
+    } else {
+      recognition.continuous = true;
+      recognition.interimResults = true;
+    }
     recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
 
+    console.log("[VOICE] isIOS=", isIOS);
+    console.log("[VOICE] recognition created, continuous=", recognition.continuous, "interimResults=", recognition.interimResults);
+
+    recognition.onaudiostart = () => {
+      console.log("[VOICE] onaudiostart fired");
+    };
+
+    recognition.onspeechstart = () => {
+      console.log("[VOICE] onspeechstart fired");
+    };
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      console.log("[VOICE] onresult fired, results count=", event.results.length);
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
@@ -321,9 +348,20 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
       }
       interimRef.current = interim;
       setInterimText(interim);
+
+      // iOS: recognition stops after each result (continuous=false)
+      // Restart if still recording
+      if (isIOS && (stateRef.current === "recording" || stateRef.current === "locked")) {
+        try {
+          recognition.start();
+        } catch {
+          // ignore — onend will also try to restart
+        }
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.log("[VOICE] onerror fired, error=", event.error);
       if (event.error === "aborted" || event.error === "no-speech") {
         // Не критичные — auto-restart в onend обработает
         return;
@@ -362,21 +400,34 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     };
 
     recognition.onend = () => {
+      console.log("[VOICE] onend fired, state=", stateRef.current);
       // Auto-restart if still recording/locked
       if (
         shouldRestartRef.current &&
         (stateRef.current === "recording" || stateRef.current === "locked")
       ) {
-        try {
-          recognition.start();
-        } catch {
-          // Already started or other error — ignore
+        if (isIOS) {
+          // iOS needs a small delay before restart
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch {
+              // ignore
+            }
+          }, 100);
+        } else {
+          try {
+            recognition.start();
+          } catch {
+            // Already started or other error — ignore
+          }
         }
       }
     };
 
     try {
       recognition.start();
+      console.log("[VOICE] recognition.start() called");
     } catch (e) {
       console.error("[useVoiceInput] Failed to start recognition:", e);
       setErrorMsg("Не удалось запустить распознавание речи");
@@ -616,6 +667,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     backend,
     isPaidBackend: backend === "media-recorder",
     isSupported: backend !== "none",
+    isIOS,
 
     duration,
     interimText,

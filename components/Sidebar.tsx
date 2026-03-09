@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
-
-const baseItems = [
-  { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Свободный чат" },
-  { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Упражнения" },
-];
-
-const featureItems = [
-  { key: "portrait", path: "/portrait", icon: "\u{1F9D1}\u200D\u{1F4BB}", label: "Мой портрет" },
-  { key: "test", path: "/test", icon: "\u{1F4CA}", label: "Пройти тест" },
-];
+import { ChatListItem, type ChatItemData } from "@/components/ChatListItem";
 
 interface UserInfo {
   name: string;
@@ -21,60 +12,128 @@ interface UserInfo {
   avatarUrl: string | null;
 }
 
-export function Sidebar({ slug, user, features }: { slug: string; user?: UserInfo | null; features?: Record<string, boolean> | null }) {
+interface SidebarProps {
+  slug: string;
+  programId: string;
+  user?: UserInfo | null;
+  features?: Record<string, boolean> | null;
+  initialChats: ChatItemData[];
+  exerciseCount: number;
+}
+
+export function Sidebar({
+  slug,
+  programId,
+  user,
+  features,
+  initialChats,
+  exerciseCount,
+}: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const router = useRouter();
   const base = `/program/${slug}`;
 
-  const navItems = [
-    ...baseItems,
-    ...featureItems.filter((item) => features?.[item.key] === true),
-  ];
+  const [chats, setChats] = useState<ChatItemData[]>(initialChats);
 
-  function getActiveKey() {
+  // Активный chatId из URL
+  const activeChatId = (() => {
+    const chatMatch = pathname.match(/\/chat\/([a-f0-9-]+)/);
+    const exerciseMatch = pathname.match(/\/exercise\/\d+\/([a-f0-9-]+)/);
+    return chatMatch?.[1] || exerciseMatch?.[1] || null;
+  })();
+
+  // Активный раздел навигации
+  function getActiveSection() {
     if (pathname.startsWith(`${base}/test`)) return "test";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
-    for (const item of navItems) {
-      if (pathname.startsWith(`${base}${item.path}`)) return item.key;
+    if (pathname.startsWith(`${base}/portrait`)) return "portrait";
+    return null; // chat не подсвечиваем в навигации — он в списке чатов
+  }
+  const activeSection = getActiveSection();
+
+  // Архивация
+  async function handleArchive(chatId: string) {
+    await fetch(`/api/chats/${chatId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "archived" }),
+    });
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    if (chatId === activeChatId) {
+      router.push(`${base}/chat`);
     }
-    return "chat";
   }
 
-  const activeKey = getActiveKey();
+  // Навигация "Тренажёры"
+  const navItems = [
+    {
+      key: "exercises",
+      path: "/exercises",
+      icon: "📋",
+      label: "Упражнения",
+      badge: exerciseCount > 0 ? exerciseCount : undefined,
+    },
+    ...(features?.test
+      ? [{ key: "test", path: "/test", icon: "🧪", label: "ИССП тест" }]
+      : []),
+    ...(features?.portrait
+      ? [{ key: "portrait", path: "/portrait", icon: "📊", label: "Мой портрет" }]
+      : []),
+  ];
 
   return (
-    <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
+    <nav className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <div className="sidebar-logo-mark">НС</div>
           <div className="sidebar-logo-text">НеСлавный</div>
         </div>
-        <button
-          className="sidebar-collapse-btn"
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? "Развернуть" : "Свернуть"}
-          style={{ transform: collapsed ? "rotate(180deg)" : undefined }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M10 3L5 8L10 13" />
-          </svg>
-        </button>
       </div>
 
+      <button
+        className="new-chat-btn"
+        onClick={() => router.push(`${base}/chat`)}
+      >
+        <span className="new-chat-btn-icon">{"✏️"}</span>
+        Новый чат
+      </button>
+
+      <div className="sidebar-section-label">Тренажёры</div>
       <div className="sidebar-nav">
         {navItems.map((item) => (
           <Link
             key={item.key}
             href={`${base}${item.path}`}
-            className={`sidebar-item${activeKey === item.key ? " active" : ""}`}
+            className={`sidebar-item${activeSection === item.key ? " active" : ""}`}
           >
             <div className="sidebar-item-icon">{item.icon}</div>
             <span className="sidebar-item-label">{item.label}</span>
+            {"badge" in item && item.badge && (
+              <span className="sidebar-item-badge">{item.badge}</span>
+            )}
           </Link>
         ))}
       </div>
 
-      <ProfileMenu user={user ?? null} />
+      <div className="sidebar-section-label">Все чаты</div>
+      <div className="sidebar-chat-list">
+        {chats.length === 0 && (
+          <div className="sidebar-chat-empty">Нет чатов</div>
+        )}
+        {chats.map((chat) => (
+          <ChatListItem
+            key={chat.id}
+            chat={chat}
+            isActive={chat.id === activeChatId}
+            slug={slug}
+            onArchive={() => handleArchive(chat.id)}
+          />
+        ))}
+      </div>
+
+      <div className="sidebar-footer">
+        <ProfileMenu user={user ?? null} />
+      </div>
     </nav>
   );
 }

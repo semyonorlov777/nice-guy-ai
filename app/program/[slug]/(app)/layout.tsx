@@ -40,11 +40,88 @@ export default async function ProgramLayout({
       }
     : null;
 
+  // Количество упражнений для badge
+  const { count: exerciseCount } = await supabase
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("program_id", program.id);
+
+  // Серверная загрузка списка чатов для sidebar
+  const { data: chatsData } = await supabase
+    .from("chats")
+    .select("id, title, chat_type, exercise_id, status, last_message_at")
+    .eq("user_id", user.id)
+    .eq("program_id", program.id)
+    .in("status", ["active", "completed"])
+    .order("last_message_at", { ascending: false })
+    .limit(30);
+
+  // Превью: последнее assistant-сообщение для каждого чата
+  const chatIds = (chatsData || []).map((c) => c.id);
+  const previews = new Map<string, string>();
+  if (chatIds.length > 0) {
+    const { data: lastMessages } = await supabase
+      .from("messages")
+      .select("chat_id, content")
+      .in("chat_id", chatIds)
+      .eq("role", "assistant")
+      .order("created_at", { ascending: false });
+    if (lastMessages) {
+      for (const msg of lastMessages) {
+        if (!previews.has(msg.chat_id)) {
+          previews.set(msg.chat_id, msg.content.slice(0, 80));
+        }
+      }
+    }
+  }
+
+  // Номера упражнений для exercise-чатов
+  const exerciseIds = [
+    ...new Set(
+      (chatsData || [])
+        .filter((c) => c.exercise_id)
+        .map((c) => c.exercise_id as string)
+    ),
+  ];
+  const exerciseMap = new Map<string, number>();
+  if (exerciseIds.length > 0) {
+    const { data: exercises } = await supabase
+      .from("exercises")
+      .select("id, number")
+      .in("id", exerciseIds);
+    if (exercises) {
+      for (const ex of exercises) {
+        exerciseMap.set(ex.id, ex.number);
+      }
+    }
+  }
+
+  const initialChats = (chatsData || []).map((c) => ({
+    id: c.id,
+    title: c.title || "Новый чат",
+    chatType: c.chat_type,
+    exerciseNumber: c.exercise_id
+      ? exerciseMap.get(c.exercise_id) || null
+      : null,
+    preview: previews.get(c.id) || "",
+    lastMessageAt: c.last_message_at,
+  }));
+
   return (
     <div className="program-layout">
-      <Sidebar slug={slug} user={userInfo} features={program.features as Record<string, boolean> | null} />
+      <Sidebar
+        slug={slug}
+        programId={program.id}
+        user={userInfo}
+        features={program.features as Record<string, boolean> | null}
+        initialChats={initialChats}
+        exerciseCount={exerciseCount || 0}
+      />
       <main className="program-main">{children}</main>
-      <MobileTabs slug={slug} features={program.features as Record<string, boolean> | null} />
+      <MobileTabs
+        slug={slug}
+        features={program.features as Record<string, boolean> | null}
+      />
     </div>
   );
 }

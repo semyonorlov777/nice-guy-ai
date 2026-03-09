@@ -59,7 +59,15 @@ export function ChatWindow({
     onFinish: ({ message }) => {
       // Получаем chatId из metadata ответа
       const meta = message as UIMessage & { metadata?: Record<string, unknown> };
-      if (meta.metadata?.chatId) {
+      if (meta.metadata?.chatId && !currentChatId) {
+        const newId = meta.metadata.chatId as string;
+        setCurrentChatId(newId);
+        // URL update: /chat → /chat/newId, /exercise/N → /exercise/N/newId
+        const path = window.location.pathname;
+        if (path.endsWith("/chat") || /\/exercise\/\d+$/.test(path)) {
+          window.history.replaceState(null, "", `${path}/${newId}`);
+        }
+      } else if (meta.metadata?.chatId) {
         setCurrentChatId(meta.metadata.chatId as string);
       }
     },

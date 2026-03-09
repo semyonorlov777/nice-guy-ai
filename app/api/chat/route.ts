@@ -138,23 +138,8 @@ export async function POST(request: Request) {
         currentChatId = existingChat.id;
       }
     } else {
-      let findQuery = supabase
-        .from("chats")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("program_id", programId)
-        .eq("status", "active");
-
-      if (exerciseId) {
-        findQuery = findQuery.eq("exercise_id", exerciseId);
-      } else {
-        findQuery = findQuery.is("exercise_id", null);
-      }
-
-      const { data: existingChat } = await findQuery.limit(1).maybeSingle();
-      if (existingChat) {
-        currentChatId = existingChat.id;
-      }
+      // Multi-chat: не ищем существующий, сразу переходим к созданию нового.
+      // Чат создастся ниже в блоке if (!currentChatId) { insert... }
     }
 
     if (!currentChatId) {
@@ -297,6 +282,18 @@ export async function POST(request: Request) {
         content: text,
         tokens_used: tokensUsed,
       });
+
+      // Update chat metadata: last_message_at + auto-title
+      const chatUpdate: Record<string, unknown> = {
+        last_message_at: new Date().toISOString(),
+      };
+      if (isNewChat) {
+        chatUpdate.title = message.slice(0, 50);
+      }
+      await supabase
+        .from("chats")
+        .update(chatUpdate)
+        .eq("id", currentChatId);
 
       // Deduct tokens (критичная операция — await)
       if (tokensUsed > 0) {
