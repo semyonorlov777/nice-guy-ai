@@ -1,9 +1,13 @@
-import { streamText } from "ai";
+import {
+  streamText,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+} from "ai";
 import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { updatePortrait } from "@/app/api/portrait/update/route";
 import { parseAIResponse } from "@/lib/issp-parser";
-import { calculateISSP } from "@/lib/issp-scoring";
+import { calculateISSP, formatISSPScoresMessage } from "@/lib/issp-scoring";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
@@ -192,6 +196,34 @@ export async function POST(request: Request) {
     }
   }
 
+  // 7.5. Load test_state for test mode (to detect 35th answer)
+  type TestState = {
+    current_question: number;
+    status: string;
+    started_at: string;
+    answers: TestAnswer[];
+  };
+  let testState: TestState | null = null;
+
+  if (currentChatType === "test" && currentChatId) {
+    const svc = createServiceClient();
+    const { data: chatRow } = await svc
+      .from("chats")
+      .select("test_state")
+      .eq("id", currentChatId)
+      .single();
+    if (chatRow?.test_state) {
+      testState = chatRow.test_state as TestState;
+    }
+  }
+
+  // current_question начинается с 0, инкрементируется после каждого подтверждённого ответа.
+  // Когда current_question === 34 → собрано 34 ответа, текущий будет 35-м.
+  const isPotentiallyFinalAnswer =
+    testState !== null &&
+    testState.current_question >= 34 &&
+    testState.status === "in_progress";
+
   // 8. Load message history from DB
   const { data: dbMessages } = await supabase
     .from("messages")
@@ -250,12 +282,24 @@ export async function POST(request: Request) {
 
   // 12. Stream with Vercel AI SDK
   //
-  // Стратегия onFinish:
-  // - Save AI message + deduct tokens — критичные, await
-  // - ISSP parsing + portrait update — fire-and-forget через .catch()
+  // Для 35-го ответа теста: двухфазный стриминг
+  // (сервер считает баллы → Gemini только интерпретирует)
   //
-  // Fallback: если ISSP/portrait не сохраняются — вынести в
-  // отдельный POST endpoint, который клиент вызывает из onFinish useChat.
+  if (isPotentiallyFinalAnswer && testState) {
+    return handleFinalTestAnswer({
+      systemPrompt,
+      aiMessages,
+      currentChatId: currentChatId!,
+      message,
+      user,
+      programId,
+      supabase,
+      testState,
+    });
+  }
+
+  //
+  // Обычный поток для всех остальных случаев
   //
   const result = streamText({
     model: google("gemini-2.5-flash"),
@@ -400,4 +444,258 @@ export async function POST(request: Request) {
       return { chatId: currentChatId };
     },
   });
+}
+
+// ──────────────────────────────────────────────────────────────
+// Двухфазный стриминг для финального (35-го) ответа теста ИССП
+// Фаза 1: Gemini подтверждает ответ
+// Фаза 2: сервер считает баллы → Gemini интерпретирует готовые числа
+// ──────────────────────────────────────────────────────────────
+
+async function handleFinalTestAnswer({
+  systemPrompt,
+  aiMessages,
+  currentChatId,
+  message,
+  user,
+  programId,
+  supabase,
+  testState,
+}: {
+  systemPrompt: string;
+  aiMessages: { role: "user" | "assistant"; content: string }[];
+  currentChatId: string;
+  message: string;
+  user: { id: string; email?: string };
+  programId: string;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  testState: {
+    current_question: number;
+    status: string;
+    started_at: string;
+    answers: TestAnswer[];
+  };
+}): Promise<Response> {
+  console.log(
+    "[ISSP] handleFinalTestAnswer: current_question =",
+    testState.current_question,
+    "answers.length =",
+    testState.answers.length
+  );
+
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      // Отправляем start с chatId в metadata
+      writer.write({
+        type: "start",
+        messageMetadata: { chatId: currentChatId },
+      } as Parameters<typeof writer.write>[0]);
+
+      // ── Фаза 1: Gemini подтверждает ответ ──
+      const result1 = streamText({
+        model: google("gemini-2.5-flash"),
+        system: systemPrompt || undefined,
+        messages: aiMessages,
+      });
+
+      writer.merge(
+        result1.toUIMessageStream({
+          sendStart: false,
+          sendFinish: false,
+        })
+      );
+
+      const phase1Text = await result1.text;
+      const phase1Usage = await result1.usage;
+
+      // Парсим подтверждение
+      const parsed = parseAIResponse(phase1Text, message);
+
+      if (!parsed.isConfirmation || parsed.scores.length === 0) {
+        // Gemini не подтвердил (запросил уточнение) — завершаем стрим одной фазой
+        console.log("[ISSP] Phase 1: not confirmed, skipping phase 2");
+
+        await supabase.from("messages").insert({
+          chat_id: currentChatId,
+          role: "assistant",
+          content: phase1Text,
+          tokens_used: phase1Usage.totalTokens || 0,
+        });
+
+        await supabase
+          .from("chats")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", currentChatId);
+
+        if ((phase1Usage.totalTokens ?? 0) > 0) {
+          await supabase.rpc("deduct_tokens", {
+            p_user_id: user.id,
+            p_amount: phase1Usage.totalTokens ?? 0,
+          });
+        }
+
+        writer.write({
+          type: "finish",
+          finishReason: "stop",
+        } as Parameters<typeof writer.write>[0]);
+        return;
+      }
+
+      // ── Обновляем test_state с новым ответом ──
+      for (const score of parsed.scores) {
+        if (testState.current_question >= ISSP_QUESTIONS.length) break;
+        const question = ISSP_QUESTIONS[testState.current_question];
+        testState.answers.push({
+          q: question.q,
+          scale: question.scale,
+          type: question.type,
+          rawAnswer: score,
+          score: question.type === "reverse" ? 6 - score : score,
+          text: /^\d$/.test(message.trim()) ? undefined : message,
+        });
+        testState.current_question++;
+      }
+
+      if (testState.answers.length < 35) {
+        // Ещё не 35 — сохраняем прогресс, завершаем одной фазой
+        console.warn(
+          "[ISSP] Expected 35 answers but got",
+          testState.answers.length
+        );
+
+        const svc = createServiceClient();
+        await svc
+          .from("chats")
+          .update({ test_state: testState })
+          .eq("id", currentChatId);
+
+        await supabase.from("messages").insert({
+          chat_id: currentChatId,
+          role: "assistant",
+          content: phase1Text,
+          tokens_used: phase1Usage.totalTokens || 0,
+        });
+
+        await supabase
+          .from("chats")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", currentChatId);
+
+        if ((phase1Usage.totalTokens ?? 0) > 0) {
+          await supabase.rpc("deduct_tokens", {
+            p_user_id: user.id,
+            p_amount: phase1Usage.totalTokens ?? 0,
+          });
+        }
+
+        writer.write({
+          type: "finish",
+          finishReason: "stop",
+        } as Parameters<typeof writer.write>[0]);
+        return;
+      }
+
+      // ── Подсчёт баллов сервером ──
+      testState.status = "completed";
+      const isspResult = calculateISSP(testState.answers);
+
+      console.log(
+        "[ISSP] Scores calculated: totalScore =",
+        isspResult.totalScore,
+        "topScales =",
+        isspResult.topScales
+      );
+
+      // Сохраняем результаты в БД
+      const svc = createServiceClient();
+      await svc.from("test_results").insert({
+        user_id: user.id,
+        program_id: programId,
+        chat_id: currentChatId,
+        total_score: isspResult.totalScore,
+        total_raw: isspResult.totalRaw,
+        scores_by_scale: isspResult.scoresByScale,
+        answers: testState.answers,
+        recommended_exercises: isspResult.recommendedExercises,
+        top_scales: isspResult.topScales,
+      });
+
+      await svc
+        .from("chats")
+        .update({ test_state: testState, status: "completed" })
+        .eq("id", currentChatId);
+
+      // ── Фаза 2: Gemini интерпретирует готовые числа ──
+      const scoresMessage = formatISSPScoresMessage(isspResult);
+
+      const phase2Messages = [
+        ...aiMessages,
+        { role: "assistant" as const, content: phase1Text },
+        { role: "user" as const, content: scoresMessage },
+      ];
+
+      const result2 = streamText({
+        model: google("gemini-2.5-flash"),
+        system: systemPrompt || undefined,
+        messages: phase2Messages,
+      });
+
+      writer.merge(
+        result2.toUIMessageStream({
+          sendStart: false,
+          sendFinish: false,
+        })
+      );
+
+      const phase2Text = await result2.text;
+      const phase2Usage = await result2.usage;
+
+      // Сохраняем комбинированное сообщение (подтверждение + интерпретация)
+      const combinedText = phase1Text + "\n\n" + phase2Text;
+      await supabase.from("messages").insert({
+        chat_id: currentChatId,
+        role: "assistant",
+        content: combinedText,
+        tokens_used:
+          (phase1Usage.totalTokens || 0) + (phase2Usage.totalTokens || 0),
+      });
+
+      await supabase
+        .from("chats")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", currentChatId);
+
+      // Списываем токены за обе фазы
+      const totalTokens =
+        (phase1Usage.totalTokens || 0) + (phase2Usage.totalTokens || 0);
+      if (totalTokens > 0) {
+        const { data: deducted } = await supabase.rpc("deduct_tokens", {
+          p_user_id: user.id,
+          p_amount: totalTokens,
+        });
+        if (!deducted) {
+          console.warn(
+            "[chat] Failed to deduct tokens — insufficient balance, user:",
+            user.id
+          );
+        }
+      }
+
+      writer.write({
+        type: "finish",
+        finishReason: "stop",
+      } as Parameters<typeof writer.write>[0]);
+
+      console.log(
+        "[ISSP] Two-phase streaming completed. Total tokens:",
+        totalTokens
+      );
+    },
+    onError: (error) => {
+      console.error("[ISSP] handleFinalTestAnswer error:", error);
+      return String(error);
+    },
+  });
+
+  return createUIMessageStreamResponse({ stream });
 }

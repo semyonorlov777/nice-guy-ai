@@ -57,3 +57,33 @@ export function calculateISSP(answers: TestAnswer[]): ISSPResult {
 
   return { totalScore, totalRaw, scoresByScale, topScales, recommendedExercises };
 }
+
+/**
+ * Форматирует результаты ИССП в системное сообщение для Gemini.
+ * Gemini НЕ должен пересчитывать — только интерпретировать готовые числа.
+ */
+export function formatISSPScoresMessage(result: ISSPResult): string {
+  const levelRu = (l: string) =>
+    l === "high" ? "высокий" : l === "medium" ? "средний" : "низкий";
+
+  const scaleLines = ISSP_SCALE_ORDER.map((key) => {
+    const s = result.scoresByScale[key];
+    return `- ${ISSP_SCALES[key].name}: ${s.raw}/${s.max} (${s.pct}%) — ${levelRu(s.level)}`;
+  }).join("\n");
+
+  const topNames = result.topScales
+    .map((k) => ISSP_SCALES[k].name)
+    .join(", ");
+
+  return `[СИСТЕМА] Тест завершён. Баллы подсчитаны сервером — используй ТОЛЬКО эти числа, не пересчитывай.
+
+📊 ИССП: ${result.totalScore}/100
+
+Шкалы:
+${scaleLines}
+
+Топ-3: ${topNames}
+Рекомендуемые упражнения: №${result.recommendedExercises.join(", №")}
+
+Сформируй интерпретацию по шаблону из <result_format>. Числа выше — финальные, не меняй их.`;
+}
