@@ -134,7 +134,7 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .sidebar.collapsed .sidebar-item-badge,
   .sidebar.collapsed .sidebar-section-label,
   .sidebar.collapsed .sidebar-chat-list { display: none; }
-  .sidebar.collapsed .sidebar-footer { padding: 8px 0; display: flex; justify-content: center; }
+  .sidebar.collapsed .sidebar-footer { padding: 8px 0; display: flex; justify-content: center; margin-top: auto; }
   .sidebar.collapsed .sidebar-header { padding: 0 8px; justify-content: center; }
   .sidebar.collapsed .sidebar-logo { display: none; }
   .sidebar.collapsed .new-chat-btn { margin: 10px 4px 4px; padding: 10px; justify-content: center; width: calc(100% - 8px); }
