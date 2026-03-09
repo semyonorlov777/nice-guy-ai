@@ -21,6 +21,8 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
     return document.documentElement.getAttribute("data-theme") === "dark";
   });
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [popupPos, setPopupPos] = useState<{ bottom: number; left: number } | null>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -92,7 +94,17 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
     <div ref={menuRef} style={{ position: "relative", padding: collapsed ? 0 : 8, borderTop: collapsed ? "none" : "1px solid var(--border-light)" }}>
       {/* Trigger */}
       <button
-        onClick={() => setOpen(!open)}
+        ref={triggerRef}
+        onClick={() => {
+          if (!open && collapsed && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setPopupPos({
+              bottom: window.innerHeight - rect.top + 4,
+              left: rect.right + 8,
+            });
+          }
+          setOpen(!open);
+        }}
         title={collapsed ? displayName : undefined}
         style={{
           display: "flex",
@@ -149,10 +161,10 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
       {open && (
         <div
           style={{
-            position: "absolute",
-            bottom: "calc(100% + 4px)",
-            left: collapsed ? 0 : 8,
-            right: collapsed ? "auto" : 8,
+            position: collapsed ? "fixed" : "absolute",
+            ...(collapsed && popupPos
+              ? { bottom: popupPos.bottom, left: popupPos.left }
+              : { bottom: "calc(100% + 4px)", left: 8, right: 8 }),
             width: collapsed ? 200 : undefined,
             background: "var(--bg-card)",
             border: "1px solid var(--border)",
