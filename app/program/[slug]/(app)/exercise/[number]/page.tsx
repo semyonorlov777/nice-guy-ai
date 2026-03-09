@@ -67,32 +67,14 @@ export default async function ExercisePage({
     .in("status", ["active", "completed"])
     .order("last_message_at", { ascending: false });
 
-  const latestSession = allSessions?.[0] || null;
-  const olderSessions = (allSessions || []).slice(1);
-
-  // Сообщения последней сессии
-  let initialMessages: { role: string; content: string }[] = [];
-  if (latestSession) {
-    const { data: messages } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("chat_id", latestSession.id)
-      .order("created_at", { ascending: true });
-
-    initialMessages = (messages || []).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-  }
-
   // Превью для прошлых сессий
-  const olderIds = olderSessions.map((s) => s.id);
+  const sessionIds = (allSessions || []).map((s) => s.id);
   const previews = new Map<string, string>();
-  if (olderIds.length > 0) {
+  if (sessionIds.length > 0) {
     const { data: lastMsgs } = await supabase
       .from("messages")
       .select("chat_id, content")
-      .in("chat_id", olderIds)
+      .in("chat_id", sessionIds)
       .eq("role", "assistant")
       .order("created_at", { ascending: false });
     if (lastMsgs) {
@@ -104,7 +86,7 @@ export default async function ExercisePage({
     }
   }
 
-  const previousSessions = olderSessions.map((s) => ({
+  const previousSessions = (allSessions || []).map((s) => ({
     id: s.id,
     title: s.title || "Сессия",
     preview: previews.get(s.id) || "",
@@ -113,9 +95,9 @@ export default async function ExercisePage({
 
   return (
     <ChatWindow
-      key={latestSession?.id || "new-exercise"}
-      initialMessages={toUIMessages(initialMessages)}
-      chatId={latestSession?.id || null}
+      key="new-exercise"
+      initialMessages={toUIMessages([])}
+      chatId={null}
       programId={program.id}
       exerciseId={exercise.id}
       userInitial={userInitial}

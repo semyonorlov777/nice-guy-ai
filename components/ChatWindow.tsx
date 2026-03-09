@@ -8,6 +8,7 @@ import type { UIMessage } from "ai";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { VoiceButton } from "@/components/VoiceButton";
 import { VoiceOverlay } from "@/components/VoiceOverlay";
+import { useChatListRefresh } from "@/contexts/ChatListContext";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -33,6 +34,7 @@ export function ChatWindow({
   children,
 }: ChatWindowProps) {
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
+  const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [input, setInput] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,8 @@ export function ChatWindow({
       } else if (meta.metadata?.chatId) {
         setCurrentChatId(meta.metadata.chatId as string);
       }
+      // Обновляем список чатов в sidebar (новый чат / обновление preview)
+      refreshChatList();
     },
     onError: (err) => {
       console.error("Chat error:", err);

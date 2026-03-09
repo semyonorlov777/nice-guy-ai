@@ -40,6 +40,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (typeof message !== "string" || message.length > 10000) {
+    return Response.json(
+      { error: "Сообщение слишком длинное" },
+      { status: 400 }
+    );
+  }
+
   // 3. Get or create user record + check balance
   let { data: userData } = await supabase
     .from("profiles")
@@ -123,26 +130,8 @@ export async function POST(request: Request) {
       : "free";
 
   if (!currentChatId) {
-    if (isTestMode) {
-      const { data: existingChat } = await supabase
-        .from("chats")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("program_id", programId)
-        .eq("chat_type", "test")
-        .eq("status", "active")
-        .limit(1)
-        .maybeSingle();
-
-      if (existingChat) {
-        currentChatId = existingChat.id;
-      }
-    } else {
-      // Multi-chat: не ищем существующий, сразу переходим к созданию нового.
-      // Чат создастся ниже в блоке if (!currentChatId) { insert... }
-    }
-
-    if (!currentChatId) {
+    // Multi-chat: всегда создаём новый чат, не ищем существующий
+    {
       const insertData: Record<string, unknown> = {
         user_id: user.id,
         program_id: programId,
@@ -295,13 +284,15 @@ export async function POST(request: Request) {
         .update(chatUpdate)
         .eq("id", currentChatId);
 
-      // Deduct tokens (критичная операция — await)
+      // Deduct tokens atomically via RPC (prevents race conditions)
       if (tokensUsed > 0) {
-        const newBalance = Math.max(0, userData.balance_tokens - tokensUsed);
-        await supabase
-          .from("profiles")
-          .update({ balance_tokens: newBalance })
-          .eq("id", user.id);
+        const { data: deducted } = await supabase.rpc("deduct_tokens", {
+          p_user_id: user.id,
+          p_amount: tokensUsed,
+        });
+        if (!deducted) {
+          console.warn("[chat] Failed to deduct tokens — insufficient balance, user:", user.id);
+        }
       }
 
       // ISSP test parsing (fire-and-forget)

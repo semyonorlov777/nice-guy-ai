@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTabs } from "@/components/MobileTabs";
+import { ChatListProvider } from "@/contexts/ChatListContext";
 
 export default async function ProgramLayout({
   children,
@@ -108,20 +109,22 @@ export default async function ProgramLayout({
   }));
 
   return (
-    <div className="program-layout">
-      <Sidebar
-        slug={slug}
-        programId={program.id}
-        user={userInfo}
-        features={program.features as Record<string, boolean> | null}
-        initialChats={initialChats}
-        exerciseCount={exerciseCount || 0}
-      />
-      <main className="program-main">{children}</main>
-      <MobileTabs
-        slug={slug}
-        features={program.features as Record<string, boolean> | null}
-      />
-    </div>
+    <ChatListProvider>
+      <div className="program-layout">
+        <Sidebar
+          slug={slug}
+          programId={program.id}
+          user={userInfo}
+          features={program.features as Record<string, boolean> | null}
+          initialChats={initialChats}
+          exerciseCount={exerciseCount || 0}
+        />
+        <main className="program-main">{children}</main>
+        <MobileTabs
+          slug={slug}
+          features={program.features as Record<string, boolean> | null}
+        />
+      </div>
+    </ChatListProvider>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { ChatListItem, type ChatItemData } from "@/components/ChatListItem";
+import { useChatListRefresh } from "@/contexts/ChatListContext";
 
 interface UserInfo {
   name: string;
@@ -34,6 +35,37 @@ export function Sidebar({
   const base = `/program/${slug}`;
 
   const [chats, setChats] = useState<ChatItemData[]>(initialChats);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar-collapsed") === "true";
+    }
+    return false;
+  });
+  const { onRefresh } = useChatListRefresh();
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  }, []);
+
+  const fetchChats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/chats?programId=${programId}&limit=30`);
+      if (res.ok) {
+        const data = await res.json();
+        setChats(data.chats);
+      }
+    } catch {
+      // silent fail
+    }
+  }, [programId]);
+
+  useEffect(() => {
+    return onRefresh(fetchChats);
+  }, [onRefresh, fetchChats]);
 
   // Активный chatId из URL
   const activeChatId = (() => {
@@ -82,12 +114,19 @@ export function Sidebar({
   ];
 
   return (
-    <nav className="sidebar">
+    <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <div className="sidebar-logo-mark">НС</div>
           <div className="sidebar-logo-text">НеСлавный</div>
         </div>
+        <button
+          className="sidebar-collapse-btn"
+          onClick={toggleCollapsed}
+          title={collapsed ? "Развернуть" : "Свернуть"}
+        >
+          {collapsed ? "»" : "«"}
+        </button>
       </div>
 
       <button
