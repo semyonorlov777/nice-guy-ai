@@ -42,6 +42,7 @@ export function InChatAuth({ onAuthSuccess }: InChatAuthProps) {
   // Listen for postMessage from popup
   useEffect(() => {
     function handler(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === "auth-success") {
         handleSuccess();
       }

@@ -136,10 +136,18 @@ ${chatTranscript}
 }
 
 /**
- * HTTP handler — for manual/external calls
+ * HTTP handler — for manual/external calls (protected by internal secret)
  */
 export async function POST(request: Request) {
   try {
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+    if (
+      !internalSecret ||
+      request.headers.get("x-internal-secret") !== internalSecret
+    ) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { chat_id, trigger } = await request.json();
 
     if (!chat_id) {

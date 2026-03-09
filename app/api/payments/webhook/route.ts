@@ -3,6 +3,16 @@ import yookassa from "@/lib/yookassa";
 
 export async function POST(request: Request) {
   try {
+    // HTTP Basic Auth verification
+    const webhookSecret = process.env.YOOKASSA_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const authHeader = request.headers.get("authorization");
+      if (!authHeader || authHeader !== `Basic ${webhookSecret}`) {
+        console.error("[webhook] Invalid authorization header");
+        return new Response("Unauthorized", { status: 401 });
+      }
+    }
+
     const body = await request.json();
     const { event, object } = body;
 
@@ -31,7 +41,7 @@ export async function POST(request: Request) {
           verifiedPayment = await yookassa.getPayment(paymentId);
         } catch (err) {
           console.error("[webhook] Failed to verify payment:", err);
-          return new Response("OK", { status: 200 });
+          return new Response("Retry", { status: 500 });
         }
 
         if (verifiedPayment.status !== "succeeded") {
