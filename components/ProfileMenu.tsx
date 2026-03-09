@@ -10,9 +10,10 @@ interface ProfileMenuProps {
     username: string | null;
     avatarUrl: string | null;
   } | null;
+  collapsed?: boolean;
 }
 
-export function ProfileMenu({ user }: ProfileMenuProps) {
+export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => {
@@ -58,17 +59,48 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
 
   const initial = (user?.name || "?")[0].toUpperCase();
 
+  const avatarSize = collapsed ? 36 : 28;
+
+  const avatar = user?.avatarUrl ? (
+    <img
+      src={user.avatarUrl}
+      alt=""
+      style={{ width: avatarSize, height: avatarSize, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+    />
+  ) : (
+    <div
+      style={{
+        width: avatarSize,
+        height: avatarSize,
+        borderRadius: "50%",
+        background: "var(--accent-soft)",
+        border: "1px solid var(--accent-border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: collapsed ? 14 : 11,
+        fontWeight: 600,
+        color: "var(--accent)",
+        flexShrink: 0,
+      }}
+    >
+      {initial}
+    </div>
+  );
+
   return (
-    <div ref={menuRef} style={{ position: "relative", padding: 8, borderTop: "1px solid var(--border-light)" }}>
+    <div ref={menuRef} style={{ position: "relative", padding: collapsed ? 0 : 8, borderTop: collapsed ? "none" : "1px solid var(--border-light)" }}>
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
+        title={collapsed ? displayName : undefined}
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          justifyContent: collapsed ? "center" : undefined,
+          gap: collapsed ? 0 : 10,
           width: "100%",
-          padding: "10px 12px",
+          padding: collapsed ? "4px" : "10px 12px",
           borderRadius: "var(--radius-xs)",
           border: "none",
           background: open ? "var(--accent-soft)" : "none",
@@ -77,61 +109,40 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
           transition: "background 0.12s",
         }}
       >
-        {user?.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt=""
-            style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: "var(--accent-soft)",
-              border: "1px solid var(--accent-border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "var(--accent)",
-              flexShrink: 0,
-            }}
-          >
-            {initial}
-          </div>
+        {avatar}
+        {!collapsed && (
+          <>
+            <span
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: 13,
+                color: "var(--text-secondary)",
+                textAlign: "left",
+              }}
+            >
+              {displayName}
+            </span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="var(--text-muted)"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              style={{
+                flexShrink: 0,
+                transition: "transform 0.15s",
+                transform: open ? "rotate(180deg)" : undefined,
+              }}
+            >
+              <path d="M4 10L8 6L12 10" />
+            </svg>
+          </>
         )}
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontSize: 13,
-            color: "var(--text-secondary)",
-            textAlign: "left",
-          }}
-        >
-          {displayName}
-        </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="var(--text-muted)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          style={{
-            flexShrink: 0,
-            transition: "transform 0.15s",
-            transform: open ? "rotate(180deg)" : undefined,
-          }}
-        >
-          <path d="M4 10L8 6L12 10" />
-        </svg>
       </button>
 
       {/* Popup */}
@@ -140,8 +151,9 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
           style={{
             position: "absolute",
             bottom: "calc(100% + 4px)",
-            left: 8,
-            right: 8,
+            left: collapsed ? 0 : 8,
+            right: collapsed ? "auto" : 8,
+            width: collapsed ? 200 : undefined,
             background: "var(--bg-card)",
             border: "1px solid var(--border)",
             borderRadius: 12,

@@ -132,9 +132,10 @@ export function Sidebar({
       <button
         className="new-chat-btn"
         onClick={() => router.push(`${base}/chat`)}
+        title="Новый чат"
       >
         <span className="new-chat-btn-icon">{"✏️"}</span>
-        Новый чат
+        <span className="sidebar-item-label">Новый чат</span>
       </button>
 
       <div className="sidebar-section-label">Тренажёры</div>
@@ -171,7 +172,7 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        <ProfileMenu user={user ?? null} />
+        <ProfileMenu user={user ?? null} collapsed={collapsed} />
       </div>
     </nav>
   );
