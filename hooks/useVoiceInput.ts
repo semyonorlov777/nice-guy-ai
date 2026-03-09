@@ -144,6 +144,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
   const durationRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef("");
+  const interimRef = useRef("");
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
 
@@ -296,6 +297,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     }
 
     transcriptRef.current = "";
+    interimRef.current = "";
     setInterimText("");
     shouldRestartRef.current = true;
 
@@ -312,10 +314,12 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           transcriptRef.current += transcript + " ";
+          interimRef.current = "";
         } else {
           interim += transcript;
         }
       }
+      interimRef.current = interim;
       setInterimText(interim);
     };
 
@@ -333,7 +337,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
       }
       if (event.error === "network") {
         // Сетевая ошибка — доставить накопленный текст если есть
-        const text = transcriptRef.current.trim();
+        const text = (transcriptRef.current + interimRef.current).trim();
         fullCleanup();
         setDuration(0);
         if (text) {
@@ -385,6 +389,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
 
   const startMediaRecorder = useCallback(async () => {
     transcriptRef.current = "";
+    interimRef.current = "";
     setInterimText("");
     chunksRef.current = [];
 
@@ -465,9 +470,10 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
           // ignore
         }
       }
-      // Deliver transcript
-      const text = transcriptRef.current.trim();
+      // Deliver transcript (include interim — recognition.stop() is async, final result may not have arrived)
+      const text = (transcriptRef.current + interimRef.current).trim();
       setInterimText("");
+      interimRef.current = "";
       if (text) {
         setState("idle");
         stateRef.current = "idle";
@@ -570,6 +576,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     if (stateRef.current !== "recording" && stateRef.current !== "locked") return;
     fullCleanup();
     transcriptRef.current = "";
+    interimRef.current = "";
     setInterimText("");
     setDuration(0);
     setState("idle");
