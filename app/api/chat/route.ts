@@ -133,8 +133,37 @@ export async function POST(request: Request) {
       ? "exercise"
       : "free";
 
+  type TestState = {
+    current_question: number;
+    status: string;
+    started_at: string;
+    answers: TestAnswer[];
+  };
+  let preloadedTestState: TestState | null = null;
+
   if (!currentChatId) {
-    // Multi-chat: всегда создаём новый чат, не ищем существующий
+    // Safety net для тестов: найти существующий активный тест-чат
+    if (isTestMode) {
+      const { data: existingTest } = await supabase
+        .from("chats")
+        .select("id, test_state")
+        .eq("user_id", user.id)
+        .eq("program_id", programId)
+        .eq("chat_type", "test")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingTest) {
+        currentChatId = existingTest.id;
+        preloadedTestState = existingTest.test_state as TestState;
+      }
+    }
+  }
+
+  if (!currentChatId) {
+    // Multi-chat: создаём новый чат
     {
       const insertData: Record<string, unknown> = {
         user_id: user.id,
@@ -197,23 +226,21 @@ export async function POST(request: Request) {
   }
 
   // 7.5. Load test_state for test mode (to detect 35th answer)
-  type TestState = {
-    current_question: number;
-    status: string;
-    started_at: string;
-    answers: TestAnswer[];
-  };
   let testState: TestState | null = null;
 
   if (currentChatType === "test" && currentChatId) {
-    const svc = createServiceClient();
-    const { data: chatRow } = await svc
-      .from("chats")
-      .select("test_state")
-      .eq("id", currentChatId)
-      .single();
-    if (chatRow?.test_state) {
-      testState = chatRow.test_state as TestState;
+    if (preloadedTestState) {
+      testState = preloadedTestState;
+    } else {
+      const svc = createServiceClient();
+      const { data: chatRow } = await svc
+        .from("chats")
+        .select("test_state")
+        .eq("id", currentChatId)
+        .single();
+      if (chatRow?.test_state) {
+        testState = chatRow.test_state as TestState;
+      }
     }
   }
 

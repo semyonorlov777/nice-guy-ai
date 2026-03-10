@@ -34,6 +34,7 @@ export function ChatWindow({
   children,
 }: ChatWindowProps) {
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
+  const chatIdRef = useRef<string | null>(initialChatId);
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [input, setInput] = useState("");
@@ -50,27 +51,30 @@ export function ChatWindow({
   } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      body: {
-        chatId: currentChatId,
+      body: () => ({
+        chatId: chatIdRef.current,
         programId,
         exerciseId,
         chatType,
-      },
+      }),
     }),
     messages: initialMessages,
     onFinish: ({ message }) => {
       // Получаем chatId из metadata ответа
       const meta = message as UIMessage & { metadata?: Record<string, unknown> };
-      if (meta.metadata?.chatId && !currentChatId) {
+      if (meta.metadata?.chatId) {
         const newId = meta.metadata.chatId as string;
-        setCurrentChatId(newId);
-        // URL update: /chat → /chat/newId, /exercise/N → /exercise/N/newId
-        const path = window.location.pathname;
-        if (path.endsWith("/chat") || /\/exercise\/\d+$/.test(path)) {
-          window.history.replaceState(null, "", `${path}/${newId}`);
+        chatIdRef.current = newId; // Ref — мгновенно, для следующего запроса
+        if (!currentChatId) {
+          setCurrentChatId(newId);
+          // URL update: /chat → /chat/newId, /exercise/N → /exercise/N/newId
+          const path = window.location.pathname;
+          if (path.endsWith("/chat") || /\/exercise\/\d+$/.test(path)) {
+            window.history.replaceState(null, "", `${path}/${newId}`);
+          }
+        } else {
+          setCurrentChatId(newId);
         }
-      } else if (meta.metadata?.chatId) {
-        setCurrentChatId(meta.metadata.chatId as string);
       }
       // Обновляем список чатов в sidebar (новый чат / обновление preview)
       refreshChatList();
