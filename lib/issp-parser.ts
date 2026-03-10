@@ -40,3 +40,36 @@ export function parseAIResponse(aiText: string, userText: string): ParseResult {
 
   return { scores: [], isConfirmation: false };
 }
+
+/**
+ * Extracts score 1-5 from user message text.
+ * Primary source of truth for ISSP test scoring.
+ * Returns number 1-5 or null if can't determine.
+ */
+export function extractScoreFromUserMessage(text: string): number | null {
+  const trimmed = text.trim();
+
+  // Число 1-5
+  if (/^[1-5]$/.test(trimmed)) {
+    return parseInt(trimmed);
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  // "да"/"точно"/"это про меня"/"конечно" → 5
+  if (/^(да|точно|это про меня|конечно|абсолютно|полностью|однозначно|определённо|именно|верно)$/.test(lower)) return 5;
+
+  // "скорее да"/"часто"/"пожалуй" → 4
+  if (/^(скорее да|часто|пожалуй|в целом да|наверное|почти всегда|в основном)$/.test(lower)) return 4;
+
+  // "иногда"/"бывает"/"50/50" → 3
+  if (/^(иногда|бывает|50\/50|средне|не знаю|может быть|наполовину|и да и нет|по-разному)$/.test(lower)) return 3;
+
+  // "скорее нет"/"редко"/"не особо" → 2
+  if (/^(скорее нет|редко|не особо|вряд ли|маловероятно|почти нет|не очень)$/.test(lower)) return 2;
+
+  // "нет"/"не про меня"/"совсем нет" → 1
+  if (/^(нет|не про меня|совсем нет|никогда|абсолютно нет|ни разу|нисколько)$/.test(lower)) return 1;
+
+  return null;
+}
