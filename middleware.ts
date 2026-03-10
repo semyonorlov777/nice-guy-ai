@@ -13,7 +13,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for OAuth endpoints (they manage their own auth)
-  if (pathname.startsWith("/api/auth/telegram") || pathname.startsWith("/api/auth/yandex")) {
+  if (
+    pathname.startsWith("/api/auth/telegram") ||
+    pathname.startsWith("/api/auth/yandex") ||
+    pathname.startsWith("/api/auth/dev-login")
+  ) {
     return NextResponse.next();
   }
 
