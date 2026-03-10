@@ -368,9 +368,11 @@ export async function POST(request: Request) {
 
       // ISSP test parsing (awaited — корректность важнее скорости)
       if (currentChatType === "test") {
+        console.log("[ISSP] onFinish test path entered, chat:", currentChatId);
         try {
           const svc = createServiceClient();
           const parsed = parseAIResponse(text, message);
+          console.log("[ISSP] fire-and-forget parsed:", JSON.stringify({ isConfirmation: parsed.isConfirmation, scoresCount: parsed.scores.length, scores: parsed.scores }));
 
           if (parsed.isConfirmation && parsed.scores.length > 0) {
             type UpdatableTestState = {
@@ -560,6 +562,7 @@ async function handleFinalTestAnswer({
 
       // Парсим подтверждение
       const parsed = parseAIResponse(phase1Text, message);
+      console.log("[ISSP] Phase 1 parsed:", JSON.stringify({ isConfirmation: parsed.isConfirmation, scoresCount: parsed.scores.length, scores: parsed.scores, phase1Preview: phase1Text.substring(0, 100) }));
 
       if (!parsed.isConfirmation || parsed.scores.length === 0) {
         // Gemini не подтвердил (запросил уточнение) — завершаем стрим одной фазой
@@ -665,6 +668,7 @@ async function handleFinalTestAnswer({
       );
 
       // Сохраняем результаты в БД
+      console.log("[ISSP] About to insert test_results for chat:", currentChatId, "totalScore:", isspResult.totalScore);
       const { error: insertError } = await svc.from("test_results").insert({
         user_id: user.id,
         program_id: programId,
@@ -677,6 +681,7 @@ async function handleFinalTestAnswer({
         top_scales: isspResult.topScales,
       });
 
+      console.log("[ISSP] Insert result:", insertError ? insertError : "SUCCESS");
       if (insertError) {
         console.error("[ISSP] Failed to insert test_results:", insertError);
       }

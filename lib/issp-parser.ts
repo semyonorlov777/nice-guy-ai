@@ -8,7 +8,7 @@ export interface ParseResult {
  *
  * Patterns:
  * - "Записываю как N" → score N (text answer interpreted by AI)
- * - "Принято" → take number from user message (numeric answer)
+ * - "Принято" / "Готово" → take number from user message (numeric answer)
  */
 export function parseAIResponse(aiText: string, userText: string): ParseResult {
   const scores: number[] = [];
@@ -27,8 +27,8 @@ export function parseAIResponse(aiText: string, userText: string): ParseResult {
     return { scores, isConfirmation: scores.length > 0 };
   }
 
-  // Pattern 2: "Принято" — take number from user message
-  if (/[Пп]ринято/.test(aiText)) {
+  // Pattern 2: "Принято" or "Готово" — take number from user message
+  if (/[Пп]ринято|[Гг]отово/.test(aiText)) {
     const userNumbers = [...userText.trim().matchAll(/\b([1-5])\b/g)];
     if (userNumbers.length > 0) {
       for (const m of userNumbers) {
