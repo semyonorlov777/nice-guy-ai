@@ -38,6 +38,7 @@ export function ChatWindow({
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [input, setInput] = useState("");
+  const [validationHint, setValidationHint] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -147,6 +148,13 @@ export function ChatWindow({
   function handleSend(text?: string) {
     const msgText = (text || input).trim();
     if (!msgText || isStreaming) return;
+
+    // Клиентская валидация для ИССП-теста: числа вне 1-5 не отправляем
+    if (chatType === "test" && /^\d+$/.test(msgText) && !/^[1-5]$/.test(msgText)) {
+      setValidationHint("Введи число от 1 до 5 или ответь своими словами");
+      return;
+    }
+    setValidationHint(null);
 
     if (!text) {
       setInput("");
@@ -298,6 +306,9 @@ export function ChatWindow({
               onSend={() => handleSend()}
             />
           </div>
+          {validationHint && (
+            <div className="input-validation-hint">{validationHint}</div>
+          )}
           <div className="input-privacy">
             {"🔒 Всё, что ты напишешь, остаётся между нами"}
           </div>

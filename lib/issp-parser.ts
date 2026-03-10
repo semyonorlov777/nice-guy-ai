@@ -73,3 +73,12 @@ export function extractScoreFromUserMessage(text: string): number | null {
 
   return null;
 }
+
+/**
+ * Checks if user message is a number outside valid 1-5 range.
+ * Such messages should NOT be recorded as answers.
+ */
+export function isOutOfRangeNumber(text: string): boolean {
+  const trimmed = text.trim();
+  return /^\d+$/.test(trimmed) && !/^[1-5]$/.test(trimmed);
+}

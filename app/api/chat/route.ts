@@ -6,7 +6,7 @@ import {
 import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { updatePortrait } from "@/app/api/portrait/update/route";
-import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/issp-parser";
+import { parseAIResponse, extractScoreFromUserMessage, isOutOfRangeNumber } from "@/lib/issp-parser";
 import { calculateISSP, formatISSPScoresMessage } from "@/lib/issp-scoring";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
@@ -383,7 +383,7 @@ export async function POST(request: Request) {
             // 2. Secondary: парсинг AI ответа (для override)
             const parsed = parseAIResponse(text, message);
 
-            // 3. Финальный балл: AI override > user score > fallback 3
+            // 3. Финальный балл: AI override > user score > skip if invalid number
             let scoresToRecord: number[];
             let scoreSource: string;
 
@@ -393,6 +393,11 @@ export async function POST(request: Request) {
             } else if (userScore !== null) {
               scoresToRecord = [userScore];
               scoreSource = "user_message";
+            } else if (isOutOfRangeNumber(message)) {
+              // Число вне 1-5 — не записываем, AI переспросит
+              scoresToRecord = [];
+              scoreSource = "out_of_range";
+              console.warn("[ISSP] Out-of-range number ignored, not recording:", message.trim());
             } else {
               scoresToRecord = [3];
               scoreSource = "fallback";
@@ -401,7 +406,7 @@ export async function POST(request: Request) {
 
             console.log("[ISSP] Scores:", scoresToRecord, "source:", scoreSource, "userScore:", userScore, "aiParsed:", JSON.stringify({ isConfirmation: parsed.isConfirmation, scores: parsed.scores }));
 
-            // 4. Записываем ВСЕ баллы
+            // 4. Записываем ВСЕ баллы (пропускаем если пустой массив)
             type UpdatableTestState = {
               current_question: number;
               status: string;
@@ -595,6 +600,11 @@ async function handleFinalTestAnswer({
       } else if (userScore !== null) {
         scoresToRecord = [userScore];
         scoreSource = "user_message";
+      } else if (isOutOfRangeNumber(message)) {
+        // Число вне 1-5 — не записываем, AI переспросит
+        scoresToRecord = [];
+        scoreSource = "out_of_range";
+        console.warn("[ISSP] Out-of-range number ignored for final answer:", message.trim());
       } else {
         scoresToRecord = [3];
         scoreSource = "fallback";
