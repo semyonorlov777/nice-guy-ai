@@ -565,33 +565,70 @@ async function handleFinalTestAnswer({
       console.log("[ISSP] Phase 1 parsed:", JSON.stringify({ isConfirmation: parsed.isConfirmation, scoresCount: parsed.scores.length, scores: parsed.scores, phase1Preview: phase1Text.substring(0, 100) }));
 
       if (!parsed.isConfirmation || parsed.scores.length === 0) {
-        // Gemini не подтвердил (запросил уточнение) — завершаем стрим одной фазой
-        console.log("[ISSP] Phase 1: not confirmed, skipping phase 2");
+        // Safety net: если это точно 35-й ответ (34 уже записаны),
+        // не теряем весь тест — извлекаем балл из сообщения пользователя
+        if (testState.answers.length === 34) {
+          console.warn("[ISSP] Safety net triggered: parser failed on 35th answer, extracting score from user message");
+          let fallbackScore: number | null = null;
+          let fallbackSource = "user_number";
 
-        await supabase.from("messages").insert({
-          chat_id: currentChatId,
-          role: "assistant",
-          content: phase1Text,
-          tokens_used: phase1Usage.totalTokens || 0,
-        });
+          // 1. Попробовать извлечь число 1-5 из сообщения пользователя
+          const userNum = message.trim().match(/^([1-5])$/);
+          if (userNum) {
+            fallbackScore = parseInt(userNum[1]);
+          } else {
+            // 2. Fallback маппинг текстовых ответов
+            const lower = message.trim().toLowerCase();
+            const textMap: Record<string, number> = {
+              "да": 5, "конечно": 5, "абсолютно": 5, "полностью": 5,
+              "скорее да": 4, "пожалуй": 4, "в целом да": 4,
+              "не знаю": 3, "иногда": 3, "может быть": 3, "50/50": 3, "средне": 3,
+              "скорее нет": 2, "не особо": 2, "вряд ли": 2,
+              "нет": 1, "совсем нет": 1, "никогда": 1,
+            };
+            if (textMap[lower] !== undefined) {
+              fallbackScore = textMap[lower];
+              fallbackSource = "text_mapping";
+            } else {
+              // 3. Крайний fallback — средний балл
+              fallbackScore = 3;
+              fallbackSource = "default_fallback";
+              console.error("[ISSP] Could not extract score from user message, using fallback=3. Message:", message);
+            }
+          }
 
-        await supabase
-          .from("chats")
-          .update({ last_message_at: new Date().toISOString() })
-          .eq("id", currentChatId);
+          console.log("[ISSP] Safety net score:", fallbackScore, "source:", fallbackSource);
+          parsed.scores = [fallbackScore];
+          parsed.isConfirmation = true;
+        } else {
+          // Gemini не подтвердил (запросил уточнение) — завершаем стрим одной фазой
+          console.log("[ISSP] Phase 1: not confirmed, skipping phase 2");
 
-        if ((phase1Usage.totalTokens ?? 0) > 0) {
-          await supabase.rpc("deduct_tokens", {
-            p_user_id: user.id,
-            p_amount: phase1Usage.totalTokens ?? 0,
+          await supabase.from("messages").insert({
+            chat_id: currentChatId,
+            role: "assistant",
+            content: phase1Text,
+            tokens_used: phase1Usage.totalTokens || 0,
           });
-        }
 
-        writer.write({
-          type: "finish",
-          finishReason: "stop",
-        } as Parameters<typeof writer.write>[0]);
-        return;
+          await supabase
+            .from("chats")
+            .update({ last_message_at: new Date().toISOString() })
+            .eq("id", currentChatId);
+
+          if ((phase1Usage.totalTokens ?? 0) > 0) {
+            await supabase.rpc("deduct_tokens", {
+              p_user_id: user.id,
+              p_amount: phase1Usage.totalTokens ?? 0,
+            });
+          }
+
+          writer.write({
+            type: "finish",
+            finishReason: "stop",
+          } as Parameters<typeof writer.write>[0]);
+          return;
+        }
       }
 
       // ── Обновляем test_state атомарно через RPC ──
