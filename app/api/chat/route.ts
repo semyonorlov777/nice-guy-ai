@@ -544,9 +544,18 @@ async function handleFinalTestAnswer({
       } as Parameters<typeof writer.write>[0]);
 
       // ── Фаза 1: Gemini подтверждает ответ ──
+      // ЖЁСТКИЙ фикс: вырезаем секции интерпретации из промпта,
+      // чтобы Gemini физически не мог сгенерировать интерпретацию в Фазе 1
+      const phase1SystemPrompt = (systemPrompt || "")
+        .replace(/<result_format>[\s\S]*?<\/result_format>/g, "")
+        .replace(/<interpretations>[\s\S]*?<\/interpretations>/g, "")
+        .replace(/<scoring>[\s\S]*?<\/scoring>/g, "")
+        .replace(/<data_output>[\s\S]*?<\/data_output>/g, "")
+        + "\n\nПодтверди получение ответа ОДНИМ коротким предложением. НЕ считай баллы. НЕ пиши интерпретацию.";
+
       const result1 = streamText({
         model: google("gemini-2.5-flash"),
-        system: systemPrompt || undefined,
+        system: phase1SystemPrompt,
         messages: aiMessages,
       });
 
