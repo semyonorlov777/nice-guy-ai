@@ -7,7 +7,8 @@ import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { updatePortrait } from "@/app/api/portrait/update/route";
 import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/issp-parser";
-import { calculateISSP, formatISSPScoresMessage } from "@/lib/issp-scoring";
+import { calculateISSP } from "@/lib/issp-scoring";
+import { generateInterpretation } from "@/lib/issp-interpretation";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
@@ -704,13 +705,44 @@ async function handleFinalTestAnswer({
         console.error("[ISSP] Failed to update chat status:", updateError);
       }
 
-      // ── Фаза 2: Gemini интерпретирует готовые числа ──
-      const scoresMessage = formatISSPScoresMessage(isspResult);
+      // DEPRECATED: old Phase 2 streaming interpretation
+      // const scoresMessage = formatISSPScoresMessage(isspResult);
+      // const phase2Messages = [
+      //   ...aiMessages,
+      //   { role: "assistant" as const, content: phase1Text },
+      //   { role: "user" as const, content: scoresMessage },
+      // ];
+      // const result2 = streamText({
+      //   model: google("gemini-2.5-flash"),
+      //   system: systemPrompt || undefined,
+      //   messages: phase2Messages,
+      // });
+      // writer.merge(result2.toUIMessageStream({ sendStart: false, sendFinish: false }));
+      // const phase2Text = await result2.text;
+      // const phase2Usage = await result2.usage;
 
+      // ── Генерация структурированной интерпретации (Gemini Pro, JSON) ──
+      const interpretation = await generateInterpretation(
+        isspResult.totalScore,
+        isspResult.scoresByScale
+      );
+
+      const { error: interpError } = await svc
+        .from("test_results")
+        .update({ interpretation })
+        .eq("chat_id", currentChatId);
+
+      if (interpError) {
+        console.error("[ISSP] Failed to save interpretation:", interpError);
+      } else {
+        console.log("[ISSP] Interpretation saved for chat:", currentChatId);
+      }
+
+      // ── Фаза 2: короткое сообщение с баллом ──
       const phase2Messages = [
         ...aiMessages,
         { role: "assistant" as const, content: phase1Text },
-        { role: "user" as const, content: scoresMessage },
+        { role: "user" as const, content: `[СИСТЕМА] Тест завершён. Общий балл: ${isspResult.totalScore}/100 (${interpretation.level_label}). Напиши короткое поздравление (2-3 предложения) и скажи что подробные результаты с визуализацией по 7 шкалам доступны на странице результатов.` },
       ];
 
       const result2 = streamText({
