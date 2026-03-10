@@ -1566,6 +1566,24 @@ body:has(.test-results-page) {
   margin-top: 12px;
 }
 
+.tr-cta-guest {
+  text-align: center;
+  padding: 48px 32px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.12) 0%, rgba(22, 24, 29, 0.9) 50%, rgba(92, 184, 122, 0.08) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  box-shadow: 0 0 80px rgba(201, 168, 76, 0.06);
+}
+
+.tr-cta-guest-title {
+  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-weight: 700;
+  font-size: clamp(24px, 5vw, 32px);
+  color: var(--tr-text);
+  margin-bottom: 28px;
+  line-height: 1.3;
+}
+
 /* Footer */
 .tr-footer {
   padding: 32px 0;

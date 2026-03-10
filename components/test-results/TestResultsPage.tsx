@@ -257,14 +257,12 @@ function CTASection({
           </div>
         </>
       ) : (
-        <>
+        <div className="tr-cta-guest">
+          <div className="tr-cta-guest-title">А какой твой профиль?</div>
           <Link href={`/program/${programSlug}`} className="tr-cta-primary">
-            Пройди тест сам
+            Пройти тест бесплатно
           </Link>
-          <div className="tr-cta-sub">
-            Узнай свои паттерны и начни путь к изменениям
-          </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -311,7 +309,7 @@ export function TestResultsPage(props: TestResultsProps) {
 
         <Divider />
 
-        {isOwner && interpretation?.overall && (
+        {interpretation?.overall && (
           <>
             <AIInterpretation text={interpretation.overall} />
             <Divider />
@@ -322,19 +320,14 @@ export function TestResultsPage(props: TestResultsProps) {
 
         <Divider />
 
-        {isOwner && (
-          <>
-            <ScaleCards
-              scoresByScale={scoresByScale}
-              topScales={topScales}
-              interpretation={interpretation}
-            />
-            <Divider />
-          </>
-        )}
+        <ScaleCards
+          scoresByScale={scoresByScale}
+          topScales={topScales}
+          interpretation={interpretation}
+        />
+        <Divider />
 
-        {isOwner &&
-          interpretation?.top_zones &&
+        {interpretation?.top_zones &&
           interpretation.top_zones.length > 0 && (
             <>
               <TopZones
