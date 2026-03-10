@@ -339,78 +339,101 @@ export async function POST(request: Request) {
         }
       }
 
-      // ISSP test parsing (fire-and-forget)
+      // ISSP test parsing (awaited — корректность важнее скорости)
       if (currentChatType === "test") {
-        const isspPromise = (async () => {
+        try {
           const svc = createServiceClient();
-          const { data: chatRow } = await svc
-            .from("chats")
-            .select("test_state")
-            .eq("id", currentChatId)
-            .single();
+          const parsed = parseAIResponse(text, message);
 
-          if (chatRow?.test_state) {
-            const testState = chatRow.test_state as {
+          if (parsed.isConfirmation && parsed.scores.length > 0) {
+            type UpdatableTestState = {
               current_question: number;
               status: string;
               started_at: string;
               answers: TestAnswer[];
             };
+            let updatedState: UpdatableTestState | null = null;
 
-            const parsed = parseAIResponse(text, message);
-            if (parsed.isConfirmation && parsed.scores.length > 0) {
-              for (const score of parsed.scores) {
-                const qIdx = testState.current_question;
-                if (qIdx >= ISSP_QUESTIONS.length) break;
-                const question = ISSP_QUESTIONS[qIdx];
-                testState.answers.push({
-                  q: question.q,
-                  scale: question.scale,
-                  type: question.type,
-                  rawAnswer: score,
-                  score: question.type === "reverse" ? 6 - score : score,
-                  text: /^\d$/.test(message.trim()) ? undefined : message,
-                });
-                testState.current_question++;
+            for (const score of parsed.scores) {
+              // Определяем вопрос по текущему current_question из последнего состояния
+              const qIdx = updatedState
+                ? updatedState.current_question
+                : (testState?.current_question ?? 0);
+              if (qIdx >= ISSP_QUESTIONS.length) break;
+
+              const question = ISSP_QUESTIONS[qIdx];
+              const answer = {
+                q: question.q,
+                scale: question.scale,
+                type: question.type,
+                rawAnswer: score,
+                score: question.type === "reverse" ? 6 - score : score,
+                text: /^\d$/.test(message.trim()) ? undefined : message,
+              };
+
+              // Атомарное обновление через RPC (FOR UPDATE блокировка)
+              const { data: newState, error: rpcError } = await svc.rpc(
+                "append_test_answer",
+                {
+                  p_chat_id: currentChatId,
+                  p_answer: answer,
+                }
+              );
+
+              if (rpcError) {
+                console.error("[ISSP] append_test_answer error:", rpcError);
+                break;
               }
+              updatedState = newState as UpdatableTestState;
+            }
 
-              if (testState.answers.length >= 35) {
-                testState.status = "completed";
-                const isspResult = calculateISSP(testState.answers);
+            // Проверка завершения теста
+            if (updatedState && updatedState.answers.length >= 35) {
+              updatedState.status = "completed";
+              const isspResult = calculateISSP(updatedState.answers);
 
-                await svc.from("test_results").insert({
+              const { error: insertError } = await svc
+                .from("test_results")
+                .insert({
                   user_id: user.id,
                   program_id: programId,
                   chat_id: currentChatId,
                   total_score: isspResult.totalScore,
                   total_raw: isspResult.totalRaw,
                   scores_by_scale: isspResult.scoresByScale,
-                  answers: testState.answers,
+                  answers: updatedState.answers,
                   recommended_exercises: isspResult.recommendedExercises,
                   top_scales: isspResult.topScales,
                 });
 
-                await svc
-                  .from("chats")
-                  .update({ test_state: testState, status: "completed" })
-                  .eq("id", currentChatId);
-
-                console.log(
-                  "[ISSP] Test completed for user:",
-                  user.id
+              if (insertError) {
+                console.error(
+                  "[ISSP] Failed to insert test_results:",
+                  insertError
                 );
-              } else {
-                await svc
-                  .from("chats")
-                  .update({ test_state: testState })
-                  .eq("id", currentChatId);
               }
+
+              const { error: updateError } = await svc
+                .from("chats")
+                .update({
+                  test_state: updatedState,
+                  status: "completed",
+                })
+                .eq("id", currentChatId);
+
+              if (updateError) {
+                console.error(
+                  "[ISSP] Failed to update chat status:",
+                  updateError
+                );
+              }
+
+              console.log("[ISSP] Test completed for user:", user.id);
             }
           }
-        })();
-        isspPromise.catch((err) => {
+        } catch (err) {
           console.error("[ISSP] Test state update error:", err);
-        });
+        }
       }
 
       // Portrait auto-update (fire-and-forget)
@@ -541,33 +564,41 @@ async function handleFinalTestAnswer({
         return;
       }
 
-      // ── Обновляем test_state с новым ответом ──
+      // ── Обновляем test_state атомарно через RPC ──
+      const svc = createServiceClient();
+
       for (const score of parsed.scores) {
         if (testState.current_question >= ISSP_QUESTIONS.length) break;
         const question = ISSP_QUESTIONS[testState.current_question];
-        testState.answers.push({
+        const answer = {
           q: question.q,
           scale: question.scale,
           type: question.type,
           rawAnswer: score,
           score: question.type === "reverse" ? 6 - score : score,
           text: /^\d$/.test(message.trim()) ? undefined : message,
-        });
-        testState.current_question++;
+        };
+
+        const { data: newState, error: rpcError } = await svc.rpc(
+          "append_test_answer",
+          { p_chat_id: currentChatId, p_answer: answer }
+        );
+
+        if (rpcError) {
+          console.error("[ISSP] append_test_answer error:", rpcError);
+          break;
+        }
+
+        // Обновляем локальный testState из БД
+        testState = newState as typeof testState;
       }
 
       if (testState.answers.length < 35) {
-        // Ещё не 35 — сохраняем прогресс, завершаем одной фазой
+        // Ещё не 35 — завершаем одной фазой (test_state уже обновлён через RPC)
         console.warn(
           "[ISSP] Expected 35 answers but got",
           testState.answers.length
         );
-
-        const svc = createServiceClient();
-        await svc
-          .from("chats")
-          .update({ test_state: testState })
-          .eq("id", currentChatId);
 
         await supabase.from("messages").insert({
           chat_id: currentChatId,
@@ -607,8 +638,7 @@ async function handleFinalTestAnswer({
       );
 
       // Сохраняем результаты в БД
-      const svc = createServiceClient();
-      await svc.from("test_results").insert({
+      const { error: insertError } = await svc.from("test_results").insert({
         user_id: user.id,
         program_id: programId,
         chat_id: currentChatId,
@@ -620,10 +650,18 @@ async function handleFinalTestAnswer({
         top_scales: isspResult.topScales,
       });
 
-      await svc
+      if (insertError) {
+        console.error("[ISSP] Failed to insert test_results:", insertError);
+      }
+
+      const { error: updateError } = await svc
         .from("chats")
         .update({ test_state: testState, status: "completed" })
         .eq("id", currentChatId);
+
+      if (updateError) {
+        console.error("[ISSP] Failed to update chat status:", updateError);
+      }
 
       // ── Фаза 2: Gemini интерпретирует готовые числа ──
       const scoresMessage = formatISSPScoresMessage(isspResult);
