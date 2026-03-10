@@ -60,7 +60,7 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
       className={`tr-radar-section tr-section-anim${isVisible ? " visible" : ""}`}
     >
       <div className="tr-section-label">Ваш профиль</div>
-      <div className="tr-section-title">Ваши 7 шкал</div>
+      <div className="tr-section-title">Где это проявляется</div>
 
       <div className="tr-radar-wrapper">
         <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">

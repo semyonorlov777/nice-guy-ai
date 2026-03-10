@@ -143,7 +143,7 @@ function ScaleCards({
       className={`tr-scales-section tr-section-anim${isVisible ? " visible" : ""}`}
     >
       <div className="tr-section-label">Подробнее</div>
-      <div className="tr-section-title">Каждая шкала — ближе</div>
+      <div className="tr-section-title">Что стоит за каждой</div>
 
       <div className="tr-cards-grid">
         {sorted.map((key, i) => {
