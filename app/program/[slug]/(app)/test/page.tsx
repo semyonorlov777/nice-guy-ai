@@ -65,7 +65,7 @@ export default async function TestPage({
   // Check for latest completed test result
   const { data: lastResult } = await supabase
     .from("test_results")
-    .select("total_score, created_at")
+    .select("id, total_score, created_at")
     .eq("user_id", user.id)
     .eq("program_id", program.id)
     .order("created_at", { ascending: false })
@@ -78,6 +78,7 @@ export default async function TestPage({
       chatId={chat?.id || null}
       programId={program.id}
       chatType="test"
+      testResultId={!chat && lastResult ? lastResult.id : null}
       userInitial={userInitial}
       quickReplies={["Готов, начнём", "Расскажи подробнее о тесте"]}
     >

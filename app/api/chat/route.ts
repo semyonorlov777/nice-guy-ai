@@ -679,7 +679,7 @@ async function handleFinalTestAnswer({
 
       // Сохраняем результаты в БД
       console.log("[ISSP] About to insert test_results for chat:", currentChatId, "totalScore:", isspResult.totalScore);
-      const { error: insertError } = await svc.from("test_results").insert({
+      const { data: insertData, error: insertError } = await svc.from("test_results").insert({
         user_id: user.id,
         program_id: programId,
         chat_id: currentChatId,
@@ -689,11 +689,19 @@ async function handleFinalTestAnswer({
         answers: testState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
-      });
+      }).select("id").single();
 
-      console.log("[ISSP] Insert result:", insertError ? insertError : "SUCCESS");
+      console.log("[ISSP] Insert result:", insertError ? insertError : "SUCCESS, id:", insertData?.id);
       if (insertError) {
         console.error("[ISSP] Failed to insert test_results:", insertError);
+      }
+
+      // Отправляем testResultId клиенту для кнопки-ссылки на результаты
+      if (insertData?.id) {
+        writer.write({
+          type: "message-metadata",
+          messageMetadata: { testResultId: insertData.id },
+        } as Parameters<typeof writer.write>[0]);
       }
 
       const { error: updateError } = await svc
