@@ -89,7 +89,25 @@ export default function ISSPTestPage() {
 
             if (migrateRes.ok) {
               const migrateData = await migrateRes.json();
-              setChatId(migrateData.chat_id);
+              const newChatId = migrateData.chat_id;
+
+              // Load messages from the migrated chat
+              const { data: dbMessages } = await supabase
+                .from("messages")
+                .select("role, content")
+                .eq("chat_id", newChatId)
+                .order("created_at", { ascending: true });
+
+              const msgs: TestMessage[] = (dbMessages || []).map(
+                (m, i) => ({
+                  id: `migrated-${i}`,
+                  role: m.role as "user" | "assistant",
+                  content: m.content,
+                })
+              );
+
+              setChatId(newChatId);
+              setInitialMessages(msgs);
               try {
                 sessionStorage.removeItem("issp_session_id");
                 localStorage.removeItem("issp_session_id");

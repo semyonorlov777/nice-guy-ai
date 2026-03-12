@@ -170,6 +170,10 @@ export function TestChat({
           try {
             const data = JSON.parse(trimmedLine.slice(6));
 
+            if (data.type !== "delta") {
+              console.log("[TestChat SSE]", data.type, data);
+            }
+
             if (data.type === "delta") {
               fullText += data.content;
               const captured = fullText;
