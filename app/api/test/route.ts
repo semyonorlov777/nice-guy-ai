@@ -339,6 +339,15 @@ async function handleAnonymous({
     role: string;
     content: string;
   }>;
+
+  // Safety net: don't allow 35th answer anonymously
+  if (existingAnswers.length >= 34) {
+    return createSSEResponse(async (send) => {
+      send({ type: "requires_auth" });
+      send({ type: "done" });
+    });
+  }
+
   const isFirstMessage = existingMessages.length === 0 && clientMessages.length <= 1;
 
   // Build AI messages from client-provided history

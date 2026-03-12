@@ -43,6 +43,7 @@ export function TestChat({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flashBtn, setFlashBtn] = useState<number | null>(null);
+  const [locked, setLocked] = useState(false); // auth wall lock
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +54,13 @@ export function TestChat({
   // Track current messages for SSE callback closure
   const messagesLive = useRef(messages);
   messagesLive.current = messages;
+
+  // Unlock when switching to authenticated mode (after migration)
+  useEffect(() => {
+    if (mode === "authenticated") {
+      setLocked(false);
+    }
+  }, [mode]);
 
   // Auto-send first message
   useEffect(() => {
@@ -85,9 +93,11 @@ export function TestChat({
   const userMsgCount = messages.filter((m) => m.role === "user").length;
   const answeredCount = Math.max(0, userMsgCount - 1);
 
+  const inputDisabled = isStreaming || locked;
+
   // SSE streaming
   async function sendMessage(text: string) {
-    if (isStreaming) return;
+    if (isStreaming || locked) return;
 
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -184,6 +194,7 @@ export function TestChat({
               );
             } else if (data.type === "requires_auth") {
               gotRequiresAuth = true;
+              setLocked(true);
             } else if (data.type === "test_complete") {
               onTestComplete(data.result_id);
             } else if (data.type === "error") {
@@ -353,12 +364,12 @@ export function TestChat({
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
+            disabled={inputDisabled}
           />
           <button
             className={`test-chat-send-btn ${hasInput ? "active" : ""}`}
             onClick={() => handleSend()}
-            disabled={isStreaming || !hasInput}
+            disabled={inputDisabled || !hasInput}
           >
             <svg
               width="20"
@@ -386,7 +397,7 @@ export function TestChat({
               key={n}
               className={`test-quick-btn${flashBtn === n ? " flash" : ""}`}
               onClick={() => handleQuickBtn(n)}
-              disabled={isStreaming}
+              disabled={inputDisabled}
             >
               <span className="qb-num">{n}</span>
               <span className="qb-label">{QUICK_LABELS[n - 1]}</span>
