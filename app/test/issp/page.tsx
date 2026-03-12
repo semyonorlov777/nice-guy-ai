@@ -64,34 +64,69 @@ export default function ISSPTestPage() {
         }
       }
 
-      // 2. Check sessionStorage for anonymous session
+      // 2. Check sessionStorage/localStorage for anonymous session
+      let savedSessionId: string | null = null;
       try {
-        const savedSessionId = sessionStorage.getItem("issp_session_id");
-        if (savedSessionId) {
-          const res = await fetch(
-            `/api/test?session_id=${encodeURIComponent(savedSessionId)}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const msgs: TestMessage[] = (data.messages || []).map(
-              (m: { role: string; content: string }, i: number) => ({
-                id: `restored-${i}`,
-                role: m.role as "user" | "assistant",
-                content: m.content,
-              })
-            );
+        savedSessionId =
+          sessionStorage.getItem("issp_session_id") ||
+          localStorage.getItem("issp_session_id");
+      } catch {
+        // storage unavailable
+      }
 
-            setSessionId(savedSessionId);
-            setInitialMessages(msgs);
-            setPhase("in_progress");
-            return;
-          } else {
-            // Session not found or completed — clean up
-            sessionStorage.removeItem("issp_session_id");
+      if (savedSessionId) {
+        // If user is authenticated + has session_id → auto-migrate
+        if (user) {
+          setSessionId(savedSessionId);
+          // doMigrate will use sessionId from state, but it's not set yet
+          // so we call migrate inline
+          try {
+            const migrateRes = await fetch("/api/test/migrate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session_id: savedSessionId }),
+            });
+
+            if (migrateRes.ok) {
+              const migrateData = await migrateRes.json();
+              setChatId(migrateData.chat_id);
+              try {
+                sessionStorage.removeItem("issp_session_id");
+                localStorage.removeItem("issp_session_id");
+              } catch { /* ignore */ }
+              setPhase("final_q");
+              return;
+            }
+          } catch {
+            // Migration failed — fall through to anonymous restore
           }
         }
-      } catch {
-        // sessionStorage unavailable
+
+        // Not authenticated or migration failed — restore anonymous session
+        const res = await fetch(
+          `/api/test?session_id=${encodeURIComponent(savedSessionId)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const msgs: TestMessage[] = (data.messages || []).map(
+            (m: { role: string; content: string }, i: number) => ({
+              id: `restored-${i}`,
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            })
+          );
+
+          setSessionId(savedSessionId);
+          setInitialMessages(msgs);
+          setPhase("in_progress");
+          return;
+        } else {
+          // Session not found or completed — clean up
+          try {
+            sessionStorage.removeItem("issp_session_id");
+            localStorage.removeItem("issp_session_id");
+          } catch { /* ignore */ }
+        }
       }
 
       // 3. Show welcome
@@ -108,6 +143,7 @@ export default function ISSPTestPage() {
     const newSessionId = crypto.randomUUID();
     try {
       sessionStorage.setItem("issp_session_id", newSessionId);
+      localStorage.setItem("issp_session_id", newSessionId);
     } catch {
       // ignore
     }
@@ -156,6 +192,7 @@ export default function ISSPTestPage() {
 
       try {
         sessionStorage.removeItem("issp_session_id");
+        localStorage.removeItem("issp_session_id");
       } catch {
         // ignore
       }
