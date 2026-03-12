@@ -133,6 +133,40 @@ function buildAnswer(
   };
 }
 
+// ── GET handler: restore anonymous session ──
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const sessionId = searchParams.get("session_id");
+
+  if (!sessionId || !UUID_RE.test(sessionId)) {
+    return Response.json(
+      { error: "Невалидный session_id" },
+      { status: 400 }
+    );
+  }
+
+  const serviceClient = createServiceClient();
+  const { data: session } = await serviceClient
+    .from("test_sessions")
+    .select("messages, current_question, status")
+    .eq("session_id", sessionId)
+    .maybeSingle();
+
+  if (!session || session.status !== "in_progress") {
+    return Response.json(
+      { error: "Сессия не найдена или завершена" },
+      { status: 404 }
+    );
+  }
+
+  return Response.json({
+    messages: session.messages || [],
+    current_question: session.current_question,
+    status: session.status,
+  });
+}
+
 // ── Main handler ──
 
 export async function POST(request: Request) {
@@ -325,10 +359,11 @@ async function handleAnonymous({
   const filteredHistory =
     firstUserIdx >= 0 ? historyMessages.slice(firstUserIdx) : [];
 
-  const aiMessages = [
-    ...filteredHistory,
-    { role: "user" as const, content: message },
-  ];
+  // clientMessages already includes the current user message,
+  // so don't append it again (would create duplicate user messages → breaks Gemini)
+  const aiMessages = filteredHistory.length > 0
+    ? filteredHistory
+    : [{ role: "user" as const, content: message }];
 
   // Stream response
   return createSSEResponse(async (send) => {
