@@ -745,24 +745,10 @@ async function handleFinalTestAnswer({
       console.error("[test:final] Failed to insert test_results:", insertError);
     }
 
-    // Generate interpretation (Gemini Pro, JSON)
-    const interpretation = await generateInterpretation(
-      isspResult.totalScore,
-      isspResult.scoresByScale
-    );
-
+    // Send test_complete signal IMMEDIATELY after insert,
+    // before interpretation (which can fail/timeout)
     if (insertData?.id) {
-      const { error: interpError } = await serviceClient
-        .from("test_results")
-        .update({ interpretation })
-        .eq("id", insertData.id);
-
-      if (interpError) {
-        console.error(
-          "[test:final] Failed to save interpretation:",
-          interpError
-        );
-      }
+      send({ type: "test_complete", result_id: insertData.id });
     }
 
     // Update chat status
@@ -775,9 +761,29 @@ async function handleFinalTestAnswer({
       console.error("[test:final] Failed to update chat status:", updateError);
     }
 
-    // Send test_complete signal
-    if (insertData?.id) {
-      send({ type: "test_complete", result_id: insertData.id });
+    // Generate interpretation (Gemini Pro, JSON) — non-blocking for client
+    let interpretation = { level_label: "не определён" } as Awaited<ReturnType<typeof generateInterpretation>>;
+    try {
+      interpretation = await generateInterpretation(
+        isspResult.totalScore,
+        isspResult.scoresByScale
+      );
+
+      if (insertData?.id) {
+        const { error: interpError } = await serviceClient
+          .from("test_results")
+          .update({ interpretation })
+          .eq("id", insertData.id);
+
+        if (interpError) {
+          console.error(
+            "[test:final] Failed to save interpretation:",
+            interpError
+          );
+        }
+      }
+    } catch (interpErr) {
+      console.error("[test:final] Interpretation generation failed:", interpErr);
     }
 
     // ── Phase 2: Gemini writes short congratulation ──
