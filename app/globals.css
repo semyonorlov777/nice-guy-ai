@@ -24,6 +24,7 @@
     --status-done: #5a8c5a;
     --status-done-bg: rgba(90, 140, 90, 0.10);
     --status-active-bg: rgba(184, 151, 58, 0.12);
+    --success-soft: rgba(74,122,74,0.08);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
     --radius: 16px;
     --radius-sm: 12px;
@@ -42,7 +43,7 @@
     --bg-main: #0b0c0e;
     --bg-card: #191c21;
     --bg-elevated: #1e2126;
-    --bg-input: #191c21;
+    --bg-input: #1c1f26;
     --bg-chat-zone: #111318;
     --bg-sidebar: #14161a;
     --border: #2a2d33;
@@ -60,6 +61,7 @@
     --status-done: #6aae6a;
     --status-done-bg: rgba(106, 174, 106, 0.12);
     --status-active-bg: rgba(201, 168, 76, 0.12);
+    --success-soft: rgba(92,184,122,0.08);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
   }
 
