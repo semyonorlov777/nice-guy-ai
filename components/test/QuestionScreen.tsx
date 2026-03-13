@@ -180,7 +180,6 @@ export function QuestionScreen({
               onClick={() => handleQuickClick(score)}
               disabled={isLocked}
             >
-              <span className="tc-qb-num">{score}</span>
               <span className="tc-qb-label">{QUICK_LABELS[score - 1]}</span>
             </button>
           ))}

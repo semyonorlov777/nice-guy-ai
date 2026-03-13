@@ -711,7 +711,7 @@ export function TestCardFlow() {
         setIsLocked(false);
         setIsReacting(false);
         setAiReaction(null);
-        setErrorMessage("Не удалось определить балл. Попробуйте ответить числом от 1 до 5.");
+        setErrorMessage("Не удалось понять ответ. Попробуйте описать подробнее или используйте кнопки ниже.");
         setTimeout(() => setErrorMessage(null), 5000);
         return;
       }
