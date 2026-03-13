@@ -28,6 +28,7 @@ type CardPhase =
   | "complete";
 
 const TOTAL_QUESTIONS = 35;
+const STREAM_TIMEOUT_MS = 30_000;
 
 export function TestCardFlow() {
   const router = useRouter();
@@ -52,10 +53,14 @@ export function TestCardFlow() {
   // Block transition state
   const [completedBlockIndex, setCompletedBlockIndex] = useState(0);
 
+  // Error state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   // API state
   const messagesHistory = useRef<{ role: string; content: string }[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const initDone = useRef(false);
+  const startPromiseRef = useRef<Promise<void> | null>(null);
 
   // ── Init ──
   useEffect(() => {
@@ -167,10 +172,28 @@ export function TestCardFlow() {
         );
         if (res.ok) {
           const data = await res.json();
+
+          // Session finished or migrated — clean up and show welcome
+          if (data.status === "migrated" || data.status === "completed") {
+            try {
+              sessionStorage.removeItem("issp_session_id");
+              localStorage.removeItem("issp_session_id");
+            } catch { /* ignore */ }
+            setPhase("welcome");
+            return;
+          }
+
           messagesHistory.current = data.messages || [];
           setSessionId(savedSessionId);
-          setCurrentQuestionIndex(data.current_question || 0);
-          setPhase("question");
+          const cq = data.current_question || 0;
+          setCurrentQuestionIndex(cq);
+
+          // If not started yet — show welcome instead of empty question
+          if (cq === 0 && (!data.messages || data.messages.length === 0)) {
+            setPhase("welcome");
+          } else {
+            setPhase("question");
+          }
           return;
         } else {
           try {
@@ -305,37 +328,39 @@ export function TestCardFlow() {
 
     setSessionId(newSessionId);
 
-    // Send first message to create the session
-    try {
-      const body = {
-        message: "Готов, начнём",
-        test_slug: "issp",
-        session_id: newSessionId,
-        messages: [],
-      };
+    // Show first question IMMEDIATELY
+    setCurrentQuestionIndex(0);
+    setAnimationClass("enter");
+    setPhase("question");
 
-      const response = await fetch("/api/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    // Fire-and-forget: create session in background
+    startPromiseRef.current = (async () => {
+      try {
+        const body = {
+          message: "Готов, начнём",
+          test_slug: "issp",
+          session_id: newSessionId,
+          messages: [],
+        };
 
-      if (!response.ok) throw new Error("Ошибка создания сессии");
+        const response = await fetch("/api/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
 
-      const result = await consumeSSE(response);
+        if (!response.ok) throw new Error("Ошибка создания сессии");
 
-      messagesHistory.current = [
-        { role: "user", content: "Готов, начнём" },
-        { role: "assistant", content: result.fullText },
-      ];
+        const result = await consumeSSE(response);
 
-      setCurrentQuestionIndex(0);
-      setAnimationClass("enter");
-      setPhase("question");
-    } catch (err) {
-      console.error("[TestCardFlow] Start error:", err);
-      setIsStarting(false);
-    }
+        messagesHistory.current = [
+          { role: "user", content: "Готов, начнём" },
+          { role: "assistant", content: result.fullText },
+        ];
+      } catch (err) {
+        console.error("[TestCardFlow] Start message failed:", err);
+      }
+    })();
   }, [isStarting, consumeSSE]);
 
   // ── Advance to next question ──
@@ -374,9 +399,14 @@ export function TestCardFlow() {
   }, []);
 
   // ── Handle Quick Answer ──
-  // TODO: оптимизировать quick-ответы — шаг 3, отдельный API-режим без Gemini
   const handleQuickAnswer = useCallback(async (score: number) => {
     if (isLocked) return;
+
+    // Wait for start message if still in progress
+    if (startPromiseRef.current) {
+      await startPromiseRef.current;
+      startPromiseRef.current = null;
+    }
 
     setSelectedScore(score);
     setIsLocked(true);
@@ -390,14 +420,46 @@ export function TestCardFlow() {
       setAiReaction(reaction);
     }, 600 + Math.random() * 400);
 
-    // Send to server in parallel
+    // Send to server in parallel (with timeout)
     try {
-      const result = await sendToAPI(String(score));
+      const result = await Promise.race([
+        sendToAPI(String(score)),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Таймаут ответа")), STREAM_TIMEOUT_MS)
+        ),
+      ]);
 
       if (result.testComplete && result.resultId) {
         setResultId(result.resultId);
-        // Small delay for reaction to be seen
         setTimeout(() => setPhase("analyzing"), 1000);
+        return;
+      }
+
+      // Q35 retry: test_complete expected but not received
+      if (currentQuestionIndex === TOTAL_QUESTIONS - 1 && !result.testComplete) {
+        console.warn("[TestCardFlow] Q35 answered but no test_complete, retrying...");
+        // Remove broken exchange from history before retry
+        if (messagesHistory.current.length >= 2) {
+          const lastA = messagesHistory.current[messagesHistory.current.length - 1];
+          const lastU = messagesHistory.current[messagesHistory.current.length - 2];
+          if (lastU?.role === "user" && lastA?.role === "assistant") {
+            messagesHistory.current = messagesHistory.current.slice(0, -2);
+          }
+        }
+        const retry = await Promise.race([
+          sendToAPI(String(score)),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Таймаут ретрая")), STREAM_TIMEOUT_MS)
+          ),
+        ]);
+        if (retry.testComplete && retry.resultId) {
+          setResultId(retry.resultId);
+          setTimeout(() => setPhase("analyzing"), 1000);
+          return;
+        }
+        setErrorMessage("Не удалось обработать ответ. Обновите страницу и попробуйте снова.");
+        setIsLocked(false);
+        setIsReacting(false);
         return;
       }
 
@@ -411,6 +473,8 @@ export function TestCardFlow() {
       setIsReacting(false);
       setAiReaction(null);
       setSelectedScore(null);
+      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
+      setTimeout(() => setErrorMessage(null), 5000);
     }
   }, [isLocked, currentQuestionIndex, sendToAPI, advanceQuestion]);
 
@@ -418,15 +482,53 @@ export function TestCardFlow() {
   const handleTextAnswer = useCallback(async (text: string) => {
     if (isLocked) return;
 
+    // Wait for start message if still in progress
+    if (startPromiseRef.current) {
+      await startPromiseRef.current;
+      startPromiseRef.current = null;
+    }
+
     setIsLocked(true);
     setIsReacting(true);
 
     try {
-      const result = await sendToAPI(text, { streamToReaction: true });
+      const result = await Promise.race([
+        sendToAPI(text, { streamToReaction: true }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Таймаут ответа")), STREAM_TIMEOUT_MS)
+        ),
+      ]);
 
       if (result.testComplete && result.resultId) {
         setResultId(result.resultId);
         setTimeout(() => setPhase("analyzing"), 1000);
+        return;
+      }
+
+      // Q35 retry: test_complete expected but not received
+      if (currentQuestionIndex === TOTAL_QUESTIONS - 1 && !result.testComplete) {
+        console.warn("[TestCardFlow] Q35 text answer but no test_complete, retrying...");
+        if (messagesHistory.current.length >= 2) {
+          const lastA = messagesHistory.current[messagesHistory.current.length - 1];
+          const lastU = messagesHistory.current[messagesHistory.current.length - 2];
+          if (lastU?.role === "user" && lastA?.role === "assistant") {
+            messagesHistory.current = messagesHistory.current.slice(0, -2);
+          }
+        }
+        const retry = await Promise.race([
+          sendToAPI(text, { streamToReaction: true }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Таймаут ретрая")), STREAM_TIMEOUT_MS)
+          ),
+        ]);
+        if (retry.testComplete && retry.resultId) {
+          setResultId(retry.resultId);
+          setTimeout(() => setPhase("analyzing"), 1000);
+          return;
+        }
+        setErrorMessage("Не удалось обработать ответ. Обновите страницу и попробуйте снова.");
+        setIsLocked(false);
+        setIsReacting(false);
         return;
       }
 
@@ -439,6 +541,8 @@ export function TestCardFlow() {
       setIsLocked(false);
       setIsReacting(false);
       setAiReaction(null);
+      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
+      setTimeout(() => setErrorMessage(null), 5000);
     }
   }, [isLocked, currentQuestionIndex, sendToAPI, advanceQuestion]);
 
@@ -564,6 +668,26 @@ export function TestCardFlow() {
             onQuickAnswer={handleQuickAnswer}
             onTextAnswer={handleTextAnswer}
           />
+        )}
+
+        {/* Error toast */}
+        {errorMessage && (
+          <div style={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#dc2626",
+            color: "#fff",
+            padding: "12px 20px",
+            borderRadius: 12,
+            fontSize: 14,
+            zIndex: 1000,
+            maxWidth: "90vw",
+            textAlign: "center",
+          }}>
+            {errorMessage}
+          </div>
         )}
 
         {phase === "block_transition" && (

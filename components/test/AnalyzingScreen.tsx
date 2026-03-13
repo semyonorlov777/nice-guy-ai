@@ -38,11 +38,16 @@ export function AnalyzingScreen({ onComplete }: AnalyzingScreenProps) {
       onCompleteRef.current();
     }, 10000);
 
+    const tFallback = setTimeout(() => {
+      setStatus("Анализ занимает больше времени. Попробуйте обновить страницу.");
+    }, 60_000);
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
+      clearTimeout(tFallback);
     };
   }, []);
 
