@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, generateText } from "ai";
 import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import {
@@ -8,6 +8,7 @@ import {
 import { calculateISSP } from "@/lib/issp-scoring";
 import { generateInterpretation } from "@/lib/issp-interpretation";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
+import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
 // ── Rate limiting (anonymous only) ──
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
 
   // 2. Parse body
   const body = await request.json();
-  const { message, test_slug } = body;
+  const { message, test_slug, answer_type, answer: quickAnswer, answer_text, question_index } = body;
 
   // Common validation
   if (test_slug !== "issp") {
@@ -187,16 +188,43 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (
-    !message ||
-    typeof message !== "string" ||
-    message.length === 0 ||
-    message.length > 5000
-  ) {
+
+  // answer_type validation
+  if (answer_type && !["quick", "text"].includes(answer_type)) {
     return Response.json(
-      { error: "Невалидное сообщение (пусто или >5000 символов)" },
+      { error: "Неизвестный answer_type" },
       { status: 400 }
     );
+  }
+  if (answer_type && (typeof question_index !== "number" || question_index < 0 || question_index >= 35)) {
+    return Response.json(
+      { error: "Невалидный question_index" },
+      { status: 400 }
+    );
+  }
+  if (answer_type === "quick") {
+    const score = typeof quickAnswer === "number" ? quickAnswer : Number(message);
+    if (!Number.isInteger(score) || score < 1 || score > 5) {
+      return Response.json(
+        { error: "answer должен быть 1-5" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // message validation — only required when no answer_type
+  if (!answer_type) {
+    if (
+      !message ||
+      typeof message !== "string" ||
+      message.length === 0 ||
+      message.length > 5000
+    ) {
+      return Response.json(
+        { error: "Невалидное сообщение (пусто или >5000 символов)" },
+        { status: 400 }
+      );
+    }
   }
 
   const isAuthenticated = !!user;
@@ -253,7 +281,28 @@ export async function POST(request: Request) {
 
   const systemPrompt = program.test_system_prompt;
 
-  // 5. Load/create state + build AI messages
+  // 5. Typed answer mode (quick/text) — new path
+  if (answer_type === "quick" || answer_type === "text") {
+    return handleTypedAnswer({
+      serviceClient,
+      supabase,
+      user,
+      isAuthenticated,
+      answerType: answer_type,
+      score: answer_type === "quick"
+        ? (typeof quickAnswer === "number" ? quickAnswer : Number(message))
+        : undefined,
+      answerText: answer_type === "text" ? (answer_text ?? message) : undefined,
+      questionIndex: question_index,
+      sessionId: body.session_id,
+      chatId: body.chat_id,
+      clientMessages: body.messages,
+      systemPrompt,
+      programId: program.id,
+    });
+  }
+
+  // 6. Legacy mode (no answer_type) — existing handlers
   if (isAuthenticated) {
     return handleAuthenticated({
       supabase,
@@ -276,7 +325,484 @@ export async function POST(request: Request) {
 }
 
 // ══════════════════════════════════════════════════════════
-// Anonymous handler
+// Typed answer handler (quick / text)
+// ══════════════════════════════════════════════════════════
+
+async function handleTypedAnswer({
+  serviceClient,
+  supabase,
+  user,
+  isAuthenticated,
+  answerType,
+  score,
+  answerText,
+  questionIndex,
+  sessionId,
+  chatId,
+  clientMessages,
+  systemPrompt,
+  programId,
+}: {
+  serviceClient: ReturnType<typeof createServiceClient>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  user: { id: string; email?: string } | null;
+  isAuthenticated: boolean;
+  answerType: "quick" | "text";
+  score?: number;
+  answerText?: string;
+  questionIndex: number;
+  sessionId?: string;
+  chatId?: string;
+  clientMessages?: Array<{ role: string; content: string }>;
+  systemPrompt: string;
+  programId: string;
+}) {
+  // ── Step 1: Load state ──
+  let serverCurrentQuestion: number;
+  let existingAnswers: TestAnswer[];
+  let session: TestSession | null = null;
+  let testState: TestState | null = null;
+
+  if (isAuthenticated) {
+    if (!chatId || !UUID_RE.test(chatId)) {
+      return Response.json({ error: "Невалидный chat_id" }, { status: 400 });
+    }
+
+    const { data: chat } = await supabase
+      .from("chats")
+      .select("id, chat_type, status")
+      .eq("id", chatId)
+      .single();
+
+    if (!chat || chat.chat_type !== "test") {
+      return Response.json({ error: "Чат не найден или не является тестом" }, { status: 404 });
+    }
+
+    const { data: chatRow } = await serviceClient
+      .from("chats")
+      .select("test_state")
+      .eq("id", chatId)
+      .single();
+
+    testState = (chatRow?.test_state as TestState) || {
+      current_question: 0,
+      status: "in_progress",
+      started_at: new Date().toISOString(),
+      answers: [],
+    };
+
+    serverCurrentQuestion = testState.current_question;
+    existingAnswers = testState.answers || [];
+  } else {
+    if (!sessionId || !UUID_RE.test(sessionId)) {
+      return Response.json({ error: "Невалидный session_id" }, { status: 400 });
+    }
+
+    const { data: existingSession } = await serviceClient
+      .from("test_sessions")
+      .select("*")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    if (!existingSession || existingSession.status !== "in_progress") {
+      return Response.json(
+        { error: "Сессия не найдена или завершена" },
+        { status: 400 }
+      );
+    }
+
+    session = existingSession as TestSession;
+    serverCurrentQuestion = session.current_question;
+    existingAnswers = (session.answers || []) as TestAnswer[];
+  }
+
+  // ── Step 2: Validate question_index ──
+  if (questionIndex !== serverCurrentQuestion) {
+    return Response.json(
+      {
+        error: "question_mismatch",
+        server_question: serverCurrentQuestion,
+        message: `Ожидался вопрос ${serverCurrentQuestion}, получен ${questionIndex}`,
+      },
+      { status: 409 }
+    );
+  }
+
+  // ── Step 3: Handle answer_type === "quick" ──
+  if (answerType === "quick" && score !== undefined) {
+    const answer = buildAnswer(score, questionIndex, String(score));
+    const userMsg = { role: "user", content: String(score) };
+    const assistantMsg = { role: "assistant", content: `Записываю как ${score}.` };
+
+    if (isAuthenticated) {
+      // Save messages to DB
+      await supabase.from("messages").insert([
+        { chat_id: chatId, role: "user", content: String(score), tokens_used: 0 },
+        { chat_id: chatId, role: "assistant", content: `Записываю как ${score}.`, tokens_used: 0 },
+      ]);
+
+      // Check if this is the final answer (question_index === 34)
+      if (questionIndex === 34) {
+        // Append answer via RPC first
+        const { data: newState, error: rpcError } = await serviceClient.rpc(
+          "append_test_answer",
+          { p_chat_id: chatId, p_answer: answer }
+        );
+        if (rpcError) {
+          console.error("[test:typed] append_test_answer error:", rpcError);
+          return Response.json({ error: "Не удалось записать ответ" }, { status: 500 });
+        }
+
+        const finalState = newState as TestState;
+        if (finalState.answers.length >= 35) {
+          // Calculate and stream results via SSE
+          return handleTypedFinalAnswer({
+            serviceClient, supabase, user: user!, chatId: chatId!,
+            systemPrompt, programId, testState: finalState,
+          });
+        }
+
+        // Shouldn't happen, but handle gracefully
+        await supabase
+          .from("chats")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", chatId);
+        return Response.json({ success: true, next_question: questionIndex + 1, score });
+      }
+
+      // Normal authenticated answer (question_index 0-33)
+      const { error: rpcError } = await serviceClient.rpc(
+        "append_test_answer",
+        { p_chat_id: chatId, p_answer: answer }
+      );
+      if (rpcError) {
+        console.error("[test:typed] append_test_answer error:", rpcError);
+        return Response.json({ error: "Не удалось записать ответ" }, { status: 500 });
+      }
+
+      await supabase
+        .from("chats")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", chatId);
+
+      return Response.json({ success: true, next_question: questionIndex + 1, score });
+    } else {
+      // Anonymous mode
+      const existingMessages = (session!.messages || []) as Array<{ role: string; content: string }>;
+      const updatedAnswers = [...existingAnswers, answer];
+      const updatedMessages = [...existingMessages, userMsg, assistantMsg];
+      const nextQuestion = questionIndex + 1;
+
+      await serviceClient
+        .from("test_sessions")
+        .update({
+          current_question: nextQuestion,
+          answers: updatedAnswers,
+          messages: updatedMessages,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("session_id", sessionId);
+
+      // Check requires_auth: anonymous user completed 34 answers
+      if (updatedAnswers.length >= 34) {
+        return Response.json({
+          success: true,
+          requires_auth: true,
+          next_question: nextQuestion,
+        });
+      }
+
+      return Response.json({ success: true, next_question: nextQuestion, score });
+    }
+  }
+
+  // ── Step 4: Handle answer_type === "text" ──
+  if (answerType === "text" && answerText) {
+    const questionText = ISSP_QUESTIONS[questionIndex].text;
+    const miniPrompt = buildMiniPrompt(questionText);
+
+    return createSSEResponse(async (send) => {
+      const result = streamText({
+        model: google("gemini-2.5-flash"),
+        system: miniPrompt,
+        messages: [{ role: "user" as const, content: answerText }],
+      });
+
+      const fullText = await streamToSSE(result, send);
+
+      // Parse score from AI response
+      const parsed = parseAIResponse(fullText, answerText);
+      const userScore = extractScoreFromUserMessage(answerText);
+
+      let extractedScore: number | null = null;
+      if (parsed.isConfirmation && parsed.scores.length > 0) {
+        extractedScore = parsed.scores[0];
+      } else if (userScore !== null) {
+        extractedScore = userScore;
+      }
+
+      if (extractedScore === null) {
+        // Could not parse — stay on same question
+        send({ type: "answer_rejected", reason: "parse_failed" });
+        send({ type: "done" });
+        return;
+      }
+
+      // Score found — record the answer
+      const answer = buildAnswer(extractedScore, questionIndex, answerText);
+
+      if (isAuthenticated) {
+        // Save messages
+        await supabase.from("messages").insert([
+          { chat_id: chatId, role: "user", content: answerText, tokens_used: 0 },
+          { chat_id: chatId, role: "assistant", content: fullText, tokens_used: 0 },
+        ]);
+
+        // Final answer check (question_index === 34)
+        if (questionIndex === 34) {
+          const { data: newState, error: rpcError } = await serviceClient.rpc(
+            "append_test_answer",
+            { p_chat_id: chatId, p_answer: answer }
+          );
+          if (rpcError) {
+            console.error("[test:typed:text] append_test_answer error:", rpcError);
+            send({ type: "error", message: "Не удалось записать ответ" });
+            send({ type: "done" });
+            return;
+          }
+
+          const finalState = newState as TestState;
+          if (finalState.answers.length >= 35) {
+            // Calculate scores inline (already in SSE context)
+            const isspResult = calculateISSP(finalState.answers);
+            console.log("[test:typed:text] Final scores:", isspResult.totalScore);
+
+            const { data: insertData, error: insertError } = await serviceClient
+              .from("test_results")
+              .insert({
+                user_id: user!.id,
+                program_id: programId,
+                chat_id: chatId,
+                total_score: isspResult.totalScore,
+                total_raw: isspResult.totalRaw,
+                scores_by_scale: isspResult.scoresByScale,
+                answers: finalState.answers,
+                recommended_exercises: isspResult.recommendedExercises,
+                top_scales: isspResult.topScales,
+              })
+              .select("id")
+              .single();
+
+            if (insertError) {
+              console.error("[test:typed:text] insert test_results error:", insertError);
+            }
+
+            if (insertData?.id) {
+              send({ type: "test_complete", result_id: insertData.id });
+            }
+
+            // Update chat status
+            finalState.status = "completed";
+            await serviceClient
+              .from("chats")
+              .update({ test_state: finalState, status: "completed" })
+              .eq("id", chatId);
+
+            // Generate interpretation (non-blocking for client)
+            try {
+              const interpretation = await generateInterpretation(
+                isspResult.totalScore,
+                isspResult.scoresByScale
+              );
+              if (insertData?.id) {
+                await serviceClient
+                  .from("test_results")
+                  .update({ interpretation })
+                  .eq("id", insertData.id);
+              }
+            } catch (interpErr) {
+              console.error("[test:typed:text] interpretation failed:", interpErr);
+            }
+
+            send({ type: "done" });
+            return;
+          }
+
+          send({ type: "answer_confirmed", score: extractedScore, next_question: questionIndex + 1 });
+          send({ type: "done" });
+          return;
+        }
+
+        // Normal authenticated answer
+        const { error: rpcError } = await serviceClient.rpc(
+          "append_test_answer",
+          { p_chat_id: chatId, p_answer: answer }
+        );
+        if (rpcError) {
+          console.error("[test:typed:text] append_test_answer error:", rpcError);
+        }
+
+        await supabase
+          .from("chats")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", chatId);
+
+        send({ type: "answer_confirmed", score: extractedScore, next_question: questionIndex + 1 });
+        send({ type: "done" });
+      } else {
+        // Anonymous mode
+        const existingMessages = (session!.messages || []) as Array<{ role: string; content: string }>;
+        const updatedAnswers = [...existingAnswers, answer];
+        const updatedMessages = [
+          ...existingMessages,
+          { role: "user", content: answerText },
+          { role: "assistant", content: fullText },
+        ];
+        const nextQuestion = questionIndex + 1;
+
+        await serviceClient
+          .from("test_sessions")
+          .update({
+            current_question: nextQuestion,
+            answers: updatedAnswers,
+            messages: updatedMessages,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("session_id", sessionId);
+
+        send({ type: "answer_confirmed", score: extractedScore, next_question: nextQuestion });
+
+        // Check requires_auth: anonymous completed 34 answers
+        if (updatedAnswers.length >= 34) {
+          send({ type: "requires_auth" });
+        }
+
+        send({ type: "done" });
+      }
+    });
+  }
+
+  // Fallback — shouldn't reach here
+  return Response.json({ error: "Невалидные параметры запроса" }, { status: 400 });
+}
+
+// ── Helper: typed quick final answer (Q35, SSE) ──
+
+async function handleTypedFinalAnswer({
+  serviceClient,
+  supabase,
+  user,
+  chatId,
+  systemPrompt,
+  programId,
+  testState,
+}: {
+  serviceClient: ReturnType<typeof createServiceClient>;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  user: { id: string; email?: string };
+  chatId: string;
+  systemPrompt: string;
+  programId: string;
+  testState: TestState;
+}) {
+  return createSSEResponse(async (send) => {
+    // Calculate scores
+    const isspResult = calculateISSP(testState.answers);
+    console.log(
+      "[test:typed:final] Scores:",
+      isspResult.totalScore,
+      "topScales:",
+      isspResult.topScales
+    );
+
+    // Save test_results
+    const { data: insertData, error: insertError } = await serviceClient
+      .from("test_results")
+      .insert({
+        user_id: user.id,
+        program_id: programId,
+        chat_id: chatId,
+        total_score: isspResult.totalScore,
+        total_raw: isspResult.totalRaw,
+        scores_by_scale: isspResult.scoresByScale,
+        answers: testState.answers,
+        recommended_exercises: isspResult.recommendedExercises,
+        top_scales: isspResult.topScales,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      console.error("[test:typed:final] insert test_results error:", insertError);
+    }
+
+    // Send test_complete IMMEDIATELY
+    if (insertData?.id) {
+      send({ type: "test_complete", result_id: insertData.id });
+    }
+
+    // Update chat status
+    testState.status = "completed";
+    await serviceClient
+      .from("chats")
+      .update({ test_state: testState, status: "completed" })
+      .eq("id", chatId);
+
+    // Generate interpretation (non-blocking for client — test_complete already sent)
+    let interpretation = { level_label: "не определён" } as Awaited<
+      ReturnType<typeof generateInterpretation>
+    >;
+    try {
+      interpretation = await generateInterpretation(
+        isspResult.totalScore,
+        isspResult.scoresByScale
+      );
+
+      if (insertData?.id) {
+        await serviceClient
+          .from("test_results")
+          .update({ interpretation })
+          .eq("id", insertData.id);
+      }
+    } catch (interpErr) {
+      console.error("[test:typed:final] interpretation failed:", interpErr);
+    }
+
+    // Phase 2: Gemini congratulation message
+    const phase2Messages = [
+      {
+        role: "user" as const,
+        content: `[СИСТЕМА] Тест завершён. Общий балл: ${isspResult.totalScore}/100 (${interpretation.level_label}). Напиши короткое поздравление (2-3 предложения) и скажи что подробные результаты с визуализацией по 7 шкалам доступны на странице результатов.`,
+      },
+    ];
+
+    const result2 = streamText({
+      model: google("gemini-2.5-flash"),
+      system: systemPrompt || undefined,
+      messages: phase2Messages,
+    });
+
+    const phase2Text = await streamToSSE(result2, send);
+
+    // Save congratulation message
+    await supabase.from("messages").insert({
+      chat_id: chatId,
+      role: "assistant",
+      content: phase2Text,
+      tokens_used: 0,
+    });
+
+    await supabase
+      .from("chats")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", chatId);
+
+    send({ type: "done" });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// Anonymous handler (legacy — no answer_type)
 // ══════════════════════════════════════════════════════════
 
 async function handleAnonymous({

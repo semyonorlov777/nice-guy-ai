@@ -218,6 +218,10 @@ export function TestCardFlow() {
     requiresAuth: boolean;
     testComplete: boolean;
     resultId: string | null;
+    answerConfirmed: boolean;
+    nextQuestion: number | null;
+    confirmedScore: number | null;
+    answerRejected: boolean;
   }> => {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("Нет потока ответа");
@@ -228,6 +232,10 @@ export function TestCardFlow() {
     let requiresAuth = false;
     let testComplete = false;
     let gotResultId: string | null = null;
+    let answerConfirmed = false;
+    let nextQuestion: number | null = null;
+    let confirmedScore: number | null = null;
+    let answerRejected = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -254,6 +262,12 @@ export function TestCardFlow() {
           } else if (data.type === "test_complete") {
             testComplete = true;
             gotResultId = data.result_id;
+          } else if (data.type === "answer_confirmed") {
+            answerConfirmed = true;
+            nextQuestion = data.next_question;
+            confirmedScore = data.score;
+          } else if (data.type === "answer_rejected") {
+            answerRejected = true;
           } else if (data.type === "error") {
             console.error("[TestCardFlow] SSE error:", data.message);
           }
@@ -263,7 +277,10 @@ export function TestCardFlow() {
       }
     }
 
-    return { fullText, requiresAuth, testComplete, resultId: gotResultId };
+    return {
+      fullText, requiresAuth, testComplete, resultId: gotResultId,
+      answerConfirmed, nextQuestion, confirmedScore, answerRejected,
+    };
   }, []);
 
   // ── Send to API ──
@@ -363,189 +380,6 @@ export function TestCardFlow() {
     })();
   }, [isStarting, consumeSSE]);
 
-  // ── Advance to next question ──
-  const advanceQuestion = useCallback((nextIndex: number, hasRequiresAuth: boolean) => {
-    if (hasRequiresAuth) {
-      // Auth wall
-      handleRequiresAuth();
-      return;
-    }
-
-    const currentBlock = Math.floor((nextIndex - 1) / 5);
-    const nextBlock = Math.floor(nextIndex / 5);
-    const isBlockBoundary = nextIndex < TOTAL_QUESTIONS && nextBlock > currentBlock;
-
-    if (isBlockBoundary) {
-      setCompletedBlockIndex(currentBlock);
-      setPhase("block_transition");
-      return;
-    }
-
-    if (nextIndex >= TOTAL_QUESTIONS) {
-      // This shouldn't happen — test_complete should've fired
-      return;
-    }
-
-    // Animate transition
-    setAnimationClass("exit");
-    setTimeout(() => {
-      setCurrentQuestionIndex(nextIndex);
-      setAiReaction(null);
-      setIsReacting(false);
-      setIsLocked(false);
-      setSelectedScore(null);
-      setAnimationClass("enter");
-    }, 300);
-  }, []);
-
-  // ── Handle Quick Answer ──
-  const handleQuickAnswer = useCallback(async (score: number) => {
-    if (isLocked) return;
-
-    // Wait for start message if still in progress
-    if (startPromiseRef.current) {
-      await startPromiseRef.current;
-      startPromiseRef.current = null;
-    }
-
-    setSelectedScore(score);
-    setIsLocked(true);
-    setIsReacting(true);
-
-    // Show local reaction after typing dots delay
-    const reactions = ISSP_QUICK_REACTIONS[score];
-    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
-
-    setTimeout(() => {
-      setAiReaction(reaction);
-    }, 600 + Math.random() * 400);
-
-    // Send to server in parallel (with timeout)
-    try {
-      const result = await Promise.race([
-        sendToAPI(String(score)),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Таймаут ответа")), STREAM_TIMEOUT_MS)
-        ),
-      ]);
-
-      if (result.testComplete && result.resultId) {
-        setResultId(result.resultId);
-        setTimeout(() => setPhase("analyzing"), 1000);
-        return;
-      }
-
-      // Q35 retry: test_complete expected but not received
-      if (currentQuestionIndex === TOTAL_QUESTIONS - 1 && !result.testComplete) {
-        console.warn("[TestCardFlow] Q35 answered but no test_complete, retrying...");
-        // Remove broken exchange from history before retry
-        if (messagesHistory.current.length >= 2) {
-          const lastA = messagesHistory.current[messagesHistory.current.length - 1];
-          const lastU = messagesHistory.current[messagesHistory.current.length - 2];
-          if (lastU?.role === "user" && lastA?.role === "assistant") {
-            messagesHistory.current = messagesHistory.current.slice(0, -2);
-          }
-        }
-        const retry = await Promise.race([
-          sendToAPI(String(score)),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Таймаут ретрая")), STREAM_TIMEOUT_MS)
-          ),
-        ]);
-        if (retry.testComplete && retry.resultId) {
-          setResultId(retry.resultId);
-          setTimeout(() => setPhase("analyzing"), 1000);
-          return;
-        }
-        setErrorMessage("Не удалось обработать ответ. Обновите страницу и попробуйте снова.");
-        setIsLocked(false);
-        setIsReacting(false);
-        return;
-      }
-
-      // Wait for reaction to be visible
-      setTimeout(() => {
-        advanceQuestion(currentQuestionIndex + 1, result.requiresAuth);
-      }, 1600);
-    } catch (err) {
-      console.error("[TestCardFlow] Quick answer error:", err);
-      setIsLocked(false);
-      setIsReacting(false);
-      setAiReaction(null);
-      setSelectedScore(null);
-      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
-      setTimeout(() => setErrorMessage(null), 5000);
-    }
-  }, [isLocked, currentQuestionIndex, sendToAPI, advanceQuestion]);
-
-  // ── Handle Text Answer ──
-  const handleTextAnswer = useCallback(async (text: string) => {
-    if (isLocked) return;
-
-    // Wait for start message if still in progress
-    if (startPromiseRef.current) {
-      await startPromiseRef.current;
-      startPromiseRef.current = null;
-    }
-
-    setIsLocked(true);
-    setIsReacting(true);
-
-    try {
-      const result = await Promise.race([
-        sendToAPI(text, { streamToReaction: true }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Таймаут ответа")), STREAM_TIMEOUT_MS)
-        ),
-      ]);
-
-      if (result.testComplete && result.resultId) {
-        setResultId(result.resultId);
-        setTimeout(() => setPhase("analyzing"), 1000);
-        return;
-      }
-
-      // Q35 retry: test_complete expected but not received
-      if (currentQuestionIndex === TOTAL_QUESTIONS - 1 && !result.testComplete) {
-        console.warn("[TestCardFlow] Q35 text answer but no test_complete, retrying...");
-        if (messagesHistory.current.length >= 2) {
-          const lastA = messagesHistory.current[messagesHistory.current.length - 1];
-          const lastU = messagesHistory.current[messagesHistory.current.length - 2];
-          if (lastU?.role === "user" && lastA?.role === "assistant") {
-            messagesHistory.current = messagesHistory.current.slice(0, -2);
-          }
-        }
-        const retry = await Promise.race([
-          sendToAPI(text, { streamToReaction: true }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Таймаут ретрая")), STREAM_TIMEOUT_MS)
-          ),
-        ]);
-        if (retry.testComplete && retry.resultId) {
-          setResultId(retry.resultId);
-          setTimeout(() => setPhase("analyzing"), 1000);
-          return;
-        }
-        setErrorMessage("Не удалось обработать ответ. Обновите страницу и попробуйте снова.");
-        setIsLocked(false);
-        setIsReacting(false);
-        return;
-      }
-
-      // Wait for reaction to be visible
-      setTimeout(() => {
-        advanceQuestion(currentQuestionIndex + 1, result.requiresAuth);
-      }, 1600);
-    } catch (err) {
-      console.error("[TestCardFlow] Text answer error:", err);
-      setIsLocked(false);
-      setIsReacting(false);
-      setAiReaction(null);
-      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
-      setTimeout(() => setErrorMessage(null), 5000);
-    }
-  }, [isLocked, currentQuestionIndex, sendToAPI, advanceQuestion]);
-
   // ── Auth flow ──
   const handleRequiresAuth = useCallback(async () => {
     const supabase = createClient();
@@ -604,6 +438,260 @@ export function TestCardFlow() {
       setPhase("auth_wall");
     }
   }
+
+  // ── Advance to next question ──
+  const advanceQuestion = useCallback((nextIndex: number, hasRequiresAuth: boolean) => {
+    if (hasRequiresAuth) {
+      // Auth wall
+      handleRequiresAuth();
+      return;
+    }
+
+    const currentBlock = Math.floor((nextIndex - 1) / 5);
+    const nextBlock = Math.floor(nextIndex / 5);
+    const isBlockBoundary = nextIndex < TOTAL_QUESTIONS && nextBlock > currentBlock;
+
+    if (isBlockBoundary) {
+      setCompletedBlockIndex(currentBlock);
+      setPhase("block_transition");
+      return;
+    }
+
+    if (nextIndex >= TOTAL_QUESTIONS) {
+      // This shouldn't happen — test_complete should've fired
+      return;
+    }
+
+    // Animate transition
+    setAnimationClass("exit");
+    setTimeout(() => {
+      setCurrentQuestionIndex(nextIndex);
+      setAiReaction(null);
+      setIsReacting(false);
+      setIsLocked(false);
+      setSelectedScore(null);
+      setAnimationClass("enter");
+    }, 300);
+  }, []);
+
+  // ── Handle Quick Answer ──
+  const handleQuickAnswer = useCallback(async (score: number) => {
+    if (isLocked) return;
+
+    // Wait for start message if still in progress
+    if (startPromiseRef.current) {
+      await startPromiseRef.current;
+      startPromiseRef.current = null;
+    }
+
+    setSelectedScore(score);
+    setIsLocked(true);
+    setIsReacting(true);
+
+    // Show local reaction after typing dots delay
+    const reactions = ISSP_QUICK_REACTIONS[score];
+    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+
+    setTimeout(() => {
+      setAiReaction(reaction);
+    }, 600 + Math.random() * 400);
+
+    try {
+      // Send quick answer to server (no Gemini — instant JSON response)
+      const body = {
+        test_slug: "issp",
+        answer_type: "quick",
+        answer: score,
+        question_index: currentQuestionIndex,
+        ...(mode === "anonymous"
+          ? { session_id: sessionId, messages: messagesHistory.current }
+          : { chat_id: chatId }),
+      };
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const response = await fetch("/api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      });
+
+      abortRef.current = null;
+
+      // Handle 409 — question_index mismatch
+      if (response.status === 409) {
+        const data = await response.json();
+        console.warn("[TestCardFlow] Question mismatch, syncing to", data.server_question);
+        setCurrentQuestionIndex(data.server_question);
+        setIsLocked(false);
+        setIsReacting(false);
+        setAiReaction(null);
+        setSelectedScore(null);
+        return;
+      }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
+      }
+
+      // Check Content-Type: JSON for normal, SSE for Q35
+      const contentType = response.headers.get("Content-Type") || "";
+
+      if (contentType.includes("text/event-stream")) {
+        // Q35 flow — SSE with test_complete
+        const result = await consumeSSE(response);
+        if (result.testComplete && result.resultId) {
+          setResultId(result.resultId);
+          setTimeout(() => setPhase("analyzing"), 1000);
+        }
+        return;
+      }
+
+      // Normal JSON response (questions 0-33)
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || "Unknown error");
+
+      // Update messages history
+      messagesHistory.current.push(
+        { role: "user", content: String(score) },
+        { role: "assistant", content: `Записываю как ${score}.` }
+      );
+
+      if (data.requires_auth) {
+        // Wait for reaction to be visible, then show auth wall
+        setTimeout(() => {
+          handleRequiresAuth();
+        }, 1200);
+        return;
+      }
+
+      // Server confirmed — advance using server-provided next_question
+      setTimeout(() => {
+        advanceQuestion(data.next_question, false);
+      }, 1200);
+    } catch (err) {
+      console.error("[TestCardFlow] Quick answer error:", err);
+      setIsLocked(false);
+      setIsReacting(false);
+      setAiReaction(null);
+      setSelectedScore(null);
+      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
+  }, [isLocked, currentQuestionIndex, mode, sessionId, chatId, consumeSSE, advanceQuestion, handleRequiresAuth]);
+
+  // ── Handle Text Answer ──
+  const handleTextAnswer = useCallback(async (text: string) => {
+    if (isLocked) return;
+
+    // Wait for start message if still in progress
+    if (startPromiseRef.current) {
+      await startPromiseRef.current;
+      startPromiseRef.current = null;
+    }
+
+    setIsLocked(true);
+    setIsReacting(true);
+
+    try {
+      // Send text answer to server (uses mini-prompt via Gemini, SSE)
+      const body = {
+        test_slug: "issp",
+        answer_type: "text",
+        answer_text: text,
+        question_index: currentQuestionIndex,
+        ...(mode === "anonymous"
+          ? { session_id: sessionId, messages: messagesHistory.current }
+          : { chat_id: chatId }),
+      };
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const response = await fetch("/api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      });
+
+      abortRef.current = null;
+
+      // Handle 409 — question_index mismatch
+      if (response.status === 409) {
+        const data = await response.json();
+        console.warn("[TestCardFlow] Question mismatch, syncing to", data.server_question);
+        setCurrentQuestionIndex(data.server_question);
+        setIsLocked(false);
+        setIsReacting(false);
+        setAiReaction(null);
+        return;
+      }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
+      }
+
+      // Always SSE for text answers
+      const result = await consumeSSE(response, { streamToReaction: true });
+
+      // Test complete (Q35)
+      if (result.testComplete && result.resultId) {
+        setResultId(result.resultId);
+        setTimeout(() => setPhase("analyzing"), 1000);
+        return;
+      }
+
+      // Answer rejected — stay on same question
+      if (result.answerRejected) {
+        setIsLocked(false);
+        setIsReacting(false);
+        setAiReaction(null);
+        setErrorMessage("Не удалось определить балл. Попробуйте ответить числом от 1 до 5.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+
+      // Answer confirmed — advance
+      if (result.answerConfirmed && result.nextQuestion !== null) {
+        // Update messages history
+        messagesHistory.current.push(
+          { role: "user", content: text },
+          { role: "assistant", content: result.fullText }
+        );
+
+        if (result.requiresAuth) {
+          setTimeout(() => {
+            handleRequiresAuth();
+          }, 1200);
+          return;
+        }
+
+        // Server confirmed — advance using server-provided next_question
+        setTimeout(() => {
+          advanceQuestion(result.nextQuestion!, false);
+        }, 1200);
+        return;
+      }
+
+      // Fallback: requires_auth without answer_confirmed (shouldn't happen with new API)
+      if (result.requiresAuth) {
+        handleRequiresAuth();
+        return;
+      }
+    } catch (err) {
+      console.error("[TestCardFlow] Text answer error:", err);
+      setIsLocked(false);
+      setIsReacting(false);
+      setAiReaction(null);
+      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
+  }, [isLocked, currentQuestionIndex, mode, sessionId, chatId, consumeSSE, advanceQuestion, handleRequiresAuth]);
 
   // ── Block transition continue ──
   const handleBlockContinue = useCallback(() => {
