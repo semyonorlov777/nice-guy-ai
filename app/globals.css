@@ -194,7 +194,10 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .chat-inner { width: 100%; max-width: var(--chat-w); display: flex; flex-direction: column; gap: 12px; }
   .chat-input-wrap { padding: 10px 16px 12px; background: var(--bg-card); border-top: 1px solid var(--border-light); flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
   .chat-input-inner { width: 100%; max-width: var(--chat-w); }
-  .chat-input-row { display: flex; align-items: flex-end; gap: 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 24px; padding: 4px 4px 4px 16px; transition: border-color 0.2s; }
+  .chat-input-row { display: flex; align-items: flex-end; gap: 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 24px; padding: 4px 4px 4px 16px; transition: border-color 0.2s, opacity 300ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .chat-input-row.input-locked { opacity: 0.5; pointer-events: none; }
+  .input-locked .send-btn:disabled,
+  .input-locked .voice-btn:disabled { opacity: 1; }
   .chat-input-row:focus-within { border-color: var(--accent); }
   .chat-input { flex: 1; border: none; outline: none; background: none; font-family: var(--font-body); font-size: 15px; color: var(--text-primary); padding: 10px 0; resize: none; line-height: 1.4; max-height: 100px; }
   .chat-input::placeholder { color: var(--text-muted); }

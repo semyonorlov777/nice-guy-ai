@@ -308,7 +308,7 @@ export function ChatWindow({
 
       <div className="chat-input-wrap">
         <div className="chat-input-inner">
-          <div className="chat-input-row">
+          <div className={`chat-input-row${isStreaming ? " input-locked" : ""}`}>
             {voiceInput.state !== "idle" ? (
               <VoiceOverlay
                 voiceInput={voiceInput}
