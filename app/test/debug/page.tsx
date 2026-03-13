@@ -31,6 +31,8 @@ const ALL_COMBOS: { prompt_type: PromptType; model: ModelType }[] = [
   { prompt_type: "full", model: "flash-lite" },
 ];
 
+const BATCH_SIZE = 5; // параллельных запросов за раз
+
 const DEBUG_ENABLED = process.env.NEXT_PUBLIC_DEBUG_ENABLED === "true";
 
 const toggleStyle = (active: boolean): React.CSSProperties => ({
@@ -44,6 +46,8 @@ const toggleStyle = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
 });
 
+const shortModel = (m: string) => m.replace("gemini-", "").replace("2.5-", "");
+
 export default function TestDebugPage() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerText, setAnswerText] = useState("");
@@ -56,6 +60,10 @@ export default function TestDebugPage() {
   const [promptExpanded, setPromptExpanded] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [compareResults, setCompareResults] = useState<DebugResult[] | null>(null);
+  // "Все вопросы" state
+  const [runningAll, setRunningAll] = useState(false);
+  const [allProgress, setAllProgress] = useState({ done: 0, total: 0 });
+  const [allResults, setAllResults] = useState<DebugResult[] | null>(null);
 
   if (!DEBUG_ENABLED) {
     return (
@@ -68,13 +76,13 @@ export default function TestDebugPage() {
   const question = ISSP_QUESTIONS[questionIndex];
   const scaleName = ISSP_SCALE_NAMES[question?.scale] || "";
 
-  async function sendRequest(pt: PromptType, mt: ModelType): Promise<DebugResult> {
+  async function sendRequestForQ(qi: number, pt: PromptType, mt: ModelType, text: string): Promise<DebugResult> {
     const res = await fetch("/api/test/debug", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        answer_text: answerText.trim(),
-        question_index: questionIndex,
+        answer_text: text,
+        question_index: qi,
         prompt_type: pt,
         model: mt,
       }),
@@ -86,6 +94,28 @@ export default function TestDebugPage() {
     }
 
     return res.json();
+  }
+
+  function sendRequest(pt: PromptType, mt: ModelType): Promise<DebugResult> {
+    return sendRequestForQ(questionIndex, pt, mt, answerText.trim());
+  }
+
+  function makeErrorResult(qi: number, pt: PromptType, mt: ModelType, text: string, errMsg: string): DebugResult {
+    const q = ISSP_QUESTIONS[qi];
+    return {
+      question_index: qi,
+      question_text: q.text,
+      scale_name: ISSP_SCALE_NAMES[q.scale] || q.scale,
+      answer_text: text,
+      prompt_type: pt,
+      model: mt,
+      full_prompt: "",
+      raw_response: `Ошибка: ${errMsg}`,
+      parsed_score: null,
+      parse_success: false,
+      response_time_ms: 0,
+      tokens_used: null,
+    };
   }
 
   async function handleSubmit() {
@@ -113,20 +143,9 @@ export default function TestDebugPage() {
 
     try {
       const results = await Promise.all(
-        ALL_COMBOS.map((c) => sendRequest(c.prompt_type, c.model).catch((err) => ({
-          question_index: questionIndex,
-          question_text: question.text,
-          scale_name: scaleName,
-          answer_text: answerText.trim(),
-          prompt_type: c.prompt_type,
-          model: c.model,
-          full_prompt: "",
-          raw_response: `Ошибка: ${(err as Error).message}`,
-          parsed_score: null,
-          parse_success: false,
-          response_time_ms: 0,
-          tokens_used: null,
-        } as DebugResult)))
+        ALL_COMBOS.map((c) => sendRequest(c.prompt_type, c.model).catch((err) =>
+          makeErrorResult(questionIndex, c.prompt_type, c.model, answerText.trim(), (err as Error).message)
+        ))
       );
       setCompareResults(results);
       setHistory((prev) => [...results, ...prev]);
@@ -137,12 +156,48 @@ export default function TestDebugPage() {
     }
   }
 
+  async function handleRunAllQuestions() {
+    const text = answerText.trim();
+    if (!text || runningAll) return;
+    setRunningAll(true);
+    setError(null);
+    setAllResults(null);
+
+    // 35 вопросов × 4 комбинации = 140 запросов, батчами по BATCH_SIZE
+    const tasks: { qi: number; pt: PromptType; mt: ModelType }[] = [];
+    for (let qi = 0; qi < 35; qi++) {
+      for (const c of ALL_COMBOS) {
+        tasks.push({ qi, pt: c.prompt_type, mt: c.model });
+      }
+    }
+
+    const total = tasks.length;
+    setAllProgress({ done: 0, total });
+    const results: DebugResult[] = [];
+
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+      const batch = tasks.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map((t) =>
+          sendRequestForQ(t.qi, t.pt, t.mt, text).catch((err) =>
+            makeErrorResult(t.qi, t.pt, t.mt, text, (err as Error).message)
+          )
+        )
+      );
+      results.push(...batchResults);
+      setAllProgress({ done: results.length, total });
+    }
+
+    setAllResults(results);
+    setRunningAll(false);
+  }
+
   const configLabel = (r: DebugResult) =>
-    `${PROMPT_LABELS[r.prompt_type] || r.prompt_type} + ${r.model.replace("gemini-", "").replace("2.5-", "").replace("2.0-", "")}`;
+    `${PROMPT_LABELS[r.prompt_type] || r.prompt_type} + ${shortModel(r.model)}`;
 
   return (
     <div style={{
-      maxWidth: 900,
+      maxWidth: 1100,
       margin: "0 auto",
       padding: "32px 16px",
       fontFamily: "'Onest', system-ui, sans-serif",
@@ -228,15 +283,16 @@ export default function TestDebugPage() {
           value={answerText}
           onChange={(e) => setAnswerText(e.target.value)}
           placeholder="ну типа да, бывает..."
-          rows={3}
+          rows={5}
           style={{
             width: "100%",
-            padding: "8px 12px",
+            padding: "10px 14px",
             background: "#1a1d22",
             color: "#e0e0e0",
             border: "1px solid #333",
             borderRadius: 8,
-            fontSize: 14,
+            fontSize: 15,
+            lineHeight: 1.5,
             resize: "vertical",
             boxSizing: "border-box",
           }}
@@ -247,7 +303,7 @@ export default function TestDebugPage() {
       </div>
 
       {/* Buttons */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <button
           onClick={handleSubmit}
           disabled={loading || !answerText.trim()}
@@ -279,6 +335,24 @@ export default function TestDebugPage() {
           }}
         >
           {comparing ? "Сравниваю..." : "Сравнить все (4)"}
+        </button>
+        <button
+          onClick={handleRunAllQuestions}
+          disabled={runningAll || !answerText.trim()}
+          style={{
+            padding: "10px 24px",
+            background: runningAll ? "#333" : "#1a1d22",
+            color: runningAll ? "#888" : "#e0e0e0",
+            border: "1px solid #555",
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: runningAll ? "not-allowed" : "pointer",
+          }}
+        >
+          {runningAll
+            ? `Все вопросы... ${allProgress.done}/${allProgress.total}`
+            : "Все вопросы (35x4)"}
         </button>
       </div>
 
@@ -344,10 +418,13 @@ export default function TestDebugPage() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Ответ AI:</div>
             <div style={{
-              padding: "8px 12px",
+              padding: "10px 14px",
               background: "#0f1114",
               borderRadius: 8,
               fontSize: 14,
+              lineHeight: 1.5,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
             }}>
               {result.raw_response}
             </div>
@@ -412,7 +489,7 @@ export default function TestDebugPage() {
                 {compareResults.map((r, i) => (
                   <tr key={i} style={{ borderBottom: "1px solid #222" }}>
                     <td style={{ padding: "6px" }}>{PROMPT_LABELS[r.prompt_type] || r.prompt_type}</td>
-                    <td style={{ padding: "6px", fontSize: 12 }}>{r.model}</td>
+                    <td style={{ padding: "6px", fontSize: 12 }}>{shortModel(r.model)}</td>
                     <td style={{
                       padding: "6px",
                       textAlign: "center",
@@ -429,10 +506,120 @@ export default function TestDebugPage() {
                     </td>
                     <td style={{
                       padding: "6px",
-                      maxWidth: 300,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      maxWidth: 400,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontSize: 12,
+                      lineHeight: 1.4,
+                    }}>
+                      {r.raw_response}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* All questions results */}
+      {allResults && (
+        <div style={{
+          background: "#16181d",
+          borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, color: "#c9a84c", margin: 0 }}>
+              Все вопросы — {allResults.length} результатов
+            </h3>
+            <button
+              onClick={() => setAllResults(null)}
+              style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 13 }}
+            >
+              Скрыть
+            </button>
+          </div>
+
+          {/* Summary: success rate per combo */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+            {ALL_COMBOS.map((c) => {
+              const comboResults = allResults.filter(
+                (r) => r.prompt_type === c.prompt_type && r.model.includes(c.model === "flash-lite" ? "flash-lite" : "flash") && !r.model.includes("lite") === (c.model === "flash")
+              );
+              // Simpler filter
+              const filtered = allResults.filter((r) => {
+                const isLite = r.model.includes("lite");
+                return r.prompt_type === c.prompt_type && (c.model === "flash-lite" ? isLite : !isLite);
+              });
+              const success = filtered.filter((r) => r.parse_success).length;
+              const total = filtered.length;
+              const avgTime = total > 0 ? Math.round(filtered.reduce((s, r) => s + r.response_time_ms, 0) / total) : 0;
+              return (
+                <div key={`${c.prompt_type}-${c.model}`} style={{
+                  padding: "8px 14px",
+                  background: "#0f1114",
+                  borderRadius: 8,
+                  fontSize: 13,
+                }}>
+                  <div style={{ color: "#c9a84c", fontWeight: 600, marginBottom: 4 }}>
+                    {PROMPT_LABELS[c.prompt_type]} + {MODEL_LABELS[c.model]}
+                  </div>
+                  <div>
+                    <span style={{ color: success === total ? "#4ade80" : "#ff6b6b" }}>
+                      {success}/{total} распознано
+                    </span>
+                    <span style={{ color: "#888", marginLeft: 12 }}>~{avgTime}ms</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Full table */}
+          <div style={{ overflowX: "auto", maxHeight: 600, overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead style={{ position: "sticky", top: 0, background: "#16181d" }}>
+                <tr style={{ borderBottom: "1px solid #333" }}>
+                  <th style={{ textAlign: "left", padding: "6px 4px", color: "#888" }}>Q#</th>
+                  <th style={{ textAlign: "left", padding: "6px 4px", color: "#888" }}>Шкала</th>
+                  <th style={{ textAlign: "left", padding: "6px 4px", color: "#888" }}>Промпт</th>
+                  <th style={{ textAlign: "left", padding: "6px 4px", color: "#888" }}>Модель</th>
+                  <th style={{ textAlign: "center", padding: "6px 4px", color: "#888" }}>Балл</th>
+                  <th style={{ textAlign: "right", padding: "6px 4px", color: "#888" }}>ms</th>
+                  <th style={{ textAlign: "left", padding: "6px 4px", color: "#888" }}>Ответ AI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allResults.map((r, i) => (
+                  <tr key={i} style={{
+                    borderBottom: "1px solid #222",
+                    background: i % 8 < 4 ? "transparent" : "#1a1d22",
+                  }}>
+                    <td style={{ padding: "5px 4px" }}>{r.question_index + 1}</td>
+                    <td style={{ padding: "5px 4px", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.scale_name}
+                    </td>
+                    <td style={{ padding: "5px 4px" }}>{PROMPT_LABELS[r.prompt_type]}</td>
+                    <td style={{ padding: "5px 4px" }}>{shortModel(r.model)}</td>
+                    <td style={{
+                      padding: "5px 4px",
+                      textAlign: "center",
+                      color: r.parse_success ? "#4ade80" : "#ff6b6b",
+                      fontWeight: 600,
+                    }}>
+                      {r.parsed_score ?? "—"}
+                    </td>
+                    <td style={{ padding: "5px 4px", textAlign: "right", color: "#888" }}>
+                      {r.response_time_ms}
+                    </td>
+                    <td style={{
+                      padding: "5px 4px",
+                      maxWidth: 350,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      lineHeight: 1.3,
                     }}>
                       {r.raw_response}
                     </td>
@@ -472,7 +659,7 @@ export default function TestDebugPage() {
                     </td>
                     <td style={{ padding: "6px 4px" }}>{PROMPT_LABELS[h.prompt_type] || h.prompt_type}</td>
                     <td style={{ padding: "6px 4px", fontSize: 12 }}>
-                      {h.model.replace("gemini-", "").replace("2.5-", "").replace("2.0-", "")}
+                      {shortModel(h.model)}
                     </td>
                     <td style={{
                       padding: "6px 4px",
@@ -484,7 +671,14 @@ export default function TestDebugPage() {
                     <td style={{ padding: "6px 4px", textAlign: "right", color: "#888" }}>
                       {h.response_time_ms}
                     </td>
-                    <td style={{ padding: "6px 4px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <td style={{
+                      padding: "6px 4px",
+                      maxWidth: 250,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontSize: 12,
+                      lineHeight: 1.3,
+                    }}>
                       {h.raw_response}
                     </td>
                   </tr>
