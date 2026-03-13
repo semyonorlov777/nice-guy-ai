@@ -14,7 +14,6 @@ import {
   ISSP_SCALE_NAMES,
   ISSP_SCALE_ORDER,
   ISSP_BLOCK_INSIGHTS,
-  ISSP_QUICK_REACTIONS,
 } from "@/lib/issp-config";
 
 type CardPhase =
@@ -27,8 +26,11 @@ type CardPhase =
   | "analyzing"
   | "complete";
 
+type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
+
 const TOTAL_QUESTIONS = 35;
-const STREAM_TIMEOUT_MS = 30_000;
+const TEXT_TIMEOUT_SLOW_MS = 5000;
+const TEXT_TIMEOUT_ABORT_MS = 8000;
 
 export function TestCardFlow() {
   const router = useRouter();
@@ -42,13 +44,16 @@ export function TestCardFlow() {
   const [mode, setMode] = useState<"anonymous" | "authenticated">("anonymous");
 
   // UI state
-  const [aiReaction, setAiReaction] = useState<string | null>(null);
-  const [isReacting, setIsReacting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [animationClass, setAnimationClass] = useState<"enter" | "exit" | null>("enter");
   const [migrateError, setMigrateError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+
+  // Two-flow state
+  const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
+  const [fallbackActive, setFallbackActive] = useState(false);
+  const transitioning = useRef(false);
 
   // Block transition state
   const [completedBlockIndex, setCompletedBlockIndex] = useState(0);
@@ -223,10 +228,9 @@ export function TestCardFlow() {
     init();
   }, []);
 
-  // ── SSE Consumer ──
+  // ── SSE Consumer (silent — no AI reaction rendering) ──
   const consumeSSE = useCallback(async (
     response: Response,
-    options?: { streamToReaction?: boolean }
   ): Promise<{
     fullText: string;
     requiresAuth: boolean;
@@ -270,9 +274,6 @@ export function TestCardFlow() {
 
           if (data.type === "delta") {
             fullText += data.content;
-            if (options?.streamToReaction) {
-              setAiReaction(fullText);
-            }
           } else if (data.type === "requires_auth") {
             requiresAuth = true;
           } else if (data.type === "test_complete") {
@@ -303,53 +304,6 @@ export function TestCardFlow() {
       chatId: gotChatId,
     };
   }, []);
-
-  // ── Send to API ──
-  const sendToAPI = useCallback(async (
-    message: string,
-    options?: { streamToReaction?: boolean }
-  ) => {
-    const body =
-      mode === "anonymous"
-        ? {
-            message,
-            test_slug: "issp",
-            session_id: sessionId,
-            messages: messagesHistory.current,
-          }
-        : {
-            message,
-            test_slug: "issp",
-            chat_id: chatId,
-          };
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const response = await fetch("/api/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => null);
-      throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
-    }
-
-    const result = await consumeSSE(response, options);
-
-    // Update messages history
-    messagesHistory.current = [
-      ...messagesHistory.current,
-      { role: "user", content: message },
-      { role: "assistant", content: result.fullText },
-    ];
-
-    abortRef.current = null;
-    return result;
-  }, [mode, sessionId, chatId, consumeSSE]);
 
   // ── Handle Start ──
   const handleStart = useCallback(async () => {
@@ -457,10 +411,10 @@ export function TestCardFlow() {
       }
 
       // Show last question
-      setAiReaction(null);
-      setIsReacting(false);
       setIsLocked(false);
       setSelectedScore(null);
+      setStatusMessage(null);
+      setFallbackActive(false);
       setCurrentQuestionIndex(TOTAL_QUESTIONS - 1);
       setAnimationClass("enter");
       setPhase("question");
@@ -470,118 +424,59 @@ export function TestCardFlow() {
     }
   }
 
-  // ── Advance to next question ──
-  const advanceQuestion = useCallback((nextIndex: number, hasRequiresAuth: boolean) => {
-    if (hasRequiresAuth) {
-      // Auth wall
-      handleRequiresAuth();
-      return;
-    }
-
-    const currentBlock = Math.floor((nextIndex - 1) / 5);
-    const nextBlock = Math.floor(nextIndex / 5);
-    const isBlockBoundary = nextIndex < TOTAL_QUESTIONS && nextBlock > currentBlock;
-
-    if (isBlockBoundary) {
-      setCompletedBlockIndex(currentBlock);
-      setPhase("block_transition");
-      return;
-    }
-
+  // ── Special cases check (block boundary, auth wall, test complete) ──
+  const handleSpecialCases = useCallback((nextIndex: number): boolean => {
+    // Test complete
     if (nextIndex >= TOTAL_QUESTIONS) {
-      // This shouldn't happen — test_complete should've fired
-      return;
+      setPhase("analyzing");
+      return true;
     }
 
-    // Animate transition
-    setAnimationClass("exit");
-    setTimeout(() => {
-      setCurrentQuestionIndex(nextIndex);
-      setAiReaction(null);
-      setIsReacting(false);
-      setIsLocked(false);
-      setSelectedScore(null);
-      setAnimationClass("enter");
-    }, 300);
-  }, []);
-
-  // ── Handle Quick Answer ──
-  const handleQuickAnswer = useCallback(async (score: number) => {
-    if (isLocked) return;
-
-    // Wait for start message if still in progress
-    if (startPromiseRef.current) {
-      await startPromiseRef.current;
-      startPromiseRef.current = null;
+    // Block boundary (every 5 questions)
+    const prevBlock = Math.floor((nextIndex - 1) / 5);
+    const nextBlock = Math.floor(nextIndex / 5);
+    if (nextBlock > prevBlock && nextIndex < TOTAL_QUESTIONS) {
+      setCompletedBlockIndex(prevBlock);
+      setPhase("block_transition");
+      return true;
     }
 
-    setSelectedScore(score);
-    setIsLocked(true);
-    setIsReacting(true);
+    // Auth wall at Q34 for anonymous
+    if (nextIndex === 34 && mode === "anonymous") {
+      handleRequiresAuth();
+      return true;
+    }
 
-    // Show local reaction after typing dots delay
-    const reactions = ISSP_QUICK_REACTIONS[score];
-    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+    return false;
+  }, [mode, handleRequiresAuth]);
 
-    setTimeout(() => {
-      setAiReaction(reaction);
-    }, 600 + Math.random() * 400);
-
+  // ── Fire-and-forget: submit quick answer to server ──
+  const submitQuickAnswer = useCallback(async (score: number, questionIndex: number) => {
     try {
-      // Send quick answer to server (no Gemini — instant JSON response)
-      const body = {
-        test_slug: "issp",
-        answer_type: "quick",
-        answer: score,
-        question_index: currentQuestionIndex,
-        ...(mode === "anonymous"
-          ? { session_id: sessionId, messages: messagesHistory.current }
-          : { chat_id: chatId }),
-      };
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      const response = await fetch("/api/test", {
+      const response = await fetch("/api/test/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+        body: JSON.stringify({
+          chat_id: chatId,
+          session_id: sessionId || undefined,
+          question_index: questionIndex,
+          score,
+        }),
       });
 
-      abortRef.current = null;
-
-      // Handle 409 — question_index mismatch
       if (response.status === 409) {
         const data = await response.json();
-        console.warn("[TestCardFlow] Question mismatch, syncing to", data.server_question);
-
         if (data.test_complete) {
           if (data.result_id) setResultId(data.result_id);
           setPhase(data.result_ready ? "complete" : "analyzing");
-          return;
         }
-        if (data.server_question >= 35) {
-          setPhase("analyzing");
-          return;
-        }
-
-        setCurrentQuestionIndex(data.server_question);
-        setIsLocked(false);
-        setIsReacting(false);
-        setAiReaction(null);
-        setSelectedScore(null);
+        console.warn("[ISSP] Question desync:", data.server_question);
         return;
       }
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => null);
-        throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
-      }
+      if (!response.ok) throw new Error("API error");
 
-      // JSON response
       const data = await response.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
 
       // Server returned chat_id (auto-created for authenticated user)
       if (data.chat_id && !chatId) {
@@ -593,48 +488,23 @@ export function TestCardFlow() {
         } catch { /* ignore */ }
       }
 
-      // Q35: background calculation started — show analyzing immediately
-      if (data.calculating) {
-        messagesHistory.current.push(
-          { role: "user", content: String(score) },
-          { role: "assistant", content: `Записываю как ${score}.` }
-        );
-        setTimeout(() => setPhase("analyzing"), 800);
-        return;
+      if (data.test_complete) {
+        setPhase("analyzing");
       }
-
-      // Update messages history
-      messagesHistory.current.push(
-        { role: "user", content: String(score) },
-        { role: "assistant", content: `Записываю как ${score}.` }
-      );
-
       if (data.requires_auth) {
-        // Wait for reaction to be visible, then show auth wall
-        setTimeout(() => {
-          handleRequiresAuth();
-        }, 1200);
-        return;
+        handleRequiresAuth();
       }
-
-      // Server confirmed — advance using server-provided next_question
-      setTimeout(() => {
-        advanceQuestion(data.next_question, false);
-      }, 1200);
     } catch (err) {
-      console.error("[TestCardFlow] Quick answer error:", err);
-      setIsLocked(false);
-      setIsReacting(false);
-      setAiReaction(null);
-      setSelectedScore(null);
-      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
+      console.error("[ISSP] submitQuickAnswer error:", err);
+      setErrorMessage("Не удалось сохранить ответ");
       setTimeout(() => setErrorMessage(null), 5000);
     }
-  }, [isLocked, currentQuestionIndex, mode, sessionId, chatId, consumeSSE, advanceQuestion, handleRequiresAuth]);
+  }, [chatId, sessionId, handleRequiresAuth]);
 
-  // ── Handle Text Answer ──
-  const handleTextAnswer = useCallback(async (text: string) => {
-    if (isLocked) return;
+  // ── Handle Quick Answer (Flow 1: ~1s) ──
+  const handleQuickAnswer = useCallback(async (score: number) => {
+    if (transitioning.current || isLocked) return;
+    transitioning.current = true;
 
     // Wait for start message if still in progress
     if (startPromiseRef.current) {
@@ -642,31 +512,101 @@ export function TestCardFlow() {
       startPromiseRef.current = null;
     }
 
+    // Reset fallback state if active
+    if (fallbackActive) {
+      setFallbackActive(false);
+      setStatusMessage(null);
+    }
+
+    setSelectedScore(score);
     setIsLocked(true);
-    setIsReacting(true);
+
+    // Capture question index BEFORE any async — stale closure protection
+    const questionIdx = currentQuestionIndex;
+
+    // Update messages history
+    messagesHistory.current.push(
+      { role: "user", content: String(score) },
+    );
+
+    // 370ms: fire-and-forget API call + start exit animation
+    setTimeout(() => {
+      // Fire-and-forget — questionIdx passed as argument, NOT read from state
+      submitQuickAnswer(score, questionIdx);
+
+      setAnimationClass("exit");
+
+      // 280ms: exit done → check special cases or advance
+      setTimeout(() => {
+        const nextIndex = questionIdx + 1;
+
+        if (handleSpecialCases(nextIndex)) {
+          transitioning.current = false;
+          return;
+        }
+
+        setCurrentQuestionIndex(nextIndex);
+        setAnimationClass("enter");
+        setIsLocked(false);
+        setSelectedScore(null);
+
+        // 350ms: enter done → reset animation class
+        setTimeout(() => {
+          setAnimationClass(null);
+          transitioning.current = false;
+        }, 350);
+      }, 280);
+    }, 370);
+  }, [isLocked, fallbackActive, currentQuestionIndex, submitQuickAnswer, handleSpecialCases]);
+
+  // ── Handle Text Answer (Flow 2: ~3.5s) ──
+  const handleTextAnswer = useCallback(async (text: string) => {
+    if (transitioning.current || isLocked) return;
+    transitioning.current = true;
+
+    // Wait for start message if still in progress
+    if (startPromiseRef.current) {
+      await startPromiseRef.current;
+      startPromiseRef.current = null;
+    }
+
+    // Capture question index BEFORE async — stale closure protection
+    const questionIdx = currentQuestionIndex;
+
+    setIsLocked(true);
+    setStatusMessage("analyzing");
+
+    // Timeout watchers
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const slowTimeoutId = setTimeout(() => {
+      setStatusMessage("slow");
+    }, TEXT_TIMEOUT_SLOW_MS);
+    const abortTimeoutId = setTimeout(() => {
+      controller.abort();
+    }, TEXT_TIMEOUT_ABORT_MS);
 
     try {
-      // Send text answer to server (uses mini-prompt via Gemini, SSE)
+      // Send text answer to /api/test (existing SSE endpoint)
       const body = {
         test_slug: "issp",
         answer_type: "text",
         answer_text: text,
-        question_index: currentQuestionIndex,
+        question_index: questionIdx,
         ...(mode === "anonymous"
           ? { session_id: sessionId, messages: messagesHistory.current }
           : { chat_id: chatId }),
       };
 
-      const controller = new AbortController();
-      abortRef.current = controller;
-
       const response = await fetch("/api/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+        signal: controller.signal,
       });
 
+      clearTimeout(slowTimeoutId);
+      clearTimeout(abortTimeoutId);
       abortRef.current = null;
 
       // Handle 409 — question_index mismatch
@@ -677,17 +617,19 @@ export function TestCardFlow() {
         if (data.test_complete) {
           if (data.result_id) setResultId(data.result_id);
           setPhase(data.result_ready ? "complete" : "analyzing");
+          transitioning.current = false;
           return;
         }
         if (data.server_question >= 35) {
           setPhase("analyzing");
+          transitioning.current = false;
           return;
         }
 
         setCurrentQuestionIndex(data.server_question);
         setIsLocked(false);
-        setIsReacting(false);
-        setAiReaction(null);
+        setStatusMessage(null);
+        transitioning.current = false;
         return;
       }
 
@@ -696,71 +638,125 @@ export function TestCardFlow() {
         throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
       }
 
-      // Always SSE for text answers
-      const result = await consumeSSE(response, { streamToReaction: true });
+      // Consume SSE silently — no AI reaction rendering
+      const result = await consumeSSE(response);
 
-      // Test complete (Q35) — resultId may be null (comes from polling)
+      // Update messages history
+      messagesHistory.current.push(
+        { role: "user", content: text },
+        { role: "assistant", content: result.fullText }
+      );
+
+      // Server returned chat_id (auto-created)
+      if (result.chatId) {
+        setChatId(result.chatId);
+        setMode("authenticated");
+        try {
+          sessionStorage.removeItem("issp_session_id");
+          localStorage.removeItem("issp_session_id");
+        } catch { /* ignore */ }
+      }
+
+      // Test complete (Q35)
       if (result.testComplete) {
         if (result.resultId) setResultId(result.resultId);
-        setTimeout(() => setPhase("analyzing"), 800);
+        setStatusMessage("recorded");
+        setTimeout(() => setPhase("analyzing"), 500);
+        transitioning.current = false;
         return;
       }
 
-      // Answer rejected — stay on same question
-      if (result.answerRejected) {
-        setIsLocked(false);
-        setIsReacting(false);
-        setAiReaction(null);
-        setErrorMessage("Не удалось понять ответ. Попробуйте описать подробнее или используйте кнопки ниже.");
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
-      }
-
-      // Answer confirmed — advance
-      if (result.answerConfirmed && result.nextQuestion !== null) {
-        // Update messages history
-        messagesHistory.current.push(
-          { role: "user", content: text },
-          { role: "assistant", content: result.fullText }
-        );
-
-        if (result.requiresAuth) {
-          setTimeout(() => {
-            handleRequiresAuth();
-          }, 1200);
-          return;
-        }
-
-        // Server confirmed — advance using server-provided next_question
-        setTimeout(() => {
-          advanceQuestion(result.nextQuestion!, false);
-        }, 1200);
-        return;
-      }
-
-      // Fallback: requires_auth without answer_confirmed (shouldn't happen with new API)
-      if (result.requiresAuth) {
+      // Auth required
+      if (result.requiresAuth && !result.answerConfirmed) {
+        setStatusMessage(null);
         handleRequiresAuth();
+        transitioning.current = false;
         return;
       }
+
+      // Answer confirmed — show "Ответ записан ✓" then transition
+      if (result.answerConfirmed && result.nextQuestion !== null) {
+        setStatusMessage("recorded");
+
+        // 500ms hold "Ответ записан"
+        setTimeout(() => {
+          if (result.requiresAuth) {
+            handleRequiresAuth();
+            transitioning.current = false;
+            return;
+          }
+
+          setAnimationClass("exit");
+
+          // 280ms: exit done → advance
+          setTimeout(() => {
+            const nextIndex = result.nextQuestion!;
+
+            if (handleSpecialCases(nextIndex)) {
+              transitioning.current = false;
+              return;
+            }
+
+            setCurrentQuestionIndex(nextIndex);
+            setAnimationClass("enter");
+            setIsLocked(false);
+            setStatusMessage(null);
+            setSelectedScore(null);
+
+            // 350ms: enter done
+            setTimeout(() => {
+              setAnimationClass(null);
+              transitioning.current = false;
+            }, 350);
+          }, 280);
+        }, 500);
+        return;
+      }
+
+      // Answer rejected — fallback to quick buttons
+      if (result.answerRejected) {
+        activateFallback("fallback");
+        return;
+      }
+
+      // Fallback: requires_auth without answer_confirmed
+      if (result.requiresAuth) {
+        setStatusMessage(null);
+        handleRequiresAuth();
+        transitioning.current = false;
+        return;
+      }
+
+      // Unknown state — fallback
+      activateFallback("fallback");
     } catch (err) {
-      console.error("[TestCardFlow] Text answer error:", err);
-      setIsLocked(false);
-      setIsReacting(false);
-      setAiReaction(null);
-      setErrorMessage("Не удалось отправить ответ. Попробуйте ещё раз.");
-      setTimeout(() => setErrorMessage(null), 5000);
+      clearTimeout(slowTimeoutId);
+      clearTimeout(abortTimeoutId);
+
+      if ((err as Error).name === "AbortError") {
+        activateFallback("fallback_timeout");
+      } else {
+        console.error("[TestCardFlow] Text answer error:", err);
+        activateFallback("fallback");
+      }
     }
-  }, [isLocked, currentQuestionIndex, mode, sessionId, chatId, consumeSSE, advanceQuestion, handleRequiresAuth]);
+  }, [isLocked, currentQuestionIndex, mode, sessionId, chatId, consumeSSE, handleSpecialCases, handleRequiresAuth]);
+
+  function activateFallback(type: "fallback" | "fallback_timeout") {
+    setStatusMessage(type);
+    setFallbackActive(true);
+    setIsLocked(false);
+    transitioning.current = false;
+  }
 
   // ── Block transition continue ──
   const handleBlockContinue = useCallback(() => {
     const nextIndex = (completedBlockIndex + 1) * 5;
     setCurrentQuestionIndex(nextIndex);
-    setAiReaction(null);
-    setIsReacting(false);
     setIsLocked(false);
     setSelectedScore(null);
+    setStatusMessage(null);
+    setFallbackActive(false);
     setAnimationClass("enter");
     setPhase("question");
   }, [completedBlockIndex]);
@@ -782,7 +778,6 @@ export function TestCardFlow() {
   const question = ISSP_QUESTIONS[currentQuestionIndex];
   const scaleKey = question?.scale || ISSP_SCALE_ORDER[0];
   const scaleName = ISSP_SCALE_NAMES[scaleKey] || "";
-  const currentBlock = Math.floor(currentQuestionIndex / 5);
 
   if (phase === "loading") {
     return (
@@ -809,11 +804,12 @@ export function TestCardFlow() {
             questionIndex={currentQuestionIndex}
             totalQuestions={TOTAL_QUESTIONS}
             scaleName={scaleName}
-            aiReaction={aiReaction}
-            isReacting={isReacting}
             isLocked={isLocked}
             selectedScore={selectedScore}
             animationClass={animationClass}
+            transitioning={transitioning.current}
+            statusMessage={statusMessage}
+            fallbackActive={fallbackActive}
             onQuickAnswer={handleQuickAnswer}
             onTextAnswer={handleTextAnswer}
           />

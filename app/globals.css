@@ -2586,6 +2586,80 @@ body:has(.test-page) {
 
 .tc-quick-btn.flash .tc-qb-label { color: rgba(255,255,255,0.8); }
 
+/* ── Highlight (fallback pulse) ── */
+.tc-quick-btn.highlight {
+  animation: tcBtnPulse 1.2s ease-in-out infinite;
+  border-color: var(--tc-accent-border);
+}
+@keyframes tcBtnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,150,59,0); }
+  50% { box-shadow: 0 0 0 4px rgba(201,150,59,0.15); }
+}
+
+/* ── Status line ── */
+.tc-status-line {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.tc-status-text {
+  font-size: 12px;
+  color: var(--tc-text-muted);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s var(--tc-ease), transform 0.25s var(--tc-ease);
+}
+.tc-status-text.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.tc-status-text.success {
+  color: var(--tc-success);
+}
+
+/* ── Fallback hint ── */
+.tc-fallback-hint {
+  font-size: 12px;
+  color: var(--tc-accent);
+  text-align: center;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.3s var(--tc-ease);
+}
+.tc-fallback-hint.visible {
+  opacity: 1;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .tc-quick-btn.highlight {
+    animation: none;
+    border-color: var(--tc-accent);
+  }
+  .tc-status-text {
+    transition: none;
+  }
+  .tc-fallback-hint {
+    transition: none;
+  }
+  .tc-question-text {
+    transition: opacity 150ms;
+  }
+  .tc-question-text.exit {
+    transform: none;
+  }
+  .tc-question-text.enter {
+    animation: tcQuestionFade 150ms ease forwards;
+  }
+  @keyframes tcQuestionFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
 /* ═══ BLOCK TRANSITION ═══ */
 .tc-block-screen {
   justify-content: center;

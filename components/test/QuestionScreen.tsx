@@ -5,16 +5,19 @@ import type { ISSPQuestion } from "@/lib/issp-config";
 
 const QUICK_LABELS = ["Не про меня", "Скорее нет", "Иногда", "Часто", "Полностью"];
 
+type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
+
 interface QuestionScreenProps {
   question: ISSPQuestion;
   questionIndex: number;
   totalQuestions: number;
   scaleName: string;
-  aiReaction: string | null;
-  isReacting: boolean;
   isLocked: boolean;
   selectedScore: number | null;
   animationClass: "enter" | "exit" | null;
+  transitioning: boolean;
+  statusMessage: StatusMessage;
+  fallbackActive: boolean;
   onQuickAnswer: (score: number) => void;
   onTextAnswer: (text: string) => void;
 }
@@ -24,11 +27,12 @@ export function QuestionScreen({
   questionIndex,
   totalQuestions,
   scaleName,
-  aiReaction,
-  isReacting,
   isLocked,
   selectedScore,
   animationClass,
+  transitioning,
+  statusMessage,
+  fallbackActive,
   onQuickAnswer,
   onTextAnswer,
 }: QuestionScreenProps) {
@@ -66,10 +70,11 @@ export function QuestionScreen({
   }, []);
 
   const handleSend = useCallback(() => {
-    if (!textInput.trim() || isLocked) return;
+    if (!textInput.trim() || isLocked || transitioning) return;
     setActionState("sent");
     onTextAnswer(textInput.trim());
-  }, [textInput, isLocked, onTextAnswer]);
+    // Text stays visible in textarea until question transition
+  }, [textInput, isLocked, transitioning, onTextAnswer]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && textInput.trim()) {
@@ -79,13 +84,15 @@ export function QuestionScreen({
   }, [textInput, handleSend]);
 
   const handleQuickClick = useCallback((score: number) => {
-    if (isLocked) return;
+    if (isLocked || transitioning) return;
+
+    // Flash animation
     setFlashBtn(score);
     setTimeout(() => {
       setFlashBtn(null);
       onQuickAnswer(score);
     }, 120);
-  }, [isLocked, onQuickAnswer]);
+  }, [isLocked, transitioning, onQuickAnswer]);
 
   const actionBtnClass = `tc-action-btn${actionState === "typing" ? " typing" : ""}${actionState === "sent" ? " sent" : ""}`;
 
@@ -124,20 +131,6 @@ export function QuestionScreen({
         <div className="tc-question-timeframe">Вспомните последние 2–4 недели</div>
       </div>
 
-      {/* AI Reaction */}
-      <div className={`tc-ai-reaction${isReacting || aiReaction ? " visible" : ""}`}>
-        <div className="tc-ai-reaction-avatar">НС</div>
-        <div className="tc-ai-reaction-text">
-          {isReacting && !aiReaction ? (
-            <span className="tc-typing-dots">
-              <span></span><span></span><span></span>
-            </span>
-          ) : (
-            <span dangerouslySetInnerHTML={{ __html: aiReaction || "" }} />
-          )}
-        </div>
-      </div>
-
       {/* Input area */}
       <div className={`tc-input-area${isLocked ? " locked" : ""}`}>
         <div className="tc-text-input-wrap">
@@ -149,7 +142,7 @@ export function QuestionScreen({
             value={textInput}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
-            disabled={isLocked}
+            disabled={isLocked || fallbackActive}
           />
           <button
             className={actionBtnClass}
@@ -171,19 +164,42 @@ export function QuestionScreen({
             </svg>
           </button>
         </div>
+
+        {/* Status line */}
+        <div className="tc-status-line">
+          {statusMessage === "analyzing" && (
+            <span className="tc-status-text visible">Анализирую ответ...</span>
+          )}
+          {statusMessage === "recorded" && (
+            <span className="tc-status-text visible success">Ответ записан ✓</span>
+          )}
+          {statusMessage === "slow" && (
+            <span className="tc-status-text visible">Долгая обработка...</span>
+          )}
+        </div>
+
         <div className="tc-divider-or"><span>или быстрый ответ</span></div>
         <div className="tc-quick-buttons">
           {[1, 2, 3, 4, 5].map((score) => (
             <button
               key={score}
-              className={`tc-quick-btn${selectedScore === score ? " selected" : ""}${flashBtn === score ? " flash" : ""}`}
+              className={`tc-quick-btn${selectedScore === score ? " selected" : ""}${flashBtn === score ? " flash" : ""}${fallbackActive ? " highlight" : ""}`}
               onClick={() => handleQuickClick(score)}
-              disabled={isLocked}
+              disabled={isLocked && !fallbackActive}
             >
               <span className="tc-qb-label">{QUICK_LABELS[score - 1]}</span>
             </button>
           ))}
         </div>
+
+        {/* Fallback hint */}
+        {(statusMessage === "fallback" || statusMessage === "fallback_timeout") && (
+          <div className="tc-fallback-hint visible">
+            {statusMessage === "fallback_timeout"
+              ? "Сервер не ответил. Ближе к какому из вариантов?"
+              : "Ближе к какому из вариантов?"}
+          </div>
+        )}
       </div>
     </div>
   );
