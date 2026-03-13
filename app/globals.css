@@ -1275,6 +1275,14 @@ body:has(.test-results-page) {
   border-radius: 0 12px 12px 0;
 }
 
+.tr-interpretation-unavailable {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--tr-muted);
+  font-size: 15px;
+  font-style: italic;
+}
+
 .tr-interp-block p {
   font-size: 17px;
   line-height: 1.8;

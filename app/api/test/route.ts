@@ -737,8 +737,8 @@ async function calculateAndSaveResult({
     const isspResult = calculateISSP(testState.answers);
     console.log("[test:bg] Step 1 done. Score:", isspResult.totalScore, "topScales:", isspResult.topScales);
 
-    // Step 2: Insert test_results with status='ready' (immediately available for polling)
-    console.log("[test:bg] Step 2: INSERT test_results");
+    // Step 2: Insert test_results with status='processing' (not ready until interpretation done)
+    console.log("[test:bg] Step 2: INSERT test_results (status=processing)");
     const { data: insertData, error: insertError } = await serviceClient
       .from("test_results")
       .insert({
@@ -751,7 +751,7 @@ async function calculateAndSaveResult({
         answers: testState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
-        status: "ready",
+        status: "processing",
       })
       .select("id")
       .single();
@@ -772,25 +772,28 @@ async function calculateAndSaveResult({
       .eq("id", chatId);
     console.log("[test:bg] Step 3 done.");
 
-    // Step 4: Generate interpretation (slow, 20-30s) — runs via after()
-    // Result is already 'ready' — page shows scores/RadarChart immediately.
-    // Interpretation will be added later; results page can show it when available.
+    // Step 4: Generate interpretation (slow, 20-30s) — only set 'ready' after this completes
     console.log("[test:bg] Step 4: generateInterpretation (slow)");
     try {
       const interpretation = await generateInterpretation(
         isspResult.totalScore,
         isspResult.scoresByScale
       );
-      console.log("[test:bg] Step 4 done. Updating interpretation...");
+      console.log("[test:bg] Step 4 done. Updating interpretation + status=ready...");
 
       await serviceClient
         .from("test_results")
-        .update({ interpretation })
+        .update({ interpretation, status: "ready" })
         .eq("id", resultId);
       console.log("[test:bg] Interpretation saved for result:", resultId);
     } catch (interpErr) {
       console.error("[test:bg] Step 4 FAILED: generateInterpretation error:", interpErr);
-      // Don't change status — result is already 'ready' with scores
+      // Still mark as ready so user isn't stuck — scores are available without interpretation
+      await serviceClient
+        .from("test_results")
+        .update({ status: "ready" })
+        .eq("id", resultId);
+      console.log("[test:bg] Marked as ready (without interpretation) for result:", resultId);
     }
   } catch (err) {
     console.error("[test:bg] calculateAndSaveResult FAILED:", err);
@@ -1258,7 +1261,7 @@ async function handleFinalTestAnswer({
       isspResult.topScales
     );
 
-    // Save test_results
+    // Save test_results (status=processing — not ready until interpretation done)
     const { data: insertData, error: insertError } = await serviceClient
       .from("test_results")
       .insert({
@@ -1271,6 +1274,7 @@ async function handleFinalTestAnswer({
         answers: currentTestState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
+        status: "processing",
       })
       .select("id")
       .single();
@@ -1295,7 +1299,7 @@ async function handleFinalTestAnswer({
       console.error("[test:final] Failed to update chat status:", updateError);
     }
 
-    // Generate interpretation (Gemini Pro, JSON) — non-blocking for client
+    // Generate interpretation (Gemini Pro, JSON) — set status='ready' only after this completes
     let interpretation = { level_label: "не определён" } as Awaited<ReturnType<typeof generateInterpretation>>;
     try {
       interpretation = await generateInterpretation(
@@ -1306,7 +1310,7 @@ async function handleFinalTestAnswer({
       if (insertData?.id) {
         const { error: interpError } = await serviceClient
           .from("test_results")
-          .update({ interpretation })
+          .update({ interpretation, status: "ready" })
           .eq("id", insertData.id);
 
         if (interpError) {
@@ -1318,6 +1322,13 @@ async function handleFinalTestAnswer({
       }
     } catch (interpErr) {
       console.error("[test:final] Interpretation generation failed:", interpErr);
+      // Still mark as ready so user isn't stuck — scores are available
+      if (insertData?.id) {
+        await serviceClient
+          .from("test_results")
+          .update({ status: "ready" })
+          .eq("id", insertData.id);
+      }
     }
 
     // ── Phase 2: Gemini writes short congratulation ──

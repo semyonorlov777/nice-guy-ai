@@ -456,6 +456,7 @@ export async function POST(request: Request) {
                   answers: updatedState.answers,
                   recommended_exercises: isspResult.recommendedExercises,
                   top_scales: isspResult.topScales,
+                  status: "processing",
                 });
 
               if (insertError) {
@@ -689,6 +690,7 @@ async function handleFinalTestAnswer({
         answers: testState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
+        status: "processing",
       }).select("id").single();
 
       console.log("[ISSP] Insert result:", insertError ? insertError : "SUCCESS, id:", insertData?.id);
@@ -730,20 +732,31 @@ async function handleFinalTestAnswer({
       // const phase2Usage = await result2.usage;
 
       // ── Генерация структурированной интерпретации (Gemini Pro, JSON) ──
-      const interpretation = await generateInterpretation(
-        isspResult.totalScore,
-        isspResult.scoresByScale
-      );
+      // Set status='ready' only after interpretation is saved
+      let interpretation: { level_label: string } = { level_label: "не определён" };
+      try {
+        interpretation = await generateInterpretation(
+          isspResult.totalScore,
+          isspResult.scoresByScale
+        );
 
-      const { error: interpError } = await svc
-        .from("test_results")
-        .update({ interpretation })
-        .eq("chat_id", currentChatId);
+        const { error: interpError } = await svc
+          .from("test_results")
+          .update({ interpretation, status: "ready" })
+          .eq("chat_id", currentChatId);
 
-      if (interpError) {
-        console.error("[ISSP] Failed to save interpretation:", interpError);
-      } else {
-        console.log("[ISSP] Interpretation saved for chat:", currentChatId);
+        if (interpError) {
+          console.error("[ISSP] Failed to save interpretation:", interpError);
+        } else {
+          console.log("[ISSP] Interpretation saved for chat:", currentChatId);
+        }
+      } catch (interpErr) {
+        console.error("[ISSP] Interpretation generation failed:", interpErr);
+        // Still mark as ready so polling doesn't hang — scores are available
+        await svc
+          .from("test_results")
+          .update({ status: "ready" })
+          .eq("chat_id", currentChatId);
       }
 
       // ── Фаза 2: короткое сообщение с баллом ──

@@ -309,9 +309,16 @@ export function TestResultsPage(props: TestResultsProps) {
 
         <Divider />
 
-        {interpretation?.overall && (
+        {interpretation?.overall ? (
           <>
             <AIInterpretation text={interpretation.overall} />
+            <Divider />
+          </>
+        ) : (
+          <>
+            <div className="tr-interpretation-unavailable">
+              Интерпретация временно недоступна. Обновите страницу через минуту.
+            </div>
             <Divider />
           </>
         )}
