@@ -7,7 +7,7 @@ import { createServiceClient } from "@/lib/supabase-server";
 
 const MODELS: Record<string, string> = {
   "flash": "gemini-2.5-flash",
-  "flash-lite": "gemini-2.0-flash-lite",
+  "flash-lite": "gemini-2.5-flash-lite",
 };
 
 const VALID_PROMPT_TYPES = ["mini", "full"] as const;
