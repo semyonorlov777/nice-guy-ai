@@ -232,9 +232,70 @@ export async function POST(request: Request) {
 
   const isAuthenticated = !!user;
 
+  // 3. Load program & service client (needed for both validation and handlers)
+  const serviceClient = createServiceClient();
+  const { data: program } = await serviceClient
+    .from("programs")
+    .select("id, test_system_prompt")
+    .eq("slug", "nice-guy")
+    .single();
+
+  if (!program || !program.test_system_prompt) {
+    return Response.json(
+      { error: "Программа или промпт теста не найдены" },
+      { status: 404 }
+    );
+  }
+
   // Mode-specific validation
   if (isAuthenticated) {
-    if (!body.chat_id || !UUID_RE.test(body.chat_id)) {
+    if (body.chat_id && UUID_RE.test(body.chat_id)) {
+      // Existing chat — proceed as usual
+    } else if (body.session_id && UUID_RE.test(body.session_id)) {
+      // Authenticated user starting fresh test — auto-create chat
+      // Check for existing active test chat (idempotent)
+      const { data: existingTestChat } = await serviceClient
+        .from("chats")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("program_id", program.id)
+        .eq("chat_type", "test")
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      if (existingTestChat) {
+        body.chat_id = existingTestChat.id;
+      } else {
+        const { data: newChat, error: chatErr } = await serviceClient
+          .from("chats")
+          .insert({
+            user_id: user!.id,
+            program_id: program.id,
+            chat_type: "test",
+            status: "active",
+            test_state: {
+              current_question: 0,
+              status: "in_progress",
+              started_at: new Date().toISOString(),
+              answers: [],
+            },
+          })
+          .select("id")
+          .single();
+
+        if (chatErr || !newChat) {
+          console.error("[test] Failed to auto-create test chat:", chatErr);
+          return Response.json(
+            { error: "Не удалось создать тестовый чат" },
+            { status: 500 }
+          );
+        }
+
+        body.chat_id = newChat.id;
+        console.log(`[test] Auto-created test chat ${newChat.id} for user ${user!.id}`);
+      }
+    } else {
       return Response.json(
         { error: "Невалидный chat_id" },
         { status: 400 }
@@ -265,21 +326,6 @@ export async function POST(request: Request) {
         { status: 429 }
       );
     }
-  }
-
-  // 4. Load program
-  const serviceClient = createServiceClient();
-  const { data: program } = await serviceClient
-    .from("programs")
-    .select("id, test_system_prompt")
-    .eq("slug", "nice-guy")
-    .single();
-
-  if (!program || !program.test_system_prompt) {
-    return Response.json(
-      { error: "Программа или промпт теста не найдены" },
-      { status: 404 }
-    );
   }
 
   const systemPrompt = program.test_system_prompt;
@@ -482,6 +528,7 @@ async function handleTypedAnswer({
             success: true,
             calculating: true,
             next_question: 35,
+            chat_id: chatId,
           });
         }
 
@@ -490,7 +537,7 @@ async function handleTypedAnswer({
           .from("chats")
           .update({ last_message_at: new Date().toISOString() })
           .eq("id", chatId);
-        return Response.json({ success: true, next_question: questionIndex + 1, score });
+        return Response.json({ success: true, next_question: questionIndex + 1, score, chat_id: chatId });
       }
 
       // Normal authenticated answer (question_index 0-33)
@@ -508,7 +555,7 @@ async function handleTypedAnswer({
         .update({ last_message_at: new Date().toISOString() })
         .eq("id", chatId);
 
-      return Response.json({ success: true, next_question: questionIndex + 1, score });
+      return Response.json({ success: true, next_question: questionIndex + 1, score, chat_id: chatId });
     } else {
       // Anonymous mode
       const existingMessages = (session!.messages || []) as Array<{ role: string; content: string }>;
@@ -1033,6 +1080,9 @@ async function handleAuthenticated({
   const isFirstMessage = allDbMessages.length === 0;
 
   return createSSEResponse(async (send) => {
+    // Send chat_id to client (needed when chat was auto-created)
+    send({ type: "chat_id", chat_id: chatId });
+
     const result = streamText({
       model: google("gemini-2.5-flash"),
       system: systemPrompt,

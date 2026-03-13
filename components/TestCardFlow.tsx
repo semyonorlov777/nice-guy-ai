@@ -236,6 +236,7 @@ export function TestCardFlow() {
     nextQuestion: number | null;
     confirmedScore: number | null;
     answerRejected: boolean;
+    chatId: string | null;
   }> => {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("Нет потока ответа");
@@ -250,6 +251,7 @@ export function TestCardFlow() {
     let nextQuestion: number | null = null;
     let confirmedScore: number | null = null;
     let answerRejected = false;
+    let gotChatId: string | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -284,6 +286,8 @@ export function TestCardFlow() {
             testComplete = true;
           } else if (data.type === "answer_rejected") {
             answerRejected = true;
+          } else if (data.type === "chat_id") {
+            gotChatId = data.chat_id;
           } else if (data.type === "error") {
             console.error("[TestCardFlow] SSE error:", data.message);
           }
@@ -296,6 +300,7 @@ export function TestCardFlow() {
     return {
       fullText, requiresAuth, testComplete, resultId: gotResultId,
       answerConfirmed, nextQuestion, confirmedScore, answerRejected,
+      chatId: gotChatId,
     };
   }, []);
 
@@ -385,6 +390,16 @@ export function TestCardFlow() {
         if (!response.ok) throw new Error("Ошибка создания сессии");
 
         const result = await consumeSSE(response);
+
+        // Server auto-created a chat for authenticated user — switch to authenticated mode
+        if (result.chatId) {
+          setChatId(result.chatId);
+          setMode("authenticated");
+          try {
+            sessionStorage.removeItem("issp_session_id");
+            localStorage.removeItem("issp_session_id");
+          } catch { /* ignore */ }
+        }
 
         messagesHistory.current = [
           { role: "user", content: "Готов, начнём" },
@@ -567,6 +582,16 @@ export function TestCardFlow() {
       // JSON response
       const data = await response.json();
       if (!data.success) throw new Error(data.error || "Unknown error");
+
+      // Server returned chat_id (auto-created for authenticated user)
+      if (data.chat_id && !chatId) {
+        setChatId(data.chat_id);
+        setMode("authenticated");
+        try {
+          sessionStorage.removeItem("issp_session_id");
+          localStorage.removeItem("issp_session_id");
+        } catch { /* ignore */ }
+      }
 
       // Q35: background calculation started — show analyzing immediately
       if (data.calculating) {
