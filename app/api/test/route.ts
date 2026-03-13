@@ -684,18 +684,14 @@ async function calculateAndSaveResult({
   programId: string;
   testState: TestState;
 }) {
-  let resultId: string | null = null;
   try {
-    // 1. Calculate scores (sync, fast)
+    // Step 1: Calculate scores (sync, fast)
+    console.log("[test:bg] Step 1: calculateISSP, answers:", testState.answers.length);
     const isspResult = calculateISSP(testState.answers);
-    console.log(
-      "[test:bg] Scores:",
-      isspResult.totalScore,
-      "topScales:",
-      isspResult.topScales
-    );
+    console.log("[test:bg] Step 1 done. Score:", isspResult.totalScore, "topScales:", isspResult.topScales);
 
-    // 2. Insert test_results with status='calculating'
+    // Step 2: Insert test_results with status='ready' (immediately available for polling)
+    console.log("[test:bg] Step 2: INSERT test_results");
     const { data: insertData, error: insertError } = await serviceClient
       .from("test_results")
       .insert({
@@ -708,47 +704,49 @@ async function calculateAndSaveResult({
         answers: testState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
-        status: "calculating",
+        status: "ready",
       })
       .select("id")
       .single();
 
     if (insertError) {
-      console.error("[test:bg] insert test_results error:", insertError);
+      console.error("[test:bg] Step 2 FAILED: insert test_results error:", insertError);
       return;
     }
-    resultId = insertData!.id;
+    const resultId = insertData!.id;
+    console.log("[test:bg] Step 2 done. result_id:", resultId);
 
-    // 3. Update chat status to completed
+    // Step 3: Update chat status to completed
+    console.log("[test:bg] Step 3: UPDATE chat status to completed");
     testState.status = "completed";
     await serviceClient
       .from("chats")
       .update({ test_state: testState, status: "completed" })
       .eq("id", chatId);
+    console.log("[test:bg] Step 3 done.");
 
-    // 4. Generate interpretation (slow, 20-30s)
-    const interpretation = await generateInterpretation(
-      isspResult.totalScore,
-      isspResult.scoresByScale
-    );
+    // Step 4: Generate interpretation (slow, 20-30s) — runs via after()
+    // Result is already 'ready' — page shows scores/RadarChart immediately.
+    // Interpretation will be added later; results page can show it when available.
+    console.log("[test:bg] Step 4: generateInterpretation (slow)");
+    try {
+      const interpretation = await generateInterpretation(
+        isspResult.totalScore,
+        isspResult.scoresByScale
+      );
+      console.log("[test:bg] Step 4 done. Updating interpretation...");
 
-    // 5. Update result with interpretation + status='ready'
-    await serviceClient
-      .from("test_results")
-      .update({ interpretation, status: "ready" })
-      .eq("id", resultId);
-
-    console.log("[test:bg] Result ready:", resultId);
-  } catch (err) {
-    console.error("[test:bg] calculateAndSaveResult failed:", err);
-    if (resultId) {
-      try {
-        await serviceClient
-          .from("test_results")
-          .update({ status: "error" })
-          .eq("id", resultId);
-      } catch { /* ignore */ }
+      await serviceClient
+        .from("test_results")
+        .update({ interpretation })
+        .eq("id", resultId);
+      console.log("[test:bg] Interpretation saved for result:", resultId);
+    } catch (interpErr) {
+      console.error("[test:bg] Step 4 FAILED: generateInterpretation error:", interpErr);
+      // Don't change status — result is already 'ready' with scores
     }
+  } catch (err) {
+    console.error("[test:bg] calculateAndSaveResult FAILED:", err);
   }
 }
 
