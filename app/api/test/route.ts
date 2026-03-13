@@ -1,5 +1,6 @@
 import { streamText, generateText } from "ai";
 import { google } from "@/lib/ai";
+import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import {
   parseAIResponse,
@@ -10,6 +11,8 @@ import { generateInterpretation } from "@/lib/issp-interpretation";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
 import type { TestAnswer } from "@/lib/issp-scoring";
+
+export const maxDuration = 60;
 
 // ── Rate limiting (anonymous only) ──
 
@@ -418,14 +421,29 @@ async function handleTypedAnswer({
 
   // ── Step 2: Validate question_index ──
   if (questionIndex !== serverCurrentQuestion) {
-    return Response.json(
-      {
-        error: "question_mismatch",
-        server_question: serverCurrentQuestion,
-        message: `Ожидался вопрос ${serverCurrentQuestion}, получен ${questionIndex}`,
-      },
-      { status: 409 }
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const responseData: any = {
+      error: "question_mismatch",
+      server_question: serverCurrentQuestion,
+      message: `Ожидался вопрос ${serverCurrentQuestion}, получен ${questionIndex}`,
+    };
+
+    // Test already completed — include result info for recovery
+    if (isAuthenticated && serverCurrentQuestion >= 35) {
+      const { data: existingResult } = await serviceClient
+        .from("test_results")
+        .select("id, status")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      responseData.test_complete = true;
+      responseData.result_id = existingResult?.id || null;
+      responseData.result_ready = existingResult?.status === "ready";
+    }
+
+    return Response.json(responseData, { status: 409 });
   }
 
   // ── Step 3: Handle answer_type === "quick" ──
@@ -455,10 +473,15 @@ async function handleTypedAnswer({
 
         const finalState = newState as TestState;
         if (finalState.answers.length >= 35) {
-          // Calculate and stream results via SSE
-          return handleTypedFinalAnswer({
-            serviceClient, supabase, user: user!, chatId: chatId!,
-            systemPrompt, programId, testState: finalState,
+          // Background: calculate scores + interpretation
+          after(() => calculateAndSaveResult({
+            serviceClient, user: user!, chatId: chatId!,
+            programId, testState: finalState,
+          }));
+          return Response.json({
+            success: true,
+            calculating: true,
+            next_question: 35,
           });
         }
 
@@ -573,58 +596,18 @@ async function handleTypedAnswer({
 
           const finalState = newState as TestState;
           if (finalState.answers.length >= 35) {
-            // Calculate scores inline (already in SSE context)
-            const isspResult = calculateISSP(finalState.answers);
-            console.log("[test:typed:text] Final scores:", isspResult.totalScore);
-
-            const { data: insertData, error: insertError } = await serviceClient
-              .from("test_results")
-              .insert({
-                user_id: user!.id,
-                program_id: programId,
-                chat_id: chatId,
-                total_score: isspResult.totalScore,
-                total_raw: isspResult.totalRaw,
-                scores_by_scale: isspResult.scoresByScale,
-                answers: finalState.answers,
-                recommended_exercises: isspResult.recommendedExercises,
-                top_scales: isspResult.topScales,
-              })
-              .select("id")
-              .single();
-
-            if (insertError) {
-              console.error("[test:typed:text] insert test_results error:", insertError);
-            }
-
-            if (insertData?.id) {
-              send({ type: "test_complete", result_id: insertData.id });
-            }
-
-            // Update chat status
-            finalState.status = "completed";
-            await serviceClient
-              .from("chats")
-              .update({ test_state: finalState, status: "completed" })
-              .eq("id", chatId);
-
-            // Generate interpretation (non-blocking for client)
-            try {
-              const interpretation = await generateInterpretation(
-                isspResult.totalScore,
-                isspResult.scoresByScale
-              );
-              if (insertData?.id) {
-                await serviceClient
-                  .from("test_results")
-                  .update({ interpretation })
-                  .eq("id", insertData.id);
-              }
-            } catch (interpErr) {
-              console.error("[test:typed:text] interpretation failed:", interpErr);
-            }
-
+            // Signal client: answer accepted, calculation starting
+            send({ type: "answer_confirmed", score: extractedScore, next_question: 35 });
+            send({ type: "calculating" });
             send({ type: "done" });
+
+            // Background: calculate scores + interpretation
+            calculateAndSaveResult({
+              serviceClient, user: user!, chatId: chatId!,
+              programId, testState: finalState,
+            }).catch(err => {
+              console.error("[test:typed:text] Background calculation failed:", err);
+            });
             return;
           }
 
@@ -686,36 +669,33 @@ async function handleTypedAnswer({
   return Response.json({ error: "Невалидные параметры запроса" }, { status: 400 });
 }
 
-// ── Helper: typed quick final answer (Q35, SSE) ──
+// ── Helper: background calculation (Q35 async) ──
 
-async function handleTypedFinalAnswer({
+async function calculateAndSaveResult({
   serviceClient,
-  supabase,
   user,
   chatId,
-  systemPrompt,
   programId,
   testState,
 }: {
   serviceClient: ReturnType<typeof createServiceClient>;
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  user: { id: string; email?: string };
+  user: { id: string };
   chatId: string;
-  systemPrompt: string;
   programId: string;
   testState: TestState;
 }) {
-  return createSSEResponse(async (send) => {
-    // Calculate scores
+  let resultId: string | null = null;
+  try {
+    // 1. Calculate scores (sync, fast)
     const isspResult = calculateISSP(testState.answers);
     console.log(
-      "[test:typed:final] Scores:",
+      "[test:bg] Scores:",
       isspResult.totalScore,
       "topScales:",
       isspResult.topScales
     );
 
-    // Save test_results
+    // 2. Insert test_results with status='calculating'
     const { data: insertData, error: insertError } = await serviceClient
       .from("test_results")
       .insert({
@@ -728,77 +708,48 @@ async function handleTypedFinalAnswer({
         answers: testState.answers,
         recommended_exercises: isspResult.recommendedExercises,
         top_scales: isspResult.topScales,
+        status: "calculating",
       })
       .select("id")
       .single();
 
     if (insertError) {
-      console.error("[test:typed:final] insert test_results error:", insertError);
+      console.error("[test:bg] insert test_results error:", insertError);
+      return;
     }
+    resultId = insertData!.id;
 
-    // Send test_complete IMMEDIATELY
-    if (insertData?.id) {
-      send({ type: "test_complete", result_id: insertData.id });
-    }
-
-    // Update chat status
+    // 3. Update chat status to completed
     testState.status = "completed";
     await serviceClient
       .from("chats")
       .update({ test_state: testState, status: "completed" })
       .eq("id", chatId);
 
-    // Generate interpretation (non-blocking for client — test_complete already sent)
-    let interpretation = { level_label: "не определён" } as Awaited<
-      ReturnType<typeof generateInterpretation>
-    >;
-    try {
-      interpretation = await generateInterpretation(
-        isspResult.totalScore,
-        isspResult.scoresByScale
-      );
+    // 4. Generate interpretation (slow, 20-30s)
+    const interpretation = await generateInterpretation(
+      isspResult.totalScore,
+      isspResult.scoresByScale
+    );
 
-      if (insertData?.id) {
+    // 5. Update result with interpretation + status='ready'
+    await serviceClient
+      .from("test_results")
+      .update({ interpretation, status: "ready" })
+      .eq("id", resultId);
+
+    console.log("[test:bg] Result ready:", resultId);
+  } catch (err) {
+    console.error("[test:bg] calculateAndSaveResult failed:", err);
+    if (resultId) {
+      try {
         await serviceClient
           .from("test_results")
-          .update({ interpretation })
-          .eq("id", insertData.id);
-      }
-    } catch (interpErr) {
-      console.error("[test:typed:final] interpretation failed:", interpErr);
+          .update({ status: "error" })
+          .eq("id", resultId);
+      } catch { /* ignore */ }
     }
-
-    // Phase 2: Gemini congratulation message
-    const phase2Messages = [
-      {
-        role: "user" as const,
-        content: `[СИСТЕМА] Тест завершён. Общий балл: ${isspResult.totalScore}/100 (${interpretation.level_label}). Напиши короткое поздравление (2-3 предложения) и скажи что подробные результаты с визуализацией по 7 шкалам доступны на странице результатов.`,
-      },
-    ];
-
-    const result2 = streamText({
-      model: google("gemini-2.5-flash"),
-      system: systemPrompt || undefined,
-      messages: phase2Messages,
-    });
-
-    const phase2Text = await streamToSSE(result2, send);
-
-    // Save congratulation message
-    await supabase.from("messages").insert({
-      chat_id: chatId,
-      role: "assistant",
-      content: phase2Text,
-      tokens_used: 0,
-    });
-
-    await supabase
-      .from("chats")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", chatId);
-
-    send({ type: "done" });
-  });
+  }
 }
 
 // ══════════════════════════════════════════════════════════

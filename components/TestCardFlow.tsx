@@ -95,11 +95,18 @@ export function TestCardFlow() {
             content: m.content,
           }));
 
-          const testState = chat.test_state as { current_question?: number } | null;
+          const testState = chat.test_state as { current_question?: number; status?: string } | null;
           const cq = testState?.current_question ?? 0;
 
           setChatId(chat.id);
           setMode("authenticated");
+
+          // Test completed or at Q35 — go to analyzing
+          if (cq >= 35 || testState?.status === "completed") {
+            setPhase("analyzing");
+            return;
+          }
+
           setCurrentQuestionIndex(cq);
           setPhase("question");
           return;
@@ -148,16 +155,23 @@ export function TestCardFlow() {
                 .eq("id", newChatId)
                 .single();
 
-              const testState = chatData?.test_state as { current_question?: number } | null;
+              const testState = chatData?.test_state as { current_question?: number; status?: string } | null;
               const cq = testState?.current_question ?? 34;
 
               setChatId(newChatId);
               setMode("authenticated");
-              setCurrentQuestionIndex(cq);
               try {
                 sessionStorage.removeItem("issp_session_id");
                 localStorage.removeItem("issp_session_id");
               } catch { /* ignore */ }
+
+              // Test completed or at Q35 — go to analyzing
+              if (cq >= 35 || testState?.status === "completed") {
+                setPhase("analyzing");
+                return;
+              }
+
+              setCurrentQuestionIndex(cq);
               setPhase("question");
               return;
             }
@@ -266,6 +280,8 @@ export function TestCardFlow() {
             answerConfirmed = true;
             nextQuestion = data.next_question;
             confirmedScore = data.score;
+          } else if (data.type === "calculating") {
+            testComplete = true;
           } else if (data.type === "answer_rejected") {
             answerRejected = true;
           } else if (data.type === "error") {
@@ -524,6 +540,17 @@ export function TestCardFlow() {
       if (response.status === 409) {
         const data = await response.json();
         console.warn("[TestCardFlow] Question mismatch, syncing to", data.server_question);
+
+        if (data.test_complete) {
+          if (data.result_id) setResultId(data.result_id);
+          setPhase(data.result_ready ? "complete" : "analyzing");
+          return;
+        }
+        if (data.server_question >= 35) {
+          setPhase("analyzing");
+          return;
+        }
+
         setCurrentQuestionIndex(data.server_question);
         setIsLocked(false);
         setIsReacting(false);
@@ -537,22 +564,19 @@ export function TestCardFlow() {
         throw new Error(errData?.error || `Ошибка сервера: ${response.status}`);
       }
 
-      // Check Content-Type: JSON for normal, SSE for Q35
-      const contentType = response.headers.get("Content-Type") || "";
-
-      if (contentType.includes("text/event-stream")) {
-        // Q35 flow — SSE with test_complete
-        const result = await consumeSSE(response);
-        if (result.testComplete && result.resultId) {
-          setResultId(result.resultId);
-          setTimeout(() => setPhase("analyzing"), 1000);
-        }
-        return;
-      }
-
-      // Normal JSON response (questions 0-33)
+      // JSON response
       const data = await response.json();
       if (!data.success) throw new Error(data.error || "Unknown error");
+
+      // Q35: background calculation started — show analyzing immediately
+      if (data.calculating) {
+        messagesHistory.current.push(
+          { role: "user", content: String(score) },
+          { role: "assistant", content: `Записываю как ${score}.` }
+        );
+        setTimeout(() => setPhase("analyzing"), 800);
+        return;
+      }
 
       // Update messages history
       messagesHistory.current.push(
@@ -624,6 +648,17 @@ export function TestCardFlow() {
       if (response.status === 409) {
         const data = await response.json();
         console.warn("[TestCardFlow] Question mismatch, syncing to", data.server_question);
+
+        if (data.test_complete) {
+          if (data.result_id) setResultId(data.result_id);
+          setPhase(data.result_ready ? "complete" : "analyzing");
+          return;
+        }
+        if (data.server_question >= 35) {
+          setPhase("analyzing");
+          return;
+        }
+
         setCurrentQuestionIndex(data.server_question);
         setIsLocked(false);
         setIsReacting(false);
@@ -639,10 +674,10 @@ export function TestCardFlow() {
       // Always SSE for text answers
       const result = await consumeSSE(response, { streamToReaction: true });
 
-      // Test complete (Q35)
-      if (result.testComplete && result.resultId) {
-        setResultId(result.resultId);
-        setTimeout(() => setPhase("analyzing"), 1000);
+      // Test complete (Q35) — resultId may be null (comes from polling)
+      if (result.testComplete) {
+        if (result.resultId) setResultId(result.resultId);
+        setTimeout(() => setPhase("analyzing"), 800);
         return;
       }
 
@@ -705,8 +740,9 @@ export function TestCardFlow() {
     setPhase("question");
   }, [completedBlockIndex]);
 
-  // ── Analyzing complete ──
-  const handleAnalyzingComplete = useCallback(() => {
+  // ── Result ready (from polling) ──
+  const handleResultReady = useCallback((newResultId: string) => {
+    setResultId(newResultId);
     setPhase("complete");
   }, []);
 
@@ -789,7 +825,7 @@ export function TestCardFlow() {
         )}
 
         {phase === "analyzing" && (
-          <AnalyzingScreen onComplete={handleAnalyzingComplete} />
+          <AnalyzingScreen chatId={chatId} onResultReady={handleResultReady} />
         )}
 
         {phase === "complete" && (

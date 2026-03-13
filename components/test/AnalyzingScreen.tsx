@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface AnalyzingScreenProps {
-  onComplete: () => void;
+  chatId: string | null;
+  onResultReady: (resultId: string) => void;
 }
 
 type StepState = "pending" | "active" | "done";
@@ -14,13 +15,25 @@ const STEPS = [
   "Генерация персональной интерпретации",
 ];
 
-export function AnalyzingScreen({ onComplete }: AnalyzingScreenProps) {
+export function AnalyzingScreen({ chatId, onResultReady }: AnalyzingScreenProps) {
   const [stepStates, setStepStates] = useState<StepState[]>(["active", "pending", "pending"]);
   const [status, setStatus] = useState("Это займёт 15–30 секунд");
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  const onResultReadyRef = useRef(onResultReady);
+  onResultReadyRef.current = onResultReady;
+
+  const poll = useCallback(async () => {
+    if (!chatId) return null;
+    try {
+      const res = await fetch(`/api/test/result?chat_id=${encodeURIComponent(chatId)}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }, [chatId]);
 
   useEffect(() => {
+    // Step animation (cosmetic)
     const t1 = setTimeout(() => {
       setStepStates(["done", "active", "pending"]);
     }, 3000);
@@ -29,27 +42,45 @@ export function AnalyzingScreen({ onComplete }: AnalyzingScreenProps) {
       setStepStates(["done", "done", "active"]);
     }, 6000);
 
-    const t3 = setTimeout(() => {
-      setStepStates(["done", "done", "done"]);
-      setStatus("Готово!");
-    }, 9000);
+    // Poll for result every 3 seconds
+    let stopped = false;
+    const pollInterval = setInterval(async () => {
+      if (stopped) return;
+      const data = await poll();
+      if (!data || stopped) return;
 
-    const t4 = setTimeout(() => {
-      onCompleteRef.current();
-    }, 10000);
+      if (data.status === "error") {
+        setStatus("Произошла ошибка при анализе. Обновите страницу.");
+        setStepStates(["done", "done", "done"]);
+        clearInterval(pollInterval);
+        return;
+      }
 
+      if (data.ready && data.result_id) {
+        stopped = true;
+        clearInterval(pollInterval);
+        setStepStates(["done", "done", "done"]);
+        setStatus("Готово!");
+        // Small delay so animation doesn't cut off abruptly
+        setTimeout(() => {
+          onResultReadyRef.current(data.result_id);
+        }, 1000);
+      }
+    }, 3000);
+
+    // Timeout after 2 minutes
     const tFallback = setTimeout(() => {
-      setStatus("Анализ занимает больше времени. Попробуйте обновить страницу.");
-    }, 60_000);
+      setStatus("Анализ занимает больше времени. Обновите страницу.");
+    }, 120_000);
 
     return () => {
+      stopped = true;
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
       clearTimeout(tFallback);
+      clearInterval(pollInterval);
     };
-  }, []);
+  }, [poll]);
 
   return (
     <div className="tc-screen tc-analyzing-screen">
