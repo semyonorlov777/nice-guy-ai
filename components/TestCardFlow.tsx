@@ -846,7 +846,7 @@ export function TestCardFlow() {
         )}
 
         {phase === "analyzing" && (
-          <AnalyzingScreen chatId={chatId} onResultReady={handleResultReady} />
+          <AnalyzingScreen resultId={resultId} onComplete={handleResultReady} />
         )}
 
         {phase === "complete" && (

@@ -1,106 +1,271 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 interface AnalyzingScreenProps {
-  chatId: string | null;
-  onResultReady: (resultId: string) => void;
+  resultId: string | null;
+  onComplete: (resultId: string) => void;
 }
 
-type StepState = "pending" | "active" | "done";
-
-const STEPS = [
-  "Подсчёт баллов по 7 шкалам",
-  "Определение ключевых паттернов",
-  "Генерация персональной интерпретации",
+const ANALYZING_STAGES = [
+  {
+    label: "Анализ ответов",
+    substeps: [
+      "Обработка ответов по 7 сферам жизни",
+      "Расчёт баллов с учётом обратных шкал",
+      "Определение доминирующих сфер",
+      "Поиск взаимосвязей между шкалами",
+    ],
+  },
+  {
+    label: "Научная база",
+    substeps: [
+      "Поиск релевантных исследований (PubMed, APA PsycNet)",
+      "Анализ публикаций по выявленным паттернам",
+      "Сопоставление с методологией Роберта Гловера",
+      "Подбор доказательных подходов (CBT, Schema Therapy)",
+    ],
+  },
+  {
+    label: "Персональный профиль",
+    substeps: [
+      "Формирование описания по каждой сфере",
+      "Определение приоритетных направлений роста",
+      "Подбор рекомендованных упражнений",
+      "Генерация персональной интерпретации",
+    ],
+  },
 ];
 
-export function AnalyzingScreen({ chatId, onResultReady }: AnalyzingScreenProps) {
-  const [stepStates, setStepStates] = useState<StepState[]>(["active", "pending", "pending"]);
-  const [status, setStatus] = useState("Это займёт 15–30 секунд");
-  const onResultReadyRef = useRef(onResultReady);
-  onResultReadyRef.current = onResultReady;
+const SUBSTEP_DELAY = 4800;
+const STAGE_GAP = 1200;
+const HINT_DELAY = 15000;
+const TIMEOUT_LIMIT = 120000;
 
-  const poll = useCallback(async () => {
-    if (!chatId) return null;
-    try {
-      const res = await fetch(`/api/test/result?chat_id=${encodeURIComponent(chatId)}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    }
-  }, [chatId]);
+export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) {
+  const [animationDone, setAnimationDone] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [waitingForBackend, setWaitingForBackend] = useState(false);
+  const [error, setError] = useState(false);
+  const [allDone, setAllDone] = useState(false);
+  const [orbProgress, setOrbProgress] = useState(0);
 
+  const [stageStates, setStageStates] = useState<("idle" | "active" | "done")[]>([
+    "idle",
+    "idle",
+    "idle",
+  ]);
+  const [substepStates, setSubstepStates] = useState<("idle" | "active" | "done")[][]>(
+    ANALYZING_STAGES.map((s) => s.substeps.map(() => "idle"))
+  );
+
+  // Stage/substep animation timeline
   useEffect(() => {
-    // Step animation (cosmetic)
-    const t1 = setTimeout(() => {
-      setStepStates(["done", "active", "pending"]);
-    }, 3000);
+    const timeouts: number[] = [];
+    let delay = 600;
+    const totalSubs = 12;
+    let count = 0;
 
-    const t2 = setTimeout(() => {
-      setStepStates(["done", "done", "active"]);
-    }, 6000);
+    ANALYZING_STAGES.forEach((stage, si) => {
+      // Activate stage
+      timeouts.push(
+        window.setTimeout(() => {
+          setStageStates((prev) => {
+            const n = [...prev];
+            n[si] = "active";
+            return n;
+          });
+        }, delay)
+      );
+      delay += 400;
 
-    // Poll for result every 3 seconds
-    let stopped = false;
-    const pollInterval = setInterval(async () => {
-      if (stopped) return;
-      const data = await poll();
-      if (!data || stopped) return;
+      // Substeps
+      stage.substeps.forEach((_, ssi) => {
+        timeouts.push(
+          window.setTimeout(() => {
+            setSubstepStates((prev) => {
+              const n = prev.map((a) => [...a]);
+              if (ssi > 0) n[si][ssi - 1] = "done";
+              n[si][ssi] = "active";
+              return n;
+            });
+            count++;
+            setOrbProgress(Math.round((count / totalSubs) * 100));
+          }, delay)
+        );
+        delay += SUBSTEP_DELAY;
+      });
 
-      if (data.status === "error") {
-        setStatus("Произошла ошибка при анализе. Обновите страницу.");
-        setStepStates(["done", "done", "done"]);
-        clearInterval(pollInterval);
-        return;
-      }
+      // Last substep done
+      timeouts.push(
+        window.setTimeout(() => {
+          setSubstepStates((prev) => {
+            const n = prev.map((a) => [...a]);
+            n[si][stage.substeps.length - 1] = "done";
+            return n;
+          });
+        }, delay)
+      );
 
-      if (data.ready && data.result_id) {
-        stopped = true;
-        clearInterval(pollInterval);
-        setStepStates(["done", "done", "done"]);
-        setStatus("Готово!");
-        // Small delay so animation doesn't cut off abruptly
-        setTimeout(() => {
-          onResultReadyRef.current(data.result_id);
-        }, 1000);
-      }
-    }, 3000);
+      // Stage done
+      timeouts.push(
+        window.setTimeout(() => {
+          setStageStates((prev) => {
+            const n = [...prev];
+            n[si] = "done";
+            return n;
+          });
+        }, delay + 200)
+      );
 
-    // Timeout after 2 minutes
-    const tFallback = setTimeout(() => {
-      setStatus("Анализ занимает больше времени. Обновите страницу.");
-    }, 120_000);
+      delay += STAGE_GAP;
+    });
 
-    return () => {
-      stopped = true;
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(tFallback);
-      clearInterval(pollInterval);
-    };
-  }, [poll]);
+    // Hint after 15s
+    timeouts.push(window.setTimeout(() => setShowHint(true), HINT_DELAY));
+
+    // Animation complete
+    timeouts.push(window.setTimeout(() => setAnimationDone(true), delay + 500));
+
+    return () => timeouts.forEach(clearTimeout);
+  }, []);
+
+  // Double gating: animation done + resultId
+  useEffect(() => {
+    if (animationDone && resultId) {
+      setAllDone(true);
+      const t = window.setTimeout(() => onComplete(resultId), 2000);
+      return () => clearTimeout(t);
+    } else if (animationDone && !resultId) {
+      setWaitingForBackend(true);
+    }
+  }, [animationDone, resultId, onComplete]);
+
+  // resultId arrived after animation finished
+  useEffect(() => {
+    if (waitingForBackend && resultId) {
+      setWaitingForBackend(false);
+      setAllDone(true);
+      const t = window.setTimeout(() => onComplete(resultId), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [waitingForBackend, resultId, onComplete]);
+
+  // Error timeout (2 min)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (!resultId) setError(true);
+    }, TIMEOUT_LIMIT);
+    return () => clearTimeout(t);
+  }, [resultId]);
+
+  const orbDone = allDone;
+  const dashOffset = 251 - (251 * orbProgress) / 100;
+
+  if (error) {
+    return (
+      <div className="tc-screen" style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px 36px", gap: "28px" }}>
+        <div className="analyzing-error">
+          <p className="analyzing-error-text">
+            Произошла ошибка при анализе. Попробуйте обновить страницу.
+          </p>
+          <button
+            className="analyzing-error-btn"
+            onClick={() => window.location.reload()}
+          >
+            Обновить страницу
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="tc-screen tc-analyzing-screen">
-      <div className="tc-analyzing-orb">
-        <div className="tc-analyzing-orb-inner">🔬</div>
+    <div className="tc-screen" style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px 36px", gap: "28px" }}>
+      {/* Orb */}
+      <div className={`analyzing-orb-wrap${orbDone ? " done" : ""}`}>
+        <div className="analyzing-orb-bg" />
+        <svg className="analyzing-orb-ring" viewBox="0 0 84 84">
+          <circle
+            className="analyzing-orb-ring-progress"
+            cx="42"
+            cy="42"
+            r="40"
+            style={{ strokeDashoffset: orbDone ? 0 : dashOffset }}
+          />
+        </svg>
+        <div className="analyzing-orb-icon">
+          {orbDone ? (
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          )}
+        </div>
       </div>
 
-      <h2>Анализируем ответы</h2>
-      <p className="tc-analyzing-status">{status}</p>
-
-      <div className="tc-analyzing-steps">
-        {STEPS.map((label, i) => (
-          <div key={i} className={`tc-analyzing-step ${stepStates[i]}`}>
-            <div className="tc-analyzing-step-icon">
-              {stepStates[i] === "done" ? "✓" : i + 1}
-            </div>
-            <span>{label}</span>
+      {/* Title */}
+      {allDone ? (
+        <div className="analyzing-done-message visible">Профиль готов</div>
+      ) : (
+        <>
+          <div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 600, color: "var(--tc-text)", margin: 0 }}>
+              Анализируем ваши ответы
+            </h2>
+            <p style={{ fontSize: "13px", color: "var(--tc-text-secondary)", marginTop: "6px" }}>
+              Это займёт около 30–60 секунд
+            </p>
           </div>
-        ))}
-      </div>
+
+          {/* Stages */}
+          <div className="analyzing-stages">
+            {ANALYZING_STAGES.map((stage, si) => (
+              <div key={si} className={`analyzing-stage ${stageStates[si]}`}>
+                <div className="analyzing-stage-header">
+                  <div className="analyzing-stage-dot">
+                    <svg viewBox="0 0 10 10" fill="none">
+                      <polyline points="2,5 4.5,7.5 8,3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span className="analyzing-stage-label">{stage.label}</span>
+                </div>
+                <div className="analyzing-substeps">
+                  {stage.substeps.map((text, ssi) => {
+                    const state = substepStates[si][ssi];
+                    const visible = state !== "idle";
+                    return (
+                      <div
+                        key={ssi}
+                        className={`analyzing-substep${visible ? " visible" : ""}${state === "active" ? " active" : ""}${state === "done" ? " done" : ""}`}
+                      >
+                        <div className="analyzing-substep-dot" />
+                        <span className="analyzing-substep-text">{text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hint */}
+          <div className={`analyzing-hint${showHint ? " visible" : ""}`}>
+            Вы увидите профиль по 7 сферам жизни с персональными рекомендациями и научным обоснованием
+          </div>
+
+          {/* Waiting for backend */}
+          {waitingForBackend && (
+            <div className="analyzing-waiting">Финализируем интерпретацию...</div>
+          )}
+        </>
+      )}
     </div>
   );
 }
