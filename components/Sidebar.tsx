@@ -77,6 +77,7 @@ export function Sidebar({
   // Активный раздел навигации
   function getActiveSection() {
     if (pathname.startsWith("/test/issp")) return "test";
+    if (pathname.startsWith(`${base}/author-chat`)) return "author-chat";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
     return null; // chat не подсвечиваем в навигации — он в списке чатов
@@ -104,6 +105,12 @@ export function Sidebar({
       icon: "📝",
       label: "Пройти тест",
       absolutePath: true,
+    },
+    {
+      key: "author-chat",
+      path: "/author-chat",
+      icon: "✍️",
+      label: "Автор книги",
     },
     {
       key: "exercises",

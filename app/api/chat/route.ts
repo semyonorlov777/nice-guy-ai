@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   // 2. Parse body — useChat отправляет { messages: UIMessage[], ...body }
   const body = await request.json();
-  const { messages: clientMessages, chatId, programId, exerciseId } = body;
+  const { messages: clientMessages, chatId, programId, exerciseId, chatType } = body;
 
   // Извлекаем текст последнего user-сообщения из UIMessage parts
   const lastClientMsg = clientMessages?.[clientMessages.length - 1];
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   // 4. Load program
   const { data: program, error: programError } = await supabase
     .from("programs")
-    .select("id, system_prompt, free_chat_welcome")
+    .select("id, system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome")
     .eq("id", programId)
     .single();
 
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
   // 7. Find or create chat
   let currentChatId = chatId;
   let isNewChat = false;
-  const currentChatType = exerciseId ? "exercise" : "free";
+  const currentChatType = exerciseId ? "exercise" : (chatType === "author" ? "author" : "free");
 
   if (!currentChatId) {
     // Multi-chat: создаём новый чат
@@ -149,7 +149,8 @@ export async function POST(request: Request) {
     isNewChat = true;
 
     const welcomeText =
-      exercise?.welcome_message || program.free_chat_welcome;
+      exercise?.welcome_message ||
+      (chatType === "author" ? program.author_chat_welcome : program.free_chat_welcome);
     if (welcomeText) {
       await supabase.from("messages").insert({
         chat_id: currentChatId,
@@ -168,7 +169,9 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: true });
 
   // 9. Build system prompt
-  let systemPrompt = program.system_prompt || "";
+  let systemPrompt = (chatType === "author" && program.author_chat_system_prompt)
+    ? program.author_chat_system_prompt
+    : (program.system_prompt || "");
   if (exercise?.system_prompt) {
     systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;
   }

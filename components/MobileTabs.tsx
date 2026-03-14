@@ -15,6 +15,7 @@ export function MobileTabs({
 
   const tabs = [
     { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Чат" },
+    { key: "author-chat", path: "/author-chat", icon: "\u270D\uFE0F", label: "Автор" },
     { key: "test", path: "/test/issp", icon: "\u{1F4DD}", label: "Тест", absolutePath: true },
     { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Тренажёры" },
     ...(features?.portrait

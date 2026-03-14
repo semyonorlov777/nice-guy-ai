@@ -13,7 +13,7 @@ interface ChatWindowProps {
   chatId: string | null;
   programId: string;
   exerciseId?: string;
-  chatType?: "exercise" | "free";
+  chatType?: "exercise" | "free" | "author";
   userInitial: string;
   welcomeMessage?: string;
   quickReplies?: string[];
@@ -66,7 +66,7 @@ export function ChatWindow({
           setCurrentChatId(newId);
           // URL update: /chat → /chat/newId, /exercise/N → /exercise/N/newId
           const path = window.location.pathname;
-          if (path.endsWith("/chat") || /\/exercise\/\d+$/.test(path)) {
+          if (path.endsWith("/chat") || path.endsWith("/author-chat") || /\/exercise\/\d+$/.test(path)) {
             window.history.replaceState(null, "", `${path}/${newId}`);
           }
         } else {

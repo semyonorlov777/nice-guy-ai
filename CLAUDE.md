@@ -39,6 +39,7 @@ app/
 │   └── (app)/                            # Группа с Sidebar + MobileTabs layout
 │       ├── layout.tsx                    # Sidebar + авторизация
 │       ├── chat/page.tsx                 # Свободный чат
+│       ├── author-chat/page.tsx          # Разговор с автором (AI в роли Гловера)
 │       ├── exercises/page.tsx            # Список упражнений
 │       ├── exercise/[id]/page.tsx        # Чат по упражнению
 │       └── portrait/page.tsx             # Психологический портрет
@@ -84,6 +85,10 @@ middleware.ts                             # Auth guard для защищённы
 - Middleware (`middleware.ts`) защищает `/program/*/...` и `/balance`
 - Пропускает `/api/auth/*` без проверки
 - `auth.uid()` в RLS-политиках Supabase работает для всех провайдеров
+
+### chatType в API
+`chatType: "free" | "author"` — тип чата, передаётся из ChatWindow в API для выбора системного промпта.
+`"author"` использует `programs.author_chat_system_prompt` вместо `programs.system_prompt`.
 
 ### Таблица profiles (не users!)
 Профили хранятся в `profiles`, не `users`. Поля: id, email, name, balance_tokens, telegram_username, avatar_url.
