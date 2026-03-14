@@ -16,9 +16,10 @@ interface ProfileMenuProps {
 export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.getAttribute("data-theme") === "dark";
+  type ThemeMode = "light" | "dark" | "system";
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "system";
+    return (localStorage.getItem("theme") as ThemeMode) || "system";
   });
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -36,18 +37,37 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const toggleTheme = useCallback(() => {
-    const next = !isDark;
-    setIsDark(next);
-    if (next) {
+  const applyTheme = useCallback((mode: ThemeMode) => {
+    setThemeMode(mode);
+    localStorage.setItem("theme", mode);
+    if (mode === "dark") {
       document.documentElement.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
-    } else {
+    } else if (mode === "light") {
       document.documentElement.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
+    } else {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
     }
     setOpen(false);
-  }, [isDark]);
+  }, []);
+
+  // React to system theme changes in real time
+  useEffect(() => {
+    if (themeMode !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [themeMode]);
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
@@ -203,28 +223,41 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
 
           <div style={{ height: 1, background: "var(--border-light)", margin: "0 12px" }} />
 
-          <button
-            onClick={toggleTheme}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              width: "100%",
-              padding: "12px 16px",
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-body)",
-              transition: "background 0.1s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-elevated)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          >
-            <span style={{ fontSize: 15 }}>{isDark ? "\u2600\uFE0F" : "\u{1F319}"}</span>
-            <span>{isDark ? "Светлая тема" : "Тёмная тема"}</span>
-          </button>
+          <div style={{ padding: "8px 12px" }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6, fontFamily: "var(--font-body)" }}>Тема</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {([
+                { mode: "light" as ThemeMode, icon: "\u2600\uFE0F", label: "Светлая" },
+                { mode: "dark" as ThemeMode, icon: "\u{1F319}", label: "Тёмная" },
+                { mode: "system" as ThemeMode, icon: "\u{1F504}", label: "Система" },
+              ]).map(({ mode, icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => applyTheme(mode)}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    padding: "6px 4px",
+                    border: "none",
+                    borderRadius: 8,
+                    background: themeMode === mode ? "var(--accent-soft)" : "none",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: themeMode === mode ? "var(--accent)" : "var(--text-secondary)",
+                    fontFamily: "var(--font-body)",
+                    fontWeight: themeMode === mode ? 600 : 400,
+                    transition: "all 0.12s",
+                  }}
+                >
+                  <span style={{ fontSize: 13 }}>{icon}</span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div style={{ height: 1, background: "var(--border-light)", margin: "0 12px" }} />
 

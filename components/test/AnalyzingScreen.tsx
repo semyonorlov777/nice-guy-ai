@@ -231,10 +231,10 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
       ) : (
         <>
           <div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 600, color: "var(--tc-text)", margin: 0 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
               Анализируем ваши ответы
             </h2>
-            <p style={{ fontSize: "13px", color: "var(--tc-text-secondary)", marginTop: "6px" }}>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "6px" }}>
               Это займёт около 30–60 секунд
             </p>
           </div>

@@ -29,9 +29,11 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#FAFAF5" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{const t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}`,
+            __html: `try{var s=localStorage.getItem('theme');if(s==='dark'){document.documentElement.setAttribute('data-theme','dark')}else if(s!=='light'){if(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.setAttribute('data-theme','dark')}}}catch(e){}`,
           }}
         />
       </head>
