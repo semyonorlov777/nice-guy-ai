@@ -12,6 +12,7 @@
     "@ai-sdk/google": "^3.0.43",
     "@ai-sdk/react": "^3.0.118",
     "@google/generative-ai": "^0.24.1",
+    "@sentry/nextjs": "^10.43.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "ai": "^6.0.116",
