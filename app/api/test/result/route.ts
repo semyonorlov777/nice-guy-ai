@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: result } = await supabase
+  const { data: result, error } = await supabase
     .from("test_results")
     .select("id, status")
     .eq("chat_id", chatId)
@@ -25,9 +25,16 @@ export async function GET(request: Request) {
     .limit(1)
     .maybeSingle();
 
+  if (error) {
+    console.error("[test-result] polling query error:", error);
+  }
+
   if (!result) {
+    console.log("[test-result] polling chat_id=%s → not_found", chatId);
     return Response.json({ ready: false, status: "not_found" });
   }
+
+  console.log("[test-result] polling chat_id=%s → status=%s, id=%s", chatId, result.status, result.id);
 
   return Response.json({
     ready: result.status === "ready",

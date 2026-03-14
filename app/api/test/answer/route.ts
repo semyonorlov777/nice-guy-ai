@@ -253,9 +253,10 @@ export async function POST(request: Request) {
 
     // ═══ Q35: TEST COMPLETE ═══
     if (answersCount >= 35) {
+      console.log("[test-answer] Q35 detected, answers count:", answersCount);
       const isspResult = calculateISSP(updatedState.answers);
 
-      const { data: testResult } = await serviceClient
+      const { data: testResult, error: insertError } = await serviceClient
         .from("test_results")
         .insert({
           user_id: user!.id,
@@ -272,6 +273,16 @@ export async function POST(request: Request) {
         .select("id")
         .single();
 
+      if (insertError) {
+        console.error("[test-answer] INSERT test_results failed:", insertError);
+        return Response.json(
+          { success: false, error: "Failed to save test results" },
+          { status: 500 }
+        );
+      }
+
+      console.log("[test-answer] INSERT result id:", testResult.id);
+
       // Update chat status
       await serviceClient
         .from("chats")
@@ -282,29 +293,31 @@ export async function POST(request: Request) {
         .eq("id", chatId);
 
       // Generate interpretation in background via after()
-      if (testResult?.id) {
-        const resultId = testResult.id;
-        after(async () => {
-          try {
-            console.log("[test:answer] Starting interpretation for result:", resultId);
-            const interpretation = await generateInterpretation(
-              isspResult.totalScore,
-              isspResult.scoresByScale
-            );
-            await serviceClient
-              .from("test_results")
-              .update({ interpretation, status: "ready" })
-              .eq("id", resultId);
-            console.log("[test:answer] Interpretation saved for result:", resultId);
-          } catch (err) {
-            console.error("[test:answer] Interpretation failed:", err);
-            await serviceClient
-              .from("test_results")
-              .update({ status: "ready" })
-              .eq("id", resultId);
+      const resultId = testResult.id;
+      after(async () => {
+        try {
+          console.log("[test-answer] after() starting interpretation for:", resultId);
+          const interpretation = await generateInterpretation(
+            isspResult.totalScore,
+            isspResult.scoresByScale
+          );
+          const { error: updateError } = await serviceClient
+            .from("test_results")
+            .update({ interpretation, status: "ready" })
+            .eq("id", resultId);
+          if (updateError) {
+            console.error("[test-answer] UPDATE interpretation failed:", updateError);
+          } else {
+            console.log("[test-answer] Interpretation saved for result:", resultId);
           }
-        });
-      }
+        } catch (err) {
+          console.error("[test-answer] Interpretation generation failed:", err);
+          await serviceClient
+            .from("test_results")
+            .update({ status: "ready" })
+            .eq("id", resultId);
+        }
+      });
 
       return Response.json({
         success: true,

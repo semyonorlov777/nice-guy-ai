@@ -496,7 +496,9 @@ export function TestCardFlow() {
       }
     } catch (err) {
       console.error("[ISSP] submitQuickAnswer error:", err);
-      setErrorMessage("Не удалось сохранить ответ");
+      setErrorMessage("Не удалось сохранить ответ. Попробуйте ещё раз.");
+      // Откатить фазу если уже перешли в analyzing
+      setPhase((prev) => prev === "analyzing" ? "question" : prev);
       setTimeout(() => setErrorMessage(null), 5000);
     }
   }, [chatId, sessionId, handleRequiresAuth]);
@@ -767,14 +769,40 @@ export function TestCardFlow() {
 
     let cancelled = false;
     let intervalRef: ReturnType<typeof setInterval> | undefined;
+    let notFoundCount = 0;
+    const NOT_FOUND_LIMIT = 20; // ~60s (20 polls × 3s)
 
     const poll = async () => {
       try {
         const res = await fetch(`/api/test/result?chat_id=${chatId}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
+        console.log("[ISSP] polling response:", data.status, data.result_id);
+
         if (data.result_id && data.status === "ready" && !cancelled) {
           setResultId(data.result_id);
+          return;
+        }
+
+        // Fallback: если result_id есть но status не ready — возможно after() зависло
+        // Через 90с (30 polls) принимаем processing результат как есть
+        if (data.result_id && data.status === "processing" && notFoundCount > 30 && !cancelled) {
+          console.warn("[ISSP] accepting processing result after timeout, id:", data.result_id);
+          setResultId(data.result_id);
+          return;
+        }
+
+        // Если запись не найдена слишком долго — INSERT вероятно упал
+        if (data.status === "not_found") {
+          notFoundCount++;
+          if (notFoundCount >= NOT_FOUND_LIMIT && !cancelled) {
+            console.error("[ISSP] result not_found after", NOT_FOUND_LIMIT, "polls — INSERT likely failed");
+            setPhase("question");
+            setErrorMessage("Не удалось сохранить результаты. Попробуйте ответить на последний вопрос ещё раз.");
+            setTimeout(() => setErrorMessage(null), 8000);
+          }
+        } else {
+          notFoundCount = 0;
         }
       } catch {
         // ignore, retry next interval
