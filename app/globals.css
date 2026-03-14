@@ -2998,7 +2998,7 @@ html:not(.no-transition) .program-main {
   flex: 1;
   min-height: 44px;
   max-height: 140px;
-  padding: 10px 14px;
+  padding: 11px 14px 9px;
   background: var(--bg-input);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
