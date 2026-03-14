@@ -30,7 +30,7 @@ export function BlockTransition({
       </p>
 
       <div className="tc-block-insight">
-        <div className="tc-block-insight-avatar">НС</div>
+        <div className="tc-block-insight-label">Наблюдение</div>
         <div
           className="tc-block-insight-text"
           dangerouslySetInnerHTML={{ __html: insight }}

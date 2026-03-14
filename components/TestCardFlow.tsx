@@ -761,7 +761,42 @@ export function TestCardFlow() {
     setPhase("question");
   }, [completedBlockIndex]);
 
-  // ── Result ready (from polling) ──
+  // ── Polling for resultId during analyzing phase ──
+  useEffect(() => {
+    if (phase !== "analyzing" || resultId || !chatId) return;
+
+    let cancelled = false;
+    let intervalRef: ReturnType<typeof setInterval> | undefined;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/test/result?chat_id=${chatId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (data.result_id && !cancelled) {
+          setResultId(data.result_id);
+        }
+      } catch {
+        // ignore, retry next interval
+      }
+    };
+
+    // First request after 2s (give server time for INSERT)
+    const firstTimeout = setTimeout(() => {
+      if (cancelled) return;
+      poll();
+      // Then every 3s
+      intervalRef = setInterval(poll, 3000);
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(firstTimeout);
+      if (intervalRef) clearInterval(intervalRef);
+    };
+  }, [phase, resultId, chatId]);
+
+  // ── Result ready (from AnalyzingScreen onComplete) ──
   const handleResultReady = useCallback((newResultId: string) => {
     setResultId(newResultId);
     setPhase("complete");
