@@ -366,11 +366,6 @@ const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
             disabled={disabled}
             aria-label="Введите сообщение"
           />
-          {!text && (
-            <div className="ib-placeholder" aria-hidden="true">
-              {placeholder || DEFAULT_PLACEHOLDERS[mode]}
-            </div>
-          )}
         </div>
 
         {/* RecBar — replaces textarea during recording/locked */}

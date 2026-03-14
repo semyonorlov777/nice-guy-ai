@@ -2991,6 +2991,7 @@ html:not(.no-transition) .program-main {
   background: var(--bg-card);
   border-top: 1px solid var(--border-light);
   position: relative;
+  overflow: visible;
   transition: background 0.2s, border-color 0.2s;
 }
 
@@ -3001,53 +3002,41 @@ html:not(.no-transition) .program-main {
 }
 .ib-textarea {
   width: 100%;
+  flex: 1;
   min-height: 44px;
   max-height: 140px;
   padding: 10px 14px;
   background: var(--bg-input);
   border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   font-family: var(--font-body);
   font-size: 15px;
   color: var(--text-primary);
   resize: none;
   outline: none;
-  line-height: 1.35;
+  line-height: 1.5;
   overflow-x: hidden;
   overflow-y: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  box-sizing: border-box;
 }
-.ib-textarea::placeholder { color: transparent; }
+.ib-textarea::placeholder {
+  color: var(--text-hint);
+  font-size: 14px;
+  line-height: 1.5;
+}
 .ib-textarea:focus {
   border-color: var(--accent);
   box-shadow: var(--shadow-focus);
 }
 @media (min-width: 640px) {
   .ib-textarea { min-height: 52px; }
-}
-
-/* Fake placeholder — flexbox vertical centering (textarea can't do this natively) */
-.ib-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border: 1.5px solid transparent;
-  color: var(--text-hint);
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1;
-  pointer-events: none;
-  user-select: none;
-}
-@media (min-width: 640px) {
-  .ib-placeholder { height: 52px; }
 }
 
 .input-bar.has-error .ib-textarea-wrap { display: none; }
@@ -3196,7 +3185,7 @@ html:not(.no-transition) .program-main {
   border-radius: 50%;
   width: 64px;
   height: 64px;
-  margin: -10px 0;
+  margin: -10px -10px -10px 0;
   animation: ib-rec-breathe 1.8s ease-in-out infinite;
 }
 .ib-action-btn.s-locked {
@@ -3206,7 +3195,7 @@ html:not(.no-transition) .program-main {
   border-radius: 50%;
   width: 64px;
   height: 64px;
-  margin: -10px 0;
+  margin: -10px -10px -10px 0;
   animation: none;
   box-shadow: 0 0 0 3px rgba(201,76,76,0.15);
 }
@@ -3248,7 +3237,7 @@ html:not(.no-transition) .program-main {
   height: 44px;
   background: var(--danger-soft);
   border: 1.5px solid rgba(201,76,76,0.2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   animation: ib-rec-bar-in 0.2s var(--ease);
 }
 @media (min-width: 640px) {
