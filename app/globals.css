@@ -2816,11 +2816,11 @@ body:has(.test-page) {
   border-radius: 8px;
   flex-shrink: 0;
 }
-.tc-history-prev-delta.down {
+.tc-history-prev-delta.up {
   color: var(--success);
   background: var(--success-soft);
 }
-.tc-history-prev-delta.up {
+.tc-history-prev-delta.down {
   color: var(--danger);
   background: var(--danger-soft);
 }

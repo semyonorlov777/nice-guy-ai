@@ -9,6 +9,7 @@ import { QuestionScreen } from "@/components/test/QuestionScreen";
 import { BlockTransition } from "@/components/test/BlockTransition";
 import { AnalyzingScreen } from "@/components/test/AnalyzingScreen";
 import { CompletionScreen } from "@/components/test/CompletionScreen";
+import { HistoryScreen, type TestResultSummary } from "@/components/test/HistoryScreen";
 import {
   ISSP_QUESTIONS,
   ISSP_SCALE_NAMES,
@@ -23,6 +24,7 @@ type CardPhase =
   | "block_transition"
   | "auth_wall"
   | "migrating"
+  | "history"
   | "analyzing"
   | "complete";
 
@@ -57,6 +59,9 @@ export function TestCardFlow() {
 
   // Block transition state
   const [completedBlockIndex, setCompletedBlockIndex] = useState(0);
+
+  // History state
+  const [testResults, setTestResults] = useState<TestResultSummary[]>([]);
 
   // Error state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -114,6 +119,20 @@ export function TestCardFlow() {
 
           setCurrentQuestionIndex(cq);
           setPhase("question");
+          return;
+        }
+
+        // No active chat — check for completed test results
+        const { data: existingResults } = await supabase
+          .from("test_results")
+          .select("id, total_score, created_at, interpretation")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (existingResults && existingResults.length > 0) {
+          setTestResults(existingResults);
+          setMode("authenticated");
+          setPhase("history");
           return;
         }
       }
@@ -305,9 +324,8 @@ export function TestCardFlow() {
     };
   }, []);
 
-  // ── Handle Start ──
-  const handleStart = useCallback(async () => {
-    if (isStarting) return;
+  // ── Start new test (core logic, no guard) ──
+  const startNewTest = useCallback(async () => {
     setIsStarting(true);
 
     const newSessionId = crypto.randomUUID();
@@ -363,7 +381,21 @@ export function TestCardFlow() {
         console.error("[TestCardFlow] Start message failed:", err);
       }
     })();
-  }, [isStarting, consumeSSE]);
+  }, [consumeSSE]);
+
+  // ── Handle Start (WelcomeScreen — with double-click guard) ──
+  const handleStart = useCallback(() => {
+    if (isStarting) return;
+    startNewTest();
+  }, [isStarting, startNewTest]);
+
+  // ── Handle Retake (HistoryScreen — reset + start) ──
+  const handleRetake = useCallback(() => {
+    if (isStarting) return;
+    setChatId(null);
+    setTestResults([]);
+    startNewTest();
+  }, [isStarting, startNewTest]);
 
   // ── Auth flow ──
   const handleRequiresAuth = useCallback(async () => {
@@ -859,6 +891,14 @@ export function TestCardFlow() {
       <div className="tc-frame">
         {phase === "welcome" && (
           <WelcomeScreen onStart={handleStart} isStarting={isStarting} />
+        )}
+
+        {phase === "history" && (
+          <HistoryScreen
+            results={testResults}
+            onRetake={handleRetake}
+            isStarting={isStarting}
+          />
         )}
 
         {phase === "question" && question && (
