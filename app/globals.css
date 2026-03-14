@@ -2873,7 +2873,7 @@ html:not(.no-transition) .program-main {
 }
 .input-bar.recording,
 .input-bar.locked {
-  padding-right: 84px; /* 12px base + 64px button + 8px gap */
+  padding-right: 64px; /* сохраняет ширину rec-bar = textarea в idle */
 }
 .input-bar.disabled {
   opacity: 0.5;
