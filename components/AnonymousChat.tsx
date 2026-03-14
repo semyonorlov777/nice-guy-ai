@@ -6,9 +6,7 @@ import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import { InChatAuth } from "@/components/InChatAuth";
 import type { UIMessage } from "ai";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { VoiceButton } from "@/components/VoiceButton";
-import { VoiceOverlay } from "@/components/VoiceOverlay";
+import InputBar from "@/components/InputBar/InputBar";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -27,12 +25,10 @@ export function AnonymousChat({
   headerTitle,
   headerSubtitle,
 }: AnonymousChatProps) {
-  const [input, setInput] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [mounted, setMounted] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
   const sessionIdRef = useRef<string>("");
 
@@ -132,15 +128,6 @@ export function AnonymousChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  const voiceInput = useVoiceInput({
-    lang: "ru-RU",
-    maxDuration: 300,
-    onTranscript: (text) => {
-      handleSend(text);
-    },
-    paidFallbackEnabled: false,
-  });
-
   // --- Scroll (включая landing page scroll) ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
@@ -168,45 +155,9 @@ export function AnonymousChat({
     isUserScrolledUp.current = !atBottom;
   }
 
-  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 100) + "px";
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
-  // Enter during voice recording (textarea is replaced by overlay, so use document listener)
-  useEffect(() => {
-    if (voiceInput.state !== "recording" && voiceInput.state !== "locked") return;
-
-    function handleGlobalKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        voiceInput.stopRecording();
-      }
-    }
-
-    document.addEventListener("keydown", handleGlobalKeyDown);
-    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [voiceInput.state, voiceInput.stopRecording]);
-
-  function handleSend(text?: string) {
-    const msgText = (text || input).trim();
+  function handleSend(text: string) {
+    const msgText = text.trim();
     if (!msgText || isStreaming || requiresAuth) return;
-
-    if (!text) {
-      setInput("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
-    }
 
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
@@ -350,35 +301,16 @@ export function AnonymousChat({
 
       <div className="chat-input-wrap">
         <div className="chat-input-inner">
-          <div className={`chat-input-row${isStreaming ? " input-locked" : ""}`}>
-            {voiceInput.state !== "idle" ? (
-              <VoiceOverlay
-                voiceInput={voiceInput}
-                onCancel={() => voiceInput.cancelRecording()}
-              />
-            ) : (
-              <textarea
-                ref={textareaRef}
-                className="chat-input"
-                placeholder="Напиши сообщение..."
-                rows={1}
-                value={input}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                disabled={isStreaming || requiresAuth}
-              />
-            )}
-            <VoiceButton
-              voiceInput={voiceInput}
-              hasText={!!input.trim()}
-              isStreaming={isStreaming}
-              disabled={requiresAuth}
-              onSend={() => handleSend()}
-            />
-          </div>
-          <div className="input-privacy">
-            {"🔒 Анонимный чат. Данные не сохраняются на сервере."}
-          </div>
+          <InputBar
+            mode="chat"
+            disabled={isStreaming || requiresAuth}
+            onSend={handleSend}
+            footer={
+              <div className="input-privacy">
+                {"🔒 Анонимный чат. Данные не сохраняются на сервере."}
+              </div>
+            }
+          />
         </div>
       </div>
     </div>

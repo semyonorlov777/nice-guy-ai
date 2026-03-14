@@ -5,9 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { VoiceButton } from "@/components/VoiceButton";
-import { VoiceOverlay } from "@/components/VoiceOverlay";
+import InputBar from "@/components/InputBar/InputBar";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 
 interface ChatWindowProps {
@@ -40,10 +38,8 @@ export function ChatWindow({
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [testResultId, setTestResultId] = useState<string | null>(initialTestResultId ?? null);
-  const [input, setInput] = useState("");
   const [validationHint, setValidationHint] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isUserScrolledUp = useRef(false);
 
   const {
@@ -94,15 +90,6 @@ export function ChatWindow({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  const voiceInput = useVoiceInput({
-    lang: "ru-RU",
-    maxDuration: 3600,
-    onTranscript: (text) => {
-      handleSend(text);
-    },
-    paidFallbackEnabled: true,
-  });
-
   // --- Scroll logic ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
@@ -121,39 +108,9 @@ export function ChatWindow({
     isUserScrolledUp.current = !atBottom;
   }
 
-  // --- Input handling ---
-  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 100) + "px";
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
-  // Enter during voice recording (textarea is replaced by overlay, so use document listener)
-  useEffect(() => {
-    if (voiceInput.state !== "recording" && voiceInput.state !== "locked") return;
-
-    function handleGlobalKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        voiceInput.stopRecording();
-      }
-    }
-
-    document.addEventListener("keydown", handleGlobalKeyDown);
-    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [voiceInput.state, voiceInput.stopRecording]);
-
   // --- Send ---
-  function handleSend(text?: string) {
-    const msgText = (text || input).trim();
+  function handleSend(text: string) {
+    const msgText = text.trim();
     if (!msgText || isStreaming) return;
 
     // Клиентская валидация для ИССП-теста: числа вне 1-5 не отправляем
@@ -162,13 +119,6 @@ export function ChatWindow({
       return;
     }
     setValidationHint(null);
-
-    if (!text) {
-      setInput("");
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
-    }
 
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
@@ -308,37 +258,21 @@ export function ChatWindow({
 
       <div className="chat-input-wrap">
         <div className="chat-input-inner">
-          <div className={`chat-input-row${isStreaming ? " input-locked" : ""}`}>
-            {voiceInput.state !== "idle" ? (
-              <VoiceOverlay
-                voiceInput={voiceInput}
-                onCancel={() => voiceInput.cancelRecording()}
-              />
-            ) : (
-              <textarea
-                ref={textareaRef}
-                className="chat-input"
-                placeholder="Или напиши своими словами..."
-                rows={1}
-                value={input}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                disabled={isStreaming}
-              />
-            )}
-            <VoiceButton
-              voiceInput={voiceInput}
-              hasText={!!input.trim()}
-              isStreaming={isStreaming}
-              onSend={() => handleSend()}
-            />
-          </div>
-          {validationHint && (
-            <div className="input-validation-hint">{validationHint}</div>
-          )}
-          <div className="input-privacy">
-            {"🔒 Всё, что ты напишешь, остаётся между нами"}
-          </div>
+          <InputBar
+            mode={exerciseId ? "exercise" : "chat"}
+            disabled={isStreaming}
+            onSend={handleSend}
+            footer={
+              <>
+                {validationHint && (
+                  <div className="input-validation-hint">{validationHint}</div>
+                )}
+                <div className="input-privacy">
+                  {"🔒 Всё, что ты напишешь, остаётся между нами"}
+                </div>
+              </>
+            }
+          />
         </div>
       </div>
     </div>
