@@ -3169,6 +3169,7 @@ html:not(.no-transition) .program-main {
   border-radius: 50%;
   width: 64px;
   height: 64px;
+  margin: -10px 0;
   animation: ib-rec-breathe 1.8s ease-in-out infinite;
 }
 .ib-action-btn.s-locked {
@@ -3178,6 +3179,7 @@ html:not(.no-transition) .program-main {
   border-radius: 50%;
   width: 64px;
   height: 64px;
+  margin: -10px 0;
   animation: none;
   box-shadow: 0 0 0 3px rgba(201,76,76,0.15);
 }
