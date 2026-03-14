@@ -76,7 +76,7 @@ export function Sidebar({
 
   // Активный раздел навигации
   function getActiveSection() {
-    if (pathname.startsWith(`${base}/test`)) return "test";
+    if (pathname.startsWith("/test/issp")) return "test";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
     return null; // chat не подсвечиваем в навигации — он в списке чатов
@@ -99,15 +99,19 @@ export function Sidebar({
   // Навигация "Тренажёры"
   const navItems = [
     {
+      key: "test",
+      path: "/test/issp",
+      icon: "📝",
+      label: "Пройти тест",
+      absolutePath: true,
+    },
+    {
       key: "exercises",
       path: "/exercises",
       icon: "📋",
       label: "Упражнения",
       badge: exerciseCount > 0 ? exerciseCount : undefined,
     },
-    ...(features?.test
-      ? [{ key: "test", path: "/test", icon: "🧪", label: "ИССП тест" }]
-      : []),
     ...(features?.portrait
       ? [{ key: "portrait", path: "/portrait", icon: "📊", label: "Мой портрет" }]
       : []),
@@ -143,7 +147,7 @@ export function Sidebar({
         {navItems.map((item) => (
           <Link
             key={item.key}
-            href={`${base}${item.path}`}
+            href={item.absolutePath ? item.path : `${base}${item.path}`}
             className={`sidebar-item${activeSection === item.key ? " active" : ""}`}
           >
             <div className="sidebar-item-icon">{item.icon}</div>

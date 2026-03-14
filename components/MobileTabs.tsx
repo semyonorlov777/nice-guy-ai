@@ -15,6 +15,7 @@ export function MobileTabs({
 
   const tabs = [
     { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Чат" },
+    { key: "test", path: "/test/issp", icon: "\u{1F4DD}", label: "Тест", absolutePath: true },
     { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Тренажёры" },
     ...(features?.portrait
       ? [{ key: "portrait", path: "/portrait", icon: "\u{1F4CA}", label: "Портрет" }]
@@ -23,7 +24,7 @@ export function MobileTabs({
   ];
 
   function getActiveKey() {
-    if (pathname.startsWith(`${base}/test`)) return "exercises";
+    if (pathname.startsWith("/test/issp")) return "test";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
     for (const tab of tabs) {
       if (pathname.startsWith(`${base}${tab.path}`)) return tab.key;
@@ -38,7 +39,7 @@ export function MobileTabs({
       {tabs.map((tab) => (
         <Link
           key={tab.key}
-          href={`${base}${tab.path}`}
+          href={tab.absolutePath ? tab.path : `${base}${tab.path}`}
           className={`mobile-tab${activeKey === tab.key ? " active" : ""}`}
         >
           <div className="mobile-tab-icon">{tab.icon}</div>
