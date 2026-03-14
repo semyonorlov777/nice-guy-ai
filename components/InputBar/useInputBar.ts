@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 
-export type ActionState = "idle" | "typing" | "sent" | "error";
+export type ActionState = "idle" | "typing" | "recording" | "locked" | "sent" | "error";
 
 const SENT_DURATION = 1200;
 const ERROR_SHOW_DURATION = 2500;
@@ -36,6 +36,16 @@ export function useInputBar() {
     if (sentTimer.current) return; // don't interrupt sent state
     setActionState("typing");
   }, []);
+
+  const setRecording = useCallback(() => {
+    clearAllTimers();
+    setActionState("recording");
+  }, [clearAllTimers]);
+
+  const setLocked = useCallback(() => {
+    clearAllTimers();
+    setActionState("locked");
+  }, [clearAllTimers]);
 
   const setSent = useCallback(() => {
     clearAllTimers();
@@ -79,10 +89,13 @@ export function useInputBar() {
 
   return {
     actionState,
+    setActionState,
     errorMessage,
     errorFading,
     setIdle,
     setTyping,
+    setRecording,
+    setLocked,
     setSent,
     setError,
     dismissError,

@@ -3147,8 +3147,200 @@ html:not(.no-transition) .program-main {
   padding: 0 12px;
 }
 
+/* ── Mic / Stop icon defaults ── */
+.ib-action-btn .ib-ico-mic { opacity: 0; transform: scale(0.5); }
+.ib-action-btn .ib-ico-stop { opacity: 0; transform: scale(0.5); }
+
+/* ── Chat/Exercise mode: mic in idle instead of send ── */
+.input-bar[data-mode="chat"] .ib-action-btn:not(.s-typing):not(.s-recording):not(.s-locked):not(.s-sent):not(.s-error) .ib-ico-mic,
+.input-bar[data-mode="exercise"] .ib-action-btn:not(.s-typing):not(.s-recording):not(.s-locked):not(.s-sent):not(.s-error) .ib-ico-mic {
+  opacity: 1; transform: scale(1);
+}
+.input-bar[data-mode="chat"] .ib-action-btn:not(.s-typing):not(.s-recording):not(.s-locked):not(.s-sent):not(.s-error) .ib-ico-send,
+.input-bar[data-mode="exercise"] .ib-action-btn:not(.s-typing):not(.s-recording):not(.s-locked):not(.s-sent):not(.s-error) .ib-ico-send {
+  opacity: 0; transform: scale(0.5);
+}
+
+/* ── Recording/Locked button states ── */
+.ib-action-btn.s-recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  animation: ib-rec-breathe 1.8s ease-in-out infinite;
+}
+.ib-action-btn.s-locked {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  animation: none;
+  box-shadow: 0 0 0 3px rgba(201,76,76,0.15);
+}
+@keyframes ib-rec-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,76,76,0.3); }
+  50% { box-shadow: 0 0 0 10px rgba(201,76,76,0); }
+}
+[data-theme="dark"] .ib-action-btn.s-recording {
+  animation-name: ib-rec-breathe-dark;
+}
+@keyframes ib-rec-breathe-dark {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,80,80,0.3); }
+  50% { box-shadow: 0 0 0 10px rgba(220,80,80,0); }
+}
+
+/* Recording/locked: show stop, hide mic+send */
+.ib-action-btn.s-recording .ib-ico-stop,
+.ib-action-btn.s-locked .ib-ico-stop { opacity: 1; transform: scale(1.15); }
+.ib-action-btn.s-recording .ib-ico-mic,
+.ib-action-btn.s-recording .ib-ico-send,
+.ib-action-btn.s-locked .ib-ico-mic,
+.ib-action-btn.s-locked .ib-ico-send { opacity: 0; transform: scale(0.5); }
+
+/* Hide check in recording/locked */
+.ib-action-btn.s-recording .ib-ico-check,
+.ib-action-btn.s-locked .ib-ico-check { opacity: 0; transform: scale(0.5); }
+
+/* Hide textarea during recording/locked */
+.input-bar.recording .ib-textarea,
+.input-bar.locked .ib-textarea { display: none; }
+
+/* ── RecBar ── */
+.ib-rec-bar {
+  display: none;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  height: 44px;
+  background: var(--danger-soft);
+  border: 1.5px solid rgba(201,76,76,0.2);
+  border-radius: var(--radius);
+  animation: ib-rec-bar-in 0.2s var(--ease);
+}
+@media (min-width: 640px) {
+  .ib-rec-bar { height: 52px; }
+}
+.input-bar.recording .ib-rec-bar,
+.input-bar.locked .ib-rec-bar { display: flex; }
+[data-theme="dark"] .ib-rec-bar { border-color: rgba(220,80,80,0.25); }
+
+@keyframes ib-rec-bar-in {
+  from { opacity: 0; transform: scaleX(0.95); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+.ib-rec-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: ib-rec-dot-blink 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes ib-rec-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ib-rec-timer {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+}
+
+.ib-rec-wave {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.ib-rec-wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--danger);
+  opacity: 0.4;
+  transition: height 0.15s ease;
+}
+
+.ib-rec-swipe-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-hint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ib-rec-swipe-hint svg { opacity: 0.5; }
+
+.ib-rec-cancel {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ib-rec-cancel:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ── LockHint ── */
+.ib-lock-hint {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  animation: ib-lock-slide-up 0.25s var(--ease-bounce);
+  font-size: 10px;
+  color: var(--text-muted);
+  z-index: 10;
+}
+[data-theme="dark"] .ib-lock-hint { box-shadow: none; }
+
+@keyframes ib-lock-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ib-lock-icon { width: 20px; height: 20px; color: var(--text-muted); }
+.ib-lock-arrow {
+  width: 12px; height: 12px;
+  color: var(--text-hint);
+  animation: ib-lock-arrow-bounce 1.2s ease-in-out infinite;
+}
+@keyframes ib-lock-arrow-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .ib-action-btn.s-error { animation: none !important; }
+  .ib-action-btn.s-recording {
+    box-shadow: 0 0 0 4px rgba(201,76,76,0.25) !important;
+    animation: none !important;
+  }
+  .ib-rec-dot { animation: none !important; opacity: 1 !important; }
+  .ib-rec-wave-bar { transition: none !important; }
+  .ib-lock-arrow { animation: none !important; }
+  .ib-lock-hint { animation: none !important; }
 }
 
 /* ═══ RESPONSIVE ═══ */
