@@ -84,16 +84,32 @@ export function TestCardFlow() {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // Check for active test chat
-        const { data: chat } = await supabase
-          .from("chats")
-          .select("id, test_state")
-          .eq("chat_type", "test")
-          .eq("status", "active")
-          .maybeSingle();
+        setMode("authenticated");
 
-        if (chat) {
-          // Load messages
+        // Load active chat and completed results in parallel
+        const [chatResult, resultsResult] = await Promise.all([
+          supabase
+            .from("chats")
+            .select("id, test_state")
+            .eq("chat_type", "test")
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .maybeSingle(),
+          supabase
+            .from("test_results")
+            .select("id, total_score, created_at, interpretation")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const chat = chatResult.data;
+        const existingResults = resultsResult.data;
+
+        // Scenario 3: active chat with real progress → restore
+        const testState = chat?.test_state as { current_question?: number; status?: string; answers?: unknown[] } | null;
+        const hasRealProgress = chat && Array.isArray(testState?.answers) && testState!.answers.length > 0;
+
+        if (chat && hasRealProgress) {
           const { data: dbMessages } = await supabase
             .from("messages")
             .select("role, content")
@@ -105,11 +121,9 @@ export function TestCardFlow() {
             content: m.content,
           }));
 
-          const testState = chat.test_state as { current_question?: number; status?: string } | null;
           const cq = testState?.current_question ?? 0;
 
           setChatId(chat.id);
-          setMode("authenticated");
 
           // Test completed or at Q35 — go to analyzing
           if (cq >= 35 || testState?.status === "completed") {
@@ -122,19 +136,14 @@ export function TestCardFlow() {
           return;
         }
 
-        // No active chat — check for completed test results
-        const { data: existingResults } = await supabase
-          .from("test_results")
-          .select("id, total_score, created_at, interpretation")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
+        // Scenario 2: completed results exist → show history
         if (existingResults && existingResults.length > 0) {
           setTestResults(existingResults);
-          setMode("authenticated");
           setPhase("history");
           return;
         }
+
+        // Scenario 1: new user → fall through to welcome
       }
 
       // Check storage for anonymous session
