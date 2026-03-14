@@ -85,7 +85,7 @@ export default async function ExistingChatPage({
       chatId={chat.id}
       programId={program.id}
       exerciseId={chat.exercise_id || undefined}
-      chatType={chat.chat_type as "free" | "exercise" | "test"}
+      chatType={chat.chat_type === "test" ? "free" : (chat.chat_type as "free" | "exercise")}
       userInitial={userInitial}
       welcomeMessage={welcomeMessage}
     />

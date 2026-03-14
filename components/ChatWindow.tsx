@@ -13,11 +13,10 @@ interface ChatWindowProps {
   chatId: string | null;
   programId: string;
   exerciseId?: string;
-  chatType?: "exercise" | "free" | "test";
+  chatType?: "exercise" | "free";
   userInitial: string;
   welcomeMessage?: string;
   quickReplies?: string[];
-  testResultId?: string | null;
   children?: React.ReactNode;
 }
 
@@ -30,14 +29,12 @@ export function ChatWindow({
   userInitial,
   welcomeMessage,
   quickReplies,
-  testResultId: initialTestResultId,
   children,
 }: ChatWindowProps) {
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
   const chatIdRef = useRef<string | null>(initialChatId);
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
-  const [testResultId, setTestResultId] = useState<string | null>(initialTestResultId ?? null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -76,10 +73,6 @@ export function ChatWindow({
           setCurrentChatId(newId);
         }
       }
-      // Ссылка на результаты теста ИССП
-      if (meta.metadata?.testResultId) {
-        setTestResultId(meta.metadata.testResultId as string);
-      }
       // Обновляем список чатов в sidebar (новый чат / обновление preview)
       refreshChatList();
     },
@@ -113,13 +106,7 @@ export function ChatWindow({
     const msgText = text.trim();
     if (!msgText || isStreaming) return;
 
-    // Клиентская валидация для ИССП-теста: числа вне 1-5 не отправляем
-    if (chatType === "test" && /^\d+$/.test(msgText) && !/^[1-5]$/.test(msgText)) {
-      setValidationHint("Введи число от 1 до 5 или ответь своими словами");
-      return;
-    }
     setValidationHint(null);
-
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
 
@@ -210,26 +197,6 @@ export function ChatWindow({
               </div>
             );
           })}
-
-          {testResultId && !isStreaming && (
-            <div style={{ textAlign: "center", margin: "20px 0" }}>
-              <a
-                href={`/test/results/${testResultId}`}
-                style={{
-                  display: "inline-block",
-                  background: "#c9a84c",
-                  color: "#1a1a1a",
-                  fontWeight: 600,
-                  fontSize: "1rem",
-                  padding: "14px 32px",
-                  borderRadius: "12px",
-                  textDecoration: "none",
-                }}
-              >
-                Посмотреть подробные результаты
-              </a>
-            </div>
-          )}
 
           {status === "submitted" && messages.length > 0 && (
             <div className="thinking-indicator">
