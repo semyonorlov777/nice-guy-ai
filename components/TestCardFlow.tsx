@@ -773,7 +773,7 @@ export function TestCardFlow() {
         const res = await fetch(`/api/test/result?chat_id=${chatId}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        if (data.result_id && !cancelled) {
+        if (data.result_id && data.status === "ready" && !cancelled) {
           setResultId(data.result_id);
         }
       } catch {
