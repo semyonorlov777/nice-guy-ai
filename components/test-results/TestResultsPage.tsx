@@ -285,16 +285,59 @@ function ResultsFooter() {
 
 // ── Main component ──
 
+const POLL_INTERVAL = 5000;
+const POLL_TIMEOUT = 90000;
+
 export function TestResultsPage(props: TestResultsProps) {
   const {
     id,
     totalScore,
     scoresByScale,
     topScales,
-    interpretation,
+    interpretation: initialInterpretation,
     isOwner,
     programSlug,
   } = props;
+
+  const [interpretation, setInterpretation] = useState(initialInterpretation);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (interpretation) return;
+
+    let stopped = false;
+    const startTime = Date.now();
+
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/api/test/results/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.interpretation) {
+          setInterpretation(data.interpretation);
+          stopped = true;
+          return;
+        }
+      } catch {
+        // Network error — will retry on next interval
+      }
+
+      if (Date.now() - startTime >= POLL_TIMEOUT) {
+        setPollTimedOut(true);
+        stopped = true;
+      }
+    };
+
+    const intervalId = setInterval(poll, POLL_INTERVAL);
+    // First poll immediately
+    poll();
+
+    return () => {
+      stopped = true;
+      clearInterval(intervalId);
+    };
+  }, [id, interpretation]);
 
   const levelLabel = interpretation?.level_label || getLevelLabel(totalScore);
 
@@ -317,7 +360,9 @@ export function TestResultsPage(props: TestResultsProps) {
         ) : (
           <>
             <div className="tr-interpretation-unavailable">
-              Интерпретация временно недоступна. Обновите страницу через минуту.
+              {pollTimedOut
+                ? "Интерпретация пока не готова. Обновите страницу позже."
+                : "Генерируем вашу интерпретацию…"}
             </div>
             <Divider />
           </>

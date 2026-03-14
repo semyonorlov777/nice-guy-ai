@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Хватит быть славным парнем — AI-тренажёр</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0f1114;
+    --bg-panel: #16181d;
+    --bg-card: #16181d;
+    --bg-element: #1c1f26;
+    --bg-hover: #252830;
+    --accent: #c9a84c;
+    --accent-dim: #a88a3a;
+    --accent-glow: rgba(201, 168, 76, 0.08);
+    --accent-glow-md: rgba(201, 168, 76, 0.12);
+    --accent-glow-strong: rgba(201, 168, 76, 0.18);
+    --text-primary: #e0e0e0;
+    --text-secondary: #8a8a8a;
+    --text-muted: #555;
+    --border: rgba(255,255,255,0.06);
+    --border-accent: rgba(201, 168, 76, 0.25);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, sans-serif;
+    --chat-ai-bg: #1a1d24;
+    --chat-user-bg: #1e2a1e;
+    --max-w: 1080px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ NOISE ═══ */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ═══ SCROLL REVEAL ═══ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ═══ HEADER ═══ */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(15, 17, 20, 0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    color: var(--bg-deep);
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 600;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .header-cta {
+    padding: 8px 20px;
+    background: var(--accent);
+    color: var(--bg-deep);
+    border: none; border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .header-cta:hover { background: var(--accent-dim); }
+
+  /* ═══════════════════════════════ */
+  /* ═══ BLOCK 1 — HERO ═══ */
+  /* ═══════════════════════════════ */
+  .hero {
+    position: relative;
+    z-index: 1;
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding: 120px 24px 80px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 60px;
+    align-items: center;
+  }
+
+  /* Ambient glow behind hero */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 40%; left: 30%;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .hero-content { z-index: 1; }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center; gap: 8px;
+    padding: 6px 16px;
+    background: var(--accent-glow);
+    border: 1px solid var(--border-accent);
+    border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: 52px;
+    font-weight: 600;
+    line-height: 1.1;
+    margin-bottom: 22px;
+    letter-spacing: -1px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 36px;
+    max-width: 480px;
+  }
+
+  .hero-cta-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center; gap: 8px;
+    padding: 14px 32px;
+    background: var(--accent);
+    color: var(--bg-deep);
+    border: none; border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-decoration: none;
+  }
+  .btn-primary:hover {
+    background: var(--accent-dim);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(201,168,76,0.2);
+  }
+
+  .hero-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* Book cover */
+  .hero-book {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .book-wrapper {
+    position: relative;
+    width: 260px;
+    perspective: 800px;
+  }
+
+  .book-cover {
+    width: 260px;
+    height: 380px;
+    background: linear-gradient(160deg, #1a1510 0%, #2a2218 40%, #1a1510 100%);
+    border-radius: 4px 12px 12px 4px;
+    box-shadow:
+      -6px 6px 20px rgba(0,0,0,0.5),
+      0 0 60px rgba(201,168,76,0.08),
+      inset 0 0 80px rgba(201,168,76,0.03);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transform: rotateY(-5deg);
+    transition: transform 0.4s;
+  }
+
+  .book-cover:hover {
+    transform: rotateY(0deg);
+  }
+
+  /* Spine edge */
+  .book-cover::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 14px;
+    background: linear-gradient(90deg, rgba(201,168,76,0.15), transparent);
+    border-right: 1px solid rgba(201,168,76,0.1);
+  }
+
+  /* Corner ornament */
+  .book-cover::after {
+    content: '';
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 40px; height: 40px;
+    border-top: 1px solid rgba(201,168,76,0.25);
+    border-right: 1px solid rgba(201,168,76,0.25);
+  }
+
+  .book-author-top {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0.8;
+  }
+
+  .book-line {
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.3;
+    margin-bottom: 20px;
+  }
+
+  .book-title {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #e8dcc8;
+    margin-bottom: 8px;
+  }
+
+  .book-subtitle {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 400;
+    font-style: italic;
+    color: rgba(232,220,200,0.5);
+    margin-bottom: 24px;
+  }
+
+  .book-line-bottom {
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.3;
+    margin-bottom: 16px;
+  }
+
+  .book-author-bottom {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(232,220,200,0.5);
+    letter-spacing: 1px;
+  }
+
+  .book-glow {
+    position: absolute;
+    bottom: -30px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 60px;
+    background: radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%);
+    filter: blur(10px);
+    pointer-events: none;
+  }
+
+  /* ═══════════════════════════════ */
+  /* ═══ BLOCK 2 — SOCIAL PROOF ═══ */
+  /* ═══════════════════════════════ */
+  .proof {
+    position: relative; z-index: 1;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+
+  .proof-inner {
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding: 40px 24px;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .proof-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .proof-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--accent-glow);
+    border: 1px solid var(--border-accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .proof-num {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .proof-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+  }
+
+  /* ═══════════════════════════════ */
+  /* ═══ BLOCK 3 — PROBLEM ═══ */
+  /* ═══════════════════════════════ */
+  .problem {
+    position: relative; z-index: 1;
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding: 100px 24px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    opacity: 0.7;
+  }
+
+  .problem h2 {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    max-width: 700px;
+  }
+
+  .problem h2 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .problem-lead {
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 620px;
+    margin-bottom: 56px;
+  }
+
+  /* Pain cards */
+  .pain-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 64px;
+  }
+
+  .pain-card {
+    padding: 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.3s;
+  }
+
+  .pain-card:hover {
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .pain-card-icon {
+    font-size: 24px;
+    margin-bottom: 14px;
+  }
+
+  .pain-card h4 {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .pain-card p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  /* Comparison */
+  .compare-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 32px;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .compare-card {
+    padding: 24px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .compare-card.highlight {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    transform: scale(1.03);
+  }
+
+  .compare-card-emoji {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .compare-card h5 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .compare-card.highlight h5 {
+    color: var(--accent);
+  }
+
+  .compare-card p {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+
+  .compare-card .compare-tag {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .compare-tag-red {
+    background: rgba(180,90,90,0.12);
+    color: #c27070;
+  }
+
+  .compare-tag-green {
+    background: rgba(76,175,80,0.12);
+    color: #81C784;
+  }
+
+  /* ═══════════════════════════════ */
+  /* ═══ BLOCK 4 — SOLUTION ═══ */
+  /* ═══════════════════════════════ */
+  .solution {
+    position: relative; z-index: 1;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .solution-inner {
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding: 100px 24px;
+  }
+
+  .solution h2 {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .solution h2 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .solution-sub {
+    font-size: 17px;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 580px;
+    margin: 0 auto 60px;
+    line-height: 1.6;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 56px;
+  }
+
+  .feature-card {
+    padding: 32px 24px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: all 0.3s;
+  }
+
+  .feature-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: var(--accent-glow);
+    border: 1px solid var(--border-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .feature-card h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  /* Positioning statement */
+  .positioning {
+    text-align: center;
+    padding: 40px;
+    background: var(--accent-glow);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius);
+  }
+
+  .positioning p {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 500;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--text-primary);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .positioning p em {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* ═══════════════════════════════ */
+  /* ═══ BLOCK 5 — CHAT ═══ */
+  /* ═══════════════════════════════ */
+  .chat-block {
+    position: relative; z-index: 2;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 80px 16px 160px;
+  }
+
+  .chat-block-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .chat-block-header h2 {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .chat-block-header p {
+    font-size: 15px;
+    color: var(--text-secondary);
+  }
+
+  /* Messages */
+  .messages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .msg {
+    display: flex; gap: 10px;
+    max-width: 88%;
+    opacity: 0; transform: translateY(12px);
+    animation: msgIn 0.4s ease forwards;
+  }
+  .msg-user { align-self: flex-end; flex-direction: row-reverse; }
+
+  @keyframes msgIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    margin-top: 4px;
+  }
+  .msg-avatar-ai {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    color: var(--bg-deep);
+  }
+  .msg-avatar-user {
+    background: var(--bg-element);
+    color: var(--text-secondary);
+  }
+
+  .msg-bubble {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 15px; line-height: 1.6;
+  }
+  .msg-ai .msg-bubble {
+    background: var(--chat-ai-bg);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg-user .msg-bubble {
+    background: var(--chat-user-bg);
+    border: 1px solid rgba(76,175,80,0.1);
+    border-bottom-right-radius: 4px;
+  }
+  .msg-bubble p { margin-bottom: 10px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+
+  /* Quick replies */
+  .quick-replies {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 16px; padding-left: 42px;
+    opacity: 0; animation: msgIn 0.4s ease 0.3s forwards;
+  }
+
+  .qr-btn {
+    padding: 10px 18px;
+    background: var(--bg-element);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .qr-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-accent);
+    color: var(--accent);
+  }
+
+  /* Typing */
+  .typing {
+    display: none;
+    gap: 10px;
+    max-width: 88%;
+    margin-top: 6px;
+  }
+  .typing.active { display: flex; }
+
+  .typing-dots {
+    display: flex; gap: 4px;
+    padding: 16px 20px;
+    background: var(--chat-ai-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-bottom-left-radius: 4px;
+  }
+
+  .typing-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.2s ease infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+    30% { transform: translateY(-4px); opacity: 0.8; }
+  }
+
+  /* Auth card */
+  .auth-card {
+    display: none;
+    margin-top: 6px; margin-left: 42px;
+    max-width: 400px;
+    padding: 24px;
+    background: rgba(201,168,76,0.04);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius);
+  }
+
+  .auth-card.visible {
+    display: block;
+    animation: msgIn 0.5s ease forwards;
+  }
+
+  .auth-card-title {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .auth-card-sub {
+    font-size: 13px; color: var(--text-secondary);
+    margin-bottom: 20px; line-height: 1.5;
+  }
+
+  .auth-buttons { display: flex; flex-direction: column; gap: 10px; }
+
+  .auth-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 13px 20px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; border: none;
+  }
+  .auth-btn-tg { background: #2AABEE; color: #fff; }
+  .auth-btn-tg:hover { background: #229ED9; }
+  .auth-btn-ya { background: var(--bg-element); color: var(--text-primary); border: 1px solid var(--border); }
+  .auth-btn-ya:hover { background: var(--bg-hover); }
+  .auth-btn-email { background: transparent; color: var(--text-secondary); font-size: 13px; padding: 8px; }
+  .auth-btn-email:hover { color: var(--text-primary); }
+
+  .auth-lock {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-top: 14px; font-size: 11.5px; color: var(--text-muted);
+  }
+
+  /* Input bar */
+  .input-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px 24px;
+    background: linear-gradient(transparent, var(--bg-deep) 30%);
+    z-index: 50;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s;
+  }
+  .input-bar.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .input-wrapper {
+    max-width: 688px; margin: 0 auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 8px 8px 18px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    transition: border-color 0.2s;
+  }
+  .input-wrapper:focus-within { border-color: var(--border-accent); }
+
+  .input-field {
+    flex: 1; background: none; border: none;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px; outline: none;
+  }
+  .input-field::placeholder { color: var(--text-muted); }
+
+  .send-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--accent); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  }
+  .send-btn:hover { background: var(--accent-dim); }
+  .send-btn svg { width: 16px; height: 16px; color: var(--bg-deep); }
+
+  .input-trust {
+    text-align: center; margin-top: 8px;
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 48px;
+      padding: 100px 20px 60px;
+      text-align: center;
+    }
+    .hero h1 { font-size: 36px; }
+    .hero-sub { margin-left: auto; margin-right: auto; }
+    .hero-cta-row { justify-content: center; }
+    .hero-book { order: -1; }
+    .book-cover { width: 200px; height: 290px; }
+    .book-title { font-size: 20px; }
+
+    .proof-inner { gap: 24px; }
+    .proof-item { flex-direction: column; text-align: center; gap: 8px; }
+
+    .problem h2 { font-size: 30px; }
+    .pain-grid { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .solution h2 { font-size: 30px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .positioning p { font-size: 20px; }
+
+    .chat-block-header h2 { font-size: 28px; }
+    .msg { max-width: 94%; }
+    .quick-replies { padding-left: 0; }
+    .auth-card { margin-left: 0; max-width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">НС</div>
+    <div class="logo-text"><span>Не</span>Славный</div>
+  </div>
+  <button class="header-cta" onclick="document.getElementById('chatBlock').scrollIntoView({behavior:'smooth'})">Попробовать бесплатно</button>
+</header>
+
+<!-- ═══ BLOCK 1 — HERO ═══ -->
+<section class="hero">
+  <div class="hero-content reveal">
+    <div class="hero-tag">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      AI-тренажёр по книге
+    </div>
+    <h1>Наконец <em>сделай</em> то, что книга предлагает</h1>
+    <p class="hero-sub">AI-помощник проведёт тебя через все 46 упражнений из книги Гловера. Задаёт вопросы, не даёт халтурить, помнит всё что ты рассказал.</p>
+    <div class="hero-cta-row">
+      <a href="#chatBlock" class="btn-primary" onclick="event.preventDefault(); document.getElementById('chatBlock').scrollIntoView({behavior:'smooth'})">
+        Начать бесплатно ↓
+      </a>
+      <span class="hero-hint">Без регистрации</span>
+    </div>
+  </div>
+  <div class="hero-book reveal">
+    <div class="book-wrapper">
+      <div class="book-cover">
+        <div class="book-author-top">Роберт Гловер</div>
+        <div class="book-line"></div>
+        <div class="book-title">Хватит быть славным парнем</div>
+        <div class="book-subtitle">No More Mr. Nice Guy</div>
+        <div class="book-line-bottom"></div>
+        <div class="book-author-bottom">Robert A. Glover, Ph.D.</div>
+      </div>
+      <div class="book-glow"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BLOCK 2 — SOCIAL PROOF ═══ -->
+<section class="proof reveal">
+  <div class="proof-inner">
+    <div class="proof-item">
+      <div class="proof-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div>
+        <div class="proof-num">200+</div>
+        <div class="proof-label">встреч мужских групп</div>
+      </div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      </div>
+      <div>
+        <div class="proof-num">46</div>
+        <div class="proof-label">упражнений из книги</div>
+      </div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <div>
+        <div class="proof-num">24/7</div>
+        <div class="proof-label">доступен в любое время</div>
+      </div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <div class="proof-num">20+</div>
+        <div class="proof-label">лет методологии Гловера</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BLOCK 3 — PROBLEM ═══ -->
+<section class="problem">
+  <div class="reveal">
+    <div class="section-label">Проблема</div>
+    <h2>Прочитал книгу. <em>И что дальше?</em></h2>
+    <p class="problem-lead">99% мужчин читают книгу — и ничего не меняют. Не потому что ленивые. А потому что одно дело прочитать, и совсем другое — сделать.</p>
+  </div>
+
+  <div class="pain-grid reveal">
+    <div class="pain-card">
+      <div class="pain-card-icon">📖</div>
+      <h4>«Сделай упражнение» — а что конкретно писать?</h4>
+      <p>Автор говорит «составь список». Ты открываешь блокнот, пишешь два пункта… и понимаешь, что это поверхностно. Закрываешь блокнот.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-card-icon">🤷</div>
+      <h4>Нет обратной связи</h4>
+      <p>Некому сказать «копни глубже» или «а ты точно честно ответил?». Без этого упражнения превращаются в формальность.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-card-icon">🇺🇸</div>
+      <h4>Американский контекст — русская реальность</h4>
+      <p>Примеры из книги про американскую культуру. А у тебя — российская семья, российская работа, российские отношения.</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-card-icon">😶</div>
+      <h4>Некому рассказать</h4>
+      <p>Друзьям — стрёмно. Жене — не поймёт. Психологу — дорого и нужно записываться. В итоге — всё остаётся в голове.</p>
+    </div>
+  </div>
+
+  <div class="reveal">
+    <div class="compare-title">А что если сравнить?</div>
+    <div class="compare-grid">
+      <div class="compare-card">
+        <div class="compare-card-emoji">📕</div>
+        <h5>Книга</h5>
+        <p>Прочитал — и всё. Упражнения сам не сделаешь, контекст не сохранится</p>
+        <span class="compare-tag compare-tag-red">Не работает одна</span>
+      </div>
+      <div class="compare-card">
+        <div class="compare-card-emoji">🧠</div>
+        <h5>Психолог</h5>
+        <p>3–5 тыс. за сессию. Записываться, ждать, ходить. Не факт что знает Гловера</p>
+        <span class="compare-tag compare-tag-red">Дорого и долго</span>
+      </div>
+      <div class="compare-card">
+        <div class="compare-card-emoji">👥</div>
+        <h5>Группа / тренинг</h5>
+        <p>Расписание, незнакомые люди, страшно открываться перед чужими</p>
+        <span class="compare-tag compare-tag-red">Высокий барьер</span>
+      </div>
+      <div class="compare-card highlight">
+        <div class="compare-card-emoji">⚡</div>
+        <h5>AI-тренажёр</h5>
+        <p>Знает методологию, ведёт через упражнения, помнит контекст, доступен 24/7</p>
+        <span class="compare-tag compare-tag-green">Идеальный мост</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BLOCK 4 — SOLUTION ═══ -->
+<section class="solution">
+  <div class="solution-inner">
+    <div class="reveal">
+      <div class="section-label" style="text-align:center;">Решение</div>
+      <h2>AI, который <em>не даёт халтурить</em></h2>
+      <p class="solution-sub">Не очередной чат-бот. Ассистент, который знает всю методологию Гловера и ведёт тебя как живой фасилитатор.</p>
+    </div>
+
+    <div class="features-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h4>Задаёт правильные вопросы</h4>
+        <p>Знает методологию. Не даёт отвечать «да, наверное». Копает глубже — как опытный фасилитатор группы.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h4>Помнит всё</h4>
+        <p>Строит твой психологический портрет. Связывает ответы из разных упражнений. Каждый разговор — точнее предыдущего.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗺️</div>
+        <h4>46 упражнений — понятный путь</h4>
+        <p>Не «прочитай и сделай сам». Каждое упражнение — отдельный чат с пошаговым ведением от начала до инсайта.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🇷🇺</div>
+        <h4>Российский контекст</h4>
+        <p>Адаптирует примеры из книги под твою реальность. Не «американский терапевт», а разговор на понятном языке.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h4>24/7 с телефона</h4>
+        <p>Три часа ночи, поссорился с женой — открыл и написал. Без записи, без ожидания, без расписания.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h4>Дешевле одной сессии</h4>
+        <p>Месяц работы с AI стоит меньше, чем один поход к психологу. А упражнений — на полгода вперёд.</p>
+      </div>
+    </div>
+
+    <div class="positioning reveal">
+      <p>Не замена книги. Не замена психолога.<br>А <em>мост</em> между «прочитал» и «изменил».</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BLOCK 5 — CHAT ═══ -->
+<section class="chat-block" id="chatBlock">
+  <div class="chat-block-header reveal">
+    <h2>Попробуй прямо сейчас</h2>
+    <p>Бесплатно, без регистрации. Просто начни разговор.</p>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="typing" id="typing">
+    <div class="msg-avatar msg-avatar-ai">НС</div>
+    <div class="typing-dots">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>
+
+  <div class="auth-card" id="authCard">
+    <div class="auth-card-title">Продолжить работу</div>
+    <div class="auth-card-sub">Чтобы сохранить разговор и перейти к упражнению — авторизуйся. Это 10 секунд.</div>
+    <div class="auth-buttons">
+      <button class="auth-btn auth-btn-tg" onclick="handleAuth()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.16.16 0 00-.07-.2c-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.66-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.99-1.74 6.65-2.89 7.99-3.45 3.81-1.6 4.6-1.87 5.12-1.88.11 0 .37.03.53.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+        Войти через Telegram
+      </button>
+      <button class="auth-btn auth-btn-ya" onclick="handleAuth()">Войти через Яндекс</button>
+      <button class="auth-btn auth-btn-email" onclick="handleAuth()">или по email →</button>
+    </div>
+    <div class="auth-lock">🔒 Разговор сохранится после входа</div>
+  </div>
+</section>
+
+<!-- INPUT BAR -->
+<div class="input-bar" id="inputBar">
+  <div class="input-wrapper">
+    <input class="input-field" id="inputField" type="text" placeholder="Напиши что-нибудь..." autocomplete="off">
+    <button class="send-btn" id="sendBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+  <div class="input-trust" id="inputTrust">🔒 Анонимно. Ничего не сохраняется, пока ты не захочешь.</div>
+</div>
+
+<script>
+// State
+let msgCount = 0;
+let isAuthed = false;
+let busy = false;
+
+const messagesEl = document.getElementById('messages');
+const inputField = document.getElementById('inputField');
+const typingEl = document.getElementById('typing');
+const authCard = document.getElementById('authCard');
+const inputBar = document.getElementById('inputBar');
+
+const welcomeMsg = `Привет! Расскажи — что привело тебя сюда?\n\nМожет, чувствуешь что живёшь не для себя, или что окружающие не ценят то, что ты для них делаешь? А может, просто ощущение что что-то идёт не так — но сложно сформулировать что именно?`;
+
+const quickReplies = [
+  'Все сидят на шее, а я терплю',
+  'Проблемы в отношениях',
+  'Просто чувствую что живу не так'
+];
+
+const responses = [
+  `Понимаю. Это ощущение знакомо многим мужчинам — делаешь для всех, стараешься, а в ответ ощущение что тебя используют.\n\nСкажи, а давно это чувство? Это больше про работу, про отношения — или везде?`,
+  `Спасибо, что делишься.\n\nТо, что ты описываешь — это классический паттерн «славного парня» по Гловеру. Мужчина подавляет свои потребности, надеясь что окружающие это оценят. Но они не оценивают — потому что даже не знают, чего ты на самом деле хочешь.\n\nЕсть конкретное упражнение, которое поможет разобраться глубже — почему ты так себя ведёшь и откуда это пошло.`
+];
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Show input bar when chat section is in view
+const chatObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) inputBar.classList.add('visible');
+  });
+}, { threshold: 0.1 });
+chatObserver.observe(document.getElementById('chatBlock'));
+
+// Init welcome
+function addMsg(text, isUser) {
+  const html = text.split('\n\n').map(p => `<p>${p}</p>`).join('');
+  const el = document.createElement('div');
+  el.className = `msg ${isUser ? 'msg-user' : 'msg-ai'}`;
+  el.innerHTML = `
+    <div class="msg-avatar ${isUser ? 'msg-avatar-user' : 'msg-avatar-ai'}">${isUser ? 'Ты' : 'НС'}</div>
+    <div class="msg-bubble">${html}</div>
+  `;
+  messagesEl.appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function showQR() {
+  const wrap = document.createElement('div');
+  wrap.className = 'quick-replies';
+  wrap.id = 'qr';
+  quickReplies.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'qr-btn';
+    b.textContent = t;
+    b.onclick = () => send(t);
+    wrap.appendChild(b);
+  });
+  messagesEl.appendChild(wrap);
+}
+
+function send(text) {
+  if (busy) return;
+  const t = text || inputField.value.trim();
+  if (!t) return;
+  inputField.value = '';
+
+  const qr = document.getElementById('qr');
+  if (qr) qr.remove();
+
+  addMsg(t, true);
+  msgCount++;
+  busy = true;
+
+  typingEl.classList.add('active');
+  typingEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  const delay = 1500 + Math.random() * 1000;
+  setTimeout(() => {
+    typingEl.classList.remove('active');
+    busy = false;
+
+    if (msgCount <= 2 && !isAuthed) {
+      addMsg(responses[Math.min(msgCount - 1, 1)]);
+      if (msgCount >= 2) {
+        setTimeout(() => {
+          authCard.classList.add('visible');
+          authCard.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 500);
+      }
+    } else {
+      addMsg('Давай начнём с упражнения — расскажи подробнее, что ты чувствуешь в таких моментах?');
+    }
+  }, delay);
+}
+
+function handleAuth() {
+  isAuthed = true;
+  authCard.classList.remove('visible');
+  authCard.style.display = 'none';
+  document.getElementById('inputTrust').textContent = '✓ Сообщения сохраняются';
+  document.getElementById('inputTrust').style.color = 'rgba(76,175,80,0.6)';
+
+  // Success indicator
+  const s = document.createElement('div');
+  s.className = 'msg msg-ai';
+  s.style.opacity = '0'; s.style.animation = 'msgIn 0.4s ease forwards';
+  s.innerHTML = `
+    <div class="msg-avatar msg-avatar-ai">НС</div>
+    <div class="msg-bubble">
+      <p>Отлично! Теперь я запомню всё, что ты расскажешь, и смогу вести тебя через программу.</p>
+      <p>Я подобрал упражнение специально под то, что ты описал. Готов начать?</p>
+      <p><button onclick="alert('→ Переход к упражнению')" style="margin-top:8px;padding:11px 24px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;">Начать упражнение →</button></p>
+    </div>
+  `;
+  messagesEl.appendChild(s);
+  s.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// Events
+document.getElementById('sendBtn').addEventListener('click', () => send());
+inputField.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+// Start
+addMsg(welcomeMsg);
+setTimeout(showQR, 400);
+</script>
+
+</body>
+</html>

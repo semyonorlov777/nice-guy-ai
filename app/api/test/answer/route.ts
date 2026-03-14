@@ -286,6 +286,7 @@ export async function POST(request: Request) {
         const resultId = testResult.id;
         after(async () => {
           try {
+            console.log("[test:answer] Starting interpretation for result:", resultId);
             const interpretation = await generateInterpretation(
               isspResult.totalScore,
               isspResult.scoresByScale

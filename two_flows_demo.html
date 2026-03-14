@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Два flow теста ИССП</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF5; --bg-card: #FFFFFF; --bg-elevated: #F5F3EE;
+    --border: #E8E5DE; --border-light: #EFEDE7;
+    --text: #1A1917; --text-secondary: #6B6860; --text-muted: #9E9B93; --text-hint: #B5B2AA;
+    --accent: #C9963B; --accent-hover: #B8872F;
+    --accent-soft: rgba(201,150,59,0.08); --accent-border: rgba(201,150,59,0.25);
+    --accent-on: #FFFFFF; --success: #4A7A4A; --danger: #C75050;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', sans-serif;
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: var(--font-body); background: var(--bg); color: var(--text); }
+
+  .demo-wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  h1 { font-family: var(--font-display); font-size: 26px; font-weight: 600; text-align: center; margin-bottom: 6px; }
+  .subtitle { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 32px; line-height: 1.5; }
+
+  /* ── Section headers ── */
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px; margin-top: 32px;
+  }
+  .section-header:first-of-type { margin-top: 0; }
+  .section-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .section-badge.quick { background: #e8f5e8; color: #4a7a4a; }
+  .section-badge.text { background: #e8eef5; color: #4a6a8a; }
+  .section-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .section-time { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+  /* ── Card ── */
+  .card {
+    border: 1px solid var(--border); border-radius: 16px;
+    background: var(--bg-card); overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .card-body { padding: 24px 20px; position: relative; min-height: 320px; }
+
+  /* ── Progress bar ── */
+  .progress-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .progress-label { font-size: 13px; color: var(--text-hint); white-space: nowrap; }
+  .progress-label strong { color: var(--text); font-weight: 600; }
+  .progress-bar {
+    flex: 1; height: 4px; background: var(--bg-elevated);
+    border-radius: 2px; overflow: hidden; display: flex; gap: 2px;
+  }
+  .progress-seg {
+    flex: 1; height: 100%; background: var(--bg-elevated); border-radius: 2px;
+    position: relative; overflow: hidden;
+  }
+  .progress-seg .fill {
+    position: absolute; left: 0; top: 0; height: 100%;
+    background: var(--accent); border-radius: 2px;
+    transition: width 0.4s var(--ease);
+  }
+
+  /* ── Question area ── */
+  .q-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--accent); font-weight: 500; margin-bottom: 8px;
+  }
+  .q-text {
+    font-family: var(--font-display); font-size: 20px; font-weight: 500;
+    line-height: 1.4; margin-bottom: 20px; min-height: 56px;
+    transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
+  }
+  .q-text.exit { opacity: 0; transform: translateX(-12px); }
+  .q-text.enter { animation: qIn 350ms var(--ease) forwards; }
+  @keyframes qIn { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: translateX(0); } }
+
+  /* ── Divider ── */
+  .or-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 12px 0; color: var(--text-hint); font-size: 11px;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border-light);
+  }
+
+  /* ── Quick buttons ── */
+  .qb-row { display: flex; gap: 6px; }
+  .qb {
+    flex: 1; padding: 10px 2px; text-align: center;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: 8px; cursor: pointer;
+    font-family: var(--font-body); font-size: 10px; color: var(--text-muted);
+    transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-height: 44px; justify-content: center;
+  }
+  .qb .qb-num {
+    font-family: var(--font-display); font-size: 17px; font-weight: 600;
+    color: var(--text-secondary); line-height: 1;
+  }
+  .qb:active { transform: scale(0.94); }
+  .qb.flash { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+  .qb.flash .qb-num { color: var(--accent-on); }
+  .qb.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .qb.selected .qb-num { color: var(--accent); }
+  .qb.highlight {
+    animation: btnPulse 1.2s ease-in-out infinite;
+    border-color: var(--accent-border);
+  }
+  @keyframes btnPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,150,59,0); }
+    50% { box-shadow: 0 0 0 4px rgba(201,150,59,0.15); }
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    transition: opacity 300ms var(--ease);
+  }
+  .input-area.locked { opacity: 0.5; pointer-events: none; }
+
+  .textarea-wrap {
+    display: flex; align-items: flex-end; gap: 8px;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px 8px 8px 14px;
+    transition: border-color 0.15s;
+  }
+  .textarea-wrap:focus-within { border-color: var(--accent); }
+
+  .textarea-wrap textarea {
+    flex: 1; border: none; background: none; resize: none;
+    font-family: var(--font-body); font-size: 14px; color: var(--text);
+    line-height: 1.5; min-height: 24px; max-height: 80px;
+    outline: none;
+  }
+  .textarea-wrap textarea::placeholder { color: var(--text-hint); }
+
+  /* ── Action button (send/mic) ── */
+  .action-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: var(--bg-elevated); color: var(--text-muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .action-btn.s-typing {
+    background: var(--accent); color: var(--accent-on);
+  }
+  .action-btn.s-sent {
+    background: var(--success); color: white;
+    pointer-events: none;
+  }
+  .action-btn svg { width: 18px; height: 18px; }
+
+  /* ── Status line (under textarea) ── */
+  .status-line {
+    height: 24px; display: flex; align-items: center;
+    margin-top: 8px; overflow: hidden;
+  }
+  .status-text {
+    font-size: 12px; color: var(--text-muted);
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+  }
+  .status-text.visible {
+    opacity: 1; transform: translateY(0);
+  }
+  .status-text.success { color: var(--success); }
+
+  /* ── Fallback hint ── */
+  .fallback-hint {
+    font-size: 12px; color: var(--accent); text-align: center;
+    margin-top: 8px; opacity: 0;
+    transition: opacity 0.3s var(--ease);
+  }
+  .fallback-hint.visible { opacity: 1; }
+
+  /* ── Timer ── */
+  .timer {
+    position: absolute; top: 20px; right: 20px;
+    font-size: 24px; font-family: var(--font-display); font-weight: 600;
+    color: var(--accent); opacity: 0; transition: opacity 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer.visible { opacity: 1; }
+
+  /* ── Legend ── */
+  .legend {
+    margin-top: 32px; padding: 20px; background: var(--bg-elevated);
+    border-radius: 12px; font-size: 13px; color: var(--text-secondary); line-height: 1.7;
+  }
+  .legend strong { color: var(--text); }
+  .legend-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;
+    margin-top: 12px;
+  }
+  .legend-label { font-weight: 600; color: var(--text); white-space: nowrap; }
+
+  /* ── Scenario tabs ── */
+  .scenario-tabs {
+    display: flex; gap: 4px; margin-bottom: 8px;
+    background: var(--bg-elevated); border-radius: 10px; padding: 3px;
+  }
+  .scenario-tab {
+    flex: 1; padding: 8px 12px; border: none; background: none;
+    border-radius: 8px; cursor: pointer;
+    font-family: var(--font-body); font-size: 12px; font-weight: 500;
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .scenario-tab.active {
+    background: var(--bg-card); color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ── Note callout ── */
+  .note {
+    margin-top: 16px; padding: 12px 16px; border-radius: 10px;
+    background: rgba(201,150,59,0.06); border: 1px solid rgba(201,150,59,0.15);
+    font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .note strong { color: var(--text); }
+
+  @media (max-width: 500px) {
+    .q-text { font-size: 17px; }
+    .qb { font-size: 9px; padding: 8px 2px; }
+    .qb .qb-num { font-size: 15px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .q-text { transition: opacity 150ms; }
+    .q-text.exit { transform: none; }
+    .q-text.enter { animation: qFade 150ms ease forwards; }
+    @keyframes qFade { from { opacity:0; } to { opacity:1; } }
+  }
+</style>
+</head>
+<body>
+<div class="demo-wrap">
+
+  <h1>Два flow перехода в тесте</h1>
+  <p class="subtitle">Quick reply — мгновенный переход (~1с). Текстовый ответ — ждём сервер (~3.5с).<br>Попробуй оба варианта ниже.</p>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- FLOW 1: QUICK REPLY            -->
+  <!-- ═══════════════════════════════ -->
+
+  <div class="section-header">
+    <span class="section-badge quick">Flow 1</span>
+    <span class="section-title">Quick Reply</span>
+    <span class="section-time">~1 сек</span>
+  </div>
+
+  <div class="card">
+    <div class="card-body" id="qr">
+      <div class="timer" id="qr-timer">0.0с</div>
+
+      <div class="progress-row">
+        <div class="progress-label"><strong id="qr-num">3</strong> из 35</div>
+        <div class="progress-bar" id="qr-progress">
+          <div class="progress-seg"><div class="fill" style="width:60%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="q-label">Зависимость от одобрения</div>
+      <div class="q-text" id="qr-q">Критика в мой адрес долго не отпускает — я прокручиваю её в голове</div>
+
+      <div class="input-area" id="qr-input">
+        <div class="or-divider">быстрый ответ</div>
+        <div class="qb-row" id="qr-btns">
+          <div class="qb" onclick="clickQR(this,1)"><span class="qb-num">1</span>Не про меня</div>
+          <div class="qb" onclick="clickQR(this,2)"><span class="qb-num">2</span>Скорее нет</div>
+          <div class="qb" onclick="clickQR(this,3)"><span class="qb-num">3</span>Иногда</div>
+          <div class="qb" onclick="clickQR(this,4)"><span class="qb-num">4</span>Часто</div>
+          <div class="qb" onclick="clickQR(this,5)"><span class="qb-num">5</span>Полностью</div>
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>Что происходит:</strong> тап → flash 120ms → selected 250ms → вопрос уехал → новый приехал.<br>
+        Сервер: число отправлено fire-and-forget. Gemini не вызывается. UI не ждёт.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- FLOW 2: TEXT ANSWER             -->
+  <!-- ═══════════════════════════════ -->
+
+  <div class="section-header">
+    <span class="section-badge text">Flow 2</span>
+    <span class="section-title">Текстовый ответ</span>
+    <span class="section-time">~3.5 сек</span>
+  </div>
+
+  <div class="scenario-tabs">
+    <button class="scenario-tab active" onclick="setScenario('ok', this)">Gemini понял</button>
+    <button class="scenario-tab" onclick="setScenario('fallback', this)">Gemini не понял</button>
+    <button class="scenario-tab" onclick="setScenario('slow', this)">Медленный сервер</button>
+  </div>
+
+  <div class="card">
+    <div class="card-body" id="tx">
+      <div class="timer" id="tx-timer">0.0с</div>
+
+      <div class="progress-row">
+        <div class="progress-label"><strong id="tx-num">7</strong> из 35</div>
+        <div class="progress-bar">
+          <div class="progress-seg"><div class="fill" style="width:100%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:40%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+          <div class="progress-seg"><div class="fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="q-label">Подавление потребностей</div>
+      <div class="q-text" id="tx-q">На вопрос «как дела?» я обычно отвечаю «нормально», даже если внутри всё сложно</div>
+
+      <div class="input-area" id="tx-input">
+        <div class="textarea-wrap" id="tx-textarea-wrap">
+          <textarea id="tx-textarea" placeholder="Расскажите своими словами…" rows="1">Да, постоянно. Особенно на работе — никто не знает как мне на самом деле</textarea>
+          <button class="action-btn s-typing" id="tx-action" onclick="clickTxSend()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+
+        <div class="status-line">
+          <span class="status-text" id="tx-status"></span>
+        </div>
+
+        <div class="or-divider">или быстрый ответ</div>
+        <div class="qb-row" id="tx-btns">
+          <div class="qb" onclick="clickTxQR(this,1)"><span class="qb-num">1</span>Не про меня</div>
+          <div class="qb" onclick="clickTxQR(this,2)"><span class="qb-num">2</span>Скорее нет</div>
+          <div class="qb" onclick="clickTxQR(this,3)"><span class="qb-num">3</span>Иногда</div>
+          <div class="qb" onclick="clickTxQR(this,4)"><span class="qb-num">4</span>Часто</div>
+          <div class="qb" onclick="clickTxQR(this,5)"><span class="qb-num">5</span>Полностью</div>
+        </div>
+
+        <div class="fallback-hint" id="tx-fallback">Ближе к какому из вариантов?</div>
+      </div>
+
+      <div class="note" id="tx-note">
+        <strong>Сценарий «Gemini понял»:</strong> send → галочка → «Анализирую ответ...» → ждём ~2.5с → «Ответ записан» ✓ → переход.<br>
+        Число пользователь не видит. Текст остаётся в textarea до перехода.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ -->
+  <!-- LEGEND                          -->
+  <!-- ═══════════════════════════════ -->
+
+  <div class="legend">
+    <strong>Сравнение с текущим чатом</strong>
+    <div class="legend-grid">
+      <span class="legend-label">AI-аватар:</span> <span>Убран. Это тест, не чат.</span>
+      <span class="legend-label">Typing dots:</span> <span>Убраны. Вместо них — строка статуса.</span>
+      <span class="legend-label">Чат-бабл AI:</span> <span>Убран. Feedback через UI, не через бот.</span>
+      <span class="legend-label">«Записал как N»:</span> <span>Нет. Только «Ответ записан».</span>
+      <span class="legend-label">Текст юзера:</span> <span>Остаётся в textarea до перехода.</span>
+      <span class="legend-label">Fallback:</span> <span>Кнопки пульсируют + мягкий hint.</span>
+    </div>
+    <br>
+    <strong>На 35 вопросов:</strong><br>
+    Все quick reply: ~35 сек (было ~87 сек). Микс 50/50: ~80 сек (было ~87 сек, но ожидание осмысленное).
+  </div>
+
+</div>
+
+<script>
+  // ═══════════════════════════════════════
+  // DATA
+  // ═══════════════════════════════════════
+
+  const QR_QUESTIONS = [
+    { label: "Зависимость от одобрения", text: "Критика в мой адрес долго не отпускает — я прокручиваю её в голове" },
+    { label: "Зависимость от одобрения", text: "Я стараюсь не создавать конфликтов, даже когда чувствую несправедливость" },
+    { label: "Зависимость от одобрения", text: "Когда кто-то обижен — мне некомфортно, пока не «починю» ситуацию" },
+    { label: "Скрытые контракты", text: "Если я помогаю — я жду, что мне ответят тем же. И обижаюсь, если нет" },
+    { label: "Скрытые контракты", text: "Мне проще догадаться о потребностях другого, чем озвучить свои" },
+  ];
+
+  const TX_QUESTIONS = [
+    { label: "Подавление потребностей", text: "На вопрос «как дела?» я обычно отвечаю «нормально», даже если внутри всё сложно" },
+    { label: "Подавление потребностей", text: "Мне проще помочь другому, чем попросить о помощи для себя" },
+    { label: "Подавление потребностей", text: "Когда меня что-то задевает, я скорее промолчу и переварю это сам" },
+    { label: "Контроль и стратегии", text: "Мне сложно расслабиться, пока я не убедился, что всё идёт как надо" },
+  ];
+
+  const TX_PREFILLS = [
+    "Да, постоянно. Особенно на работе — никто не знает как мне на самом деле",
+    "Это прям про меня. Вчера мама попросила помочь с переездом, а я даже не смог сказать что устал",
+    "Бывает. Хотя стараюсь работать над этим",
+    "Сто процентов, я контрол-фрик",
+  ];
+
+  let qrIdx = 0, txIdx = 0;
+  let qrBusy = false, txBusy = false;
+  let txScenario = 'ok'; // ok | fallback | slow
+
+  // ═══════════════════════════════════════
+  // TIMER
+  // ═══════════════════════════════════════
+
+  function runTimer(id, maxSec) {
+    const el = document.getElementById(id);
+    el.classList.add('visible');
+    const start = performance.now();
+    function tick() {
+      const elapsed = (performance.now() - start) / 1000;
+      el.textContent = elapsed.toFixed(1) + 'с';
+      if (elapsed < maxSec + 1) requestAnimationFrame(tick);
+      else setTimeout(() => el.classList.remove('visible'), 800);
+    }
+    tick();
+  }
+
+  // ═══════════════════════════════════════
+  // FLOW 1: QUICK REPLY
+  // ═══════════════════════════════════════
+
+  function clickQR(btn, val) {
+    if (qrBusy) return;
+    qrBusy = true;
+    runTimer('qr-timer', 1.0);
+
+    // 0ms: flash
+    btn.classList.add('flash');
+
+    // 120ms: remove flash → selected
+    setTimeout(() => {
+      btn.classList.remove('flash');
+      btn.classList.add('selected');
+
+      // 370ms: lock + exit
+      setTimeout(() => {
+        document.getElementById('qr-input').classList.add('locked');
+        const q = document.getElementById('qr-q');
+        q.classList.add('exit');
+
+        // 280ms: exit done → advance + enter
+        setTimeout(() => {
+          qrIdx = (qrIdx + 1) % QR_QUESTIONS.length;
+          const next = QR_QUESTIONS[qrIdx];
+          q.textContent = next.text;
+          document.querySelector('#qr .q-label').textContent = next.label;
+          document.getElementById('qr-num').textContent = 3 + qrIdx + 1;
+
+          // Update progress
+          updateQRProgress(qrIdx + 1);
+
+          q.classList.remove('exit');
+          q.classList.add('enter');
+
+          document.getElementById('qr-input').classList.remove('locked');
+          document.querySelectorAll('#qr-btns .qb').forEach(b => {
+            b.classList.remove('selected', 'flash');
+          });
+
+          // 350ms: enter done
+          setTimeout(() => {
+            q.classList.remove('enter');
+            qrBusy = false;
+          }, 350);
+        }, 280);
+      }, 250);
+    }, 120);
+  }
+
+  function updateQRProgress(answered) {
+    const segs = document.querySelectorAll('#qr-progress .fill');
+    // Block 1 has 5 questions, we start at Q3
+    const progress = Math.min(100, ((2 + answered) / 5) * 100);
+    segs[0].style.width = progress + '%';
+  }
+
+  // ═══════════════════════════════════════
+  // FLOW 2: TEXT — SEND BUTTON
+  // ═══════════════════════════════════════
+
+  function clickTxSend() {
+    if (txBusy) return;
+    const textarea = document.getElementById('tx-textarea');
+    if (!textarea.value.trim()) return;
+    txBusy = true;
+
+    const timerMax = txScenario === 'slow' ? 7 : txScenario === 'fallback' ? 5 : 3.5;
+    runTimer('tx-timer', timerMax);
+
+    const actionBtn = document.getElementById('tx-action');
+    const inputArea = document.getElementById('tx-input');
+    const status = document.getElementById('tx-status');
+    const fallback = document.getElementById('tx-fallback');
+
+    // 0ms: sent state + lock
+    actionBtn.className = 'action-btn s-sent';
+    actionBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    inputArea.classList.add('locked');
+
+    // 300ms: show status
+    setTimeout(() => {
+      status.textContent = 'Анализирую ответ...';
+      status.className = 'status-text visible';
+    }, 300);
+
+    if (txScenario === 'ok') {
+      runOkScenario(status, fallback, inputArea, actionBtn, textarea);
+    } else if (txScenario === 'fallback') {
+      runFallbackScenario(status, fallback, inputArea, actionBtn, textarea);
+    } else {
+      runSlowScenario(status, fallback, inputArea, actionBtn, textarea);
+    }
+  }
+
+  // ── Scenario: Gemini understood ──
+  function runOkScenario(status, fallback, inputArea, actionBtn, textarea) {
+    // ~2.5s: server responded
+    setTimeout(() => {
+      status.textContent = 'Ответ записан ✓';
+      status.className = 'status-text visible success';
+
+      // 500ms hold → transition
+      setTimeout(() => {
+        doTextTransition(status, fallback, inputArea, actionBtn, textarea);
+      }, 500);
+    }, 2200);
+  }
+
+  // ── Scenario: Gemini didn't understand ──
+  function runFallbackScenario(status, fallback, inputArea, actionBtn, textarea) {
+    // ~2.5s: server responded with no score
+    setTimeout(() => {
+      status.textContent = '';
+      status.className = 'status-text';
+
+      // Unlock input, show fallback
+      inputArea.classList.remove('locked');
+      fallback.classList.add('visible');
+
+      // Highlight buttons
+      document.querySelectorAll('#tx-btns .qb').forEach(b => b.classList.add('highlight'));
+
+      // Reset action button
+      resetActionBtn(actionBtn);
+      textarea.value = '';
+
+      txBusy = false;
+      // Now user taps a button → clickTxQR handles it
+    }, 2500);
+  }
+
+  // ── Scenario: Slow server (timeout) ──
+  function runSlowScenario(status, fallback, inputArea, actionBtn, textarea) {
+    // 5s: timeout
+    setTimeout(() => {
+      status.textContent = 'Долгая обработка...';
+    }, 3500);
+
+    setTimeout(() => {
+      status.textContent = '';
+      status.className = 'status-text';
+
+      inputArea.classList.remove('locked');
+      fallback.textContent = 'Сервер не ответил. Ближе к какому из вариантов?';
+      fallback.classList.add('visible');
+
+      document.querySelectorAll('#tx-btns .qb').forEach(b => b.classList.add('highlight'));
+
+      resetActionBtn(actionBtn);
+      textarea.value = '';
+
+      txBusy = false;
+    }, 6000);
+  }
+
+  // ── Quick reply inside text flow (fallback) ──
+  function clickTxQR(btn, val) {
+    if (txBusy) return;
+
+    const fallback = document.getElementById('tx-fallback');
+    const status = document.getElementById('tx-status');
+    const inputArea = document.getElementById('tx-input');
+    const actionBtn = document.getElementById('tx-action');
+    const textarea = document.getElementById('tx-textarea');
+
+    // If fallback is active, handle as regular QR tap
+    txBusy = true;
+
+    // Remove highlight from all buttons
+    document.querySelectorAll('#tx-btns .qb').forEach(b => b.classList.remove('highlight'));
+    fallback.classList.remove('visible');
+    fallback.textContent = 'Ближе к какому из вариантов?';
+
+    // flash
+    btn.classList.add('flash');
+
+    setTimeout(() => {
+      btn.classList.remove('flash');
+      btn.classList.add('selected');
+
+      setTimeout(() => {
+        inputArea.classList.add('locked');
+        doTextTransition(status, fallback, inputArea, actionBtn, textarea);
+      }, 250);
+    }, 120);
+  }
+
+  // ── Shared transition ──
+  function doTextTransition(status, fallback, inputArea, actionBtn, textarea) {
+    const q = document.getElementById('tx-q');
+    q.classList.add('exit');
+
+    setTimeout(() => {
+      txIdx = (txIdx + 1) % TX_QUESTIONS.length;
+      const next = TX_QUESTIONS[txIdx];
+      q.textContent = next.text;
+      document.querySelector('#tx .q-label').textContent = next.label;
+      document.getElementById('tx-num').textContent = 7 + txIdx + 1;
+
+      q.classList.remove('exit');
+      q.classList.add('enter');
+
+      // Reset everything
+      textarea.value = TX_PREFILLS[txIdx] || '';
+      status.textContent = '';
+      status.className = 'status-text';
+      fallback.classList.remove('visible');
+      inputArea.classList.remove('locked');
+      resetActionBtn(actionBtn);
+
+      document.querySelectorAll('#tx-btns .qb').forEach(b => {
+        b.classList.remove('selected', 'flash', 'highlight');
+      });
+
+      setTimeout(() => {
+        q.classList.remove('enter');
+        txBusy = false;
+      }, 350);
+    }, 280);
+  }
+
+  function resetActionBtn(btn) {
+    btn.className = 'action-btn s-typing';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+  }
+
+  // ═══════════════════════════════════════
+  // SCENARIO TABS
+  // ═══════════════════════════════════════
+
+  const NOTES = {
+    ok: '<strong>Сценарий «Gemini понял»:</strong> send → галочка → «Анализирую ответ...» → ждём ~2.5с → «Ответ записан» ✓ → переход.<br>Число пользователь <strong>не видит</strong>. Текст остаётся в textarea до перехода.',
+    fallback: '<strong>Сценарий «Gemini не понял»:</strong> send → галочка → «Анализирую ответ...» → сервер не вернул число → кнопки 1-5 пульсируют → «Ближе к какому из вариантов?» → тап кнопки → переход как Flow 1.',
+    slow: '<strong>Сценарий «Медленный сервер»:</strong> send → галочка → «Анализирую...» → 3.5с «Долгая обработка...» → 6с timeout → fallback на кнопки. Переход не блокируется навсегда.'
+  };
+
+  function setScenario(s, tab) {
+    if (txBusy) return;
+    txScenario = s;
+    document.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tx-note').innerHTML = NOTES[s];
+
+    // Reset text flow state
+    const fallback = document.getElementById('tx-fallback');
+    const status = document.getElementById('tx-status');
+    fallback.classList.remove('visible');
+    fallback.textContent = 'Ближе к какому из вариантов?';
+    status.className = 'status-text';
+    document.querySelectorAll('#tx-btns .qb').forEach(b => b.classList.remove('highlight', 'selected', 'flash'));
+    document.getElementById('tx-input').classList.remove('locked');
+    resetActionBtn(document.getElementById('tx-action'));
+    document.getElementById('tx-textarea').value = TX_PREFILLS[txIdx] || TX_PREFILLS[0];
+  }
+</script>
+</body>
+</html>

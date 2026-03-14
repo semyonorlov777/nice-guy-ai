@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>ИССП Тест — v2.3</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF5;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F5F3EE;
+    --border: #E8E5DE;
+    --border-light: #EFEDE7;
+    --text: #1A1917;
+    --text-secondary: #6B6860;
+    --text-muted: #9E9B93;
+    --text-hint: #B5B2AA;
+    --accent: #C9963B;
+    --accent-hover: #B8872F;
+    --accent-soft: rgba(201,150,59,0.08);
+    --accent-border: rgba(201,150,59,0.25);
+    --accent-on: #FFFFFF;
+    --success: #4A7A4A;
+    --radius: 10px;
+    --radius-pill: 100px;
+    --shadow-focus: 0 0 0 3px rgba(201,150,59,0.2);
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ RESPONSIVE FRAME ═══ */
+  .frame {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    min-height: 100dvh;
+    animation: screenIn 500ms var(--ease);
+  }
+  .screen.active { display: flex; }
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══ WELCOME ═══ */
+  .welcome {
+    padding: 0 32px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 28px;
+  }
+  .welcome-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px;
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    border-radius: var(--radius-pill);
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .welcome h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 5vw, 38px);
+    font-weight: 600; line-height: 1.15; letter-spacing: -0.3px;
+  }
+  .welcome h1 span { color: var(--accent); font-style: italic; }
+  .welcome-desc {
+    font-size: 15px; line-height: 1.65;
+    color: var(--text-secondary); max-width: 380px;
+  }
+  .welcome-stats { display: flex; gap: 32px; justify-content: center; }
+  .welcome-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .welcome-stat .num { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--accent); }
+  .welcome-stat .label { font-size: 11px; color: var(--text-muted); }
+  .welcome-divider { width: 36px; height: 1px; background: var(--border); }
+
+  .btn-primary {
+    width: 100%; max-width: 320px; padding: 15px 32px;
+    background: var(--accent); color: var(--accent-on); border: none;
+    border-radius: var(--radius); font-family: var(--font-body);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 8px rgba(201,150,59,0.2);
+  }
+  .btn-primary:active { transform: scale(0.97); background: var(--accent-hover); }
+
+  .meta-line {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-muted);
+  }
+
+  /* ═══ QUESTION ═══ */
+  .test-screen { padding: 0; }
+
+  .test-header {
+    padding: 16px 24px 14px;
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 10;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .progress-info {
+    font-size: 13px; color: var(--text-muted); margin-bottom: 10px;
+  }
+  .progress-info strong { color: var(--text); font-weight: 600; }
+
+  .progress-segments { display: flex; gap: 3px; }
+  .progress-seg {
+    flex: 1; height: 4px; background: var(--border-light);
+    border-radius: var(--radius-pill); overflow: hidden; position: relative;
+  }
+  .progress-seg-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--accent); border-radius: var(--radius-pill);
+    transition: width 0.5s var(--ease); width: 0%;
+  }
+
+  /* Question content with exit/enter animation */
+  .question-area {
+    flex: 1; display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 32px 28px 20px;
+    gap: 12px;
+  }
+  .scale-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--accent); font-weight: 500;
+  }
+  .question-text {
+    font-family: var(--font-display);
+    font-size: clamp(21px, 3.5vw, 26px);
+    font-weight: 500; line-height: 1.35; color: var(--text);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .question-text.exit {
+    opacity: 0; transform: translateX(-12px);
+  }
+  .question-text.enter {
+    animation: qEnter 350ms var(--ease) forwards;
+  }
+  @keyframes qEnter {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .question-timeframe {
+    font-size: 13px; color: var(--text-hint); font-style: italic;
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    padding: 0 24px 32px;
+  }
+
+  /* Text field — PRIMARY, prominent */
+  .text-input-wrap {
+    display: flex; gap: 8px; align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .text-input {
+    flex: 1; min-height: 52px; max-height: 140px;
+    padding: 14px 16px;
+    background: var(--bg-card); border: 1.5px solid var(--border);
+    border-radius: var(--radius); font-family: var(--font-body);
+    font-size: 16px; color: var(--text); resize: none; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s; line-height: 1.5;
+    overflow-x: hidden; overflow-y: auto;
+    word-wrap: break-word; overflow-wrap: break-word;
+  }
+  .text-input::placeholder { color: var(--text-hint); font-size: 15px; }
+  .text-input:focus { border-color: var(--accent); box-shadow: var(--shadow-focus); }
+
+  /* Action button: 3 states — mic (default) → send (typing) → check (sent) */
+  .action-btn {
+    width: 52px; height: 52px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-elevated); border: 1.5px solid var(--border);
+    border-radius: var(--radius); cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s;
+    color: var(--text-muted);
+    position: relative;
+  }
+  .action-btn:active { transform: scale(0.93); }
+
+  /* All icons absolutely positioned for crossfade */
+  .action-btn .ico {
+    position: absolute;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .action-btn .ico-mic { opacity: 1; transform: scale(1); }
+  .action-btn .ico-send { opacity: 0; transform: scale(0.5); }
+  .action-btn .ico-check { opacity: 0; transform: scale(0.5); }
+
+  /* State: typing → show send arrow, accent bg */
+  .action-btn.typing {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--accent-on);
+  }
+  .action-btn.typing .ico-mic { opacity: 0; transform: scale(0.5); }
+  .action-btn.typing .ico-send { opacity: 1; transform: scale(1); }
+
+  /* State: sent → green check */
+  .action-btn.sent {
+    background: var(--success); border-color: var(--success);
+    color: white; pointer-events: none;
+  }
+  .action-btn.sent .ico-mic { opacity: 0; transform: scale(0.5); }
+  .action-btn.sent .ico-send { opacity: 0; transform: scale(0.5); }
+  .action-btn.sent .ico-check { opacity: 1; transform: scale(1); }
+
+  /* Divider */
+  .divider-or {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  .divider-or::before, .divider-or::after {
+    content: ''; flex: 1; height: 1px; background: var(--border-light);
+  }
+  .divider-or span {
+    font-size: 11px; color: var(--text-hint);
+    text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500;
+  }
+
+  /* Quick buttons — SECONDARY, compact */
+  .quick-buttons { display: flex; gap: 5px; }
+  .quick-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px;
+    padding: 8px 2px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    cursor: pointer; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .quick-btn .qb-num {
+    font-family: var(--font-display); font-size: 17px;
+    font-weight: 600; color: var(--text-muted); transition: color 0.15s;
+  }
+  .quick-btn .qb-label {
+    font-size: 8px; color: var(--text-hint);
+    text-align: center; line-height: 1.15; transition: color 0.15s;
+  }
+  .quick-btn:active { transform: scale(0.94); }
+  .quick-btn.selected {
+    border-color: var(--accent); background: var(--accent-soft);
+  }
+  .quick-btn.selected .qb-num { color: var(--accent); }
+  .quick-btn.selected .qb-label { color: var(--accent-hover); }
+  .quick-btn.flash { border-color: var(--accent); background: var(--accent); }
+  .quick-btn.flash .qb-num { color: var(--accent-on); }
+  .quick-btn.flash .qb-label { color: rgba(255,255,255,0.8); }
+
+  /* ═══ BLOCK TRANSITION ═══ */
+  .block-screen {
+    justify-content: center; align-items: center;
+    text-align: center; padding: 40px 36px; gap: 24px;
+  }
+  .block-check {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent-soft); border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .block-check svg { color: var(--accent); }
+  .block-screen h2 { font-family: var(--font-display); font-size: 24px; font-weight: 600; }
+  .block-detail { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+  .block-mini-dots { display: flex; gap: 8px; justify-content: center; }
+  .bm-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border-light); border: 1.5px solid var(--border); transition: all 0.3s;
+  }
+  .bm-dot.done { background: var(--accent); border-color: var(--accent); }
+  .bm-dot.next { border-color: var(--accent); background: var(--accent-soft); }
+  .btn-outline {
+    padding: 13px 36px; background: transparent;
+    color: var(--accent); border: 1.5px solid var(--accent);
+    border-radius: var(--radius); font-family: var(--font-body);
+    font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-outline:active { background: var(--accent-soft); transform: scale(0.97); }
+
+  /* ═══ COMPLETION ═══ */
+  .done-screen {
+    justify-content: center; align-items: center;
+    text-align: center; padding: 40px 36px; gap: 24px;
+  }
+  .done-orb {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, var(--accent) 0%, rgba(201,150,59,0.15) 70%, transparent 100%);
+    animation: orbPulse 2.5s var(--ease) infinite;
+    display: flex; align-items: center; justify-content: center;
+  }
+  @keyframes orbPulse {
+    0%,100% { transform: scale(1); box-shadow: 0 0 20px rgba(201,150,59,0.15); }
+    50% { transform: scale(1.04); box-shadow: 0 0 32px rgba(201,150,59,0.25); }
+  }
+  .done-screen h2 { font-family: var(--font-display); font-size: 28px; font-weight: 600; }
+  .done-text { font-size: 15px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ═══ DEMO NAV ═══ */
+  .demo-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 4px; padding: 8px 12px;
+    background: rgba(250,250,245,0.92); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border); justify-content: center; z-index: 100;
+  }
+  .demo-bar button {
+    padding: 6px 14px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: 11px;
+    font-family: var(--font-body); cursor: pointer; transition: all 0.15s;
+  }
+  .demo-bar button.active-tab {
+    background: var(--accent-soft); border-color: var(--accent-border);
+    color: var(--accent); font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- WELCOME -->
+  <div class="screen welcome active" id="s-welcome">
+    <div class="welcome-badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Диагностика
+    </div>
+    <h1>Индекс Синдрома<br><span>Славного Парня</span></h1>
+    <p class="welcome-desc">Научный тест по методологии Роберта Гловера. Покажет ваш профиль по 7 ключевым сферам жизни и направления роста.</p>
+    <div class="welcome-stats">
+      <div class="welcome-stat"><div class="num">35</div><div class="label">вопросов</div></div>
+      <div class="welcome-stat"><div class="num">7</div><div class="label">минут</div></div>
+      <div class="welcome-stat"><div class="num">7</div><div class="label">сфер жизни</div></div>
+    </div>
+    <div class="welcome-divider"></div>
+    <button class="btn-primary" onclick="go('s-question')">Начать тест</button>
+    <div class="meta-line">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Результаты конфиденциальны. Правильных ответов нет.
+    </div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="screen test-screen" id="s-question">
+    <div class="test-header">
+      <div class="progress-info" id="pInfo"><strong>7</strong> из 35</div>
+      <div class="progress-segments" id="pSegs">
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+        <div class="progress-seg"><div class="progress-seg-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="question-area">
+      <div class="scale-label" id="qScale">Скрытые контракты</div>
+      <div class="question-text enter" id="qText">Я чувствую обиду, когда мои усилия не замечают — хотя вслух об этом не говорю</div>
+      <div class="question-timeframe">Вспомните последние 2–4 недели</div>
+    </div>
+
+    <div class="input-area">
+      <div class="text-input-wrap">
+        <textarea class="text-input" rows="1" placeholder="Расскажите своими словами…" id="textAnswer" oninput="onInput()"></textarea>
+        <button class="action-btn" id="actionBtn" onclick="handleAction()">
+          <svg class="ico ico-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <svg class="ico ico-send" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <svg class="ico ico-check" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+
+      <div class="divider-or"><span>или быстрый ответ</span></div>
+
+      <div class="quick-buttons">
+        <button class="quick-btn" onclick="pickQuick(this,1)"><span class="qb-num">1</span><span class="qb-label">Не про меня</span></button>
+        <button class="quick-btn" onclick="pickQuick(this,2)"><span class="qb-num">2</span><span class="qb-label">Скорее нет</span></button>
+        <button class="quick-btn" onclick="pickQuick(this,3)"><span class="qb-num">3</span><span class="qb-label">Иногда</span></button>
+        <button class="quick-btn" onclick="pickQuick(this,4)"><span class="qb-num">4</span><span class="qb-label">Часто</span></button>
+        <button class="quick-btn" onclick="pickQuick(this,5)"><span class="qb-num">5</span><span class="qb-label">Полностью</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK TRANSITION -->
+  <div class="screen block-screen" id="s-block">
+    <div class="block-check">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Блок 1 пройден</h2>
+    <p class="block-detail">«Зависимость от одобрения» — завершён.<br>Следующий: «Скрытые контракты»</p>
+    <div class="block-mini-dots">
+      <div class="bm-dot done"></div><div class="bm-dot next"></div>
+      <div class="bm-dot"></div><div class="bm-dot"></div>
+      <div class="bm-dot"></div><div class="bm-dot"></div><div class="bm-dot"></div>
+    </div>
+    <button class="btn-outline" onclick="go('s-question')">Продолжить</button>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="screen done-screen" id="s-done">
+    <div class="done-orb">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>Тест завершён</h2>
+    <p class="done-text">Все 35 вопросов пройдены.<br>Ваш персональный профиль готов.</p>
+    <button class="btn-primary" onclick="alert('→ /test/results/[id]')">Посмотреть результаты</button>
+    <div class="meta-line">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Результаты видите только вы
+    </div>
+  </div>
+
+</div>
+
+<div class="demo-bar">
+  <button class="active-tab" onclick="go('s-welcome')">Welcome</button>
+  <button onclick="go('s-question')">Вопрос</button>
+  <button onclick="go('s-block')">Блок</button>
+  <button onclick="go('s-done')">Финиш</button>
+</div>
+
+<script>
+  const QS = [
+    { q:"Я чувствую обиду, когда мои усилия не замечают — хотя вслух об этом не говорю", scale:"Скрытые контракты", num:7, block:1, inBlock:2 },
+    { q:"Когда я вкладываюсь в человека, а он не отвечает тем же — я чувствую, что это несправедливо", scale:"Скрытые контракты", num:8, block:1, inBlock:3 },
+    { q:"Когда мне что\u2011то нужно от человека, я прямо прошу, не надеясь, что он сам догадается", scale:"Скрытые контракты", num:9, block:1, inBlock:4 },
+    { q:"Если я помог кому\u2011то, а он даже не сказал спасибо — меня это не задевает", scale:"Скрытые контракты", num:10, block:1, inBlock:5 },
+    { q:"На вопрос «как дела?» я обычно отвечаю «нормально», даже если внутри всё сложно", scale:"Подавление потребностей", num:11, block:2, inBlock:1 },
+    { q:"Мне проще помочь другому, чем попросить о помощи для себя", scale:"Подавление потребностей", num:12, block:2, inBlock:2 },
+    { q:"Когда меня что\u2011то задевает, я скорее промолчу и переварю это сам, чем скажу вслух", scale:"Подавление потребностей", num:13, block:2, inBlock:3 },
+  ];
+  let qi = 0;
+  let transitioning = false;
+
+  function go(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.demo-bar button').forEach(b => b.classList.remove('active-tab'));
+    if (event?.target?.closest('.demo-bar')) event.target.classList.add('active-tab');
+  }
+
+  // ── Progress segments ──
+  function updateProgress(d) {
+    document.getElementById('pInfo').innerHTML = `<strong>${d.num}</strong> из 35`;
+    document.querySelectorAll('.progress-seg-fill').forEach((f, i) => {
+      if (i < d.block) f.style.width = '100%';
+      else if (i === d.block) f.style.width = ((d.inBlock / 5) * 100) + '%';
+      else f.style.width = '0%';
+    });
+  }
+
+  // ── Transition: exit old question → show new ──
+  function transitionToNext() {
+    if (transitioning) return;
+    transitioning = true;
+    const qText = document.getElementById('qText');
+    const qScale = document.getElementById('qScale');
+
+    // 1. Exit current question
+    qText.classList.remove('enter');
+    qText.classList.add('exit');
+
+    setTimeout(() => {
+      // 2. Update data
+      qi = (qi + 1) % QS.length;
+      const d = QS[qi];
+      qText.textContent = d.q;
+      qScale.textContent = d.scale;
+      updateProgress(d);
+
+      // 3. Enter new question
+      qText.classList.remove('exit');
+      qText.classList.add('enter');
+
+      // 4. Reset inputs
+      document.getElementById('textAnswer').value = '';
+      onInput();
+      document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('selected','flash'));
+      resetActionBtn();
+
+      transitioning = false;
+    }, 280);
+  }
+
+  // ── Quick reply ──
+  function pickQuick(btn, val) {
+    if (transitioning) return;
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('selected','flash'));
+    btn.classList.add('flash');
+    setTimeout(() => {
+      btn.classList.remove('flash');
+      btn.classList.add('selected');
+      setTimeout(() => transitionToNext(), 250);
+    }, 120);
+  }
+
+  // ── Text submit: action btn → sent state → transition ──
+  function handleAction() {
+    const ta = document.getElementById('textAnswer');
+    const btn = document.getElementById('actionBtn');
+
+    if (btn.classList.contains('typing')) {
+      // Has text → submit
+      if (!ta.value.trim() || transitioning) return;
+      btn.classList.remove('typing');
+      btn.classList.add('sent');
+      setTimeout(() => transitionToNext(), 700);
+    } else {
+      // No text → mic mode (demo: simulate voice answer)
+      btn.classList.add('sent');
+      setTimeout(() => transitionToNext(), 700);
+    }
+  }
+
+  function resetActionBtn() {
+    const btn = document.getElementById('actionBtn');
+    btn.classList.remove('typing', 'sent');
+  }
+
+  function onInput() {
+    const ta = document.getElementById('textAnswer');
+    const btn = document.getElementById('actionBtn');
+    const hasText = ta.value.trim().length > 0;
+    btn.classList.toggle('typing', hasText);
+    if (btn.classList.contains('sent')) return; // don't override sent state
+    // Auto-resize textarea
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  }
+
+  document.getElementById('textAnswer').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey && this.value.trim()) {
+      e.preventDefault();
+      handleAction();
+    }
+  });
+
+  // Init
+  updateProgress(QS[0]);
+</script>
+</body>
+</html>

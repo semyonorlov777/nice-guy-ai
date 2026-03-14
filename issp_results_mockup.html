@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Результаты теста ИССП — Nice Guy AI</title>
+
+<!-- OG Meta Tags -->
+<meta property="og:title" content="Мой Индекс синдрома славного парня — 46/100">
+<meta property="og:description" content="Узнай свои паттерны и начни путь к изменениям. Бесплатный тест по книге Роберта Гловера.">
+<meta property="og:image" content="https://nice-guy-ai.vercel.app/og/test-result-46.png">
+<meta property="og:url" content="https://nice-guy-ai.vercel.app/test/results/abc123">
+<meta property="og:type" content="website">
+
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0f1114;
+    --bg2: #16181d;
+    --bg3: #1c1f25;
+    --gold: #c9a84c;
+    --gold-dim: rgba(201, 168, 76, 0.15);
+    --gold-glow: rgba(201, 168, 76, 0.08);
+    --green: #5cb87a;
+    --green-dim: rgba(92, 184, 122, 0.15);
+    --yellow: #d4a843;
+    --yellow-dim: rgba(212, 168, 67, 0.15);
+    --red: #c75050;
+    --red-dim: rgba(199, 80, 80, 0.15);
+    --text: #e8e5df;
+    --text2: #8a8780;
+    --border: #262930;
+    --border-hover: #3a3d46;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Onest', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ===== HERO: MAIN SCORE ===== */
+.hero {
+    position: relative;
+    text-align: center;
+    padding: 64px 20px 48px;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, var(--gold-glow) 0%, transparent 65%);
+    pointer-events: none;
+}
+
+.hero-label {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 28px;
+    position: relative;
+}
+
+.hero-score {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 800;
+    font-size: clamp(72px, 18vw, 120px);
+    line-height: 1;
+    color: var(--gold);
+    position: relative;
+    margin-bottom: 4px;
+}
+
+.hero-score .denominator {
+    font-size: 0.35em;
+    color: var(--text2);
+    font-weight: 600;
+    vertical-align: baseline;
+}
+
+.hero-level {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 20px;
+    border-radius: 100px;
+    margin-top: 16px;
+    margin-bottom: 12px;
+}
+
+.hero-level.moderate {
+    color: var(--yellow);
+    background: var(--yellow-dim);
+    border: 1px solid rgba(212, 168, 67, 0.25);
+}
+
+.hero-level.low {
+    color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid rgba(92, 184, 122, 0.25);
+}
+
+.hero-level.high {
+    color: var(--red);
+    background: var(--red-dim);
+    border: 1px solid rgba(199, 80, 80, 0.25);
+}
+
+.hero-subtitle {
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 8px;
+}
+
+/* ===== SHARE BUTTONS ===== */
+.share-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 32px;
+    position: relative;
+}
+
+.share-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    font-family: 'Onest', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.share-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-dim);
+}
+
+.share-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+/* ===== DIVIDER ===== */
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+    margin: 0;
+}
+
+/* ===== AI INTERPRETATION ===== */
+.interpretation {
+    padding: 48px 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.interpretation.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.interp-block {
+    border-left: 3px solid var(--gold);
+    padding: 24px 28px;
+    background: var(--bg2);
+    border-radius: 0 12px 12px 0;
+}
+
+.interp-block p {
+    font-size: 17px;
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.interp-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* ===== RADAR CHART ===== */
+.radar-section {
+    padding: 48px 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.radar-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.section-label {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+    font-size: clamp(24px, 5vw, 32px);
+    margin-bottom: 32px;
+    line-height: 1.3;
+}
+
+.radar-wrapper {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 20px 32px;
+    display: flex;
+    justify-content: center;
+}
+
+.radar-wrapper svg {
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+}
+
+/* Radar animation */
+.radar-area {
+    opacity: 0;
+    transform-origin: center;
+    transition: opacity 1.2s ease 0.3s;
+}
+
+.radar-section.visible .radar-area {
+    opacity: 1;
+}
+
+.radar-dot {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.radar-section.visible .radar-dot {
+    opacity: 1;
+}
+
+.radar-section.visible .radar-dot:nth-child(1) { transition-delay: 0.6s; }
+.radar-section.visible .radar-dot:nth-child(2) { transition-delay: 0.7s; }
+.radar-section.visible .radar-dot:nth-child(3) { transition-delay: 0.8s; }
+.radar-section.visible .radar-dot:nth-child(4) { transition-delay: 0.9s; }
+.radar-section.visible .radar-dot:nth-child(5) { transition-delay: 1.0s; }
+.radar-section.visible .radar-dot:nth-child(6) { transition-delay: 1.1s; }
+.radar-section.visible .radar-dot:nth-child(7) { transition-delay: 1.2s; }
+
+.radar-label-text {
+    font-family: 'Onest', sans-serif;
+    font-size: 11px;
+    fill: var(--text2);
+    font-weight: 500;
+}
+
+.radar-value-text {
+    font-family: 'Onest', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.radar-grid-line {
+    stroke: var(--border);
+    stroke-width: 1;
+    fill: none;
+}
+
+.radar-grid-line-accent {
+    stroke: rgba(201, 168, 76, 0.12);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+    fill: none;
+}
+
+.radar-axis {
+    stroke: var(--border);
+    stroke-width: 0.5;
+}
+
+/* ===== SCALE CARDS ===== */
+.scales-section {
+    padding: 48px 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.scales-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.scale-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+}
+
+.scale-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-hover);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.scale-card.top-zone {
+    border-color: rgba(199, 80, 80, 0.3);
+}
+
+.scale-card.top-zone::before {
+    content: 'Зона роста';
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--red);
+    background: var(--red-dim);
+    padding: 3px 10px;
+    border-radius: 6px;
+}
+
+.scale-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.scale-card-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.scale-card-name {
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+}
+
+.scale-card-name.color-red { color: var(--red); }
+.scale-card-name.color-yellow { color: var(--yellow); }
+.scale-card-name.color-green { color: var(--green); }
+
+.scale-card-score {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 800;
+    font-size: 28px;
+    margin-bottom: 4px;
+}
+
+.scale-card-score.color-red { color: var(--red); }
+.scale-card-score.color-yellow { color: var(--yellow); }
+.scale-card-score.color-green { color: var(--green); }
+
+.scale-card-bar {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.scale-card-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0;
+    transition: width 1.2s ease;
+}
+
+.scale-card-fill.fill-red { background: linear-gradient(90deg, var(--red), #e06060); }
+.scale-card-fill.fill-yellow { background: linear-gradient(90deg, var(--yellow), var(--gold)); }
+.scale-card-fill.fill-green { background: linear-gradient(90deg, var(--green), #7ad498); }
+
+.scale-card-text {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.65;
+}
+
+/* ===== TOP ZONES ===== */
+.zones-section {
+    padding: 48px 0;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.zones-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.zones-block {
+    background: var(--bg2);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid var(--border);
+}
+
+.zone-item {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+}
+
+.zone-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.zone-item:first-child {
+    padding-top: 0;
+}
+
+.zone-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 800;
+    font-size: 24px;
+    color: var(--gold);
+    min-width: 32px;
+    line-height: 1.2;
+}
+
+.zone-content h4 {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+    color: var(--text);
+}
+
+.zone-content p {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+}
+
+.zone-exercises {
+    display: inline-flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.zone-exercise-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--gold-dim);
+    color: var(--gold);
+}
+
+/* ===== CTA ===== */
+.cta-section {
+    padding: 48px 0 40px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.cta-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.cta-primary {
+    display: inline-block;
+    font-family: 'Onest', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--bg);
+    background: var(--gold);
+    padding: 16px 48px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+}
+
+.cta-primary:hover {
+    background: #d4b35a;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(201, 168, 76, 0.25);
+}
+
+.cta-sub {
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 12px;
+}
+
+.cta-secondary {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 14px;
+    color: var(--text2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2px;
+    transition: all 0.3s ease;
+}
+
+.cta-secondary:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    padding: 32px 0;
+    text-align: center;
+    border-top: 1px solid var(--border);
+}
+
+.footer-disclaimer {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    max-width: 500px;
+    margin: 0 auto 16px;
+    opacity: 0.6;
+}
+
+.footer-brand {
+    font-size: 13px;
+    color: var(--text2);
+    font-weight: 500;
+}
+
+.footer-brand a {
+    color: var(--gold);
+    text-decoration: none;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+    .hero { padding: 48px 16px 36px; }
+    .hero-score { font-size: clamp(64px, 20vw, 96px); }
+    .share-row { flex-wrap: wrap; gap: 8px; }
+    .share-btn { padding: 8px 14px; font-size: 12px; }
+    .share-btn span { display: none; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .radar-wrapper { padding: 24px 12px 20px; }
+    .zones-block { padding: 24px 20px; }
+    .zone-item { flex-direction: column; gap: 8px; }
+    .interp-block { padding: 20px 20px; }
+    .cta-primary { padding: 14px 36px; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- ===== HERO: MAIN SCORE ===== -->
+<div class="hero">
+    <div class="hero-label">Индекс синдрома славного парня</div>
+    <div class="hero-score">
+        <span id="scoreCounter">0</span><span class="denominator">/100</span>
+    </div>
+    <div class="hero-level moderate">Умеренный уровень</div>
+    <div class="hero-subtitle">Тест по книге «Хватит быть славным парнем» • 35 вопросов • 7 шкал</div>
+
+    <!-- Share Buttons -->
+    <div class="share-row">
+        <a class="share-btn" href="#" title="Telegram">
+            <svg viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+            <span>Telegram</span>
+        </a>
+        <a class="share-btn" href="#" title="WhatsApp">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            <span>WhatsApp</span>
+        </a>
+        <a class="share-btn" href="#" title="VK">
+            <svg viewBox="0 0 24 24"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/></svg>
+            <span>VK</span>
+        </a>
+        <button class="share-btn" onclick="copyLink()" title="Копировать ссылку">
+            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <span>Копировать</span>
+        </button>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== AI INTERPRETATION ===== -->
+<div class="interpretation section-anim">
+    <div class="interp-label">Ваш результат</div>
+    <div class="interp-block">
+        <p>Ваш результат показывает <strong>умеренную выраженность</strong> паттернов «славного парня». Вы привыкли заботиться о других, сглаживать углы и быть удобным — стратегии, которые многие мужчины усваивают с&nbsp;детства. Наиболее выраженные области — стремление к&nbsp;одобрению и привычка ставить чужие потребности выше своих. То, что вы это видите — уже начало изменений.</p>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== RADAR CHART ===== -->
+<div class="radar-section section-anim">
+    <div class="section-label">Ваш профиль</div>
+    <div class="section-title">Ваши 7 шкал</div>
+
+    <div class="radar-wrapper">
+        <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" id="radarChart">
+            <defs>
+                <radialGradient id="areaGradient" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(92, 184, 122, 0.05)"/>
+                    <stop offset="40%" stop-color="rgba(201, 168, 76, 0.12)"/>
+                    <stop offset="100%" stop-color="rgba(199, 80, 80, 0.18)"/>
+                </radialGradient>
+                <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(92, 184, 122, 0.03)"/>
+                    <stop offset="50%" stop-color="rgba(201, 168, 76, 0.02)"/>
+                    <stop offset="100%" stop-color="rgba(199, 80, 80, 0.03)"/>
+                </radialGradient>
+            </defs>
+
+            <!-- Background fill -->
+            <circle cx="250" cy="250" r="185" fill="url(#bgGradient)"/>
+
+            <!-- Grid rings -->
+            <polygon class="radar-grid-line" points="" id="grid100"/>
+            <polygon class="radar-grid-line" points="" id="grid75"/>
+            <polygon class="radar-grid-line-accent" points="" id="grid50"/>
+            <polygon class="radar-grid-line" points="" id="grid25"/>
+
+            <!-- Zone labels on rings -->
+            <text x="250" y="108" text-anchor="middle" fill="#c75050" font-family="Onest" font-size="9" font-weight="600" opacity="0.5">ВЫСОКИЙ</text>
+            <text x="250" y="155" text-anchor="middle" fill="#d4a843" font-family="Onest" font-size="9" font-weight="600" opacity="0.4">СРЕДНИЙ</text>
+            <text x="250" y="202" text-anchor="middle" fill="#5cb87a" font-family="Onest" font-size="9" font-weight="600" opacity="0.4">НИЗКИЙ</text>
+
+            <!-- Axis lines -->
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis0"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis1"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis2"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis3"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis4"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis5"/>
+            <line class="radar-axis" x1="250" y1="250" x2="" y2="" id="axis6"/>
+
+            <!-- Data area -->
+            <polygon class="radar-area" id="dataArea" fill="url(#areaGradient)" stroke="var(--gold)" stroke-width="2" points=""/>
+
+            <!-- Data dots -->
+            <g id="dataDots"></g>
+
+            <!-- Labels -->
+            <g id="radarLabels"></g>
+        </svg>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== SCALE CARDS ===== -->
+<div class="scales-section section-anim">
+    <div class="section-label">Подробнее</div>
+    <div class="section-title">Каждая шкала — ближе</div>
+
+    <div class="cards-grid" id="scaleCards">
+        <!-- Generated by JS -->
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== TOP ZONES ===== -->
+<div class="zones-section section-anim">
+    <div class="section-label">С чего начать</div>
+    <div class="section-title">Приоритетные области для роста</div>
+
+    <div class="zones-block" id="topZones">
+        <!-- Generated by JS -->
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== CTA ===== -->
+<div class="cta-section section-anim">
+    <a href="#" class="cta-primary">Начать путь к изменениям</a>
+    <div class="cta-sub">46 упражнений по книге Роберта Гловера «Хватит быть славным парнем»</div>
+    <br>
+    <a href="#" class="cta-secondary">Пройти тест снова</a>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-disclaimer">Этот тест — инструмент самопознания, а не клинический диагноз. Результаты помогают увидеть паттерны и направление для роста. Для глубокой работы рекомендуем обратиться к специалисту.</div>
+    <div class="footer-brand"><a href="#">Nice Guy AI</a> — AI-тренажёр по книгам самопомощи</div>
+</footer>
+
+</div><!-- end container -->
+
+<script>
+// ===== FAKE DATA (replace with real data from Supabase) =====
+const TOTAL_SCORE = 46;
+
+const SCALES = [
+    { name: 'Потребность\nв одобрении', short: 'Одобрение', score: 72, icon: '🎭', desc: 'Вы хорошо чувствуете других людей и умеете быть внимательным к их потребностям — это ценное качество. Обратная сторона — привычка ставить чужое мнение выше своего, которая может создавать внутреннее напряжение. Упражнения помогут найти баланс между вниманием к другим и вниманием к себе.' },
+    { name: 'Подавление\nпотребностей', short: 'Подавление', score: 68, icon: '🫀', desc: 'Вы научились заботиться о других — навык, который не каждый имеет. При этом привычка не озвучивать свои потребности создаёт напряжение, которое копится. Путь начинается с малого: замечать, чего вам хочется прямо сейчас.' },
+    { name: 'Сложности\nс границами', short: 'Границы', score: 55, icon: '🚧', desc: 'Ваша гибкость и дипломатичность помогают в отношениях — люди чувствуют себя рядом с вами комфортно. Обратная сторона — сложность сказать «нет», когда это нужно. Навык границ растёт с практикой, и вы на пути к этому.' },
+    { name: 'Трудности\nс конфликтами', short: 'Конфликты', score: 48, icon: '⚡', desc: 'Стремление к гармонии — ваша сильная сторона, которая делает вас приятным в общении. При этом привычка избегать конфликтов может приводить к тому, что невысказанное копится. Упражнения помогут научиться выражать несогласие без разрушения отношений.' },
+    { name: 'Контролирующее\nповедение', short: 'Контроль', score: 35, icon: '🎯', desc: 'Вы организованный и ответственный человек — эти качества помогают в жизни и работе. Умеренная склонность контролировать ситуации — знак того, что вы уже начинаете замечать этот паттерн. Осознание здесь — ваш главный инструмент.' },
+    { name: 'Стыд и\nсекретность', short: 'Стыд', score: 30, icon: '🔒', desc: 'Вы достаточно открыты с окружающими — это серьёзная сильная сторона. Невысокий уровень стыда означает, что у вас есть ресурс для работы над другими областями: открытость к себе и другим ускоряет любые изменения.' },
+    { name: 'Изоляция', short: 'Изоляция', score: 22, icon: '🏝', desc: 'Вы поддерживаете связи с людьми и не склонны замыкаться — это ресурс, который многим недоступен. Практика новых навыков в безопасных отношениях — один из самых эффективных способов роста. Используйте эту сильную сторону.' },
+];
+
+// Exercises and action texts mapped to scales
+const EXERCISE_MAP = {
+    'Одобрение': {
+        exercises: ['Упр. 3', 'Упр. 7', 'Упр. 15'],
+        action: 'Начните замечать моменты, когда вы делаете что-то ради одобрения, а не потому что хотите. Простое наблюдение без попытки изменить — уже практика.'
+    },
+    'Подавление': {
+        exercises: ['Упр. 5', 'Упр. 11', 'Упр. 22'],
+        action: 'Попробуйте один раз в день задать себе вопрос: «Чего я сейчас хочу?» — и дать честный ответ, даже если только для себя.'
+    },
+    'Границы': {
+        exercises: ['Упр. 8', 'Упр. 19', 'Упр. 31'],
+        action: 'Выберите одну ситуацию на этой неделе, где вы обычно соглашаетесь автоматически — и дайте себе паузу перед ответом.'
+    },
+};
+
+// ===== RADAR CHART GENERATION =====
+const cx = 250, cy = 250, maxR = 185;
+const N = SCALES.length;
+
+function polarToCart(angleDeg, radius) {
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
+}
+
+function polygonPoints(radius) {
+    return SCALES.map((_, i) => {
+        const angle = (360 / N) * i;
+        const p = polarToCart(angle, radius);
+        return `${p.x},${p.y}`;
+    }).join(' ');
+}
+
+// Draw grid
+document.getElementById('grid100').setAttribute('points', polygonPoints(maxR));
+document.getElementById('grid75').setAttribute('points', polygonPoints(maxR * 0.75));
+document.getElementById('grid50').setAttribute('points', polygonPoints(maxR * 0.5));
+document.getElementById('grid25').setAttribute('points', polygonPoints(maxR * 0.25));
+
+// Draw axes
+SCALES.forEach((_, i) => {
+    const angle = (360 / N) * i;
+    const p = polarToCart(angle, maxR);
+    const axis = document.getElementById(`axis${i}`);
+    if (axis) {
+        axis.setAttribute('x2', p.x);
+        axis.setAttribute('y2', p.y);
+    }
+});
+
+// Draw data area
+const dataPoints = SCALES.map((s, i) => {
+    const angle = (360 / N) * i;
+    const r = maxR * (s.score / 100);
+    const p = polarToCart(angle, r);
+    return `${p.x},${p.y}`;
+}).join(' ');
+document.getElementById('dataArea').setAttribute('points', dataPoints);
+
+// Draw dots and labels
+const dotsG = document.getElementById('dataDots');
+const labelsG = document.getElementById('radarLabels');
+
+SCALES.forEach((s, i) => {
+    const angle = (360 / N) * i;
+    const r = maxR * (s.score / 100);
+    const p = polarToCart(angle, r);
+    const lp = polarToCart(angle, maxR + 32);
+
+    // Dot
+    const color = s.score >= 60 ? 'var(--red)' : s.score >= 40 ? 'var(--yellow)' : 'var(--green)';
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.classList.add('radar-dot');
+    dot.setAttribute('cx', p.x);
+    dot.setAttribute('cy', p.y);
+    dot.setAttribute('r', '5');
+    dot.setAttribute('fill', color);
+    dot.setAttribute('stroke', 'var(--bg)');
+    dot.setAttribute('stroke-width', '2');
+    dotsG.appendChild(dot);
+
+    // Label
+    const labelG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    // Multi-line name
+    const lines = s.name.split('\n');
+    lines.forEach((line, li) => {
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.classList.add('radar-label-text');
+        txt.setAttribute('x', lp.x);
+        txt.setAttribute('y', lp.y - ((lines.length - 1) * 7) + li * 14);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.textContent = line;
+        labelG.appendChild(txt);
+    });
+
+    // Score value
+    const valTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    valTxt.classList.add('radar-value-text');
+    valTxt.setAttribute('x', lp.x);
+    valTxt.setAttribute('y', lp.y + lines.length * 7 + 6);
+    valTxt.setAttribute('text-anchor', 'middle');
+    valTxt.setAttribute('fill', color);
+    valTxt.textContent = s.score + '%';
+    labelG.appendChild(valTxt);
+
+    labelsG.appendChild(labelG);
+});
+
+// ===== SCALE CARDS =====
+const cardsContainer = document.getElementById('scaleCards');
+const sorted = [...SCALES].sort((a, b) => b.score - a.score);
+
+sorted.forEach((s, i) => {
+    const color = s.score >= 60 ? 'red' : s.score >= 40 ? 'yellow' : 'green';
+    const isTop = i < 3 && s.score >= 50;
+
+    const card = document.createElement('div');
+    card.className = `scale-card ${isTop ? 'top-zone' : ''}`;
+    card.innerHTML = `
+        <div class="scale-card-header">
+            <span class="scale-card-icon">${s.icon}</span>
+            <div class="scale-card-name color-${color}">${s.short}</div>
+        </div>
+        <div class="scale-card-score color-${color}">${s.score}%</div>
+        <div class="scale-card-bar">
+            <div class="scale-card-fill fill-${color}" data-width="${s.score}"></div>
+        </div>
+        <div class="scale-card-text">${s.desc}</div>
+    `;
+    cardsContainer.appendChild(card);
+});
+
+// ===== TOP ZONES =====
+const zonesContainer = document.getElementById('topZones');
+const top3 = sorted.slice(0, 3);
+
+top3.forEach((s, i) => {
+    const mapData = EXERCISE_MAP[s.short] || {};
+    const exercises = mapData.exercises || [];
+    const actionText = mapData.action || s.desc;
+    const exTags = exercises.map(e => `<span class="zone-exercise-tag">${e}</span>`).join('');
+
+    const item = document.createElement('div');
+    item.className = 'zone-item';
+    item.innerHTML = `
+        <div class="zone-number">${i + 1}</div>
+        <div class="zone-content">
+            <h4>${s.short} — ${s.score}%</h4>
+            <p>${actionText}</p>
+            ${exTags ? `<div class="zone-exercises">${exTags}</div>` : ''}
+        </div>
+    `;
+    zonesContainer.appendChild(item);
+});
+
+// ===== ANIMATIONS =====
+
+// Score counter
+function animateScore(target) {
+    const el = document.getElementById('scoreCounter');
+    let current = 0;
+    const duration = 1500;
+    const step = target / (duration / 16);
+
+    function tick() {
+        current += step;
+        if (current >= target) {
+            el.textContent = target;
+            return;
+        }
+        el.textContent = Math.floor(current);
+        requestAnimationFrame(tick);
+    }
+    // Delay start
+    setTimeout(tick, 400);
+}
+animateScore(TOTAL_SCORE);
+
+// Intersection Observer for sections
+const sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+
+            // Animate progress bars inside
+            const fills = entry.target.querySelectorAll('.scale-card-fill');
+            fills.forEach(fill => {
+                const w = fill.getAttribute('data-width');
+                setTimeout(() => { fill.style.width = w + '%'; }, 300);
+            });
+        }
+    });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.section-anim').forEach(el => sectionObserver.observe(el));
+
+// Copy link
+function copyLink() {
+    const url = 'https://nice-guy-ai.vercel.app/test/results/abc123';
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target.closest('.share-btn');
+        const span = btn.querySelector('span');
+        if (span) {
+            const orig = span.textContent;
+            span.textContent = 'Скопировано!';
+            setTimeout(() => { span.textContent = orig; }, 2000);
+        }
+    });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>ИССП — Анализ результатов v4.0 FINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF5;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F5F3EE;
+    --border: #E8E5DE;
+    --border-light: #EFEDE7;
+    --text: #1A1917;
+    --text-secondary: #6B6860;
+    --text-muted: #9E9B93;
+    --text-hint: #B5B2AA;
+    --accent: #C9963B;
+    --accent-hover: #B8872F;
+    --accent-soft: rgba(201,150,59,0.08);
+    --accent-border: rgba(201,150,59,0.25);
+    --accent-on: #FFFFFF;
+    --success: #4A7A4A;
+    --success-soft: rgba(74,122,74,0.08);
+    --radius: 10px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .frame {
+    width: 100%; max-width: 640px;
+    margin: 0 auto; min-height: 100dvh;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 40px 28px;
+    gap: 28px;
+    animation: screenIn 500ms var(--ease);
+  }
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══ ORB ═══ */
+  .orb-wrap {
+    position: relative;
+    width: 80px; height: 80px;
+  }
+  .orb-bg {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--border-light);
+    background: var(--bg-elevated);
+    position: absolute; inset: 0;
+    transition: all 0.8s var(--ease);
+  }
+  .orb-ring {
+    position: absolute; inset: -2px;
+    width: 84px; height: 84px;
+    transform: rotate(-90deg);
+  }
+  .orb-ring circle { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+  .orb-ring-track { stroke: transparent; }
+  .orb-ring-progress {
+    stroke: var(--accent);
+    stroke-dasharray: 251;
+    stroke-dashoffset: 251;
+    transition: stroke-dashoffset 1.5s var(--ease);
+  }
+  .orb-icon {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .orb-icon svg {
+    color: var(--accent);
+    opacity: 0.6;
+    animation: orbPulse 3s var(--ease) infinite;
+  }
+  @keyframes orbPulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.06); opacity: 0.8; }
+  }
+
+  /* Orb done */
+  .orb-wrap.done .orb-bg {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .orb-wrap.done .orb-icon svg {
+    color: white; opacity: 1; animation: none;
+  }
+  .orb-wrap.done .orb-ring-progress { stroke-dashoffset: 0; }
+  .orb-wrap.done::after {
+    content: '';
+    position: absolute; inset: -8px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,150,59,0.12) 0%, transparent 70%);
+    animation: orbGlow 2s var(--ease);
+  }
+  @keyframes orbGlow {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+
+  /* ═══ TEXT ═══ */
+  .a-title {
+    font-family: var(--font-display);
+    font-size: clamp(22px, 4vw, 28px);
+    font-weight: 600; text-align: center;
+  }
+  .a-subtitle {
+    font-size: 14px; color: var(--text-muted);
+    text-align: center; margin-top: -16px;
+    transition: opacity 0.5s var(--ease);
+  }
+
+  /* ═══ STAGES ═══ */
+  .stages {
+    width: 100%; max-width: 380px;
+    display: flex; flex-direction: column;
+  }
+  .stage { position: relative; }
+  .stage-header {
+    display: flex; align-items: center;
+    gap: 12px; padding: 10px 0;
+  }
+  .stage-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--bg-card);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s var(--ease);
+    position: relative; z-index: 2;
+  }
+  .stage-dot svg {
+    width: 8px; height: 8px;
+    opacity: 0; transform: scale(0);
+    transition: all 0.3s var(--ease);
+  }
+  .stage-label {
+    font-size: 13px; font-weight: 500;
+    color: var(--text-muted); transition: color 0.4s var(--ease);
+  }
+
+  .stage.active .stage-dot {
+    border-color: var(--accent); background: var(--accent-soft);
+    animation: dotPulse 2s var(--ease) infinite;
+  }
+  .stage.active .stage-label { color: var(--text); }
+
+  .stage.done .stage-dot {
+    border-color: var(--success); background: var(--success-soft); animation: none;
+  }
+  .stage.done .stage-dot svg { opacity: 1; transform: scale(1); color: var(--success); }
+  .stage.done .stage-label { color: var(--success); }
+
+  @keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,150,59,0.15); }
+    50% { box-shadow: 0 0 0 5px rgba(201,150,59,0.08); }
+  }
+
+  /* ── Substeps ── */
+  .substeps {
+    margin-left: 6.25px; padding-left: 18px;
+    border-left: 1.5px solid var(--border-light);
+    overflow: hidden; max-height: 0;
+    transition: max-height 0.5s var(--ease);
+  }
+  .stage.active .substeps, .stage.done .substeps { max-height: 300px; }
+
+  .substep {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 0;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+  }
+  .substep.visible { opacity: 1; transform: translateY(0); }
+
+  .substep-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0; transition: background 0.3s;
+  }
+  .substep.active .substep-dot { background: var(--accent); }
+  .substep.done .substep-dot { background: var(--success); }
+
+  .substep-text {
+    font-size: 12px; color: var(--text-hint);
+    transition: color 0.3s; line-height: 1.4;
+  }
+  .substep.active .substep-text { color: var(--text-secondary); }
+  .substep.done .substep-text { color: var(--text-muted); }
+
+  /* ═══ HINT ═══ */
+  .hint {
+    text-align: center; font-size: 12px;
+    color: var(--text-hint); max-width: 300px; line-height: 1.5;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+  }
+  .hint.visible { opacity: 1; transform: translateY(0); }
+
+  /* ═══ DONE ═══ */
+  .done-message {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 600; color: var(--success);
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+  }
+  .done-message.visible { opacity: 1; transform: translateY(0); }
+
+  /* ═══ RESTART (subtle) ═══ */
+  .restart {
+    position: fixed; bottom: 16px; right: 16px;
+    padding: 6px 14px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 11px; color: var(--text-hint);
+    font-family: var(--font-body); cursor: pointer;
+    opacity: 0.5; transition: opacity 0.2s;
+  }
+  .restart:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <div class="orb-wrap" id="orb">
+    <div class="orb-bg"></div>
+    <svg class="orb-ring" viewBox="0 0 84 84">
+      <circle class="orb-ring-track" cx="42" cy="42" r="40"/>
+      <circle class="orb-ring-progress" id="orbProgress" cx="42" cy="42" r="40"/>
+    </svg>
+    <div class="orb-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    </div>
+  </div>
+
+  <h1 class="a-title">Анализируем ваши ответы</h1>
+  <p class="a-subtitle" id="subtitle">Это займёт около 30–60 секунд</p>
+
+  <div class="stages" id="stages">
+    <div class="stage" id="stage-0">
+      <div class="stage-header">
+        <div class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="stage-label">Анализ ответов</div>
+      </div>
+      <div class="substeps" id="subs-0">
+        <div class="substep" data-stage="0"><div class="substep-dot"></div><div class="substep-text">Обработка ответов по 7 сферам жизни</div></div>
+        <div class="substep" data-stage="0"><div class="substep-dot"></div><div class="substep-text">Расчёт баллов с учётом обратных шкал</div></div>
+        <div class="substep" data-stage="0"><div class="substep-dot"></div><div class="substep-text">Определение доминирующих сфер</div></div>
+        <div class="substep" data-stage="0"><div class="substep-dot"></div><div class="substep-text">Поиск взаимосвязей между шкалами</div></div>
+      </div>
+    </div>
+    <div class="stage" id="stage-1">
+      <div class="stage-header">
+        <div class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="stage-label">Научная база</div>
+      </div>
+      <div class="substeps" id="subs-1">
+        <div class="substep" data-stage="1"><div class="substep-dot"></div><div class="substep-text">Поиск релевантных исследований (PubMed, APA PsycNet)</div></div>
+        <div class="substep" data-stage="1"><div class="substep-dot"></div><div class="substep-text">Анализ публикаций по выявленным паттернам</div></div>
+        <div class="substep" data-stage="1"><div class="substep-dot"></div><div class="substep-text">Сопоставление с методологией Роберта Гловера</div></div>
+        <div class="substep" data-stage="1"><div class="substep-dot"></div><div class="substep-text">Подбор доказательных подходов (CBT, Schema Therapy)</div></div>
+      </div>
+    </div>
+    <div class="stage" id="stage-2">
+      <div class="stage-header">
+        <div class="stage-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="stage-label">Персональный профиль</div>
+      </div>
+      <div class="substeps" id="subs-2">
+        <div class="substep" data-stage="2"><div class="substep-dot"></div><div class="substep-text">Формирование описания по каждой сфере</div></div>
+        <div class="substep" data-stage="2"><div class="substep-dot"></div><div class="substep-text">Определение приоритетных направлений роста</div></div>
+        <div class="substep" data-stage="2"><div class="substep-dot"></div><div class="substep-text">Подбор рекомендованных упражнений</div></div>
+        <div class="substep" data-stage="2"><div class="substep-dot"></div><div class="substep-text">Генерация персональной интерпретации</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Вы увидите профиль по 7 сферам жизни с персональными рекомендациями и научным обоснованием</div>
+  <div class="done-message" id="doneMsg">Профиль готов</div>
+
+</div>
+
+<button class="restart" onclick="location.reload()">↺ Перезапустить</button>
+
+<script>
+  const SUBSTEP_DELAY = 4800;
+  const STAGE_GAP = 1200;
+  const HINT_AT = 15000;
+
+  function setOrbProgress(pct) {
+    document.getElementById('orbProgress').style.strokeDashoffset = 251 - (251 * pct / 100);
+  }
+
+  function run() {
+    let delay = 600;
+    const totalSubs = 12;
+    let count = 0;
+
+    [0, 1, 2].forEach(si => {
+      // Activate stage
+      setTimeout(() => document.getElementById(`stage-${si}`).classList.add('active'), delay);
+      delay += 400;
+
+      // Substeps
+      const subs = document.querySelectorAll(`#subs-${si} .substep`);
+      subs.forEach((sub, ssi) => {
+        setTimeout(() => {
+          if (ssi > 0) {
+            subs[ssi - 1].classList.remove('active');
+            subs[ssi - 1].classList.add('done');
+          }
+          sub.classList.add('visible', 'active');
+          count++;
+          setOrbProgress(Math.round((count / totalSubs) * 100));
+        }, delay);
+        delay += SUBSTEP_DELAY;
+      });
+
+      // Last substep done
+      setTimeout(() => {
+        subs[subs.length - 1].classList.remove('active');
+        subs[subs.length - 1].classList.add('done');
+      }, delay);
+
+      // Stage done
+      setTimeout(() => {
+        document.getElementById(`stage-${si}`).classList.remove('active');
+        document.getElementById(`stage-${si}`).classList.add('done');
+      }, delay + 200);
+
+      delay += STAGE_GAP;
+    });
+
+    // Hint
+    setTimeout(() => document.getElementById('hint').classList.add('visible'), HINT_AT);
+
+    // All done
+    setTimeout(() => {
+      document.getElementById('orb').classList.add('done');
+      document.getElementById('subtitle').style.opacity = '0';
+      document.getElementById('hint').classList.remove('visible');
+      setTimeout(() => document.getElementById('doneMsg').classList.add('visible'), 300);
+    }, delay + 500);
+  }
+
+  // Autostart
+  run();
+</script>
+</body>
+</html>
