@@ -59,6 +59,21 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
     ANALYZING_STAGES.map((s) => s.substeps.map(() => "idle"))
   );
 
+  // Dev-mode warning: resultId data flow check
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const t = setTimeout(() => {
+      if (!resultId) {
+        console.error(
+          `[AnalyzingScreen] resultId is still null after 10s. ` +
+          `Data flow: TestCardFlow polling /api/test/result → setResultId → <AnalyzingScreen resultId={...}>. ` +
+          `Check that polling is running and chatId is set in TestCardFlow.`
+        );
+      }
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [resultId]);
+
   // Stage/substep animation timeline
   useEffect(() => {
     const timeouts: number[] = [];
