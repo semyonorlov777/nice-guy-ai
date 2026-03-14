@@ -353,11 +353,12 @@ const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
         data-mode={mode}
         role="group"
       >
-        {/* Textarea + fake placeholder for vertical centering */}
-        <div className="ib-textarea-wrap">
+        {/* The pill-shaped container that looks like one input field */}
+        <div className="input-container">
+          {/* Textarea — transparent, no border */}
           <textarea
             ref={textareaRef}
-            className="ib-textarea"
+            className="input-textarea"
             rows={1}
             placeholder={placeholder || DEFAULT_PLACEHOLDERS[mode]}
             value={text}
@@ -366,147 +367,147 @@ const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
             disabled={disabled}
             aria-label="Введите сообщение"
           />
-        </div>
 
-        {/* RecBar — replaces textarea during recording/locked */}
-        <div className="ib-rec-bar" role="status" aria-live="polite">
-          <div className="ib-rec-dot" aria-hidden="true" />
-          <span className="ib-rec-timer">
-            {formatDuration(voiceInput.duration)}
-          </span>
-          <div className="ib-rec-wave" aria-hidden="true">
-            {waveformBars.map((h, i) => (
-              <div key={i} className="ib-rec-wave-bar" style={{ height: `${h}px` }} />
-            ))}
-          </div>
-          {actionState === "recording" && (
-            <span className="ib-rec-swipe-hint">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-              свайп
+          {/* RecBar — replaces textarea during recording/locked */}
+          <div className="ib-rec-bar" role="status" aria-live="polite">
+            <div className="ib-rec-dot" aria-hidden="true" />
+            <span className="ib-rec-timer">
+              {formatDuration(voiceInput.duration)}
             </span>
-          )}
-          <span
-            className="ib-rec-cancel"
-            onClick={() => voiceInput.cancelRecording()}
-            role="button"
-            tabIndex={0}
-          >
-            Отмена
-          </span>
-        </div>
+            <div className="ib-rec-wave" aria-hidden="true">
+              {waveformBars.map((h, i) => (
+                <div key={i} className="ib-rec-wave-bar" style={{ height: `${h}px` }} />
+              ))}
+            </div>
+            {actionState === "recording" && (
+              <span className="ib-rec-swipe-hint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                свайп
+              </span>
+            )}
+            <span
+              className="ib-rec-cancel"
+              onClick={() => voiceInput.cancelRecording()}
+              role="button"
+              tabIndex={0}
+            >
+              Отмена
+            </span>
+          </div>
 
-        {/* Error bar */}
-        <div
-          className={`ib-error-bar${errorFading ? " fading" : ""}`}
-          role="alert"
-        >
-          <svg
-            className="ib-error-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <span className="ib-error-text">{errorMessage}</span>
-          <button
-            className="ib-error-dismiss"
-            onClick={dismissError}
-            aria-label="Закрыть ошибку"
-            type="button"
+          {/* Error bar */}
+          <div
+            className={`ib-error-bar${errorFading ? " fading" : ""}`}
+            role="alert"
           >
             <svg
-              width="14"
-              height="14"
+              className="ib-error-icon"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-          </button>
-        </div>
+            <span className="ib-error-text">{errorMessage}</span>
+            <button
+              className="ib-error-dismiss"
+              onClick={dismissError}
+              aria-label="Закрыть ошибку"
+              type="button"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
 
-        {/* Action button — pointer events only, no onClick */}
-        <button
-          className={btnClass}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          aria-label={btnAriaLabel}
-          type="button"
-          disabled={disabled}
-        >
-          {/* Mic icon — only for chat/exercise */}
-          {hasVoice && (
-            <span className="ib-ico ib-ico-mic">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
+          {/* LockHint — swipe up to lock (touch only, recording state) */}
+          {actionState === "recording" && lastPointerTypeRef.current === "touch" && (
+            <div className="ib-lock-hint" aria-hidden="true">
+              <svg className="ib-lock-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              <svg className="ib-lock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+          )}
+
+          {/* Action button — INSIDE the pill container */}
+          <button
+            className={btnClass}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            aria-label={btnAriaLabel}
+            type="button"
+            disabled={disabled}
+          >
+            {/* Mic icon — only for chat/exercise */}
+            {hasVoice && (
+              <span className="ib-ico ib-ico-mic">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </span>
+            )}
+
+            {/* Send arrow icon */}
+            <span className="ib-ico ib-ico-send">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </span>
-          )}
 
-          {/* Send arrow icon */}
-          <span className="ib-ico ib-ico-send">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </span>
+            {/* Stop icon — recording/locked */}
+            <span className="ib-ico ib-ico-stop">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="4" y="4" width="16" height="16" rx="2"/>
+              </svg>
+            </span>
 
-          {/* Stop icon — recording/locked */}
-          <span className="ib-ico ib-ico-stop">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="4" y="4" width="16" height="16" rx="2"/>
-            </svg>
-          </span>
-
-          {/* Check icon */}
-          <span className="ib-ico ib-ico-check">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </span>
-        </button>
-
-        {/* LockHint — swipe up to lock (touch only, recording state) */}
-        {actionState === "recording" && lastPointerTypeRef.current === "touch" && (
-          <div className="ib-lock-hint" aria-hidden="true">
-            <svg className="ib-lock-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
-            <svg className="ib-lock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-        )}
+            {/* Check icon */}
+            <span className="ib-ico ib-ico-check">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Footer */}
