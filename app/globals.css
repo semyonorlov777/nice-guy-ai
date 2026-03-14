@@ -2994,11 +2994,16 @@ html:not(.no-transition) .program-main {
   transition: background 0.2s, border-color 0.2s;
 }
 
-.ib-textarea {
+.ib-textarea-wrap {
+  position: relative;
   flex: 1;
+  min-width: 0;
+}
+.ib-textarea {
+  width: 100%;
   min-height: 44px;
   max-height: 140px;
-  padding: 11px 14px 9px;
+  padding: 10px 14px;
   background: var(--bg-input);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -3014,7 +3019,7 @@ html:not(.no-transition) .program-main {
   overflow-wrap: break-word;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.ib-textarea::placeholder { color: var(--text-hint); font-size: 14px; line-height: inherit; }
+.ib-textarea::placeholder { color: transparent; }
 .ib-textarea:focus {
   border-color: var(--accent);
   box-shadow: var(--shadow-focus);
@@ -3023,7 +3028,29 @@ html:not(.no-transition) .program-main {
   .ib-textarea { min-height: 52px; }
 }
 
-.input-bar.has-error .ib-textarea { display: none; }
+/* Fake placeholder — flexbox vertical centering (textarea can't do this natively) */
+.ib-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1.5px solid transparent;
+  color: var(--text-hint);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+@media (min-width: 640px) {
+  .ib-placeholder { height: 52px; }
+}
+
+.input-bar.has-error .ib-textarea-wrap { display: none; }
 
 .ib-action-btn {
   width: 44px;
@@ -3167,6 +3194,9 @@ html:not(.no-transition) .program-main {
   border-color: var(--danger);
   color: white;
   border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -10px 0;
   animation: ib-rec-breathe 1.8s ease-in-out infinite;
 }
 .ib-action-btn.s-locked {
@@ -3174,6 +3204,9 @@ html:not(.no-transition) .program-main {
   border-color: var(--danger);
   color: white;
   border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -10px 0;
   animation: none;
   box-shadow: 0 0 0 3px rgba(201,76,76,0.15);
 }
@@ -3202,8 +3235,8 @@ html:not(.no-transition) .program-main {
 .ib-action-btn.s-locked .ib-ico-check { opacity: 0; transform: scale(0.5); }
 
 /* Hide textarea during recording/locked */
-.input-bar.recording .ib-textarea,
-.input-bar.locked .ib-textarea { display: none; }
+.input-bar.recording .ib-textarea-wrap,
+.input-bar.locked .ib-textarea-wrap { display: none; }
 
 /* ── RecBar ── */
 .ib-rec-bar {

@@ -353,18 +353,25 @@ const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
         data-mode={mode}
         role="group"
       >
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          className="ib-textarea"
-          rows={1}
-          placeholder={placeholder || DEFAULT_PLACEHOLDERS[mode]}
-          value={text}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          aria-label="Введите сообщение"
-        />
+        {/* Textarea + fake placeholder for vertical centering */}
+        <div className="ib-textarea-wrap">
+          <textarea
+            ref={textareaRef}
+            className="ib-textarea"
+            rows={1}
+            placeholder={placeholder || DEFAULT_PLACEHOLDERS[mode]}
+            value={text}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            aria-label="Введите сообщение"
+          />
+          {!text && (
+            <div className="ib-placeholder" aria-hidden="true">
+              {placeholder || DEFAULT_PLACEHOLDERS[mode]}
+            </div>
+          )}
+        </div>
 
         {/* RecBar — replaces textarea during recording/locked */}
         <div className="ib-rec-bar" role="status" aria-live="polite">
