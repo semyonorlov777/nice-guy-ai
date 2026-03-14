@@ -3007,14 +3007,14 @@ html:not(.no-transition) .program-main {
   color: var(--text-primary);
   resize: none;
   outline: none;
-  line-height: 1.5;
+  line-height: 1.35;
   overflow-x: hidden;
   overflow-y: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.ib-textarea::placeholder { color: var(--text-hint); font-size: 14px; }
+.ib-textarea::placeholder { color: var(--text-hint); font-size: 14px; line-height: inherit; }
 .ib-textarea:focus {
   border-color: var(--accent);
   box-shadow: var(--shadow-focus);
