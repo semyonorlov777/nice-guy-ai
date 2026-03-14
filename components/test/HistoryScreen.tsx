@@ -149,6 +149,21 @@ export function HistoryScreen({ results, onRetake, isStarting }: HistoryScreenPr
         </div>
       </div>
 
+      {/* Divider + Retake button + Meta */}
+      <div className="tc-history-divider" />
+      <button
+        className="tc-btn-primary"
+        onClick={onRetake}
+        disabled={isStarting}
+        style={{ marginTop: 28 }}
+      >
+        {isStarting ? "Запуск…" : "Пройти заново"}
+      </button>
+      <div className="tc-meta-line" style={{ marginTop: 14 }}>
+        <LockIcon />
+        Результаты конфиденциальны. Правильных ответов нет.
+      </div>
+
       {/* Previous results */}
       {hasMultiple && (
         <div className="tc-history-prev-section">
@@ -191,21 +206,6 @@ export function HistoryScreen({ results, onRetake, isStarting }: HistoryScreenPr
           </div>
         </div>
       )}
-
-      {/* Divider + Retake button + Meta */}
-      <div className="tc-history-divider" />
-      <button
-        className="tc-btn-primary"
-        onClick={onRetake}
-        disabled={isStarting}
-        style={{ marginTop: 28 }}
-      >
-        {isStarting ? "Запуск…" : "Пройти заново"}
-      </button>
-      <div className="tc-meta-line" style={{ marginTop: 14 }}>
-        <LockIcon />
-        Результаты конфиденциальны. Правильных ответов нет.
-      </div>
     </div>
   );
 }
