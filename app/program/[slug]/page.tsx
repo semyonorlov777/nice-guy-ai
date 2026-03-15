@@ -4,7 +4,6 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { SocialProof } from "@/components/landing/SocialProof";
 import { OutcomesSection } from "@/components/landing/OutcomesSection";
-import { ProblemSection } from "@/components/landing/ProblemSection";
 import { AuthorSection } from "@/components/landing/AuthorSection";
 import { PersonasSection } from "@/components/landing/PersonasSection";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
@@ -169,13 +168,6 @@ export default async function ProgramLanding({
         items={landingData.outcomes.items}
       />
 
-      <ProblemSection
-        label={landingData.problem.label}
-        title={landingData.problem.title}
-        lead={landingData.problem.lead}
-        painCards={landingData.problem.pain_cards}
-      />
-
       <AuthorSection
         photo_url={landingData.author.photo_url}
         name={landingData.author.name}
@@ -184,8 +176,9 @@ export default async function ProgramLanding({
       />
 
       <PersonasSection
-        label={landingData.personas.label}
-        title={landingData.personas.title}
+        label={landingData.problem.label}
+        title={landingData.problem.title}
+        lead={landingData.problem.lead}
         items={landingData.personas.items}
       />
 

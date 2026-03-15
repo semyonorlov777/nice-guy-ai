@@ -1,15 +1,17 @@
 interface PersonasSectionProps {
   label: string;
   title: string;
+  lead?: string;
   items: { headline: string; body: string }[];
 }
 
-export function PersonasSection({ label, title, items }: PersonasSectionProps) {
+export function PersonasSection({ label, title, lead, items }: PersonasSectionProps) {
   return (
     <section className="personas">
       <div className="content-w">
         <p className="section-label">{label}</p>
-        <h2>{title}</h2>
+        <h2 dangerouslySetInnerHTML={{ __html: title }} />
+        {lead && <p className="problem-lead">{lead}</p>}
         <div className="personas-grid">
           {items.map((item, i) => (
             <div key={i} className="persona-card">
