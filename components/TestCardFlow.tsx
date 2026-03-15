@@ -422,6 +422,7 @@ export function TestCardFlow() {
 
   const handleAuthSuccess = useCallback(async () => {
     await doMigrate();
+    router.refresh(); // layout перерендерится с sidebar
   }, []);
 
   async function doMigrate() {

@@ -76,7 +76,7 @@ export function Sidebar({
 
   // Активный раздел навигации
   function getActiveSection() {
-    if (pathname.startsWith("/test/issp")) return "test";
+    if (pathname.includes("/test/issp")) return "test";
     if (pathname.startsWith(`${base}/author-chat`)) return "author-chat";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
@@ -104,7 +104,6 @@ export function Sidebar({
       path: "/test/issp",
       icon: "📝",
       label: "Пройти тест",
-      absolutePath: true,
     },
     {
       key: "author-chat",
@@ -154,7 +153,7 @@ export function Sidebar({
         {navItems.map((item) => (
           <Link
             key={item.key}
-            href={item.absolutePath ? item.path : `${base}${item.path}`}
+            href={`${base}${item.path}`}
             className={`sidebar-item${activeSection === item.key ? " active" : ""}`}
           >
             <div className="sidebar-item-icon">{item.icon}</div>

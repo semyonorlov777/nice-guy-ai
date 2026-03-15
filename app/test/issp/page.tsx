@@ -1,7 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { TestCardFlow } from "@/components/TestCardFlow";
-
-export default function ISSPTestPage() {
-  return <TestCardFlow />;
+export default function TestISSPRedirect() {
+  redirect("/program/nice-guy/test/issp");
 }
