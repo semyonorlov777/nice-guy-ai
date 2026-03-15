@@ -46,7 +46,7 @@ export default function RootLayout({
         <noscript>
           <div><img src="https://mc.yandex.ru/watch/107079376" style={{position:"absolute",left:"-9999px"}} alt="" /></div>
         </noscript>
-        <div style={{ textAlign: "center", padding: "8px 0", fontSize: 10, opacity: 0.3, color: "inherit" }}>
+        <div suppressHydrationWarning style={{ textAlign: "center", padding: "8px 0", fontSize: 10, opacity: 0.3, color: "inherit" }}>
           build: {BUILD_TIME}
         </div>
       </body>
