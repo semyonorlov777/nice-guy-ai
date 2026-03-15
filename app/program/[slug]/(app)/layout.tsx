@@ -17,7 +17,10 @@ export default async function ProgramLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  // НЕ редиректим — это делает middleware
+  if (!user) {
+    return <>{children}</>;
+  }
 
   const { data: program } = await supabase
     .from("programs")
