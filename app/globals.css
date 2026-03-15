@@ -107,6 +107,10 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .program-layout { display: flex; height: 100dvh; overflow: hidden; }
   .program-main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; background: var(--bg-main); }
 
+  /* ── APP SHELL (universal layout container) ── */
+  .app-shell { display: flex; height: 100dvh; overflow: hidden; }
+  .app-main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; background: var(--bg-main); }
+
   /* ── SIDEBAR ── */
   .sidebar { width: var(--sidebar-w); background: var(--bg-sidebar); border-right: 1px solid var(--border-light); display: none; flex-direction: column; flex-shrink: 0; overflow: hidden; transition: width 0.2s ease; }
   .sidebar-header { height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--border-light); flex-shrink: 0; }
@@ -314,6 +318,8 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
     .sidebar { display: none !important; }
     .mobile-tabs { display: flex; }
     .program-layout { height: calc(100dvh - var(--tabs-h)); }
+    .app-shell { height: calc(100dvh - var(--tabs-h)); }
+    .app-shell.no-tabs { height: 100dvh; }
     .program-main { padding-bottom: 0; }
     .content-scroll { padding: 16px 16px 32px; }
     .input-privacy { display: none; }
@@ -502,6 +508,8 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
     .mobile-tabs { padding-bottom: env(safe-area-inset-bottom); }
     @media (max-width: 768px) {
       .program-layout { height: calc(100dvh - var(--tabs-h) - env(safe-area-inset-bottom)); }
+      .app-shell { height: calc(100dvh - var(--tabs-h) - env(safe-area-inset-bottom)); }
+      .app-shell.no-tabs { height: 100dvh; }
     }
   }
 
@@ -1448,7 +1456,10 @@ body:has(.test-results-page) {
 /* ── Test inside program-layout (after auth) ── */
 .program-main .tc-page,
 .program-main .tc-frame,
-.program-main .tc-screen {
+.program-main .tc-screen,
+.app-main .tc-page,
+.app-main .tc-frame,
+.app-main .tc-screen {
   min-height: 100%;
 }
 
@@ -2427,7 +2438,8 @@ body:has(.test-results-page) {
 html:not(.no-transition) body,
 html:not(.no-transition) .tc-page,
 html:not(.no-transition) .sidebar,
-html:not(.no-transition) .program-main {
+html:not(.no-transition) .program-main,
+html:not(.no-transition) .app-main {
   transition: background-color 200ms ease, color 200ms ease;
 }
 

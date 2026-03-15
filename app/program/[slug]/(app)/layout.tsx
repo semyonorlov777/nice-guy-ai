@@ -142,7 +142,7 @@ export default async function ProgramLayout({
   // Sidebar и MobileTabs — условные siblings, но main с children не меняет позицию в дереве
   return (
     <ChatListProvider>
-      <div className={isAuthed ? "program-layout" : ""}>
+      <div className={isAuthed ? "app-shell" : "app-shell no-tabs"}>
         {sidebarProps && (
           <Sidebar
             slug={sidebarProps.slug}
@@ -153,7 +153,7 @@ export default async function ProgramLayout({
             exerciseCount={sidebarProps.exerciseCount}
           />
         )}
-        <main className={isAuthed ? "program-main" : ""}>
+        <main className="app-main">
           {children}
         </main>
         {mobileTabsProps && (
