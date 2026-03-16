@@ -23,11 +23,16 @@ export async function GET(request: NextRequest) {
   }
 
   // Validate redirect target for safety
-  const target =
+  const isValidRedirect =
     redirect &&
-    (redirect.startsWith("/program/") || redirect.startsWith("/balance"))
-      ? redirect
-      : DEFAULT_REDIRECT;
+    (redirect.startsWith("/program/") || redirect.startsWith("/balance"));
 
+  // If redirect points to a test page, send user to link-success instead
+  // (the original tab will detect auth via onAuthStateChange)
+  if (isValidRedirect && /^\/program\/[^/]+\/test\//.test(redirect)) {
+    return NextResponse.redirect(new URL("/auth/link-success", request.url));
+  }
+
+  const target = isValidRedirect ? redirect : DEFAULT_REDIRECT;
   return NextResponse.redirect(new URL(target, request.url));
 }

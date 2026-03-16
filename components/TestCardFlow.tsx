@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { InChatAuth } from "@/components/InChatAuth";
+import { AuthSheet } from "@/components/AuthSheet";
 import { WelcomeScreen } from "@/components/test/WelcomeScreen";
 import { QuestionScreen } from "@/components/test/QuestionScreen";
 import { BlockTransition } from "@/components/test/BlockTransition";
@@ -53,6 +53,7 @@ export function TestCardFlow() {
   const [animationClass, setAnimationClass] = useState<"enter" | "exit" | null>("enter");
   const [migrateError, setMigrateError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [authSheetOpen, setAuthSheetOpen] = useState(false);
 
   // Two-flow state
   const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
@@ -409,27 +410,10 @@ export function TestCardFlow() {
   }, [isStarting, startNewTest]);
 
   // ── Auth flow ──
-  const handleRequiresAuth = useCallback(async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      await doMigrate();
-    } else {
-      setPhase("auth_wall");
-    }
-  }, []);
-
-  const handleAuthSuccess = useCallback(async () => {
-    await doMigrate();
-    router.refresh(); // layout перерендерится с sidebar
-  }, []);
-
-  async function doMigrate() {
+  const doMigrate = useCallback(async () => {
     setPhase("migrating");
     setMigrateError(null);
+    setAuthSheetOpen(false);
 
     try {
       const res = await fetch("/api/test/migrate", {
@@ -466,7 +450,26 @@ export function TestCardFlow() {
       setMigrateError((err as Error).message);
       setPhase("auth_wall");
     }
-  }
+  }, [sessionId]);
+
+  const handleRequiresAuth = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await doMigrate();
+    } else {
+      setPhase("auth_wall");
+      setAuthSheetOpen(true);
+    }
+  }, [doMigrate]);
+
+  const handleAuthSuccess = useCallback(async () => {
+    await doMigrate();
+    router.refresh(); // layout перерендерится с sidebar
+  }, [doMigrate, router]);
 
   // ── Special cases check (block boundary, auth wall, test complete) ──
   const handleSpecialCases = useCallback((nextIndex: number): boolean => {
@@ -981,9 +984,33 @@ export function TestCardFlow() {
                 {migrateError}
               </div>
             )}
-            <InChatAuth onAuthSuccess={handleAuthSuccess} />
+            <button
+              onClick={() => setAuthSheetOpen(true)}
+              style={{
+                padding: "14px 32px",
+                borderRadius: 12,
+                border: "none",
+                background: "#c9a84c",
+                color: "#0f1114",
+                fontSize: 16,
+                fontWeight: 600,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                marginTop: 8,
+              }}
+            >
+              Войти
+            </button>
           </div>
         )}
+
+        {/* AuthSheet (bottom sheet / modal) */}
+        <AuthSheet
+          open={authSheetOpen}
+          onClose={() => setAuthSheetOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+          context="test"
+        />
 
         {/* Migrating overlay */}
         {phase === "migrating" && (

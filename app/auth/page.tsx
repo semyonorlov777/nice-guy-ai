@@ -56,10 +56,8 @@ function AuthForm({ tgScriptReady }: { tgScriptReady: boolean }) {
   const isPopup = searchParams.get("popup") === "true";
 
   function closePopupWithSuccess() {
-    try {
-      window.opener?.postMessage({ type: "auth-success" }, window.location.origin);
-    } catch { /* cross-origin fallback — opener will detect via polling */ }
-    window.close();
+    // Redirect to dedicated success page that handles postMessage + window.close()
+    window.location.href = "/auth/popup-success";
   }
 
   // Check if already logged in

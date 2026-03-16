@@ -51,8 +51,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Logged-in user on /auth → redirect to app
-  if (pathname === "/auth" && user) {
+  // Logged-in user on /auth → redirect to app (except popup flow)
+  if (pathname === "/auth" && user && request.nextUrl.searchParams.get("popup") !== "true") {
     const url = request.nextUrl.clone();
     url.pathname = DEFAULT_REDIRECT;
     url.search = "";

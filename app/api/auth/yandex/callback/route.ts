@@ -5,7 +5,24 @@ import { DEFAULT_REDIRECT } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const isPopup = request.nextUrl.searchParams.get("state") === "popup";
+
+  // Parse state: supports both legacy "popup" string and new JSON format
+  let isPopup = false;
+  let stateRedirect: string | null = null;
+  const rawState = request.nextUrl.searchParams.get("state");
+  if (rawState) {
+    if (rawState === "popup") {
+      isPopup = true;
+    } else {
+      try {
+        const parsed = JSON.parse(rawState) as { popup?: string; redirect?: string };
+        isPopup = parsed.popup === "true";
+        stateRedirect = parsed.redirect || null;
+      } catch {
+        // malformed state — ignore
+      }
+    }
+  }
 
   if (!code) {
     const url = request.nextUrl.clone();
@@ -55,6 +72,9 @@ export async function GET(request: NextRequest) {
     if (isPopup) {
       redirectUrl.pathname = "/auth";
       redirectUrl.search = "?popup=true";
+    } else if (stateRedirect && (stateRedirect.startsWith("/program/") || stateRedirect.startsWith("/balance"))) {
+      redirectUrl.pathname = stateRedirect;
+      redirectUrl.search = "";
     } else {
       redirectUrl.pathname = DEFAULT_REDIRECT;
       redirectUrl.search = "";
