@@ -26,6 +26,7 @@ interface AuthSheetProps {
   onSuccess: () => void;
   onClose?: () => void;
   redirectTo?: string;
+  initialError?: string;
 }
 
 const CONTEXT_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -98,12 +99,12 @@ function TrustLine() {
   );
 }
 
-export function AuthSheet({ mode, open, onSuccess, onClose, context = "default" }: AuthSheetProps) {
+export function AuthSheet({ mode, open, onSuccess, onClose, context = "default", initialError }: AuthSheetProps) {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tgLoading, setTgLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError || "");
   const [scriptReady, setScriptReady] = useState(false);
 
   const calledRef = useRef(false);
