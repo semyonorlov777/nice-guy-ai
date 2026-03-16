@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const clientId = process.env.TELEGRAM_CLIENT_ID!;
+    const clientId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 
     // Verify JWT signature, issuer, audience, expiration
     const tgUser = await verifyTelegramToken(id_token, clientId);
