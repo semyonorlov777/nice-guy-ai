@@ -13,6 +13,7 @@ interface HistoryScreenProps {
   results: TestResultSummary[]; // DESC по дате (первый = последний)
   onRetake: () => void;
   isStarting: boolean;
+  programSlug: string;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("ru", {
@@ -96,7 +97,7 @@ const LockIcon = () => (
   </svg>
 );
 
-export function HistoryScreen({ results, onRetake, isStarting }: HistoryScreenProps) {
+export function HistoryScreen({ results, onRetake, isStarting, programSlug }: HistoryScreenProps) {
   const router = useRouter();
   const latest = results[0];
   const first = results[results.length - 1];
@@ -122,7 +123,7 @@ export function HistoryScreen({ results, onRetake, isStarting }: HistoryScreenPr
       {/* Latest result card */}
       <div
         className="tc-history-card"
-        onClick={() => router.push(`/test/results/${latest.id}`)}
+        onClick={() => router.push(`/program/${programSlug}/test/results/${latest.id}`)}
       >
         <div className="tc-history-card-label">
           {hasMultiple ? "Последний результат" : "Ваш результат"}
@@ -189,7 +190,7 @@ export function HistoryScreen({ results, onRetake, isStarting }: HistoryScreenPr
                 <div
                   key={result.id}
                   className="tc-history-prev-row"
-                  onClick={() => router.push(`/test/results/${result.id}`)}
+                  onClick={() => router.push(`/program/${programSlug}/test/results/${result.id}`)}
                 >
                   <div className="tc-history-prev-num">{attemptNumber}</div>
                   <div className="tc-history-prev-score">{result.total_score}</div>

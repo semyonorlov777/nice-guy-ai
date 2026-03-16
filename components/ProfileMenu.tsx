@@ -10,10 +10,11 @@ interface ProfileMenuProps {
     username: string | null;
     avatarUrl: string | null;
   } | null;
+  slug: string;
   collapsed?: boolean;
 }
 
-export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
+export function ProfileMenu({ user, slug, collapsed }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   type ThemeMode = "light" | "dark" | "system";
@@ -196,7 +197,7 @@ export function ProfileMenu({ user, collapsed }: ProfileMenuProps) {
           }}
         >
           <button
-            onClick={() => { setOpen(false); router.push("/balance"); }}
+            onClick={() => { setOpen(false); router.push(`/program/${slug}/balance`); }}
             style={{
               display: "flex",
               alignItems: "center",

@@ -9,7 +9,7 @@ interface ShareButtonsProps {
 
 export function ShareButtons({ resultId, totalScore }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
-  const url = `https://nice-guy-ai.vercel.app/test/results/${resultId}`;
+  const url = `https://nice-guy-ai.vercel.app/program/nice-guy/test/results/${resultId}`;
   const text = `Мой Индекс синдрома славного парня — ${totalScore}/100. Пройди тест сам:`;
 
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;

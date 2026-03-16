@@ -182,7 +182,7 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        <ProfileMenu user={user ?? null} collapsed={collapsed} />
+        <ProfileMenu user={user ?? null} slug={slug} collapsed={collapsed} />
       </div>
     </nav>
   );

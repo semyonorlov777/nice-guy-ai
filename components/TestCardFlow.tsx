@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { InChatAuth } from "@/components/InChatAuth";
 import { WelcomeScreen } from "@/components/test/WelcomeScreen";
@@ -36,6 +36,8 @@ const TEXT_TIMEOUT_ABORT_MS = 8000;
 
 export function TestCardFlow() {
   const router = useRouter();
+  const pathname = usePathname();
+  const programSlug = pathname.match(/^\/program\/([^/]+)\//)?.[1] ?? "nice-guy";
 
   // Core state
   const [phase, setPhase] = useState<CardPhase>("loading");
@@ -875,7 +877,7 @@ export function TestCardFlow() {
   // ── View results ──
   const handleViewResults = useCallback(() => {
     if (resultId) {
-      router.push(`/test/results/${resultId}`);
+      router.push(`/program/${programSlug}/test/results/${resultId}`);
     }
   }, [resultId, router]);
 
@@ -908,6 +910,7 @@ export function TestCardFlow() {
             results={testResults}
             onRetake={handleRetake}
             isStarting={isStarting}
+            programSlug={programSlug}
           />
         )}
 

@@ -33,16 +33,21 @@ app/
 ├── globals.css                           # Все стили (включая лендинг)
 ├── auth/page.tsx                         # Логин (Telegram/Яндекс/Magic Link)
 ├── auth/callback/route.ts                # Supabase OAuth callback
-├── balance/page.tsx                      # Тариф и оплата (общий, не привязан к программе)
+├── balance/page.tsx                      # Redirect → /program/nice-guy/balance
+├── test/results/[id]/page.tsx            # Redirect → /program/nice-guy/test/results/[id]
+├── test/issp/page.tsx                    # Redirect → /program/nice-guy/test/issp
 ├── program/[slug]/
-│   ├── page.tsx                          # Лендинг программы
+│   ├── page.tsx                          # Лендинг программы (вне (app)/, без sidebar)
 │   └── (app)/                            # Группа с Sidebar + MobileTabs layout
-│       ├── layout.tsx                    # Sidebar + авторизация
+│       ├── layout.tsx                    # Sidebar (если auth) + авторизация
 │       ├── chat/page.tsx                 # Свободный чат
 │       ├── author-chat/page.tsx          # Разговор с автором (AI в роли Гловера)
 │       ├── exercises/page.tsx            # Список упражнений
 │       ├── exercise/[id]/page.tsx        # Чат по упражнению
-│       └── portrait/page.tsx             # Психологический портрет
+│       ├── portrait/page.tsx             # Психологический портрет
+│       ├── balance/page.tsx              # Тариф и оплата (protected)
+│       ├── test/issp/page.tsx            # Тест ISSP (public)
+│       └── test/results/[id]/page.tsx    # Результаты теста (public)
 ├── api/
 │   ├── chat/route.ts                     # AI-чат (авторизованный, SSE стриминг)
 │   ├── chat/anonymous/route.ts           # AI-чат (анонимный, для лендинга)
@@ -103,12 +108,37 @@ middleware.ts                             # Auth guard для защищённы
 - Стили: в основном в `globals.css` (CSS-переменные), Tailwind для утилит
 - Мобильная адаптация: Sidebar скрывается, MobileTabs внизу
 
+## Как добавить новую страницу в кабинет
+
+1. Создать папку в `app/program/[slug]/(app)/`
+2. Layout, sidebar, контейнер — автоматически
+3. По умолчанию страница **PROTECTED** (требует auth) — middleware блокирует анонимов
+4. Если страница должна быть **PUBLIC** (доступна без логина):
+   - Добавить regex exception в `middleware.ts` → `isProtected()` ПЕРЕД основным regex
+   - Пример: `if (/^\/program\/[^/]+\/test\//.test(pathname)) return false;`
+5. Sidebar показывается автоматически для залогиненных, скрывается для анонимов (решает layout)
+6. Для разного контента по auth: в page.tsx проверять user через `supabase.auth.getUser()`
+
+### URL-структура кабинета
+
+| URL | Доступ | Описание |
+|-----|--------|----------|
+| `/program/[slug]/(app)/chat` | protected | Свободный чат |
+| `/program/[slug]/(app)/exercises` | protected | Список упражнений |
+| `/program/[slug]/(app)/exercise/[n]` | protected | Чат по упражнению |
+| `/program/[slug]/(app)/portrait` | protected | Психологический портрет |
+| `/program/[slug]/(app)/balance` | protected | Тариф и оплата |
+| `/program/[slug]/(app)/test/issp` | public | Тест ISSP |
+| `/program/[slug]/(app)/test/results/[id]` | public | Результаты теста |
+
+Старые URL (`/balance`, `/test/results/[id]`, `/test/issp`) — redirect-заглушки.
+
 ## Важные нюансы
 
 - Telegram Bot ID `8544302305` захардкожен — это публичный ID, безопасно
 - Яндекс OAuth Client ID `ce4f585bbcd846d9bc025c28a60ebe6e`
 - Фейковые email для OAuth: `tg_XXX@niceguy.local`, `ya_XXX@niceguy.local`
-- Баланс токенов — общий для аккаунта, страница `/balance` (не `/program/.../balance`)
+- Баланс токенов — общий для аккаунта, страница `/program/[slug]/balance`
 - Портрет обновляется автоматически каждые N сообщений (вызов из chat/route.ts)
 - Welcome messages хранятся в exercises.welcome_message и programs.free_chat_welcome
 - Gemini требует чтобы история начиналась с "user" — welcome-сообщения фильтруются
