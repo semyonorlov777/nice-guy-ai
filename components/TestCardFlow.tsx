@@ -238,6 +238,13 @@ export function TestCardFlow() {
           const cq = data.current_question || 0;
           setCurrentQuestionIndex(cq);
 
+          // Auth wall: anonymous user at Q34+ must authenticate
+          if (cq >= 34) {
+            setPhase("auth_wall");
+            setAuthSheetOpen(true);
+            return;
+          }
+
           // If not started yet — show welcome instead of empty question
           if (cq === 0 && (!data.messages || data.messages.length === 0)) {
             setPhase("welcome");
