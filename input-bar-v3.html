@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>InputBar 3.0 — Button Inside Input</title>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════
+     GLOBAL TOKENS — synced with globals.css
+     ═══════════════════════════════════════════ */
+  :root {
+    --bg-main: #f2f0ed;
+    --bg-card: #ffffff;
+    --bg-elevated: #f0efec;
+    --bg-input: #ffffff;
+    --bg-chat-zone: #faf9f7;
+    --border: #e5e3de;
+    --border-light: #eceae5;
+    --text-primary: #1a1917;
+    --text-secondary: #6b6860;
+    --text-muted: #9e9b93;
+    --text-hint: #B5B2AA;
+    --accent: #b8973a;
+    --accent-hover: #a8832e;
+    --accent-soft: rgba(184, 151, 58, 0.10);
+    --accent-border: rgba(184, 151, 58, 0.25);
+    --accent-on: #FFFFFF;
+    --success: #4A7A4A;
+    --success-soft: rgba(74,122,74,0.08);
+    --danger: #C94C4C;
+    --danger-soft: rgba(201,76,76,0.08);
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-sm: 8px;
+    --radius-pill: 100px;
+    --ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+    --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
+    --shadow-focus: 0 0 0 3px rgba(184,151,58,0.2);
+  }
+
+  [data-theme="dark"] {
+    --bg-main: #0b0c0e;
+    --bg-card: #191c21;
+    --bg-elevated: #1e2126;
+    --bg-input: #1c1f26;
+    --bg-chat-zone: #111318;
+    --border: #2a2d33;
+    --border-light: #232629;
+    --text-primary: #e8e6e1;
+    --text-secondary: #9a978f;
+    --text-muted: #5f5d57;
+    --text-hint: #6b6860;
+    --accent: #c9a84c;
+    --accent-hover: #d4b35a;
+    --accent-soft: rgba(201, 168, 76, 0.10);
+    --accent-border: rgba(201, 168, 76, 0.22);
+    --accent-on: #1A1917;
+    --success: #6aae6a;
+    --success-soft: rgba(106,174,106,0.10);
+    --danger: #dc5050;
+    --danger-soft: rgba(220,80,80,0.10);
+    --shadow-focus: 0 0 0 3px rgba(201,168,76,0.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 150ms !important;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 40px;
+    gap: 24px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  /* ═══ HEADER ═══ */
+  .demo-header {
+    width: 100%; max-width: 640px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .demo-title { font-size: 18px; font-weight: 600; }
+  .demo-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .theme-toggle {
+    width: 36px; height: 36px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .theme-toggle:hover { border-color: var(--accent-border); color: var(--accent); }
+
+  /* ═══ SWITCHERS ═══ */
+  .mode-switcher {
+    width: 100%; max-width: 640px; display: flex; gap: 6px;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 4px;
+  }
+  .mode-btn {
+    flex: 1; padding: 8px 12px; border: none; background: transparent;
+    border-radius: var(--radius-sm); font-family: var(--font-body);
+    font-size: 13px; color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .mode-btn:hover { color: var(--text-secondary); }
+  .mode-btn.active {
+    background: var(--bg-card); color: var(--text-primary);
+    font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  [data-theme="dark"] .mode-btn.active { box-shadow: none; border: 1px solid var(--border); }
+
+  .platform-indicator {
+    width: 100%; max-width: 640px; display: flex; gap: 6px;
+    align-items: center; font-size: 12px; color: var(--text-muted);
+  }
+  .pip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: var(--radius-pill);
+    border: 1px solid var(--border); background: var(--bg-card);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .pip:hover { border-color: var(--accent-border); }
+  .pip.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+
+  /* ═══ CHAT PREVIEW ═══ */
+  .chat-preview {
+    width: 100%; max-width: 640px; background: var(--bg-chat-zone);
+    border-radius: var(--radius-lg); border: 1px solid var(--border);
+    overflow: hidden; transition: background 0.2s, border-color 0.2s;
+  }
+  .chat-messages {
+    padding: 20px 16px; min-height: 160px;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 12px;
+  }
+  .msg {
+    max-width: 80%; padding: 10px 14px;
+    border-radius: var(--radius) var(--radius) var(--radius) 4px;
+    font-size: 14px; line-height: 1.5; color: var(--text-secondary);
+    background: var(--bg-card); border: 1px solid var(--border-light);
+  }
+  .msg.user {
+    align-self: flex-end; background: var(--accent-soft);
+    border-color: var(--accent-border);
+    border-radius: var(--radius) var(--radius) 4px var(--radius);
+    color: var(--text-primary);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     INPUT BAR v3 — BUTTON INSIDE INPUT (Claude/ChatGPT)
+     
+     Architecture:
+     .input-bar            → bottom section wrapper (padding, bg, border-top)
+       .input-container    → THE visible "field" (border, bg, border-radius)
+         textarea          → no border, no bg, transparent — just text
+         .action-btn       → positioned inside the container
+         .rec-bar          → replaces textarea during recording
+         .error-bar        → replaces textarea during error
+     
+     Key insight: .input-container is always 100% width.
+     Textarea is flex:1 INSIDE it. Button is fixed-width inside.
+     Button size changes do NOT cause container width to change.
+     ═══════════════════════════════════════════════════════ */
+
+  .input-bar {
+    padding: 12px 12px 14px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-light);
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  /* THE container that looks like the input field */
+  .input-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    min-height: 48px;
+    padding: 4px 4px 4px 14px;
+    background: var(--bg-input);
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), background 0.2s;
+  }
+  .input-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-focus);
+  }
+  @media (min-width: 640px) {
+    .input-container { min-height: 52px; }
+  }
+
+  /* ── Textarea — invisible, just text ── */
+  .input-textarea {
+    flex: 1;
+    min-height: 40px;
+    max-height: 140px;
+    padding: 8px 0;
+    background: transparent;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .input-textarea::placeholder { color: var(--text-hint); font-size: 14px; }
+
+  /* Hide textarea during recording/locked/error */
+  .input-bar.recording .input-textarea,
+  .input-bar.locked .input-textarea,
+  .input-bar.has-error .input-textarea { display: none; }
+
+  /* Container style changes per state */
+  .input-bar.recording .input-container,
+  .input-bar.locked .input-container {
+    background: var(--danger-soft);
+    border-color: rgba(201,76,76,0.25);
+    padding-right: 4px;
+    align-items: center;
+  }
+  [data-theme="dark"] .input-bar.recording .input-container,
+  [data-theme="dark"] .input-bar.locked .input-container {
+    border-color: rgba(220,80,80,0.25);
+  }
+
+  .input-bar.has-error .input-container {
+    background: var(--danger-soft);
+    border-color: rgba(201,76,76,0.25);
+    padding-right: 10px;
+    align-items: center;
+  }
+  [data-theme="dark"] .input-bar.has-error .input-container {
+    border-color: rgba(220,80,80,0.25);
+  }
+
+  /* ═══ ACTION BUTTON — inside the container ═══ */
+  .action-btn {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-muted);
+    position: relative;
+    transition:
+      background 0.2s var(--ease),
+      border-color 0.2s var(--ease),
+      color 0.2s var(--ease),
+      transform 0.1s,
+      width 0.25s var(--ease),
+      height 0.25s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: none;
+  }
+  .action-btn:active { transform: scale(0.92); }
+
+  /* Icon crossfade */
+  .action-btn .ico {
+    position: absolute;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+  }
+  .action-btn .ico-mic    { opacity: 1; transform: scale(1); }
+  .action-btn .ico-send   { opacity: 0; transform: scale(0.5); }
+  .action-btn .ico-check  { opacity: 0; transform: scale(0.5); }
+  .action-btn .ico-stop   { opacity: 0; transform: scale(0.5); }
+
+  /* ── Typing → accent circle ── */
+  .action-btn.s-typing {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-on);
+  }
+  .action-btn.s-typing .ico-mic  { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-typing .ico-send { opacity: 1; transform: scale(1); }
+
+  /* ── Recording → pulsing red, grows to 52px ── */
+  .action-btn.s-recording {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+    width: 52px;
+    height: 52px;
+    animation: recBreathe 1.8s ease-in-out infinite;
+  }
+  .action-btn.s-recording .ico-mic  { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-recording .ico-stop { opacity: 1; transform: scale(1.15); }
+
+  @keyframes recBreathe {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,76,76,0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(201,76,76,0); }
+  }
+  [data-theme="dark"] .action-btn.s-recording { animation-name: recBreatheDark; }
+  @keyframes recBreatheDark {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,80,80,0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(220,80,80,0); }
+  }
+
+  /* ── Locked → steady red, 52px ── */
+  .action-btn.s-locked {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+    width: 52px;
+    height: 52px;
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(201,76,76,0.15);
+  }
+  .action-btn.s-locked .ico-mic  { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-locked .ico-stop { opacity: 1; transform: scale(1.15); }
+
+  /* ── Sent → green check ── */
+  .action-btn.s-sent {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+    pointer-events: none;
+  }
+  .action-btn.s-sent .ico-mic   { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-sent .ico-send  { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-sent .ico-stop  { opacity: 0; transform: scale(0.5); }
+  .action-btn.s-sent .ico-check { opacity: 1; transform: scale(1); }
+
+  /* ── Error → shake ── */
+  .action-btn.s-error { animation: btnShake 0.4s var(--ease); }
+  @keyframes btnShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(2px); }
+  }
+
+  /* ── Test mode: no mic ── */
+  .input-bar[data-mode="test"] .action-btn .ico-mic { display: none; }
+  .input-bar[data-mode="test"] .action-btn .ico-send { opacity: 0; transform: scale(0.5); }
+  .input-bar[data-mode="test"] .action-btn:not(.s-typing):not(.s-sent):not(.s-error) .ico-send {
+    opacity: 0.35; transform: scale(1);
+  }
+
+  /* ═══ RECORDING BAR — inside the container ═══ */
+  .rec-bar {
+    display: none;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px;
+    height: 40px;
+    animation: recBarIn 0.2s var(--ease);
+  }
+  .input-bar.recording .rec-bar,
+  .input-bar.locked .rec-bar { display: flex; }
+
+  @keyframes recBarIn {
+    from { opacity: 0; transform: scaleX(0.95); }
+    to { opacity: 1; transform: scaleX(1); }
+  }
+
+  .rec-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--danger); flex-shrink: 0;
+    animation: recDotBlink 1s ease-in-out infinite;
+  }
+  @keyframes recDotBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .rec-timer {
+    font-size: 14px; font-weight: 500; color: var(--danger);
+    font-variant-numeric: tabular-nums; min-width: 36px;
+  }
+
+  .rec-wave {
+    flex: 1; height: 24px; display: flex; align-items: center;
+    gap: 2px; overflow: hidden;
+  }
+  .rec-wave-bar {
+    width: 3px; border-radius: 2px; background: var(--danger);
+    opacity: 0.4; animation: waveAnim 0.8s ease-in-out infinite;
+  }
+  @keyframes waveAnim { 0%, 100% { height: 4px; } 50% { height: var(--h, 16px); } }
+
+  .rec-swipe-hint {
+    display: none; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text-hint); white-space: nowrap; flex-shrink: 0;
+  }
+  .rec-swipe-hint svg { opacity: 0.5; }
+  .input-bar.recording .rec-swipe-hint { display: flex; }
+  .input-bar.locked .rec-swipe-hint { display: none; }
+
+  .rec-cancel {
+    font-size: 13px; color: var(--text-muted); cursor: pointer;
+    padding: 6px 10px; border-radius: 6px; transition: all 0.15s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .rec-cancel:hover { color: var(--danger); background: var(--danger-soft); }
+
+  /* ═══ LOCK HINT ═══ */
+  .lock-hint {
+    position: absolute;
+    bottom: calc(100% + 8px); right: 4px;
+    display: none; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 10px 6px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    animation: lockSlideUp 0.25s var(--ease-bounce);
+    font-size: 10px; color: var(--text-muted);
+    z-index: 10;
+  }
+  [data-theme="dark"] .lock-hint { box-shadow: none; }
+  .input-bar.recording .lock-hint { display: flex; }
+  .input-bar.locked .lock-hint { display: none; }
+  .input-bar.recording.mouse-mode .lock-hint { display: none; }
+  @keyframes lockSlideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .lock-icon { width: 20px; height: 20px; color: var(--text-muted); }
+  .lock-arrow {
+    width: 12px; height: 12px; color: var(--text-hint);
+    animation: lockArrowBounce 1.2s ease-in-out infinite;
+  }
+  @keyframes lockArrowBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+  /* ═══ ERROR BAR — inside the container ═══ */
+  .error-bar {
+    display: none;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px;
+    height: 40px;
+    opacity: 0;
+    transform: scaleX(0.96);
+    transition: opacity 0.5s ease-out, transform 0.25s var(--ease);
+  }
+  .input-bar.has-error .error-bar {
+    display: flex; opacity: 1; transform: scaleX(1);
+  }
+  .input-bar.has-error .error-bar.fading {
+    opacity: 0; transform: scaleX(0.98);
+  }
+
+  .error-bar-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--danger); opacity: 0.7; }
+  .error-bar-text { flex: 1; font-size: 13px; color: var(--danger); line-height: 1.3; }
+  .error-bar-dismiss {
+    width: 28px; height: 28px; border-radius: 6px; border: none;
+    background: transparent; color: var(--danger); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.5; transition: all 0.15s; flex-shrink: 0;
+  }
+  .error-bar-dismiss:hover { opacity: 1; background: rgba(201,76,76,0.1); }
+
+  /* ═══ PRIVACY LINE ═══ */
+  .input-privacy {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+
+  /* ═══ COMPARISON LABEL ═══ */
+  .compare-label {
+    width: 100%; max-width: 640px;
+    padding: 10px 14px;
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .compare-label strong { color: var(--accent); }
+
+  /* ═══ LEGEND ═══ */
+  .legend {
+    width: 100%; max-width: 640px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 12px;
+    color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+  }
+  .legend-item:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+  .legend-item.active { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; color: var(--accent); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-dot.idle { background: var(--text-muted); }
+  .legend-dot.typing { background: var(--accent); }
+  .legend-dot.recording { background: var(--danger); }
+  .legend-dot.locked { background: var(--danger); border: 2px solid var(--text-primary); }
+  .legend-dot.sent { background: var(--success); }
+  .legend-dot.error { background: var(--danger); border: 2px dashed var(--danger); }
+
+  /* ═══ INSTRUCTIONS ═══ */
+  .instructions {
+    width: 100%; max-width: 640px; padding: 14px 16px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 13px;
+    color: var(--text-secondary); line-height: 1.6;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .instructions strong { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="demo-header">
+  <div>
+    <div class="demo-title">InputBar 3.0</div>
+    <div class="demo-subtitle">Button Inside Input • Claude/ChatGPT pattern</div>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()" aria-label="Переключить тему">
+    <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+</div>
+
+<!-- Compare note -->
+<div class="compare-label">
+  <strong>v3 vs v2.1:</strong> Кнопка теперь ВНУТРИ контейнера ввода (как Claude, ChatGPT, Telegram). Контейнер = pill-shape с бордером. Textarea прозрачная. Больше никаких прыжков ширины при смене состояния кнопки.
+</div>
+
+<!-- Mode switcher -->
+<div class="mode-switcher">
+  <button class="mode-btn active" onclick="setMode('chat', this)">💬 Чат</button>
+  <button class="mode-btn" onclick="setMode('exercise', this)">📝 Упражнение</button>
+  <button class="mode-btn" onclick="setMode('test', this)">📊 Тест</button>
+</div>
+
+<!-- Platform simulation -->
+<div class="platform-indicator">
+  <span style="margin-right: 4px;">Платформа:</span>
+  <span class="pip active" id="pipAuto" onclick="setPlatform('auto')">🔄 Auto</span>
+  <span class="pip" id="pipTouch" onclick="setPlatform('touch')">📱 Touch</span>
+  <span class="pip" id="pipMouse" onclick="setPlatform('mouse')">🖱 Mouse</span>
+</div>
+
+<!-- State legend -->
+<div class="legend">
+  <div class="legend-item active" onclick="setState('idle')"><div class="legend-dot idle"></div>Idle</div>
+  <div class="legend-item" onclick="setState('typing')"><div class="legend-dot typing"></div>Typing</div>
+  <div class="legend-item" onclick="setState('recording')"><div class="legend-dot recording"></div>Recording</div>
+  <div class="legend-item" onclick="setState('locked')"><div class="legend-dot locked"></div>Locked</div>
+  <div class="legend-item" onclick="setState('sent')"><div class="legend-dot sent"></div>Sent</div>
+  <div class="legend-item" onclick="setState('error')"><div class="legend-dot error"></div>Error</div>
+</div>
+
+<!-- Live preview -->
+<div class="chat-preview">
+  <div class="chat-messages">
+    <div class="msg" id="aiMsg">Когда кто-то из близких недоволен мной, мне трудно заниматься своими делами — я думаю об этом.</div>
+    <div class="msg user" id="userMsg" style="display:none"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       INPUT BAR v3 — Button Inside Input
+       ════════════════════════════════════════ -->
+  <div class="input-bar" id="inputBar" data-mode="chat">
+
+    <!-- The container that LOOKS like the input field -->
+    <div class="input-container" id="inputContainer">
+
+      <!-- Textarea — transparent, no border -->
+      <textarea class="input-textarea" id="textarea" rows="1"
+        placeholder="Сообщение…"
+        oninput="onInput()"
+        aria-label="Введите сообщение"
+      ></textarea>
+
+      <!-- Recording bar — replaces textarea -->
+      <div class="rec-bar" role="status" aria-live="polite">
+        <div class="rec-dot" aria-hidden="true"></div>
+        <span class="rec-timer" id="recTimer">0:00</span>
+        <div class="rec-wave" id="recWave" aria-hidden="true"></div>
+        <span class="rec-swipe-hint" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          свайп
+        </span>
+        <span class="rec-cancel" onclick="cancelRecording()" role="button" tabindex="0">Отмена</span>
+      </div>
+
+      <!-- Error bar — replaces textarea -->
+      <div class="error-bar" id="errorBar" role="alert">
+        <svg class="error-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span class="error-bar-text" id="errorText">Не удалось распознать речь</span>
+        <button class="error-bar-dismiss" onclick="dismissError()" aria-label="Закрыть ошибку">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- Lock hint -->
+      <div class="lock-hint" aria-hidden="true">
+        <svg class="lock-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+
+      <!-- Action button — INSIDE the container -->
+      <button class="action-btn" id="actionBtn"
+        aria-label="Записать голосовое сообщение"
+        onpointerdown="onBtnDown(event)"
+        onpointerup="onBtnUp(event)"
+        onpointermove="onBtnMove(event)"
+        onpointercancel="onBtnUp(event)">
+        <span class="ico ico-mic" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </span>
+        <span class="ico ico-send" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </span>
+        <span class="ico ico-check" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <span class="ico ico-stop" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </span>
+      </button>
+    </div>
+
+    <div class="input-privacy">🔒 Всё, что ты напишешь, остаётся между нами</div>
+  </div>
+</div>
+
+<!-- Instructions -->
+<div class="instructions" id="instructions">
+  <strong>Idle:</strong> Микрофон в idle. <strong>Desktop:</strong> click = locked. <strong>Mobile:</strong> hold = push-to-talk, свайп ↑ = lock.
+</div>
+
+<script>
+  let currentState = 'idle';
+  let currentMode = 'chat';
+  let platformOverride = 'auto';
+  let holdTimer = null;
+  let recInterval = null;
+  let recSeconds = 0;
+  let errorTimeout = null;
+  let errorFadeTimeout = null;
+  let ptrStartY = 0, ptrStartX = 0, ptrId = null;
+  let didLock = false, isHolding = false, btnDownTime = 0;
+  let lastPointerType = 'mouse';
+
+  const HOLD_THRESHOLD = 200;
+  const SWIPE_UP_PX = 40;
+  const SWIPE_LEFT_PX = 60;
+
+  function getEffectivePlatform(pt) {
+    if (platformOverride !== 'auto') return platformOverride;
+    return pt === 'touch' ? 'touch' : 'mouse';
+  }
+
+  // Generate waveform
+  const wave = document.getElementById('recWave');
+  for (let i = 0; i < 32; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'rec-wave-bar';
+    bar.style.setProperty('--h', (4 + Math.random() * 16) + 'px');
+    bar.style.animationDelay = (Math.random() * 0.8) + 's';
+    wave.appendChild(bar);
+  }
+
+  // ═══ STATE MACHINE ═══
+  function setState(state) {
+    currentState = state;
+    const bar = document.getElementById('inputBar');
+    const btn = document.getElementById('actionBtn');
+    const ta = document.getElementById('textarea');
+
+    bar.classList.remove('recording', 'locked', 'has-error', 'mouse-mode');
+    btn.className = 'action-btn';
+    stopTimer();
+    clearTimeout(errorTimeout);
+    clearTimeout(errorFadeTimeout);
+    document.getElementById('errorBar').classList.remove('fading');
+
+    // Legend
+    const states = ['idle','typing','recording','locked','sent','error'];
+    document.querySelectorAll('.legend-item').forEach((l, i) => {
+      l.classList.toggle('active', states[i] === state);
+    });
+
+    // Aria
+    const ariaLabels = {
+      idle: currentMode === 'test' ? 'Отправить ответ' : 'Записать голосовое сообщение',
+      typing: 'Отправить сообщение', recording: 'Остановить запись',
+      locked: 'Остановить запись и отправить', sent: 'Сообщение отправлено', error: 'Ошибка'
+    };
+    btn.setAttribute('aria-label', ariaLabels[state] || 'Отправить');
+
+    switch (state) {
+      case 'idle':
+        ta.value = '';
+        updateInstructions('idle');
+        break;
+      case 'typing':
+        ta.value = 'С коллегами нет, а вот с женой — постоянно…';
+        btn.classList.add('s-typing');
+        updateInstructions('typing');
+        break;
+      case 'recording':
+        bar.classList.add('recording');
+        if (lastPointerType === 'mouse' || platformOverride === 'mouse') bar.classList.add('mouse-mode');
+        btn.classList.add('s-recording');
+        startTimer();
+        updateInstructions('recording');
+        break;
+      case 'locked':
+        bar.classList.add('locked');
+        btn.classList.add('s-locked');
+        if (!recInterval) startTimer();
+        updateInstructions('locked');
+        break;
+      case 'sent':
+        btn.classList.add('s-sent');
+        document.getElementById('userMsg').style.display = 'block';
+        document.getElementById('userMsg').textContent = 'Да, это прям про меня. Особенно с женой.';
+        ta.value = '';
+        updateInstructions('sent');
+        setTimeout(() => { if (currentState === 'sent') { setState('idle'); document.getElementById('userMsg').style.display = 'none'; } }, 1200);
+        break;
+      case 'error':
+        btn.classList.add('s-error');
+        showError('Не удалось распознать речь. Попробуйте ещё раз или напишите текстом.');
+        updateInstructions('error');
+        setTimeout(() => { if (currentState === 'error') btn.classList.remove('s-error'); }, 500);
+        break;
+    }
+  }
+
+  function updateInstructions(state) {
+    const el = document.getElementById('instructions');
+    const plat = platformOverride === 'auto' ? 'auto-detect' : platformOverride;
+    const texts = {
+      idle: currentMode === 'test'
+        ? '<strong>Test / Idle:</strong> Микрофон скрыт. Тусклая стрелка → accent при наборе. Enter или тап = отправить.'
+        : `<strong>Idle:</strong> Микрофон внутри pill. <strong>Desktop:</strong> click = locked. <strong>Mobile:</strong> hold = push-to-talk, свайп ↑ = lock. <em>Platform: ${plat}</em>`,
+      typing: '<strong>Typing:</strong> Accent-кнопка внутри pill. Тап или Enter = отправить.',
+      recording: '<strong>Recording:</strong> Контейнер красный. Кнопка 52px, пульсирует. Touch: держи = push-to-talk. Свайп ↑ = lock. ← = отмена.',
+      locked: '<strong>Locked:</strong> Руки свободны. Тап stop / Enter = отправка. «Отмена» = отменить.',
+      sent: '<strong>Sent:</strong> Зелёная галочка 1200ms → reset.',
+      error: '<strong>Error:</strong> Shake 400ms. Ошибка внутри pill: 2.5с → fadeOut 500ms.'
+    };
+    el.innerHTML = texts[state] || '';
+  }
+
+  // ═══ ERROR ═══
+  function showError(msg) {
+    const bar = document.getElementById('inputBar');
+    const errorBar = document.getElementById('errorBar');
+    document.getElementById('errorText').textContent = msg;
+    errorBar.classList.remove('fading');
+    bar.classList.remove('has-error');
+    void bar.offsetHeight;
+    bar.classList.add('has-error');
+    clearTimeout(errorTimeout);
+    clearTimeout(errorFadeTimeout);
+    errorTimeout = setTimeout(() => {
+      errorBar.classList.add('fading');
+      errorFadeTimeout = setTimeout(() => {
+        bar.classList.remove('has-error');
+        errorBar.classList.remove('fading');
+        if (currentState === 'error') currentState = 'idle';
+      }, 500);
+    }, 2500);
+  }
+
+  function dismissError() {
+    const bar = document.getElementById('inputBar');
+    clearTimeout(errorTimeout);
+    clearTimeout(errorFadeTimeout);
+    bar.classList.remove('has-error');
+    document.getElementById('errorBar').classList.remove('fading');
+    if (currentState === 'error') currentState = 'idle';
+  }
+
+  // ═══ TIMER ═══
+  function startTimer() { recSeconds = 0; updateTimer(); recInterval = setInterval(() => { recSeconds++; updateTimer(); }, 1000); }
+  function stopTimer() { clearInterval(recInterval); recInterval = null; recSeconds = 0; updateTimer(); }
+  function updateTimer() {
+    const m = Math.floor(recSeconds / 60), s = recSeconds % 60;
+    document.getElementById('recTimer').textContent = m + ':' + String(s).padStart(2, '0');
+  }
+
+  // ═══ TEXTAREA ═══
+  function onInput() {
+    const ta = document.getElementById('textarea');
+    const btn = document.getElementById('actionBtn');
+    const hasText = ta.value.trim().length > 0;
+    if (hasText && currentState === 'idle') { currentState = 'typing'; btn.classList.add('s-typing'); highlightLegend('typing'); }
+    else if (!hasText && currentState === 'typing') { currentState = 'idle'; btn.classList.remove('s-typing'); highlightLegend('idle'); }
+    ta.style.height = 'auto';
+    ta.style.overflowY = 'hidden';
+    const newH = Math.min(ta.scrollHeight, 140);
+    ta.style.height = newH + 'px';
+    if (ta.scrollHeight > 140) ta.style.overflowY = 'auto';
+  }
+
+  function highlightLegend(state) {
+    const states = ['idle','typing','recording','locked','sent','error'];
+    document.querySelectorAll('.legend-item').forEach((l, i) => l.classList.toggle('active', states[i] === state));
+  }
+
+  // ═══ BUTTON ═══
+  function onBtnDown(e) {
+    e.preventDefault();
+    if (currentState === 'sent') return;
+    const btnEl = e.target.closest('.action-btn');
+    btnEl.setPointerCapture(e.pointerId);
+    ptrId = e.pointerId; ptrStartY = e.clientY; ptrStartX = e.clientX;
+    didLock = false; isHolding = false; btnDownTime = Date.now();
+    lastPointerType = e.pointerType || 'mouse';
+    const platform = getEffectivePlatform(lastPointerType);
+
+    if (currentState === 'typing') { setState('sent'); return; }
+    if (currentState === 'locked') { setState('sent'); return; }
+    if (currentState === 'idle' && currentMode !== 'test') {
+      if (platform === 'mouse') { setState('locked'); }
+      else { holdTimer = setTimeout(() => { isHolding = true; setState('recording'); }, HOLD_THRESHOLD); }
+    }
+  }
+
+  function onBtnMove(e) {
+    if (ptrId !== e.pointerId) return;
+    const dy = ptrStartY - e.clientY, dx = ptrStartX - e.clientX;
+    if (currentState === 'recording' && !didLock && dy > SWIPE_UP_PX) { didLock = true; setState('locked'); return; }
+    if ((currentState === 'recording' || currentState === 'locked') && dx > SWIPE_LEFT_PX) cancelRecording();
+  }
+
+  function onBtnUp(e) {
+    e.preventDefault(); clearTimeout(holdTimer);
+    if (ptrId === e.pointerId) ptrId = null;
+    const platform = getEffectivePlatform(lastPointerType);
+    if (currentState === 'idle' && !isHolding && platform === 'touch' && currentMode !== 'test') {
+      if (Date.now() - btnDownTime < HOLD_THRESHOLD) { setState('locked'); return; }
+    }
+    if (currentState === 'recording' && isHolding && platform === 'touch') setState('sent');
+    isHolding = false;
+  }
+
+  function cancelRecording() { setState('idle'); }
+
+  // ═══ KEYBOARD ═══
+  document.getElementById('textarea').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey && this.value.trim()) { e.preventDefault(); setState('sent'); }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && currentState === 'locked') { e.preventDefault(); setState('sent'); }
+  });
+
+  // ═══ SWITCHERS ═══
+  function setMode(mode, el) {
+    currentMode = mode;
+    document.getElementById('inputBar').setAttribute('data-mode', mode);
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    const placeholders = { chat: 'Сообщение…', exercise: 'Расскажите своими словами…', test: 'Ваш ответ…' };
+    document.getElementById('textarea').placeholder = placeholders[mode] || 'Сообщение…';
+    const aiMessages = {
+      chat: 'Когда кто-то из близких недоволен мной, мне трудно заниматься своими делами — я думаю об этом.',
+      exercise: 'Вспомните ситуацию на прошлой неделе, когда вы подавили свои потребности ради кого-то. Что произошло?',
+      test: 'Мне важно, чтобы окружающие были мной довольны.'
+    };
+    document.getElementById('aiMsg').textContent = aiMessages[mode] || '';
+    setState('idle');
+  }
+
+  function setPlatform(p) {
+    platformOverride = p;
+    document.querySelectorAll('.pip').forEach(el => el.classList.remove('active'));
+    document.getElementById('pip' + p.charAt(0).toUpperCase() + p.slice(1)).classList.add('active');
+    setState('idle');
+  }
+
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('themeIcon').innerHTML = isDark
+      ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+      : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  }
+</script>
+</body>
+</html>

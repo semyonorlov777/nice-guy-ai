@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nice Guy AI — AI-тренажёр по книге</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF5;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F5F3EE;
+    --bg-dark: #EFEDE7;
+    --bg-accent-warm: #F9F3E8;
+    --border: #E8E5DE;
+    --border-light: #EFEDE7;
+    --text: #1A1917;
+    --text-secondary: #6B6860;
+    --text-muted: #9E9B93;
+    --text-hint: #B5B2AA;
+    --accent: #C9963B;
+    --accent-soft: rgba(201, 150, 59, 0.08);
+    --accent-border: rgba(201, 150, 59, 0.25);
+    --accent-glow: rgba(201, 150, 59, 0.12);
+    --accent-warm-border: rgba(201, 150, 59, 0.18);
+    --green: #4A7A4A;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Onest', -apple-system, sans-serif;
+    --content-w: 840px;
+    --wide-w: 1080px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .content-w { max-width: var(--content-w); margin: 0 auto; padding: 0 24px; }
+  .wide-w { max-width: var(--wide-w); margin: 0 auto; padding: 0 24px; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    text-align: center;
+    opacity: 0.8;
+  }
+
+  /* ═══════════════════════════════════════ */
+  /* HEADER                                  */
+  /* ═══════════════════════════════════════ */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    background: rgba(250, 250, 245, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .header-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .header-logo-icon {
+    width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent), #a8822e);
+    border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+  }
+  .header-logo-text { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text); }
+  .header-logo-text span { color: var(--accent); }
+  .header-cta {
+    padding: 8px 20px; background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: background 0.2s;
+  }
+  .header-cta:hover { background: #b8862e; }
+
+  /* ═══════════════════════════════════════ */
+  /* HERO                                    */
+  /* ═══════════════════════════════════════ */
+  .hero {
+    padding: 56px 0 48px;
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: center;
+    max-width: var(--content-w); margin: 0 auto; padding: 0 24px;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px;
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--accent);
+    margin-bottom: 20px; letter-spacing: 0.5px;
+  }
+  .hero h1 {
+    font-family: var(--font-display); font-size: clamp(32px, 4.5vw, 46px);
+    font-weight: 600; line-height: 1.1; margin-bottom: 16px; color: var(--text);
+  }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub {
+    font-size: 16px; line-height: 1.65; color: var(--text-secondary);
+    max-width: 460px; margin-bottom: 28px;
+  }
+  .hero-cta-row { display: flex; align-items: center; gap: 16px; }
+  .hero-cta {
+    display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.25s; text-decoration: none;
+  }
+  .hero-cta:hover { background: #b8862e; transform: translateY(-1px); box-shadow: 0 8px 30px var(--accent-glow); }
+  .hero-hint { font-size: 12.5px; color: var(--text-muted); }
+  .hero-book-wrap { display: flex; justify-content: center; position: relative; }
+  .hero-book {
+    width: 210px; height: 306px;
+    background: linear-gradient(145deg, #f0ebe0, #e8e0d0);
+    border-radius: 3px 10px 10px 3px;
+    box-shadow: -4px 4px 16px rgba(0,0,0,0.08), 0 0 50px var(--accent-glow);
+    position: relative; display: flex; align-items: center; justify-content: center;
+    transform: perspective(800px) rotateY(-5deg); transition: transform 0.4s; overflow: hidden;
+  }
+  .hero-book:hover { transform: perspective(800px) rotateY(-1deg); }
+  .hero-book::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12px;
+    background: linear-gradient(90deg, rgba(201,150,59,0.12), transparent);
+    border-right: 1px solid rgba(201,150,59,0.1);
+  }
+  .hero-book-ph { font-size: 11px; color: var(--text-hint); text-align: center; padding: 20px; line-height: 1.4; }
+
+  /* ═══════════════════════════════════════ */
+  /* SOCIAL PROOF — full width, elevated     */
+  /* ═══════════════════════════════════════ */
+  .proof {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    padding: 24px 24px;
+  }
+  .proof-inner {
+    max-width: var(--wide-w); margin: 0 auto;
+    display: flex; justify-content: center; align-items: center; gap: 40px;
+  }
+  .proof-item { display: flex; align-items: center; gap: 10px; }
+  .proof-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
+  }
+  .proof-main { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .proof-sub { font-size: 11px; color: var(--text-muted); line-height: 1.3; margin-top: 1px; }
+
+  /* ═══════════════════════════════════════ */
+  /* OUTCOMES — white bg                     */
+  /* ═══════════════════════════════════════ */
+  .outcomes { padding: 56px 0; }
+  .outcomes h2 {
+    font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600; line-height: 1.15; text-align: center; margin-bottom: 8px; color: var(--text);
+  }
+  .outcomes h2 em { font-style: italic; color: var(--accent); }
+  .outcomes-sub {
+    font-size: 15px; color: var(--text-secondary); text-align: center;
+    max-width: 420px; margin: 0 auto 40px;
+  }
+  .outcomes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .outcome-card {
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 24px 20px; transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .outcome-card:hover { border-color: var(--accent-border); box-shadow: 0 4px 20px var(--accent-glow); }
+  .outcome-icon {
+    width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft);
+    border: 1px solid var(--accent-border); display: flex; align-items: center;
+    justify-content: center; font-size: 17px; margin-bottom: 14px;
+  }
+  .outcome-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; line-height: 1.25; color: var(--text); margin-bottom: 6px; }
+  .outcome-desc { font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+
+  /* ═══════════════════════════════════════ */
+  /* PROBLEM — white bg                      */
+  /* ═══════════════════════════════════════ */
+  .problem { padding: 0 0 56px; }
+  .problem h2 {
+    font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600; line-height: 1.15; margin-bottom: 14px; color: var(--text);
+  }
+  .problem h2 em { font-style: italic; color: var(--accent); }
+  .problem-lead { font-size: 15px; line-height: 1.65; color: var(--text-secondary); max-width: 560px; margin-bottom: 32px; }
+  .pain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pain-card {
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 22px 18px; transition: border-color 0.3s;
+  }
+  .pain-card:hover { border-color: var(--border); }
+  .pain-card h4 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+  .pain-card p { font-size: 13px; line-height: 1.55; color: var(--text-secondary); }
+
+  /* ═══════════════════════════════════════ */
+  /* AUTHOR — elevated bg                    */
+  /* ═══════════════════════════════════════ */
+  .author { background: var(--bg-elevated); padding: 56px 24px; }
+  .author-inner { max-width: 560px; margin: 0 auto; text-align: center; }
+  .author-photo {
+    width: 88px; height: 88px; border-radius: 16px; background: var(--border-light);
+    margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text-hint); border: 1px solid var(--border);
+  }
+  .author-quote { position: relative; margin-bottom: 24px; padding: 0 16px; }
+  .author-qm {
+    font-family: var(--font-display); font-size: 64px; line-height: 1; color: var(--accent);
+    opacity: 0.2; position: absolute; top: -16px; left: 0;
+  }
+  .author-quote blockquote {
+    font-family: var(--font-display); font-size: clamp(18px, 3.5vw, 22px);
+    font-weight: 500; font-style: italic; line-height: 1.45; color: var(--text);
+  }
+  .author-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .author-creds { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+
+  /* ═══════════════════════════════════════ */
+  /* PERSONAS — white bg                     */
+  /* ═══════════════════════════════════════ */
+  .personas { padding: 56px 0; }
+  .personas h2 {
+    font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600; line-height: 1.15; text-align: center; margin-bottom: 40px; color: var(--text);
+  }
+  .personas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .persona-card {
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 24px 20px; position: relative; transition: border-color 0.3s;
+  }
+  .persona-card:hover { border-color: var(--border); }
+  .persona-qm {
+    font-family: var(--font-display); font-size: 48px; line-height: 1; color: var(--accent);
+    opacity: 0.2; position: absolute; top: 14px; right: 18px;
+  }
+  .persona-headline {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600;
+    line-height: 1.3; color: var(--text); margin-bottom: 10px; padding-right: 24px;
+  }
+  .persona-body { font-size: 13px; line-height: 1.6; color: var(--text-secondary); font-style: italic; }
+
+  /* ═══════════════════════════════════════ */
+  /* COMPARISON — elevated bg                */
+  /* ═══════════════════════════════════════ */
+  .comparison { background: var(--bg-elevated); padding: 56px 0; }
+  .comparison h2 {
+    font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600; line-height: 1.15; text-align: center; margin-bottom: 8px; color: var(--text);
+  }
+  .comparison h2 em { font-style: italic; color: var(--accent); }
+  .comparison-sub {
+    font-size: 15px; line-height: 1.6; color: var(--text-secondary); text-align: center;
+    max-width: 520px; margin: 0 auto 36px;
+  }
+  .comparison-sub strong { color: var(--text); font-weight: 600; }
+  .compare-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .compare-table { width: 100%; min-width: 520px; border-collapse: separate; border-spacing: 0; }
+  .compare-table thead th {
+    font-size: 13px; font-weight: 600; padding: 16px 14px; text-align: center;
+    color: var(--text-secondary); border-bottom: 2px solid var(--border); vertical-align: bottom;
+  }
+  .compare-table thead th:first-child { text-align: left; color: var(--text-muted); font-weight: 500; font-size: 12px; width: 28%; }
+  .compare-table thead th.hl {
+    color: var(--accent); background: var(--accent-soft); border-bottom-color: var(--accent);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-weight: 700;
+  }
+  .compare-table thead th .th-icon { display: block; font-size: 18px; margin-bottom: 4px; }
+  .compare-table thead th .th-role { display: block; font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+  .compare-table thead th.hl .th-role { color: var(--accent); opacity: 0.7; }
+  .compare-table tbody td {
+    font-size: 13px; line-height: 1.5; padding: 12px 14px; text-align: center;
+    color: var(--text-secondary); border-bottom: 1px solid var(--border-light); vertical-align: middle;
+  }
+  .compare-table tbody td:first-child { text-align: left; font-weight: 500; color: var(--text); }
+  .compare-table tbody td.hl { background: var(--accent-soft); color: var(--text); font-weight: 500; }
+  .compare-table tbody td.dim { color: var(--text-muted); }
+  .compare-table tbody tr:last-child td { border-bottom: none; }
+  .compare-table tbody tr:last-child td.hl { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+  .table-conclusion {
+    text-align: center; margin-top: 28px; padding: 18px 24px;
+    background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border-light);
+  }
+  .table-conclusion p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+  .table-conclusion strong { color: var(--text); font-weight: 600; }
+
+  /* ═══════════════════════════════════════ */
+  /* HOW IT WORKS — white bg                 */
+  /* ═══════════════════════════════════════ */
+  .howitworks { padding: 56px 0; }
+  .howitworks h2 {
+    font-family: var(--font-display); font-size: clamp(26px, 5vw, 36px);
+    font-weight: 600; line-height: 1.15; text-align: center; margin-bottom: 44px; color: var(--text);
+  }
+  .howitworks h2 em { font-style: italic; color: var(--accent); }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .step-card {
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: 16px; overflow: hidden; transition: border-color 0.3s;
+  }
+  .step-card:hover { border-color: var(--border); }
+  .step-ui { padding: 16px 16px 12px; min-height: 110px; display: flex; flex-direction: column; justify-content: center; }
+  .step-label-row {
+    padding: 12px 16px 14px; border-top: 1px solid var(--border-light);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 6px; background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+  }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--text); }
+
+  /* Abstract UI elements */
+  .line { height: 6px; border-radius: 3px; background: var(--border-light); }
+  .line.w80 { width: 80%; } .line.w70 { width: 70%; } .line.w60 { width: 60%; }
+  .line.w50 { width: 50%; } .line.w45 { width: 45%; } .line.accent { background: var(--accent-border); }
+  .bshape { border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .bshape:last-child { margin-bottom: 0; }
+  .bshape.user { background: var(--accent-soft); border: 1px solid var(--accent-border); margin-left: 20%; }
+  .bshape.ai { background: var(--bg-card); border: 1px solid var(--border-light); margin-right: 15%; }
+  .ai-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); opacity: 0.5; margin-bottom: 2px; }
+  .chips-row { display: flex; gap: 6px; margin-top: 6px; }
+  .chip-shape { height: 26px; border-radius: 7px; background: var(--bg); border: 1px solid var(--accent-border); flex: 1; display: flex; align-items: center; justify-content: center; }
+  .chip-shape .line { height: 4px; width: 60%; }
+  .insight-shape { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .insight-icon { font-size: 16px; margin-bottom: 2px; }
+  .portrait-bars { display: flex; gap: 10px; }
+  .portrait-col { flex: 1; text-align: center; }
+  .portrait-col-label { font-size: 9px; color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .bar-track { height: 48px; background: var(--bg); border-radius: 6px; position: relative; overflow: hidden; border: 1px solid var(--border-light); }
+  .bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 5px 5px; }
+  .bar-fill.h78 { height: 78%; background: var(--accent); opacity: 0.6; }
+  .bar-fill.h45 { height: 45%; background: var(--accent); opacity: 0.35; }
+  .bar-fill.h60 { height: 60%; background: var(--accent); opacity: 0.5; }
+  .bar-fill.h25 { height: 25%; background: var(--green); opacity: 0.5; }
+
+  .steps-arrow { display: flex; align-items: center; justify-content: center; padding: 4px 0; color: var(--border); }
+  .steps-arrow svg { width: 20px; height: 20px; }
+
+  .summary {
+    margin-top: 32px; text-align: center; padding: 24px 20px;
+    background: var(--bg-elevated); border-radius: var(--radius); border: 1px solid var(--border-light);
+  }
+  .summary-flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .summary-step { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+  .s-icon { width: 26px; height: 26px; border-radius: 7px; background: var(--accent-soft); border: 1px solid var(--accent-border); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .summary-arrow { color: var(--border); font-size: 14px; }
+  .summary-text { font-family: var(--font-display); font-size: 18px; font-weight: 500; color: var(--text); line-height: 1.4; }
+  .summary-text em { font-style: italic; color: var(--accent); }
+
+  /* ═══════════════════════════════════════ */
+  /* TEST — accent warm bg                   */
+  /* ═══════════════════════════════════════ */
+  .test {
+    background: var(--bg-accent-warm); padding: 56px 24px;
+    border-top: 1px solid var(--accent-warm-border); border-bottom: 1px solid var(--accent-warm-border);
+  }
+  .test-inner { max-width: 480px; margin: 0 auto; text-align: center; }
+  .test-emoji { font-size: 36px; margin-bottom: 14px; display: block; }
+  .test-inner h3 { font-family: var(--font-display); font-size: clamp(24px, 4vw, 30px); font-weight: 600; color: var(--text); margin-bottom: 10px; }
+  .test-desc { font-size: 15px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 16px; }
+  .test-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .test-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-hint); }
+  .test-cta {
+    display: inline-flex; align-items: center; gap: 8px; padding: 13px 32px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all 0.25s; text-decoration: none;
+  }
+  .test-cta:hover { background: #b8862e; transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+
+  /* ═══════════════════════════════════════ */
+  /* CHAT — white bg                         */
+  /* ═══════════════════════════════════════ */
+  .chat-section { padding: 56px 0; }
+  .chat-header-block { text-align: center; margin-bottom: 28px; }
+  .chat-header-block h2 { font-family: var(--font-display); font-size: clamp(26px, 5vw, 34px); font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .chat-header-block p { font-size: 15px; color: var(--text-secondary); }
+  .chat-window {
+    max-width: 600px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: 20px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+  }
+  .chat-ai-msg { padding: 22px 20px 18px; border-bottom: 1px solid var(--border-light); }
+  .chat-ai-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+  .chat-ai-label::before { content: '✦'; font-size: 11px; }
+  .chat-ai-text { font-size: 15px; line-height: 1.65; color: var(--text); }
+  .chat-replies { padding: 14px 20px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .quick-reply {
+    display: block; width: 100%; text-align: left; padding: 13px 16px;
+    background: var(--bg); border: 1px solid var(--border-light); border-radius: 10px;
+    font-family: var(--font-body); font-size: 14px; color: var(--text); cursor: pointer;
+    transition: all 0.2s; line-height: 1.4;
+  }
+  .quick-reply:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+  .chat-input-bar { padding: 10px 20px 14px; border-top: 1px solid var(--border-light); }
+  .chat-input-row {
+    display: flex; align-items: center; gap: 10px; background: var(--bg);
+    border: 1px solid var(--border-light); border-radius: 12px; padding: 10px 14px;
+  }
+  .chat-input-ph { flex: 1; font-size: 14px; color: var(--text-hint); }
+  .chat-send { width: 32px; height: 32px; border-radius: 8px; background: var(--border-light); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .chat-send svg { width: 16px; height: 16px; color: var(--text-muted); }
+
+  .trust-line { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .trust-item { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--text-muted); }
+  .tdot { color: var(--border); font-size: 8px; }
+  .trial-badge { font-size: 12.5px; font-weight: 600; color: var(--accent); }
+  .price-after { font-size: 12.5px; color: var(--text-muted); }
+  .price-after .amt { color: var(--text-secondary); font-weight: 600; }
+  .anchor-line { text-align: center; margin-top: 6px; font-size: 11.5px; color: var(--text-hint); max-width: 600px; margin-left: auto; margin-right: auto; }
+
+  /* ═══════════════════════════════════════ */
+  /* FOOTER — dark bg, full width            */
+  /* ═══════════════════════════════════════ */
+  .footer { background: var(--bg-dark); border-top: 1px solid var(--border); padding: 48px 24px 32px; }
+  .footer-inner { max-width: var(--wide-w); margin: 0 auto; }
+  .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 32px; }
+  .footer-brand-logo { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .footer-brand-logo span { color: var(--accent); }
+  .footer-brand-desc { font-size: 13px; line-height: 1.5; color: var(--text-muted); max-width: 240px; }
+  .footer-col-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .footer-col ul { list-style: none; }
+  .footer-col li { margin-bottom: 9px; }
+  .footer-col a { font-size: 13.5px; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
+  .footer-col a:hover { color: var(--accent); }
+  .legal-info { font-size: 12px; line-height: 1.5; color: var(--text-hint); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .footer-bottom { padding-top: 20px; border-top: 1px solid var(--border); text-align: center; }
+  .footer-copy { font-size: 12px; color: var(--text-hint); }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 32px; text-align: center; }
+    .hero-book-wrap { order: -1; }
+    .hero-book { width: 160px; height: 233px; }
+    .hero-cta-row { justify-content: center; flex-direction: column; gap: 10px; }
+    .hero-cta { width: 100%; justify-content: center; }
+    .hero-hint { text-align: center; }
+    .hero-sub { margin-left: auto; margin-right: auto; }
+  }
+
+  @media (max-width: 600px) {
+    .header { padding: 0 16px; }
+    .header-cta { padding: 7px 16px; font-size: 12px; }
+    .content-w { padding: 0 18px; }
+
+    .proof-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .outcomes { padding: 40px 0; }
+    .outcomes-grid { grid-template-columns: 1fr; }
+
+    .problem { padding: 0 0 40px; }
+    .pain-grid { grid-template-columns: 1fr; }
+
+    .author { padding: 40px 18px; }
+
+    .personas { padding: 40px 0; }
+    .personas-grid { grid-template-columns: 1fr; }
+
+    .comparison { padding: 40px 0; }
+    .compare-table { min-width: 480px; }
+
+    .howitworks { padding: 40px 0; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .steps-arrow { display: none; }
+
+    .test { padding: 40px 18px; }
+
+    .chat-section { padding: 40px 0; }
+    .quick-reply { padding: 12px 14px; font-size: 13.5px; }
+
+    .trust-line { flex-direction: column; gap: 3px; }
+    .tdot { display: none; }
+
+    .footer { padding: 36px 18px 24px; }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <a href="#" class="header-logo">
+    <div class="header-logo-icon">N</div>
+    <div class="header-logo-text">Nice Guy <span>AI</span></div>
+  </a>
+  <a href="#chat" class="header-cta">Начать бесплатно</a>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-grid">
+    <div class="hero-content">
+      <div class="hero-tag">✦ AI-тренажёр по книге</div>
+      <h1>Перестань быть <em>удобным</em> —<br>начни жить для себя</h1>
+      <p class="hero-sub">46 упражнений с AI-проводником по методике Роберта Гловера. Не пересказ книги — практика, которая меняет поведение.</p>
+      <div class="hero-cta-row">
+        <a href="#chat" class="hero-cta">Начать бесплатно →</a>
+        <span class="hero-hint">Без регистрации · Первые сообщения бесплатно</span>
+      </div>
+    </div>
+    <div class="hero-book-wrap">
+      <div class="hero-book"><div class="hero-book-ph">Сюда —<br>реальная<br>обложка</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SOCIAL PROOF — elevated, full width ═══ -->
+<section class="proof">
+  <div class="proof-inner">
+    <div class="proof-item">
+      <div class="proof-icon">📖</div>
+      <div><div class="proof-main">По методике Гловера</div><div class="proof-sub">Бестселлер, 20+ языков</div></div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">👥</div>
+      <div><div class="proof-main">№1 мужское сообщество в РФ</div><div class="proof-sub">Работает по книге Гловера · 200+ встреч</div></div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">📋</div>
+      <div><div class="proof-main">46 упражнений</div><div class="proof-sub">Программа в 8 главах</div></div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-icon">✦</div>
+      <div><div class="proof-main">AI с обратной связью</div><div class="proof-sub">Помнит каждый разговор</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ OUTCOMES — white ═══ -->
+<section class="outcomes">
+  <div class="content-w">
+    <p class="section-label">РЕЗУЛЬТАТ</p>
+    <h2>Что изменится <em>на самом деле</em></h2>
+    <p class="outcomes-sub">Не список навыков. А то, ради чего ты открыл эту страницу.</p>
+    <div class="outcomes-grid">
+      <div class="outcome-card">
+        <div class="outcome-icon">🪞</div>
+        <div class="outcome-title">Уважение к себе — от себя и от других</div>
+        <div class="outcome-desc">Когда ты перестаёшь быть удобным для всех, люди начинают считаться с тобой. Не из страха — из уважения.</div>
+      </div>
+      <div class="outcome-card">
+        <div class="outcome-icon">🧭</div>
+        <div class="outcome-title">Ясность — чего хочешь ты, а не чего ждут от тебя</div>
+        <div class="outcome-desc">Вместо «мне всё равно» — чёткое понимание своих желаний. Работа, отношения, жизнь — на своих условиях.</div>
+      </div>
+      <div class="outcome-card">
+        <div class="outcome-icon">💬</div>
+        <div class="outcome-title">Разговоры, после которых легче, а не тяжелее</div>
+        <div class="outcome-desc">Сказать то, что важно — и быть услышанным. Без скандала, без недельного молчания.</div>
+      </div>
+      <div class="outcome-card">
+        <div class="outcome-icon">🔥</div>
+        <div class="outcome-title">Ощущение что ты наконец живёшь свою жизнь</div>
+        <div class="outcome-desc">Не роль хорошего парня, не чужой сценарий — а жизнь, в которой ты решаешь, что важно.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROBLEM — white ═══ -->
+<section class="problem">
+  <div class="content-w">
+    <p class="section-label">ЗНАКОМО?</p>
+    <h2>Прочитал книгу. <em>Ничего не изменилось.</em></h2>
+    <p class="problem-lead">Ты знаешь что нужно ставить границы. Знаешь что нужно перестать угождать. Знаешь — но продолжаешь. Потому что знание и навык — это разные вещи. Книга даёт первое, но не даёт второе.</p>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <h4>Говоришь «да», когда внутри всё кричит «нет»</h4>
+        <p>На работе, в отношениях, с друзьями. Соглашаешься, а потом злишься — на них и на себя.</p>
+      </div>
+      <div class="pain-card">
+        <h4>Делаешь больше всех — и чувствуешь себя невидимым</h4>
+        <p>Стараешься, а в ответ тишина. И внутри копится обида, которую даже себе не разрешаешь признать.</p>
+      </div>
+      <div class="pain-card">
+        <h4>Избегаешь конфликтов — и теряешь себя</h4>
+        <p>Промолчал. Согласился. «Мне всё равно». А потом ночью прокручиваешь что нужно было сказать.</p>
+      </div>
+      <div class="pain-card">
+        <h4>Чувствуешь что живёшь чужую жизнь</h4>
+        <p>Всё вроде нормально — работа, отношения, быт. Но внутри пустота. Как будто играешь роль.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AUTHOR — elevated ═══ -->
+<section class="author">
+  <div class="author-inner">
+    <div class="author-photo">фото</div>
+    <div class="author-quote">
+      <div class="author-qm">"</div>
+      <blockquote>Если человек, который сейчас читает эту книгу, готов взяться за работу — его жизнь может измениться навсегда</blockquote>
+    </div>
+    <div class="author-name">Роберт Гловер</div>
+    <div class="author-creds">Психотерапевт · Автор No More Mr. Nice Guy · Основатель программ для мужчин</div>
+  </div>
+</section>
+
+<!-- ═══ PERSONAS — white ═══ -->
+<section class="personas">
+  <div class="content-w">
+    <p class="section-label">УЗНАЁШЬ СЕБЯ?</p>
+    <h2>Это для тебя, если...</h2>
+    <div class="personas-grid">
+      <div class="persona-card">
+        <div class="persona-qm">"</div>
+        <div class="persona-headline">Я всё делаю для других — а в ответ тишина</div>
+        <div class="persona-body">Стараюсь быть хорошим мужем, сотрудником, другом. Делаю больше всех — и жду, что заметят. Не замечают. А я коплю обиду, которую даже себе не разрешаю признать.</div>
+      </div>
+      <div class="persona-card">
+        <div class="persona-qm">"</div>
+        <div class="persona-headline">Избегаю конфликтов — и теряю себя</div>
+        <div class="persona-body">Промолчал на работе. Согласился, хотя внутри кипел. «Мне всё равно». А потом ночью прокручиваю: что нужно было сказать. Но момент уже прошёл.</div>
+      </div>
+      <div class="persona-card">
+        <div class="persona-qm">"</div>
+        <div class="persona-headline">Не знаю, чего хочу — знаю только чего хотят от меня</div>
+        <div class="persona-body">Так давно подстраиваюсь, что потерял контакт с собой. Какую работу хочу? Какие отношения? Не знаю. Знаю только как быть удобным.</div>
+      </div>
+      <div class="persona-card">
+        <div class="persona-qm">"</div>
+        <div class="persona-headline">Прочитал книгу — но ничего не изменилось</div>
+        <div class="persona-body">Узнал себя в каждой главе. Кивал, подчёркивал, думал «вот оно». Закрыл — через неделю всё по-старому. Понять и сделать — разные вещи.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPARISON — elevated ═══ -->
+<section class="comparison">
+  <div class="content-w">
+    <p class="section-label">В ЧЁМ РАЗНИЦА</p>
+    <h2>Прочитать ≠ <em>сделать</em></h2>
+    <p class="comparison-sub"><strong>Книга</strong> даёт знание. <strong>Психолог</strong> даёт направление. <strong>Тренажёр</strong> даёт практику — каждый день, в&nbsp;твоём темпе.</p>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead><tr>
+          <th></th>
+          <th><span class="th-icon">📖</span>Книга<span class="th-role">Знание</span></th>
+          <th><span class="th-icon">🧠</span>Психолог<span class="th-role">Направление</span></th>
+          <th class="hl"><span class="th-icon">✦</span>AI&#8209;тренажёр<span class="th-role">Практика</span></th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Когда доступен</td><td class="dim">Пока читаешь</td><td class="dim">По записи</td><td class="hl">В любое время</td></tr>
+          <tr><td>Практика</td><td class="dim">Сам разбираешься</td><td>На сессии</td><td class="hl">Пошаговый диалог с AI</td></tr>
+          <tr><td>Обратная связь</td><td class="dim">Нет</td><td>Живая, от специалиста</td><td class="hl">Мгновенная, после каждого ответа</td></tr>
+          <tr><td>Помнит историю</td><td class="dim">Нет</td><td>Частично</td><td class="hl">Всё — от первого сообщения</td></tr>
+          <tr><td>Подстраивается</td><td class="dim">Нет</td><td>В рамках сессии</td><td class="hl">С каждым разговором</td></tr>
+          <tr><td>Анонимность</td><td>Полная</td><td class="dim">Нет</td><td class="hl">Полная</td></tr>
+          <tr><td>Стоимость</td><td>Разовая покупка</td><td class="dim">5–10 тыс. ₽ / сессия</td><td class="hl">7 дней бесплатно, потом от 850&nbsp;₽/мес</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-conclusion">
+      <p>Не замена книги. Не замена психолога.<br><strong>Инструмент, который помогает <em>сделать</em> то, что книга предлагает.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS — white ═══ -->
+<section class="howitworks">
+  <div class="content-w">
+    <p class="section-label">КАК ЭТО УСТРОЕНО</p>
+    <h2>От разговора — к <em>изменению</em></h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-ui">
+          <div class="bshape user"><div class="line w80"></div><div class="line w50"></div></div>
+          <div class="bshape ai"><div class="ai-dot"></div><div class="line w80"></div><div class="line w70"></div><div class="line w45 accent"></div></div>
+        </div>
+        <div class="step-label-row"><div class="step-num">1</div><div class="step-title">Расскажи что происходит</div></div>
+      </div>
+      <div class="step-card">
+        <div class="step-ui">
+          <div class="bshape ai"><div class="ai-dot"></div><div class="line w80"></div><div class="line w60"></div></div>
+          <div class="chips-row"><div class="chip-shape"><div class="line w60 accent"></div></div><div class="chip-shape"><div class="line w50 accent"></div></div><div class="chip-shape"><div class="line w45 accent"></div></div></div>
+        </div>
+        <div class="step-label-row"><div class="step-num">2</div><div class="step-title">Пройди упражнение</div></div>
+      </div>
+    </div>
+    <div class="steps-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-ui">
+          <div class="insight-shape"><div class="insight-icon">💡</div><div class="line w80 accent"></div><div class="line w70"></div><div class="line w60"></div></div>
+        </div>
+        <div class="step-label-row"><div class="step-num">3</div><div class="step-title">Получи обратную связь</div></div>
+      </div>
+      <div class="step-card">
+        <div class="step-ui">
+          <div class="portrait-bars">
+            <div class="portrait-col"><div class="portrait-col-label">Одобр.</div><div class="bar-track"><div class="bar-fill h78"></div></div></div>
+            <div class="portrait-col"><div class="portrait-col-label">Гран.</div><div class="bar-track"><div class="bar-fill h45"></div></div></div>
+            <div class="portrait-col"><div class="portrait-col-label">Контр.</div><div class="bar-track"><div class="bar-fill h60"></div></div></div>
+            <div class="portrait-col"><div class="portrait-col-label">Изол.</div><div class="bar-track"><div class="bar-fill h25"></div></div></div>
+          </div>
+        </div>
+        <div class="step-label-row"><div class="step-num">4</div><div class="step-title">Наблюдай за ростом</div></div>
+      </div>
+    </div>
+    <div class="summary">
+      <div class="summary-flow">
+        <div class="summary-step"><span class="s-icon">💬</span> Разговор</div>
+        <span class="summary-arrow">→</span>
+        <div class="summary-step"><span class="s-icon">✍️</span> Упражнение</div>
+        <span class="summary-arrow">→</span>
+        <div class="summary-step"><span class="s-icon">💡</span> Инсайт</div>
+        <span class="summary-arrow">→</span>
+        <div class="summary-step"><span class="s-icon">🪞</span> Портрет</div>
+      </div>
+      <div class="summary-text">Всё это — <em>один диалог</em>. Открой чат и начни.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TEST — accent warm ═══ -->
+<section class="test">
+  <div class="test-inner">
+    <span class="test-emoji">🎯</span>
+    <h3>Насколько ты «славный парень»?</h3>
+    <p class="test-desc">Быстрый тест покажет, в каких ситуациях привычка быть удобным управляет тобой сильнее всего.</p>
+    <div class="test-meta"><span>5 минут</span><span class="test-meta-dot"></span><span>35 вопросов</span></div>
+    <a href="#" class="test-cta">Узнать свой результат →</a>
+  </div>
+</section>
+
+<!-- ═══ CHAT — white ═══ -->
+<section class="chat-section" id="chat">
+  <div class="content-w">
+    <div class="chat-header-block">
+      <h2>Попробуй прямо сейчас</h2>
+      <p>Напиши что чувствуешь или выбери один из вариантов.</p>
+    </div>
+    <div class="chat-window">
+      <div class="chat-ai-msg">
+        <div class="chat-ai-label">AI-проводник</div>
+        <div class="chat-ai-text">Привет! Расскажи — что привело тебя сюда? Может, чувствуешь что живёшь не для себя, или что окружающие не ценят то, что ты для них делаешь?</div>
+      </div>
+      <div class="chat-replies">
+        <button class="quick-reply">💬 Все сидят на шее, а я терплю</button>
+        <button class="quick-reply">💬 Проблемы в отношениях</button>
+        <button class="quick-reply">💬 Просто чувствую что живу не так</button>
+      </div>
+      <div class="chat-input-bar">
+        <div class="chat-input-row">
+          <div class="chat-input-ph">Или напиши своими словами...</div>
+          <button class="chat-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="trust-line">
+      <span class="trust-item">🔒 Анонимно</span>
+      <span class="tdot">·</span>
+      <span class="trial-badge">7 дней бесплатно</span>
+      <span class="tdot">·</span>
+      <span class="price-after">потом <span class="amt">от 850 ₽/мес</span></span>
+    </div>
+    <div class="anchor-line">Дешевле одной сессии с психологом</div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER — dark, full width ═══ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-logo">Nice Guy <span>AI</span></div>
+        <div class="footer-brand-desc">AI-тренажёры по книгам. Практика, которая меняет поведение.</div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Продукт</div>
+        <ul>
+          <li><a href="#chat">Начать бесплатно</a></li>
+          <li><a href="#" target="_blank">Пройти тест</a></li>
+          <li><a href="#" target="_blank">Тарифы и цены</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Юридическое</div>
+        <ul>
+          <li><a href="#" target="_blank">Оферта</a></li>
+          <li><a href="#" target="_blank">Политика конфиденциальности</a></li>
+        </ul>
+        <div class="legal-info">ИП Орлов Семён Вячеславович<br>ИНН 381914223321</div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Контакты</div>
+        <ul>
+          <li><a href="https://t.me/semyonorlov" target="_blank">Telegram</a></li>
+          <li><a href="/cdn-cgi/l/email-protection#afcbc7c0ddc7efd6cec1cbcad781ddda"><span class="__cf_email__" data-cfemail="e2868a8d908aa29b838c86879acc9097">[email&#160;protected]</span></a></li>
+          <li><a href="tel:+79936004279">+7 993 600-42-79</a></li>
+        </ul>
+      </div>
+    </div>
+    <div 
