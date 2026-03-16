@@ -1013,9 +1013,10 @@ export function TestCardFlow() {
 
         {/* AuthSheet (bottom sheet / modal) */}
         <AuthSheet
+          mode="sheet"
           open={authSheetOpen}
           onClose={() => setAuthSheetOpen(false)}
-          onAuthSuccess={handleAuthSuccess}
+          onSuccess={handleAuthSuccess}
           context="test"
         />
 

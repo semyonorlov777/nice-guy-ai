@@ -20,24 +20,26 @@ declare global {
 }
 
 interface AuthSheetProps {
-  open: boolean;
-  onClose: () => void;
-  onAuthSuccess: () => void;
+  mode: "sheet" | "fullscreen";
   context?: "test" | "chat" | "default";
+  open: boolean;
+  onSuccess: () => void;
+  onClose?: () => void;
+  redirectTo?: string;
 }
 
 const CONTEXT_TITLES: Record<string, { title: string; subtitle: string }> = {
   test: {
-    title: "Сохрани свой результат",
-    subtitle: "Войди, чтобы не потерять прогресс теста",
+    title: 'Сохрани свой <em>результат</em>',
+    subtitle: 'Остался 1 вопрос и твой персональный профиль готов. Авторизация займёт <span class="auth-sheet-time-hint">10 секунд</span>.',
   },
   chat: {
-    title: "Продолжим разговор?",
-    subtitle: "Войди, чтобы сохранить переписку",
+    title: 'Продолжим <em>разговор</em>?',
+    subtitle: 'Чтобы сохранить историю и продолжить, войди в аккаунт.',
   },
   default: {
-    title: "Войди в аккаунт",
-    subtitle: "Без пароля. Вход в один клик.",
+    title: 'Войти в <em>аккаунт</em>',
+    subtitle: 'Чтобы продолжить работу с программой.',
   },
 };
 
@@ -61,8 +63,42 @@ function YandexIcon() {
   );
 }
 
-export function AuthSheet({ open, onClose, onAuthSuccess, context = "default" }: AuthSheetProps) {
-  const [showEmail, setShowEmail] = useState(false);
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function TrustLine() {
+  return (
+    <div className="auth-sheet-trust">
+      <LockIcon />
+      <span>Мы не публикуем данные и не пишем от вашего имени</span>
+    </div>
+  );
+}
+
+export function AuthSheet({ mode, open, onSuccess, onClose, context = "default" }: AuthSheetProps) {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -83,14 +119,13 @@ export function AuthSheet({ open, onClose, onAuthSuccess, context = "default" }:
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-    onAuthSuccess();
-  }, [onAuthSuccess]);
+    onSuccess();
+  }, [onSuccess]);
 
   // Reset state when closed
   useEffect(() => {
     if (!open) {
       calledRef.current = false;
-      setShowEmail(false);
       setEmailSent(false);
       setError("");
       setLoading(false);
@@ -224,6 +259,10 @@ export function AuthSheet({ open, onClose, onAuthSuccess, context = "default" }:
   const handleEmailSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!email || !email.includes("@")) {
+        setError("Введи корректный email");
+        return;
+      }
       setError("");
       setLoading(true);
 
@@ -248,25 +287,158 @@ export function AuthSheet({ open, onClose, onAuthSuccess, context = "default" }:
     [email],
   );
 
-  // Close on backdrop click
-  const handleBackdropClick = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  // Close on Escape
+  // Close on Escape (sheet mode only)
   useEffect(() => {
-    if (!open) return;
+    if (!open || mode !== "sheet" || !onClose) return;
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onClose!();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  }, [open, mode, onClose]);
 
+  // Reset email form
+  const resetEmailForm = useCallback(() => {
+    setEmailSent(false);
+    setEmail("");
+    setError("");
+  }, []);
+
+  if (!open && mode === "sheet") return null;
+
+  const cardContent = (
+    <>
+      {mode === "sheet" && <div className="auth-sheet-handle" />}
+
+      {!emailSent ? (
+        <div>
+          <div className="auth-sheet-header">
+            <h2
+              className="auth-sheet-title"
+              dangerouslySetInnerHTML={{ __html: title }}
+            />
+            <p
+              className="auth-sheet-subtitle"
+              dangerouslySetInnerHTML={{ __html: subtitle }}
+            />
+          </div>
+
+          {error && <div className="auth-sheet-error">{error}</div>}
+
+          <div className="auth-sheet-buttons">
+            <button
+              className="auth-sheet-btn tg"
+              onClick={handleTelegram}
+              disabled={tgLoading || !scriptReady}
+            >
+              <TelegramIcon />
+              {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
+            </button>
+
+            <button
+              className="auth-sheet-btn ya"
+              onClick={handleYandex}
+            >
+              <YandexIcon />
+              Войти через Яндекс
+            </button>
+          </div>
+
+          <div className="auth-sheet-divider">
+            <span>или</span>
+          </div>
+
+          <form className="auth-sheet-email-form" onSubmit={handleEmailSubmit}>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              autoComplete="email"
+              className="auth-sheet-email-input"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-sheet-email-send"
+              aria-label="Отправить ссылку"
+            >
+              {loading ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" opacity="0.3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+                  </path>
+                </svg>
+              ) : (
+                <ArrowRightIcon />
+              )}
+            </button>
+          </form>
+          <div className="auth-sheet-email-hint">
+            Пришлём ссылку для входа — никаких паролей
+          </div>
+
+          <TrustLine />
+        </div>
+      ) : (
+        <div className="auth-sheet-sent">
+          <div className="auth-sheet-check-circle">
+            <CheckIcon />
+          </div>
+          <h3>Проверь почту</h3>
+          <p>
+            Мы отправили ссылку на<br />
+            <strong>{email}</strong>
+          </p>
+          <p className="auth-sheet-sent-subhint">
+            Проверь папку &laquo;Входящие&raquo; и &laquo;Спам&raquo;
+          </p>
+          <button
+            className="auth-sheet-resend"
+            onClick={resetEmailForm}
+          >
+            Отправить ещё раз
+          </button>
+
+          <TrustLine />
+        </div>
+      )}
+    </>
+  );
+
+  if (mode === "fullscreen") {
+    return (
+      <>
+        {open && (
+          <Script
+            src="https://telegram.org/js/telegram-widget.js"
+            strategy="lazyOnload"
+            onLoad={() => setScriptReady(true)}
+          />
+        )}
+        <div className="auth-sheet-fullscreen-wrap">
+          <div className="auth-sheet-logo">
+            <div className="auth-sheet-logo-icon">Н</div>
+            <div className="auth-sheet-logo-text">
+              НеСлавный <span>AI</span>
+            </div>
+          </div>
+          <div className="auth-sheet mode-full">
+            {cardContent}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Sheet mode
   return (
     <>
-      {/* Load Telegram SDK when sheet opens */}
       {open && (
         <Script
           src="https://telegram.org/js/telegram-widget.js"
@@ -275,99 +447,15 @@ export function AuthSheet({ open, onClose, onAuthSuccess, context = "default" }:
         />
       )}
 
-      {/* Backdrop */}
-      <div
-        className={`auth-sheet-backdrop ${open ? "open" : ""}`}
-        onClick={handleBackdropClick}
-      />
+      {open && (
+        <div
+          className="auth-sheet-scrim"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Sheet */}
-      <div className={`auth-sheet ${open ? "open" : ""}`}>
-        <div className="auth-sheet-handle" />
-        <button className="auth-sheet-close" onClick={onClose} aria-label="Закрыть">
-          &#x2715;
-        </button>
-
-        <div className="auth-sheet-header">
-          <div className="auth-sheet-title">{title}</div>
-          <div className="auth-sheet-subtitle">{subtitle}</div>
-        </div>
-
-        {error && <div className="auth-sheet-error">{error}</div>}
-
-        {!emailSent ? (
-          <>
-            {/* Telegram */}
-            <button
-              className="auth-sheet-btn auth-sheet-btn-tg"
-              onClick={handleTelegram}
-              disabled={tgLoading || !scriptReady}
-            >
-              <TelegramIcon />
-              {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
-            </button>
-
-            {/* Yandex */}
-            <button
-              className="auth-sheet-btn auth-sheet-btn-ya"
-              onClick={handleYandex}
-            >
-              <YandexIcon />
-              Войти через Яндекс
-            </button>
-
-            {/* Divider */}
-            <div className="auth-sheet-divider">
-              <div className="auth-sheet-divider-line" />
-              <span className="auth-sheet-divider-text">или</span>
-              <div className="auth-sheet-divider-line" />
-            </div>
-
-            {/* Email */}
-            {!showEmail ? (
-              <button
-                className="auth-sheet-email-toggle"
-                onClick={() => setShowEmail(true)}
-              >
-                Войти по email
-              </button>
-            ) : (
-              <form onSubmit={handleEmailSubmit}>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="auth-sheet-email-input"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="auth-sheet-btn auth-sheet-btn-submit"
-                >
-                  {loading ? "Отправляем..." : "Получить ссылку"}
-                </button>
-              </form>
-            )}
-          </>
-        ) : (
-          <div className="auth-sheet-sent">
-            <div className="auth-sheet-sent-icon">&#9993;&#65039;</div>
-            <div>
-              Ссылка отправлена на{" "}
-              <span className="auth-sheet-sent-email">{email}</span>
-            </div>
-            <div className="auth-sheet-sent-hint">
-              Проверь почту и кликни по ссылке. Мы подхватим автоматически.
-            </div>
-          </div>
-        )}
-
-        <div className="auth-sheet-footer">
-          Без пароля &bull; Вход за 10 секунд
-        </div>
+      <div className={`auth-sheet mode-sheet ${open ? "open" : ""}`}>
+        {cardContent}
       </div>
     </>
   );
