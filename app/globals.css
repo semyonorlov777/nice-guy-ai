@@ -3257,21 +3257,61 @@ html:not(.no-transition) .app-main {
   color: var(--auth-text-muted);
   margin-top: 4px;
 }
+.auth-sheet-open-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg);
+  font-family: var(--auth-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--auth-text-secondary);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+  margin-bottom: 20px;
+}
+.auth-sheet-open-mail:hover {
+  border-color: var(--auth-accent-border);
+  background: var(--auth-accent-soft);
+  color: var(--auth-text);
+}
+.auth-sheet-open-mail:active {
+  transform: scale(0.98);
+}
+.auth-sheet-open-mail svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.auth-sheet-open-mail-arrow {
+  opacity: 0.4;
+}
+.auth-sheet-sent-divider {
+  height: 1px;
+  background: var(--auth-border-light);
+  margin: 0 0 16px;
+}
 .auth-sheet-resend {
-  display: inline-block;
-  margin-top: 16px;
   font-size: 13px;
+  color: var(--auth-text-muted);
+  margin-bottom: 24px;
+}
+.auth-sheet-resend-link {
   color: var(--auth-accent);
+  background: none;
+  border: none;
+  font-family: var(--auth-font-body);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
-  background: none;
-  border: none;
-  font-family: var(--font-body);
 }
-.auth-sheet-resend:disabled {
-  color: var(--auth-text-muted);
-  cursor: default;
+.auth-sheet-resend-link:hover {
+  color: #a8822e;
 }
 
 /* ═══ AUTH SHEET RESPONSIVE ═══ */

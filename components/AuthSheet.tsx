@@ -44,6 +44,28 @@ const CONTEXT_TITLES: Record<string, { title: string; subtitle: string }> = {
   },
 };
 
+const EMAIL_PROVIDERS: Record<string, { name: string; url: string }> = {
+  'gmail.com': { name: 'Gmail', url: 'https://mail.google.com' },
+  'googlemail.com': { name: 'Gmail', url: 'https://mail.google.com' },
+  'yandex.ru': { name: 'Яндекс Почту', url: 'https://mail.yandex.ru' },
+  'yandex.com': { name: 'Яндекс Почту', url: 'https://mail.yandex.ru' },
+  'ya.ru': { name: 'Яндекс Почту', url: 'https://mail.yandex.ru' },
+  'mail.ru': { name: 'Mail.ru', url: 'https://e.mail.ru' },
+  'inbox.ru': { name: 'Mail.ru', url: 'https://e.mail.ru' },
+  'bk.ru': { name: 'Mail.ru', url: 'https://e.mail.ru' },
+  'list.ru': { name: 'Mail.ru', url: 'https://e.mail.ru' },
+  'outlook.com': { name: 'Outlook', url: 'https://outlook.live.com' },
+  'hotmail.com': { name: 'Outlook', url: 'https://outlook.live.com' },
+  'yahoo.com': { name: 'Yahoo', url: 'https://mail.yahoo.com' },
+  'icloud.com': { name: 'iCloud', url: 'https://www.icloud.com/mail' },
+  'rambler.ru': { name: 'Рамблер', url: 'https://mail.rambler.ru' },
+};
+
+function getEmailProvider(email: string) {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return domain ? EMAIL_PROVIDERS[domain] : undefined;
+}
+
 function TelegramIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -399,12 +421,38 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
           <p className="auth-sheet-sent-subhint">
             Проверь папку &laquo;Входящие&raquo; и &laquo;Спам&raquo;
           </p>
-          <button
-            className="auth-sheet-resend"
-            onClick={resetEmailForm}
-          >
-            Отправить ещё раз
-          </button>
+          {(() => {
+            const provider = getEmailProvider(email);
+            if (!provider) return null;
+            return (
+              <a
+                href={provider.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="auth-sheet-open-mail"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <span>Открыть {provider.name}</span>
+                <svg className="auth-sheet-open-mail-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="7" y1="17" x2="17" y2="7"/>
+                  <polyline points="7 7 17 7 17 17"/>
+                </svg>
+              </a>
+            );
+          })()}
+          <div className="auth-sheet-sent-divider" />
+          <div className="auth-sheet-resend">
+            Не пришло?{" "}
+            <button
+              className="auth-sheet-resend-link"
+              onClick={resetEmailForm}
+            >
+              Отправить ещё раз
+            </button>
+          </div>
 
           <TrustLine />
         </div>
