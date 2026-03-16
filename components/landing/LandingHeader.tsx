@@ -14,9 +14,12 @@ export function LandingHeader({ ctaText, ctaHref }: LandingHeaderProps) {
           НеСлавный <span>AI</span>
         </div>
       </Link>
-      <Link href={ctaHref} className="header-cta">
-        {ctaText}
-      </Link>
+      <div className="header-right">
+        <Link href="/auth" className="header-login">Войти</Link>
+        <Link href={ctaHref} className="header-cta">
+          {ctaText}
+        </Link>
+      </div>
     </div>
   );
 }
