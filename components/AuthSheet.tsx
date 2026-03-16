@@ -465,8 +465,8 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       <>
         {open && (
           <Script
-            src="https://telegram.org/js/telegram-widget.js"
-            strategy="lazyOnload"
+            src="https://oauth.telegram.org/js/telegram-login.js?3"
+            strategy="afterInteractive"
             onLoad={() => setScriptReady(true)}
           />
         )}
@@ -490,8 +490,8 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     <>
       {open && (
         <Script
-          src="https://telegram.org/js/telegram-widget.js"
-          strategy="lazyOnload"
+          src="https://oauth.telegram.org/js/telegram-login.js?3"
+          strategy="afterInteractive"
           onLoad={() => setScriptReady(true)}
         />
       )}
