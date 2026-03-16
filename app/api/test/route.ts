@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { streamText, generateText } from "ai";
 import { google } from "@/lib/ai";
 import { after } from "next/server";
@@ -74,6 +75,9 @@ function createSSEResponse(
       try {
         await handler(send);
       } catch (err) {
+        Sentry.captureException(err, {
+          tags: { route: "api/test", phase: "sse-handler" },
+        });
         console.error("[test] SSE handler error:", err);
         send({ type: "error", message: "Ошибка генерации ответа" });
       } finally {
@@ -231,6 +235,11 @@ export async function POST(request: Request) {
   }
 
   const isAuthenticated = !!user;
+  if (user) {
+    Sentry.setUser({ id: user.id });
+  } else if (body.session_id) {
+    Sentry.setUser({ id: `anon:${body.session_id}` });
+  }
 
   // 3. Load program & service client (needed for both validation and handlers)
   const serviceClient = createServiceClient();
@@ -285,6 +294,10 @@ export async function POST(request: Request) {
           .single();
 
         if (chatErr || !newChat) {
+          Sentry.captureException(chatErr ?? new Error("Auto-create test chat returned null"), {
+            tags: { route: "api/test", phase: "create-chat" },
+            extra: { programId: program.id },
+          });
           console.error("[test] Failed to auto-create test chat:", chatErr);
           return Response.json(
             { error: "Не удалось создать тестовый чат" },
