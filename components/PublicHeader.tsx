@@ -17,7 +17,7 @@ export async function PublicHeader() {
       </Link>
       {user ? (
         <Link href="/" className="header-cta">
-          В приложение
+          В чат
         </Link>
       ) : (
         <Link href="/auth" className="header-cta">

@@ -135,7 +135,7 @@ export default async function ProgramLanding({
           </h1>
           <p style={{ color: "#9E9B93", marginBottom: 32 }}>Данные лендинга не найдены.</p>
           <Link href={isLoggedIn ? `/program/${slug}/chat` : "/auth"} style={{ padding: "14px 32px", background: "#C9963B", color: "#fff", borderRadius: 10, textDecoration: "none", fontWeight: 600 }}>
-            {isLoggedIn ? "В приложение" : "Войти"}
+            {isLoggedIn ? "В чат" : "Войти"}
           </Link>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default async function ProgramLanding({
   return (
     <div className="landing-v3">
       <LandingHeader
-        ctaText={isLoggedIn ? "В приложение" : "Начать бесплатно"}
+        ctaText={isLoggedIn ? "В чат" : "Начать бесплатно"}
         ctaHref={chatHref}
       />
 
