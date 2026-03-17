@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
-import { InChatAuth } from "@/components/InChatAuth";
+import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
 
@@ -27,6 +27,7 @@ export function AnonymousChat({
 }: AnonymousChatProps) {
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [requiresAuth, setRequiresAuth] = useState(false);
+  const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -75,6 +76,7 @@ export function AnonymousChat({
     onError: (err) => {
       if (err.message === "AUTH_REQUIRED") {
         setRequiresAuth(true);
+        setAuthSheetOpen(true);
       } else {
         console.error("[anon-chat] Error:", err.message);
       }
@@ -295,7 +297,6 @@ export function AnonymousChat({
             </div>
           )}
 
-          {requiresAuth && <InChatAuth onAuthSuccess={handleAuthSuccess} />}
         </div>
       </div>
 
@@ -311,8 +312,24 @@ export function AnonymousChat({
               </div>
             }
           />
+          {requiresAuth && !authSheetOpen && (
+            <button
+              className="anon-chat-auth-prompt"
+              onClick={() => setAuthSheetOpen(true)}
+            >
+              Войди чтобы продолжить →
+            </button>
+          )}
         </div>
       </div>
+
+      <AuthSheet
+        mode="sheet"
+        context="chat"
+        open={authSheetOpen}
+        onSuccess={handleAuthSuccess}
+        onClose={() => setAuthSheetOpen(false)}
+      />
     </div>
   );
 }
