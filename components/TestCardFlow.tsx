@@ -74,6 +74,8 @@ export function TestCardFlow() {
   const abortRef = useRef<AbortController | null>(null);
   const initDone = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
+  const lastAnswerPromiseRef = useRef<Promise<void> | null>(null);
+  const migratingRef = useRef(false);
 
   // ── Init ──
   useEffect(() => {
@@ -418,11 +420,20 @@ export function TestCardFlow() {
 
   // ── Auth flow ──
   const doMigrate = useCallback(async () => {
+    if (migratingRef.current) return;
+    migratingRef.current = true;
+
     setPhase("migrating");
     setMigrateError(null);
     setAuthSheetOpen(false);
 
     try {
+      // Wait for last fire-and-forget answer to complete (FIX 3: ensures all answers recorded)
+      if (lastAnswerPromiseRef.current) {
+        await lastAnswerPromiseRef.current;
+        lastAnswerPromiseRef.current = null;
+      }
+
       const res = await fetch("/api/test/migrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -456,6 +467,8 @@ export function TestCardFlow() {
     } catch (err) {
       setMigrateError((err as Error).message);
       setPhase("auth_wall");
+    } finally {
+      migratingRef.current = false;
     }
   }, [sessionId]);
 
@@ -588,7 +601,8 @@ export function TestCardFlow() {
     // 370ms: fire-and-forget API call + start exit animation
     setTimeout(() => {
       // Fire-and-forget — questionIdx passed as argument, NOT read from state
-      submitQuickAnswer(score, questionIdx);
+      const answerPromise = submitQuickAnswer(score, questionIdx);
+      lastAnswerPromiseRef.current = answerPromise;
 
       setAnimationClass("exit");
 

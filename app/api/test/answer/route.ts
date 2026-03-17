@@ -339,27 +339,37 @@ export async function POST(request: Request) {
       chat_id: autoCreatedChatId || chatId,
     });
   } else {
-    // ═══ ANONYMOUS MODE ═══
-    const existingMessages = (session.messages || []) as Array<{ role: string; content: string }>;
-    const updatedAnswers = [...testState.answers, answer];
-    const updatedMessages = [
-      ...existingMessages,
-      { role: "user", content: String(score) },
-    ];
-    const nextQuestion = questionIndex + 1;
+    // ═══ ANONYMOUS MODE — atomic via RPC ═══
+    const { data: rpcResult, error: rpcError } = await serviceClient.rpc(
+      "append_anonymous_test_answer",
+      {
+        p_session_id: sessionId,
+        p_answer: answer,
+        p_expected_question: questionIndex,
+      }
+    );
 
-    await serviceClient
-      .from("test_sessions")
-      .update({
-        current_question: nextQuestion,
-        answers: updatedAnswers,
-        messages: updatedMessages,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("session_id", sessionId);
+    if (rpcError) {
+      console.error("[test:answer] append_anonymous_test_answer error:", rpcError);
+      return Response.json({ error: "rpc_error" }, { status: 500 });
+    }
+
+    // RPC returns question_mismatch instead of throwing — handle as 409
+    if (rpcResult?.error === "question_mismatch") {
+      return Response.json(
+        {
+          error: "question_mismatch",
+          server_question: rpcResult.server_question,
+        },
+        { status: 409 }
+      );
+    }
+
+    const answersCount = rpcResult.answers_count as number;
+    const nextQuestion = rpcResult.current_question as number;
 
     // AUTH WALL at Q34 for anonymous
-    if (updatedAnswers.length >= 34) {
+    if (answersCount >= 34) {
       return Response.json({
         success: true,
         requires_auth: true,
@@ -368,7 +378,7 @@ export async function POST(request: Request) {
     }
 
     // Block boundary
-    const blockComplete = updatedAnswers.length % 5 === 0 && updatedAnswers.length < 35;
+    const blockComplete = answersCount % 5 === 0 && answersCount < 35;
 
     return Response.json({
       success: true,

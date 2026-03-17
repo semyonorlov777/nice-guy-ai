@@ -41,21 +41,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (session.status !== "in_progress") {
-    return Response.json(
-      { error: "Сессия уже мигрирована или завершена" },
-      { status: 400 }
-    );
-  }
-
-  const answers = (session.answers || []) as TestAnswer[];
-  if (answers.length < 34) {
-    return Response.json(
-      { error: "Недостаточно ответов для миграции (минимум 34)" },
-      { status: 400 }
-    );
-  }
-
   // 4. Load program
   const { data: program } = await serviceClient
     .from("programs")
@@ -70,7 +55,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Check for existing active test chat (prevent duplicates)
+  // 5. Check for existing active test chat FIRST (idempotency)
+  // This handles: double doMigrate, cross-tab auth, page refresh after migration
   const { data: existingChat } = await supabase
     .from("chats")
     .select("id")
@@ -82,7 +68,30 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingChat) {
+    // Session may still be "in_progress" if this is a retry — mark it migrated
+    if (session.status === "in_progress") {
+      await serviceClient
+        .from("test_sessions")
+        .update({ status: "migrated", updated_at: new Date().toISOString() })
+        .eq("session_id", session_id);
+    }
     return Response.json({ chat_id: existingChat.id });
+  }
+
+  // 6. Now check session status — only proceed if in_progress
+  if (session.status !== "in_progress") {
+    return Response.json(
+      { error: "Сессия уже мигрирована или завершена" },
+      { status: 400 }
+    );
+  }
+
+  const answers = (session.answers || []) as TestAnswer[];
+  if (answers.length < 34) {
+    return Response.json(
+      { error: "Недостаточно ответов для миграции (минимум 34)" },
+      { status: 400 }
+    );
   }
 
   // 6. Create chat with test_state
