@@ -31,8 +31,11 @@ app/
 ├── page.tsx                              # Главная (каталог программ)
 ├── layout.tsx                            # Корневой layout + шрифты
 ├── globals.css                           # Все стили (включая лендинг)
-├── auth/page.tsx                         # Логин (Telegram/Яндекс/Magic Link)
-├── auth/callback/route.ts                # Supabase OAuth callback
+├── auth/page.tsx                         # Логин (AuthSheet fullscreen)
+├── auth/callback/route.ts                # Magic Link callback
+├── auth/popup-success/page.tsx           # Закрытие OAuth popup (postMessage)
+├── auth/link-success/page.tsx            # Экран после Magic Link
+├── auth/layout.tsx                       # Layout для auth-страниц
 ├── balance/page.tsx                      # Redirect → /program/nice-guy/balance
 ├── test/results/[id]/page.tsx            # Redirect → /program/nice-guy/test/results/[id]
 ├── test/issp/page.tsx                    # Redirect → /program/nice-guy/test/issp
@@ -53,13 +56,15 @@ app/
 │   ├── chat/anonymous/route.ts           # AI-чат (анонимный, для лендинга)
 │   ├── portrait/route.ts                 # GET портрет
 │   ├── portrait/update/route.ts          # Обновление портрета (Gemini Pro)
-│   ├── auth/telegram/route.ts            # Telegram OIDC
+│   ├── auth/telegram/verify/route.ts     # Верификация Telegram JWT
+│   ├── auth/yandex/route.ts              # Инициация Яндекс OAuth
 │   └── auth/yandex/callback/route.ts     # Яндекс OAuth callback
 components/
 ├── ChatWindow.tsx                        # Основной чат (стриминг, markdown, retry)
 ├── Sidebar.tsx                           # Десктоп-навигация
 ├── MobileTabs.tsx                        # Мобильная навигация
-├── InChatAuth.tsx                        # Авторизация прямо в чате (popup)
+├── AuthSheet.tsx                         # Единый компонент авторизации (sheet/fullscreen)
+├── AnonymousChat.tsx                     # Анонимный чат на лендинге
 ├── BalanceClient.tsx                     # Клиентская часть страницы баланса
 ├── PublicHeader.tsx                      # Хедер для публичных страниц
 lib/
@@ -69,6 +74,8 @@ lib/
 ├── gemini-portrait.ts                    # analyzeForPortrait() — Gemini Pro
 ├── config.ts                             # getConfig() — app_config из БД с кешем
 ├── yandex-auth.ts                        # Яндекс OAuth логика
+├── telegram-auth.ts                      # Telegram OIDC верификация
+├── oauth-common.ts                       # Общая OAuth логика (findOrCreateUser)
 ├── prompts/portrait-analyst.ts           # Промпт для анализа портрета
 types/
 ├── portrait.ts                           # Типы + EMPTY_PORTRAIT
@@ -87,9 +94,11 @@ middleware.ts                             # Auth guard для защищённы
 Типы событий: `delta` (текст), `chat_id` (новый чат), `done`, `error`.
 
 ### Авторизация
-- Middleware (`middleware.ts`) защищает `/program/*/...` и `/balance`
-- Пропускает `/api/auth/*` без проверки
+- Единый компонент `AuthSheet.tsx` — все точки авторизации (sheet/fullscreen режимы)
+- Middleware (`middleware.ts`) защищает `/program/*/...` и `/balance`, пропускает `/api/auth/*` и popup flow
+- Тройное обнаружение: postMessage + onAuthStateChange + polling getUser()
 - `auth.uid()` в RLS-политиках Supabase работает для всех провайдеров
+- Подробности — см. секцию «Авторизация» ниже
 
 ### chatType в API
 `chatType: "free" | "author"` — тип чата, передаётся из ChatWindow в API для выбора системного промпта.
@@ -133,9 +142,63 @@ middleware.ts                             # Auth guard для защищённы
 
 Старые URL (`/balance`, `/test/results/[id]`, `/test/issp`) — redirect-заглушки.
 
+## Авторизация
+
+### Архитектура
+Единый компонент `components/AuthSheet.tsx` — все точки авторизации в проекте.
+Два режима:
+- **sheet** — bottom sheet снизу экрана (тест Q34, чат на лендинге). Scrim + blur, grab handle, slide-up анимация.
+- **fullscreen** — карточка по центру с логотипом (страница /auth).
+
+Три контекста (контекстные заголовки):
+- `test` — «Сохрани свой результат» (TestCardFlow, phase=auth_wall)
+- `chat` — «Продолжим разговор?» (AnonymousChat, лимит сообщений)
+- `default` — «Войти в аккаунт» (страница /auth, middleware redirect)
+
+### Методы входа
+- **Telegram** — OIDC SDK (`oauth.telegram.org/js/telegram-login.js`), inline popup
+- **Яндекс** — OAuth popup через window.open, callback → /auth/popup-success
+- **Email (Magic Link)** — signInWithOtp, поле видно сразу (не за ссылкой), ссылка на почтовый сервис после отправки
+
+### Обнаружение авторизации (тройное, параллельное)
+1. postMessage — мгновенный сигнал от popup (десктоп)
+2. onAuthStateChange — Supabase cross-tab синхронизация (Magic Link, мобилка)
+3. polling getUser() каждые 3 сек — fallback
+
+calledRef паттерн — onSuccess вызывается ровно один раз.
+
+### Callback-страницы
+- `/auth/popup-success` — для закрытия OAuth popup (postMessage + window.close)
+- `/auth/link-success` — экран после Magic Link ("Вернитесь на вкладку")
+
+### Визуал
+Светлая тема, CSS variables с префиксом --auth-* (не конфликтуют с тёмной темой приложения).
+
+### Файлы
+- `components/AuthSheet.tsx` — единый компонент
+- `app/auth/page.tsx` — страница /auth (AuthSheet fullscreen)
+- `app/auth/popup-success/page.tsx` — закрытие popup
+- `app/auth/link-success/page.tsx` — экран после Magic Link
+- `app/auth/callback/route.ts` — обработка Magic Link callback
+- `app/api/auth/yandex/route.ts` — инициация Яндекс OAuth
+- `app/api/auth/yandex/callback/route.ts` — обработка Яндекс callback
+- `app/api/auth/telegram/verify/route.ts` — верификация Telegram JWT
+- `lib/telegram-auth.ts` — Telegram OIDC верификация
+- `lib/oauth-common.ts` — общая OAuth логика (findOrCreateUser с fallback)
+- `middleware.ts` — защита routes, исключение для popup flow
+
+### ENV variables (Telegram)
+- `NEXT_PUBLIC_TELEGRAM_BOT_ID` — Bot ID (клиент + audience check)
+- `TELEGRAM_CLIENT_SECRET` — Bot Token (HMAC для генерации пароля Supabase)
+
+### Удалено
+- `components/InChatAuth.tsx` — заменён AuthSheet
+- CSS `.in-chat-auth-*` — удалены
+- Inline styles в auth/page.tsx — удалены
+
 ## Важные нюансы
 
-- Telegram Bot ID `8544302305` захардкожен — это публичный ID, безопасно
+- Telegram Bot ID — через `NEXT_PUBLIC_TELEGRAM_BOT_ID` env variable
 - Яндекс OAuth Client ID `ce4f585bbcd846d9bc025c28a60ebe6e`
 - Фейковые email для OAuth: `tg_XXX@niceguy.local`, `ya_XXX@niceguy.local`
 - Баланс токенов — общий для аккаунта, страница `/program/[slug]/balance`
