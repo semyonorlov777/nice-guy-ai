@@ -25,7 +25,7 @@ export default async function AuthorChatPage({
   // User initial for avatar
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name")
+    .select("name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -33,6 +33,8 @@ export default async function AuthorChatPage({
     userData?.name?.[0]?.toUpperCase() ||
     user.email?.[0]?.toUpperCase() ||
     "?";
+
+  const avatarUrl = userData?.avatar_url || null;
 
   return (
     <ChatWindow
@@ -42,10 +44,13 @@ export default async function AuthorChatPage({
       programId={program.id}
       chatType="author"
       userInitial={userInitial}
+      avatarUrl={avatarUrl}
       welcomeMessage={program.author_chat_welcome}
     >
       <div className="welcome-card">
-        <div className="welcome-emoji">{"\u270D\uFE0F"}</div>
+        <div className="welcome-book">
+          <img src="https://cdn.litres.ru/pub/c/cover_415/6882766.webp" alt="" />
+        </div>
         <div className="welcome-title">Роберт Гловер</div>
         <div className="welcome-sub">Автор книги</div>
         <div className="welcome-desc">

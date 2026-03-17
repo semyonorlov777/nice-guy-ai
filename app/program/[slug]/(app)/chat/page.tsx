@@ -33,7 +33,7 @@ export default async function ChatPage({
   // User initial for avatar
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name")
+    .select("name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -41,6 +41,8 @@ export default async function ChatPage({
     userData?.name?.[0]?.toUpperCase() ||
     user.email?.[0]?.toUpperCase() ||
     "?";
+
+  const avatarUrl = userData?.avatar_url || null;
 
   // Count exercises for this program
   const { count: exerciseCount } = await supabase
@@ -117,11 +119,14 @@ export default async function ChatPage({
       chatId={null}
       programId={program.id}
       userInitial={userInitial}
+      avatarUrl={avatarUrl}
       welcomeMessage={program.free_chat_welcome || config.welcome_message}
       quickReplies={config.quick_replies}
     >
       <div className="welcome-card">
-        <div className="welcome-emoji">{"📖"}</div>
+        <div className="welcome-book">
+          <img src="https://cdn.litres.ru/pub/c/cover_415/6882766.webp" alt="" />
+        </div>
         <div className="welcome-title">{program.title}</div>
         {(exerciseCount || 0) > 0 && (
           <div className="welcome-sub">{exerciseCount} упражнений</div>

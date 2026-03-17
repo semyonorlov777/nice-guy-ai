@@ -50,7 +50,7 @@ export default async function ExistingExerciseSessionPage({
   // User initial
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name")
+    .select("name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -58,6 +58,8 @@ export default async function ExistingExerciseSessionPage({
     userData?.name?.[0]?.toUpperCase() ||
     user.email?.[0]?.toUpperCase() ||
     "?";
+
+  const avatarUrl = userData?.avatar_url || null;
 
   // Total exercises count
   const { count } = await supabase
@@ -122,6 +124,7 @@ export default async function ExistingExerciseSessionPage({
       programId={program.id}
       exerciseId={exercise.id}
       userInitial={userInitial}
+      avatarUrl={avatarUrl}
       welcomeMessage={exercise.welcome_message || config.welcome_message}
     >
       <div className="exercise-intro">

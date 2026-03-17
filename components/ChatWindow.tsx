@@ -15,9 +15,20 @@ interface ChatWindowProps {
   exerciseId?: string;
   chatType?: "exercise" | "free" | "author";
   userInitial: string;
+  avatarUrl?: string | null;
   welcomeMessage?: string;
   quickReplies?: string[];
   children?: React.ReactNode;
+}
+
+function classifyError(content: string): "limit" | "ai" {
+  if (/Недостаточно|лимит|закончились/i.test(content)) return "limit";
+  return "ai";
+}
+
+function getSlugFromPath(): string {
+  const match = window.location.pathname.match(/\/program\/([^/]+)/);
+  return match ? match[1] : "nice-guy";
 }
 
 export function ChatWindow({
@@ -27,6 +38,7 @@ export function ChatWindow({
   exerciseId,
   chatType,
   userInitial,
+  avatarUrl,
   welcomeMessage,
   quickReplies,
   children,
@@ -36,6 +48,7 @@ export function ChatWindow({
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const [validationHint, setValidationHint] = useState<string | null>(null);
+  const [showScrollFab, setShowScrollFab] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
 
@@ -97,8 +110,18 @@ export function ChatWindow({
   function handleScroll() {
     const el = messagesRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 50;
     isUserScrolledUp.current = !atBottom;
+    setShowScrollFab(distanceFromBottom > 200);
+  }
+
+  function scrollToBottomForced() {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
+      isUserScrolledUp.current = false;
+      setShowScrollFab(false);
+    }
   }
 
   // --- Send ---
@@ -137,18 +160,49 @@ export function ChatWindow({
     return /Ошибка|Недостаточно/.test(content);
   }
 
+  function renderErrorCard(text: string, onRetry: () => void) {
+    const type = classifyError(text);
+    return (
+      <div className="error-card">
+        <div className="msg-avatar ai" />
+        <div className="error-card-bubble" role="alert">
+          <p>{text}</p>
+          {type === "limit" ? (
+            <a className="error-link-btn" href={`/program/${getSlugFromPath()}/balance`}>
+              Перейти к тарифам →
+            </a>
+          ) : (
+            <button className="error-retry-btn" onClick={onRetry}>
+              ↻ Повторить
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderUserAvatar() {
+    return (
+      <div className="msg-avatar user">
+        {avatarUrl
+          ? <img src={avatarUrl} alt="" className="msg-avatar-img" />
+          : "Я"}
+      </div>
+    );
+  }
+
   // Show welcome AI message when no history exists
   const showWelcome = welcomeMessage && initialMessages.length === 0;
 
   return (
     <div className="chat-zone">
-      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll}>
+      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll} role="log" aria-live="polite">
         <div className="chat-inner">
           {children}
 
           {showWelcome && (
-            <div className="msg msg-ai">
-              <div className="msg-avatar ai">НС</div>
+            <div className="msg msg-ai" role="article">
+              <div className="msg-avatar ai" />
               <div className="msg-bubble">
                 <ReactMarkdown>{welcomeMessage}</ReactMarkdown>
               </div>
@@ -157,6 +211,9 @@ export function ChatWindow({
 
           {showQuickReplies && quickReplies && quickReplies.length > 0 && (
             <div className="quick-replies">
+              {initialMessages.length === 0 && (
+                <div className="quick-reply-label">Выбери вариант или напиши своё</div>
+              )}
               {quickReplies.map((text, i) => (
                 <button
                   key={i}
@@ -178,20 +235,24 @@ export function ChatWindow({
 
             if (isThinking) return null;
 
-            return (
-              <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`}>
-                <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
-                  {isAi ? "НС" : userInitial}
+            // Error message → ErrorCard
+            if (isAi && !isStreaming && isLast && isErrorMessage(text)) {
+              return (
+                <div key={msg.id} role="article">
+                  {renderErrorCard(text, () => regenerate())}
                 </div>
+              );
+            }
+
+            return (
+              <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article">
+                {isAi
+                  ? <div className="msg-avatar ai" />
+                  : renderUserAvatar()}
                 <div className="msg-bubble">
                   {renderContent(text, isAi)}
                   {status === "streaming" && isLast && isAi && (
                     <span className="streaming-cursor">{"▊"}</span>
-                  )}
-                  {!isStreaming && isLast && isAi && isErrorMessage(text) && (
-                    <button className="retry-btn" onClick={() => regenerate()}>
-                      Повторить
-                    </button>
                   )}
                 </div>
               </div>
@@ -200,28 +261,31 @@ export function ChatWindow({
 
           {status === "submitted" && messages.length > 0 && (
             <div className="thinking-indicator">
-              думаю
-              <span className="thinking-dots">
-                <span>.</span>
-                <span>.</span>
-                <span>.</span>
-              </span>
-            </div>
-          )}
-
-          {error && (
-            <div className="msg msg-ai">
-              <div className="msg-avatar ai">НС</div>
-              <div className="msg-bubble">
-                <p>{error.message || "Произошла ошибка"}</p>
-                <button className="retry-btn" onClick={() => regenerate()}>
-                  Повторить
-                </button>
+              <div className="msg-avatar ai" />
+              <div className="thinking-bubble">
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
               </div>
             </div>
           )}
+
+          {error && renderErrorCard(
+            error.message || "Произошла ошибка. Давай попробуем ещё раз?",
+            () => regenerate()
+          )}
         </div>
       </div>
+
+      <button
+        className={`scroll-fab ${showScrollFab ? "visible" : ""}`}
+        onClick={scrollToBottomForced}
+        aria-label="Прокрутить вниз"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 5v14M5 12l7 7 7-7" />
+        </svg>
+      </button>
 
       <div className="chat-input-wrap">
         <div className="chat-input-inner">

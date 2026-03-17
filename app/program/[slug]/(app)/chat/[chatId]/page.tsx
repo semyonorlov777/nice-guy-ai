@@ -43,7 +43,7 @@ export default async function ExistingChatPage({
   // User initial
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name")
+    .select("name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -51,6 +51,8 @@ export default async function ExistingChatPage({
     userData?.name?.[0]?.toUpperCase() ||
     user.email?.[0]?.toUpperCase() ||
     "?";
+
+  const avatarUrl = userData?.avatar_url || null;
 
   // Сообщения чата
   const { data: messages } = await supabase
@@ -87,6 +89,7 @@ export default async function ExistingChatPage({
       exerciseId={chat.exercise_id || undefined}
       chatType={chat.chat_type === "test" ? "free" : (chat.chat_type as "free" | "exercise")}
       userInitial={userInitial}
+      avatarUrl={avatarUrl}
       welcomeMessage={welcomeMessage}
     />
   );
