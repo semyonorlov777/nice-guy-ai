@@ -129,19 +129,19 @@ export function AnonymousChat({
   }, [messages, status, storageKeyMessages]);
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const hasScrolledToSection = useRef(false);
 
   // --- Scroll (включая landing page scroll) ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-      if (scrollToSectionId) {
-        const section = document.getElementById(scrollToSectionId);
-        if (section) {
-          const rect = section.getBoundingClientRect();
-          if (rect.top > window.innerHeight || rect.bottom < 0) {
-            section.scrollIntoView({ behavior: "smooth" });
-          }
-        }
+    }
+    // Page-level scroll к секции чата — только один раз
+    if (scrollToSectionId && !hasScrolledToSection.current) {
+      hasScrolledToSection.current = true;
+      const section = document.getElementById(scrollToSectionId);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
   }, [scrollToSectionId]);

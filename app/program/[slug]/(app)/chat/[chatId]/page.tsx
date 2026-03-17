@@ -43,7 +43,7 @@ export default async function ExistingChatPage({
   // User initial
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name, avatar_url")
+    .select("name, avatar_url, balance_tokens")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -53,6 +53,14 @@ export default async function ExistingChatPage({
     "?";
 
   const avatarUrl = userData?.avatar_url || null;
+  const balanceTokens = userData?.balance_tokens ?? 0;
+  const coverUrl = "https://cdn.litres.ru/pub/c/cover_415/6882766.webp";
+
+  // Количество упражнений
+  const { count: exerciseCount } = await supabase
+    .from("exercises")
+    .select("id", { count: "exact", head: true })
+    .eq("program_id", program.id);
 
   // Сообщения чата
   const { data: messages } = await supabase
@@ -91,6 +99,24 @@ export default async function ExistingChatPage({
       userInitial={userInitial}
       avatarUrl={avatarUrl}
       welcomeMessage={welcomeMessage}
-    />
+      programTitle={program.title}
+      coverUrl={coverUrl}
+      balance={balanceTokens}
+    >
+      <div className="welcome-card">
+        <div className="welcome-book">
+          <img src={coverUrl} alt="" />
+        </div>
+        <div className="welcome-title">{program.title}</div>
+        {(exerciseCount || 0) > 0 && (
+          <div className="welcome-sub">{exerciseCount} упражнений</div>
+        )}
+        <div className="welcome-desc">
+          {(exerciseCount || 0) > 0
+            ? "AI-ассистент проведёт тебя через каждое упражнение и поможет разобраться в себе."
+            : "Свободный чат с AI-ассистентом по теме книги. Задавай вопросы и обсуждай идеи."}
+        </div>
+      </div>
+    </ChatWindow>
   );
 }
