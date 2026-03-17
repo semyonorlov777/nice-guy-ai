@@ -5,7 +5,9 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
+import { useRouter } from "next/navigation";
 import InputBar from "@/components/InputBar/InputBar";
+import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 
 interface ChatWindowProps {
@@ -19,6 +21,9 @@ interface ChatWindowProps {
   welcomeMessage?: string;
   quickReplies?: string[];
   children?: React.ReactNode;
+  programTitle?: string;
+  coverUrl?: string;
+  balance?: number;
 }
 
 function classifyError(content: string): "limit" | "ai" {
@@ -42,7 +47,11 @@ export function ChatWindow({
   welcomeMessage,
   quickReplies,
   children,
+  programTitle,
+  coverUrl,
+  balance,
 }: ChatWindowProps) {
+  const router = useRouter();
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
   const chatIdRef = useRef<string | null>(initialChatId);
   const { refreshChatList } = useChatListRefresh();
@@ -196,6 +205,15 @@ export function ChatWindow({
 
   return (
     <div className="chat-zone">
+      {programTitle && coverUrl && (
+        <ChatHeader
+          programTitle={programTitle}
+          coverUrl={coverUrl}
+          currentMode="Свободный чат"
+          balance={balance}
+          onBack={() => router.back()}
+        />
+      )}
       <div className="chat-messages" ref={messagesRef} onScroll={handleScroll} role="log" aria-live="polite">
         <div className="chat-inner">
           {children}

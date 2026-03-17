@@ -33,7 +33,7 @@ export default async function ChatPage({
   // User initial for avatar
   const { data: userData } = await supabase
     .from("profiles")
-    .select("name, avatar_url")
+    .select("name, avatar_url, balance_tokens")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -43,6 +43,9 @@ export default async function ChatPage({
     "?";
 
   const avatarUrl = userData?.avatar_url || null;
+  const balanceTokens = userData?.balance_tokens ?? 0;
+  // TODO: cover_url хранится в programs.landing_data.book.cover_url, пока хардкод
+  const coverUrl = "https://cdn.litres.ru/pub/c/cover_415/6882766.webp";
 
   // Count exercises for this program
   const { count: exerciseCount } = await supabase
@@ -122,6 +125,9 @@ export default async function ChatPage({
       avatarUrl={avatarUrl}
       welcomeMessage={program.free_chat_welcome || config.welcome_message}
       quickReplies={config.quick_replies}
+      programTitle={program.title}
+      coverUrl={coverUrl}
+      balance={balanceTokens}
     >
       <div className="welcome-card">
         <div className="welcome-book">
