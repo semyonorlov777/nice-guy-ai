@@ -192,15 +192,17 @@ export async function POST(request: Request) {
     programId = ""; // not needed for anonymous (no test_results insert)
   }
 
-  // ── Desync check ──
-  if (questionIndex !== testState.current_question) {
+  // ── Desync check (authenticated only) ──
+  // Anonymous mode: RPC append_anonymous_test_answer handles desync atomically under FOR UPDATE lock.
+  // Pre-RPC check would use stale data and cause false 409s on fast clicks.
+  if (isAuthenticated && questionIndex !== testState.current_question) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const responseData: any = {
       error: "question_mismatch",
       server_question: testState.current_question,
     };
 
-    if (isAuthenticated && testState.current_question >= 35) {
+    if (testState.current_question >= 35) {
       const { data: existingResult } = await serviceClient
         .from("test_results")
         .select("id, status")
