@@ -54,12 +54,34 @@ export async function findOrCreateOAuthUser(params: FindOrCreateOAuthUserParams)
       email_confirm: true,
     });
 
-  if (createError) throw new Error(`User creation failed: ${createError.message}`);
+  if (createError) {
+    // User exists in auth.users but not found in profiles by lookupField
+    // This happens when profiles got out of sync (e.g. telegram_id was not saved)
+    if (createError.message.includes("already been registered")) {
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({ email: fakeEmail, password });
 
-  await supabase
+      if (signInError) throw new Error(`${params.provider} recovery login failed: ${signInError.message}`);
+
+      await supabase
+        .from("profiles")
+        .update({ ...params.existingProfileUpdate, ...params.newProfileData })
+        .eq("id", signInData.user.id);
+
+      return signInData.session;
+    }
+
+    throw new Error(`User creation failed: ${createError.message}`);
+  }
+
+  const { error: updateError } = await supabase
     .from("profiles")
     .update(params.newProfileData)
     .eq("id", createData.user.id);
+
+  if (updateError) {
+    console.error(`Profile update after creation failed:`, updateError);
+  }
 
   const { data: signInData, error: signInError } =
     await supabase.auth.signInWithPassword({ email: fakeEmail, password });
