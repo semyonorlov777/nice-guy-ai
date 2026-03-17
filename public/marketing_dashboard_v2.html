@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Маркетинг — Сводный дашборд v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0b0f;--sf:#12141c;--s2:#1a1d28;--s3:#222633;--bd:#2a2e3d;--tx:#e8eaf0;--dm:#8b90a5;--mt:#5a5f75;--ac:#6c5ce7;--ag:rgba(108,92,231,.25);--gn:#00d68f;--gd:rgba(0,214,143,.15);--rd:#ff6b6b;--rdd:rgba(255,107,107,.12);--yl:#ffd93d;--yd:rgba(255,217,61,.12);--bl:#4dabf7;--bd2:rgba(77,171,247,.12);--or:#ff922b;--cy:#22b8cf;--pk:#f06595;--r:16px;--rs:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;line-height:1.6;overflow-x:hidden}
+.noise{position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+.orb{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(120px);opacity:.06;pointer-events:none;z-index:0}
+.orb.p{background:#6c5ce7;top:-200px;right:-100px}.orb.b{background:#4dabf7;bottom:-200px;left:-100px}
+.W{position:relative;z-index:1;max-width:1420px;margin:0 auto;padding:32px 24px 80px}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--bd)}
+.hdr h1{font-size:30px;font-weight:700;letter-spacing:-1px;background:linear-gradient(135deg,#e8eaf0,#8b90a5);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr .sub{color:var(--mt);font-size:13px;font-weight:500;margin-top:4px}
+/* TABS */
+.mt{display:flex;gap:3px;margin-bottom:20px;background:var(--sf);border-radius:12px;padding:4px;border:1px solid var(--bd);flex-wrap:wrap;width:fit-content}
+.mtb{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--dm);transition:.2s;border:none;background:none;font-family:inherit;white-space:nowrap}
+.mtb:hover{color:var(--tx)}.mtb.a{background:var(--ac);color:#fff;box-shadow:0 2px 12px var(--ag)}
+.tp{display:none}.tp.a{display:block}
+.st{display:flex;gap:3px;margin-bottom:18px;padding:3px;background:var(--s2);border-radius:10px;width:fit-content;border:1px solid var(--bd)}
+.stb{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--mt);transition:.2s;border:none;background:none;font-family:inherit}
+.stb:hover{color:var(--tx)}.stb.a{background:var(--s3);color:var(--tx)}
+.sp{display:none}.sp.a{display:block}
+/* KPI */
+.kr{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.k{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:18px 16px;position:relative;overflow:hidden;transition:.2s}
+.k:hover{transform:translateY(-2px);border-color:var(--ac)}
+.k .l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--mt);margin-bottom:7px}
+.k .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;margin-bottom:5px}
+.k .i{font-size:11px;font-weight:500;color:var(--dm)}
+.k .br{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--s3)}
+.k .bf{height:100%;transition:width 1.2s ease}
+/* CARDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px}
+.fw{margin-bottom:24px}
+.cd{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:20px}
+.ct{font-size:12px;font-weight:600;color:var(--dm);margin-bottom:14px;text-transform:uppercase;letter-spacing:.8px}
+.sc{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.sc .dt{width:7px;height:7px;border-radius:50%;background:var(--ac);box-shadow:0 0 10px var(--ag)}
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{text-align:left;padding:9px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mt);border-bottom:1px solid var(--bd);white-space:nowrap}
+tbody td{padding:9px 10px;border-bottom:1px solid var(--s3);font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap}
+tbody tr:hover{background:var(--s2)}
+.cn{font-family:'DM Sans',sans-serif!important;font-weight:600;color:var(--tx)}
+.sd{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px}
+/* INSIGHTS */
+.ins{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:16px 18px;margin-bottom:10px}
+.ins.d{border-left:3px solid var(--rd)}.ins.w{border-left:3px solid var(--yl)}.ins.s{border-left:3px solid var(--gn)}.ins.i{border-left:3px solid var(--bl)}
+.ins .n{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--mt);letter-spacing:2px;margin-bottom:5px}
+.ins h3{font-size:14px;font-weight:700;margin-bottom:5px}
+.ins p{font-size:12px;color:var(--dm);line-height:1.6}
+/* METRIC BIG */
+.mb{text-align:center}
+.mb .mv{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700}
+.mb .ml{font-size:10px;color:var(--mt);margin-top:3px}
+/* ALERT */
+.alt{margin-top:12px;padding:10px 14px;border-radius:var(--rs);font-size:12px}
+.alt.r{background:var(--rdd);color:var(--rd)}.alt.y{background:var(--yd);color:var(--yl)}.alt.g{background:var(--gd);color:var(--gn)}
+@media(max-width:1100px){.kr{grid-template-columns:repeat(3,1fr)}.g2,.g3{grid-template-columns:1fr}}
+@media(max-width:700px){.kr{grid-template-columns:1fr 1fr}.W{padding:18px 12px 60px}.hdr h1{font-size:22px}.mt{width:100%}}
+</style>
+</head>
+<body>
+<div class="noise"></div><div class="orb p"></div><div class="orb b"></div>
+<div class="W">
+
+<div class="hdr">
+  <div><h1>Маркетинговый дашборд</h1><div class="sub">Еженедельная аналитика · Февраль–Март 2026</div></div>
+</div>
+
+<div class="mt">
+  <button class="mtb a" onclick="M(0)">Нед. 4 · 16.02–22.02</button>
+  <button class="mtb" onclick="M(1)">Нед. 5 · 23.02–01.03</button>
+  <button class="mtb" onclick="M(2)">Нед. 1 · 02.03–08.03</button>
+  <button class="mtb" onclick="M(3)">Нед. 2 · 09.03–15.03</button>
+</div>
+
+<!-- ===================== НЕДЕЛЯ 4 ФЕВ ===================== -->
+<div class="tp a" id="t0">
+<div class="st"><button class="stb a" onclick="S(0,0)">Обзор</button></div>
+<div class="sp a" id="t0s0">
+
+<div class="kr">
+  <div class="k"><div class="l">Бюджет нед.</div><div class="v">169 839₽</div><div class="i">481 387₽ накоп. (77,96%)</div><div class="br"><div class="bf" style="width:77.96%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Лиды</div><div class="v">123</div><div class="i" style="color:var(--yl)">339 накоп. · 51,91% плана</div><div class="br"><div class="bf" style="width:51.91%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Квал. лиды</div><div class="v" style="color:var(--rd)">40</div><div class="i" style="color:var(--rd)">118 накоп. · 36,20% плана</div><div class="br"><div class="bf" style="width:36.2%;background:var(--rd)"></div></div></div>
+  <div class="k"><div class="l">Продажи</div><div class="v">10</div><div class="i" style="color:var(--yl)">21 накоп. · 60%</div><div class="br"><div class="bf" style="width:60%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Выручка</div><div class="v">680 983₽</div><div class="i" style="color:var(--yl)">1 413 096₽ накоп. · 49,01%</div><div class="br"><div class="bf" style="width:49.01%;background:var(--yl)"></div></div></div>
+</div>
+
+<div class="g3">
+  <div class="cd mb"><div class="ct">CR1</div><div class="mv" style="color:var(--bl)">2,18%</div></div>
+  <div class="cd mb"><div class="ct">CR2</div><div class="mv" style="color:var(--yl)">32,52%</div></div>
+  <div class="cd mb"><div class="ct">ДРР недели</div><div class="mv" style="color:var(--yl)">24,94%</div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Платные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>Сессии</th><th>Лиды</th><th>Квал</th><th>Продажи</th><th>Расход</th><th>Выручка</th><th>ДРР</th></tr></thead><tbody>
+<tr><td class="cn">Яндекс (практ.)</td><td>1 454</td><td>31</td><td>13</td><td>2</td><td>71 826₽</td><td>144 018₽</td><td style="color:var(--yl)">49,87%</td></tr>
+<tr><td class="cn">Яндекс (секс.)</td><td>—</td><td>0</td><td>0</td><td>0</td><td>5 812₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">ВК Сенлер</td><td>—</td><td>50</td><td>14</td><td>0</td><td>38 152₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">ВК Квиз</td><td>17</td><td>3</td><td>1</td><td>0</td><td>19 513₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Тг Адс</td><td>56</td><td>1</td><td>1</td><td>0</td><td>11 412₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Tutortop</td><td>32</td><td>3</td><td>2</td><td>0</td><td>2 250₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Psycho lesson</td><td>—</td><td>4</td><td>1</td><td>1</td><td>18 113₽</td><td>72 454₽</td><td style="color:var(--gn)">25%</td></tr>
+<tr><td class="cn">Флоктори</td><td>—</td><td>—</td><td>—</td><td>2</td><td>—</td><td>188 593₽</td><td>—</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn" style="color:var(--ac)">ИТОГО</td><td>1 559</td><td>92</td><td>30</td><td>5</td><td>169 839₽</td><td>405 065₽</td><td style="color:var(--yl)">41,93%</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Бесплатные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>Лиды</th><th>Квал</th><th>Продажи</th><th>Выручка</th></tr></thead><tbody>
+<tr><td class="cn" style="color:var(--gn)">SEO</td><td>4</td><td>3</td><td>0</td><td>0₽</td></tr>
+<tr><td class="cn" style="color:var(--gn)">Рекомендации</td><td>2</td><td>1</td><td>2</td><td>168 682₽</td></tr>
+<tr><td class="cn" style="color:var(--gn)">Рассылка</td><td>25</td><td>12</td><td>3</td><td>107 236₽</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn">ИТОГО</td><td>31</td><td>16</td><td>5</td><td>275 918₽</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Пайплайн</div>
+<div class="g2">
+  <div class="cd"><div class="ct">Воронка когорты</div><div><canvas id="w4fun"></canvas></div></div>
+  <div class="cd"><div class="ct">Структура выручки</div><div><canvas id="w4rev"></canvas></div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Выводы</div>
+<div class="ins w"><div class="n">01</div><h3>ВК Сенлер: объём есть, конверсия нет</h3><p>50 лидов, но CR2 всего 28% (14 квалов), 0 продаж. Воронка генерит мусорный трафик. При 38 152₽ расхода — чистый убыток.</p></div>
+<div class="ins s"><div class="n">02</div><h3>Рассылка: 25 лидов при 0₽</h3><p>Лучший канал по объёму бесплатных лидов. 12 квалов, 3 продажи, 107 236₽. Нужно систематизировать.</p></div>
+<div class="ins d"><div class="n">03</div><h3>Общий отставание по плану</h3><p>Выручка 49% на 4-й неделе из 5. Лиды 51,91%. Квалы 36,20%. Без резкого ускорения месяц не закроется.</p></div>
+</div>
+</div><!-- end t0 -->
+
+<!-- ===================== НЕДЕЛЯ 5 ФЕВ ===================== -->
+<div class="tp" id="t1">
+<div class="st"><button class="stb a" onclick="S(1,0)">Обзор</button><button class="stb" onclick="S(1,1)">Сравнение</button></div>
+<div class="sp a" id="t1s0">
+
+<div class="kr">
+  <div class="k"><div class="l">Бюджет нед.</div><div class="v">86 347₽</div><div class="i" style="color:var(--gn)">541 254₽ накоп. (87,65%)</div><div class="br"><div class="bf" style="width:87.65%;background:var(--gn)"></div></div></div>
+  <div class="k"><div class="l">Лиды</div><div class="v" style="color:var(--rd)">41</div><div class="i" style="color:var(--rd)">380 накоп. · 58,19%</div><div class="br"><div class="bf" style="width:58.19%;background:var(--rd)"></div></div></div>
+  <div class="k"><div class="l">Квал. лиды</div><div class="v" style="color:var(--rd)">23</div><div class="i" style="color:var(--rd)">141 накоп. · 43,25%</div><div class="br"><div class="bf" style="width:43.25%;background:var(--rd)"></div></div></div>
+  <div class="k"><div class="l">Продажи</div><div class="v">10</div><div class="i" style="color:var(--yl)">28 накоп. · 80%</div><div class="br"><div class="bf" style="width:80%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Выручка</div><div class="v">888 033₽</div><div class="i" style="color:var(--yl)">2 460 570₽ накоп. · 85,34%</div><div class="br"><div class="bf" style="width:85.34%;background:var(--yl)"></div></div></div>
+</div>
+
+<div class="g3">
+  <div class="cd mb"><div class="ct">CR1</div><div class="mv" style="color:var(--bl)">2,01%</div></div>
+  <div class="cd mb"><div class="ct">CR2</div><div class="mv" style="color:var(--gn)">56,10%</div></div>
+  <div class="cd mb"><div class="ct">ДРР (общий)</div><div class="mv" style="color:var(--gn)">9,72%</div><div class="ml">платные: 50,98%</div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Платные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>Сессии</th><th>Лиды</th><th>Квал</th><th>Продажи</th><th>Расход</th><th>Выручка</th><th>ДРР</th></tr></thead><tbody>
+<tr><td class="cn">Яндекс (практ.)</td><td>1 898</td><td>21</td><td>10</td><td>1</td><td>70 607₽</td><td>94 474₽</td><td style="color:var(--rd)">74,74%</td></tr>
+<tr><td class="cn">Яндекс (секс.)</td><td>—</td><td>2</td><td>—</td><td>0</td><td>8 568₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">ВК Сенлер</td><td>—</td><td>3</td><td>1</td><td>0</td><td>1 556₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Тг Адс</td><td>35</td><td>0</td><td>0</td><td>0</td><td>5 516₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Psycho lesson</td><td>—</td><td>7</td><td>4</td><td>0</td><td>0₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">ВК</td><td>—</td><td>1</td><td>1</td><td>1</td><td>—</td><td>74 894₽</td><td>—</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn" style="color:var(--ac)">ИТОГО</td><td>1 936</td><td>34</td><td>16</td><td>2</td><td>86 347₽</td><td>169 367₽</td><td style="color:var(--rd)">50,98%</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Бесплатные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>Сессии</th><th>Лиды</th><th>Квал</th><th>Продажи</th><th>Выручка</th></tr></thead><tbody>
+<tr><td class="cn" style="color:var(--gn)">SEO</td><td>101</td><td>7</td><td>7</td><td>2</td><td>158 607₽</td></tr>
+<tr><td class="cn" style="color:var(--gn)">Рассылка</td><td>—</td><td>—</td><td>—</td><td>6</td><td>372 318₽</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn">ИТОГО</td><td>101</td><td>7</td><td>7</td><td>8</td><td>530 925₽</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Выводы</div>
+<div class="ins s"><div class="n">01</div><h3>Бесплатные каналы: 59,8% выручки</h3><p>530 925₽ из 888 033₽. Рассылка — 6 продаж (372 318₽), SEO — 2 продажи (158 607₽). Платные каналы убыточны.</p></div>
+<div class="ins d"><div class="n">02</div><h3>ВК окончательно мёртв</h3><p>Сенлер: 3 лида (было 50). Квиз: 0. Канал корректно отключён на этой неделе.</p></div>
+<div class="ins w"><div class="n">03</div><h3>Яндекс: ДРР 74,74%</h3><p>Расход вырос, лиды упали (31→21). CPL за неделю ~3 362₽. Нужна оптимизация посадочной.</p></div>
+</div>
+
+<!-- СРАВНЕНИЕ нед5 vs нед4 -->
+<div class="sp" id="t1s1">
+<div class="sc"><span class="dt"></span> Нед. 5 (23.02–01.03) vs Нед. 4 (16.02–22.02)</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Показатель</th><th>Нед. 4</th><th>Нед. 5</th><th>Δ</th></tr></thead><tbody>
+<tr><td class="cn">Лиды</td><td>123</td><td>41</td><td style="color:var(--rd)">−66,7%</td></tr>
+<tr><td class="cn">Квал. лиды</td><td>40</td><td>23</td><td style="color:var(--rd)">−42,5%</td></tr>
+<tr><td class="cn">Продажи</td><td>10</td><td>10</td><td>0%</td></tr>
+<tr><td class="cn">Выручка</td><td>680 983₽</td><td>888 033₽</td><td style="color:var(--gn)">+30,4%</td></tr>
+<tr><td class="cn">Расход</td><td>169 839₽</td><td>86 347₽</td><td style="color:var(--gn)">−49,2%</td></tr>
+<tr><td class="cn">CR1</td><td>2,18%</td><td>2,01%</td><td style="color:var(--rd)">−0,17 п.п.</td></tr>
+<tr><td class="cn">CR2</td><td>32,52%</td><td>56,10%</td><td style="color:var(--gn)">+23,58 п.п.</td></tr>
+<tr><td class="cn">ДРР (общий)</td><td>24,94%</td><td>9,72%</td><td style="color:var(--gn)">−15,22 п.п.</td></tr>
+</tbody></table></div></div>
+<div class="g2">
+  <div class="cd"><div class="ct">Лиды и продажи</div><div><canvas id="c1leads"></canvas></div></div>
+  <div class="cd"><div class="ct">Выручка и расход</div><div><canvas id="c1rev"></canvas></div></div>
+</div>
+<div class="ins i"><div class="n">ВЫВОД</div><h3>Парадокс: лидов −67%, выручка +30%</h3><p>Отключение ВК обрушило объём лидов, но убрало мусорный трафик. CR2 взлетел с 32% до 56%. Выручку вытянули рассылка (372К) и SEO (159К). Расход упал вдвое — ДРР улучшился до 9,72%.</p></div>
+</div>
+</div><!-- end t1 -->
+
+<!-- ===================== НЕДЕЛЯ 1 МАР ===================== -->
+<div class="tp" id="t2">
+<div class="st"><button class="stb a" onclick="S(2,0)">Обзор</button><button class="stb" onclick="S(2,1)">Сравнение</button></div>
+<div class="sp a" id="t2s0">
+
+<div class="alt y" style="margin-bottom:16px"><strong>ℹ️ Данные рассчитаны</strong> из накопительных показателей отчёта нед. 2 марта (факт накоп. − факт нед. 2). Детализация по каналам недоступна.</div>
+
+<div class="kr">
+  <div class="k"><div class="l">Бюджет нед.</div><div class="v">116 542₽</div><div class="i">116 542₽ накоп. (18,36%)</div><div class="br"><div class="bf" style="width:18.36%;background:var(--bl)"></div></div></div>
+  <div class="k"><div class="l">Лиды</div><div class="v">43</div><div class="i">43 накоп. · 13,65%</div><div class="br"><div class="bf" style="width:13.65%;background:var(--rd)"></div></div></div>
+  <div class="k"><div class="l">Квал. лиды</div><div class="v">19</div><div class="i">19 накоп. · 15,08%</div><div class="br"><div class="bf" style="width:15.08%;background:var(--rd)"></div></div></div>
+  <div class="k"><div class="l">Продажи</div><div class="v">9</div><div class="i">9 накоп. · 36%</div><div class="br"><div class="bf" style="width:36%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Выручка</div><div class="v">707 277₽</div><div class="i">707 277₽ накоп. · 29,78%</div><div class="br"><div class="bf" style="width:29.78%;background:var(--yl)"></div></div></div>
+</div>
+
+<div class="g3">
+  <div class="cd mb"><div class="ct">Продажи / Лиды</div><div class="mv" style="color:var(--gn)">9 / 43</div><div class="ml">включая дожим февральских когорт</div></div>
+  <div class="cd mb"><div class="ct">Ср. чек продажи</div><div class="mv" style="color:var(--bl)">78 586₽</div></div>
+  <div class="cd mb"><div class="ct">ДРР недели</div><div class="mv" style="color:var(--gn)">16,48%</div><div class="ml">116 542₽ / 707 277₽</div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Выводы</div>
+<div class="ins s"><div class="n">01</div><h3>Лучшая неделя по продажам: 9 шт.</h3><p>707 277₽ выручки при 116 542₽ расхода. ДРР 16,48% — лучший показатель за все 4 недели. Вероятно, сработал дожим февральского пайплайна.</p></div>
+<div class="ins w"><div class="n">02</div><h3>Лидов всего 43 — тренд на снижение</h3><p>После 123 (нед.4) и 41 (нед.5) — 43 лида. Объём не восстанавливается. Новые каналы ещё не дали эффекта.</p></div>
+</div>
+
+<!-- СРАВНЕНИЕ нед1 мар vs нед5 фев -->
+<div class="sp" id="t2s1">
+<div class="sc"><span class="dt"></span> Нед. 1 мар vs Нед. 5 фев</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Показатель</th><th>Нед. 5 фев</th><th>Нед. 1 мар</th><th>Δ</th></tr></thead><tbody>
+<tr><td class="cn">Лиды</td><td>41</td><td>43</td><td style="color:var(--gn)">+4,9%</td></tr>
+<tr><td class="cn">Квал. лиды</td><td>23</td><td>19</td><td style="color:var(--rd)">−17,4%</td></tr>
+<tr><td class="cn">Продажи</td><td>10</td><td>9</td><td style="color:var(--yl)">−10%</td></tr>
+<tr><td class="cn">Выручка</td><td>888 033₽</td><td>707 277₽</td><td style="color:var(--rd)">−20,4%</td></tr>
+<tr><td class="cn">Расход</td><td>86 347₽</td><td>116 542₽</td><td style="color:var(--rd)">+34,9%</td></tr>
+<tr><td class="cn">ДРР</td><td>9,72%</td><td>16,48%</td><td style="color:var(--rd)">+6,76 п.п.</td></tr>
+</tbody></table></div></div>
+<div class="g2">
+  <div class="cd"><div class="ct">Недельная динамика</div><div><canvas id="c2leads"></canvas></div></div>
+  <div class="cd"><div class="ct">Выручка и расход</div><div><canvas id="c2rev"></canvas></div></div>
+</div>
+<div class="ins i"><div class="n">ВЫВОД</div><h3>Стабилизация лидов, но расход растёт</h3><p>Лиды на уровне нед.5 (43 vs 41) — «дно» пока не пробито. Расход вырос на 35% за счёт активизации платных каналов. Выручка 707К — высокая, но это дожим февральских когорт, а не результат марта.</p></div>
+</div>
+</div><!-- end t2 -->
+
+<!-- ===================== НЕДЕЛЯ 2 МАР ===================== -->
+<div class="tp" id="t3">
+<div class="st"><button class="stb a" onclick="S(3,0)">Обзор</button><button class="stb" onclick="S(3,1)">Сравнение</button></div>
+<div class="sp a" id="t3s0">
+
+<div class="kr">
+  <div class="k"><div class="l">Бюджет нед.</div><div class="v">111 120₽</div><div class="i">227 662₽ накоп. (35,87%)</div><div class="br"><div class="bf" style="width:35.87%;background:var(--bl)"></div></div></div>
+  <div class="k"><div class="l">Лиды</div><div class="v" style="color:var(--gn)">63</div><div class="i" style="color:var(--yl)">106 накоп. · 33,65%</div><div class="br"><div class="bf" style="width:33.65%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Квал. лиды</div><div class="v">28</div><div class="i" style="color:var(--yl)">47 накоп. · 37,30%</div><div class="br"><div class="bf" style="width:37.3%;background:var(--yl)"></div></div></div>
+  <div class="k"><div class="l">Продажи</div><div class="v">6</div><div class="i" style="color:var(--gn)">15 накоп. · 60%</div><div class="br"><div class="bf" style="width:60%;background:var(--gn)"></div></div></div>
+  <div class="k"><div class="l">Выручка</div><div class="v">415 816₽</div><div class="i" style="color:var(--yl)">1 123 093₽ накоп. · 47,29%</div><div class="br"><div class="bf" style="width:47.29%;background:var(--yl)"></div></div></div>
+</div>
+
+<div class="g3">
+  <div class="cd mb"><div class="ct">CR1</div><div class="mv" style="color:var(--gn)">3,15%</div><div class="ml">↑ лучший за 4 недели</div></div>
+  <div class="cd mb"><div class="ct">CR2</div><div class="mv" style="color:var(--gn)">44,44%</div><div class="ml">↑ vs нед.4 фев 32,52%</div></div>
+  <div class="cd mb"><div class="ct">ДРР недели</div><div class="mv" style="color:var(--yl)">26,72%</div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Платные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>План</th><th>Факт лиды</th><th>Квал</th><th>Продажи</th><th>Расход</th><th>Выручка</th><th>ДРР</th></tr></thead><tbody>
+<tr><td class="cn">Яндекс (практ.)</td><td>32</td><td style="color:var(--gn)">36</td><td>15</td><td>3</td><td>92 096₽</td><td>182 046₽</td><td style="color:var(--yl)">50,59%</td></tr>
+<tr><td class="cn">Яндекс (КПТ)</td><td>—</td><td>4</td><td>2</td><td>0</td><td>15 937₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Тг Адс</td><td>3</td><td style="color:var(--gn)">10</td><td style="color:var(--gn)">5</td><td>0</td><td style="color:var(--gn)">2 987₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Psycho lesson</td><td>5</td><td>5</td><td>2</td><td>0</td><td>0₽</td><td>0₽</td><td>—</td></tr>
+<tr><td class="cn">Tutortop</td><td>9</td><td style="color:var(--rd)">1</td><td>1</td><td>0</td><td>100₽</td><td>0₽</td><td>—</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn" style="color:var(--ac)">ИТОГО</td><td>49</td><td>56</td><td>25</td><td>3</td><td>111 120₽</td><td>182 046₽</td><td style="color:var(--yl)">61,04%</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Бесплатные каналы</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Канал</th><th>Сессии</th><th>Лиды</th><th>Квал</th><th>Продажи</th><th>Выручка</th></tr></thead><tbody>
+<tr><td class="cn" style="color:var(--gn)">SEO</td><td>77</td><td>4</td><td>1</td><td>1</td><td>92 000₽</td></tr>
+<tr><td class="cn" style="color:var(--gn)">Рассылка</td><td>—</td><td>2</td><td>1</td><td>2</td><td>87 513₽</td></tr>
+<tr style="font-weight:700;border-top:2px solid var(--bd)"><td class="cn">ИТОГО</td><td>77</td><td>6</td><td>2</td><td>3</td><td>179 513₽</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Пайплайн</div>
+<div class="g2">
+  <div class="cd"><div class="ct">Воронка когорты недели</div><div><canvas id="w3fun"></canvas></div></div>
+  <div class="cd"><div class="ct">Пайплайн: текущая vs пред.</div><div><canvas id="w3pipe"></canvas></div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Карта профессий (27.02–15.03)</div>
+<div class="fw cd">
+<div class="g3" style="margin-bottom:0">
+  <div class="mb"><div class="ct">Просмотры</div><div class="mv">240</div></div>
+  <div class="mb"><div class="ct">Уник. посетители</div><div class="mv">159</div></div>
+  <div class="mb"><div class="ct">Конверсия</div><div class="mv" style="color:var(--rd)">0%</div></div>
+</div>
+<div class="alt r"><strong>Проблема:</strong> 159 посетителей, 0 заявок. Пользователи листают 1–3 программы и уходят. Нет триггера к заявке — нужен редизайн CTA или квиз.</div>
+</div>
+
+<div class="sc"><span class="dt"></span> Выводы</div>
+<div class="ins s"><div class="n">01</div><h3>Тг Адс — прорыв: 10 лидов за 2 987₽</h3><p>CPL = 299₽, CR2 = 50%. Лучший платный канал по стоимости. Перевыполнил план ×3. Масштабировать.</p></div>
+<div class="ins s"><div class="n">02</div><h3>Яндекс: 36 лидов при плане 32</h3><p>Перевыполнение +12,5%. 3 продажи. CR1 вырос до 2,83% (1 272 сессии, 36 лидов). ДРР 50,59% — всё ещё высокий.</p></div>
+<div class="ins d"><div class="n">03</div><h3>Tutortop: 1 лид при плане 9</h3><p>Запуск только в понедельник, страницы ещё добавляются. Дать неделю на раскачку.</p></div>
+<div class="ins w"><div class="n">04</div><h3>Выручка 47,29% на 2-й неделе</h3><p>Нужен темп ~475К/нед, текущий — 416К. Горячих лидов мало (3 шт). Риск недовыполнения.</p></div>
+<div class="ins d"><div class="n">05</div><h3>Карта профессий: 0% конверсия</h3><p>240 просмотров, 0 заявок. Инструмент не работает — нужен редизайн.</p></div>
+</div>
+
+<!-- СРАВНЕНИЕ нед2 мар -->
+<div class="sp" id="t3s1">
+<div class="sc"><span class="dt"></span> Динамика по всем 4 неделям</div>
+<div class="g2">
+  <div class="cd"><div class="ct">Лиды по неделям</div><div><canvas id="allLeads"></canvas></div></div>
+  <div class="cd"><div class="ct">Выручка по неделям</div><div><canvas id="allRev"></canvas></div></div>
+</div>
+<div class="g2">
+  <div class="cd"><div class="ct">CR1 и CR2 по неделям</div><div><canvas id="allCR"></canvas></div></div>
+  <div class="cd"><div class="ct">ДРР по неделям</div><div><canvas id="allDRR"></canvas></div></div>
+</div>
+
+<div class="sc"><span class="dt"></span> Нед. 2 мар vs Нед. 1 мар</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Показатель</th><th>Нед. 1 мар</th><th>Нед. 2 мар</th><th>Δ</th></tr></thead><tbody>
+<tr><td class="cn">Лиды</td><td>43</td><td>63</td><td style="color:var(--gn)">+46,5%</td></tr>
+<tr><td class="cn">Квал. лиды</td><td>19</td><td>28</td><td style="color:var(--gn)">+47,4%</td></tr>
+<tr><td class="cn">Продажи</td><td>9</td><td>6</td><td style="color:var(--rd)">−33,3%</td></tr>
+<tr><td class="cn">Выручка</td><td>707 277₽</td><td>415 816₽</td><td style="color:var(--rd)">−41,2%</td></tr>
+<tr><td class="cn">Расход</td><td>116 542₽</td><td>111 120₽</td><td style="color:var(--gn)">−4,7%</td></tr>
+</tbody></table></div></div>
+
+<div class="sc"><span class="dt"></span> Канальный микс: эволюция</div>
+<div class="fw cd"><div class="ct">Лиды по каналам — 4 недели</div><div><canvas id="chEvo"></canvas></div></div>
+
+<div class="sc"><span class="dt"></span> Прогноз марта</div>
+<div class="fw cd"><div class="tw"><table><thead><tr><th>Показатель</th><th>План</th><th>Факт 2 нед</th><th>Осталось</th><th>Нужно/нед</th><th>Прогноз</th></tr></thead><tbody>
+<tr><td class="cn">Лиды</td><td>315</td><td>106</td><td>209</td><td>~70</td><td style="color:var(--yl)">⚠️ текущий 63 — впритык</td></tr>
+<tr><td class="cn">Квал</td><td>126</td><td>47</td><td>79</td><td>~26</td><td style="color:var(--gn)">✅ текущий 28</td></tr>
+<tr><td class="cn">Продажи</td><td>25</td><td>15</td><td>10</td><td>~3</td><td style="color:var(--gn)">✅ текущий 6</td></tr>
+<tr><td class="cn">Выручка</td><td>2 375 000₽</td><td>1 123 093₽</td><td>1 251 907₽</td><td>~417К</td><td style="color:var(--yl)">⚠️ текущий 416К</td></tr>
+</tbody></table></div>
+<div class="alt y"><strong>Резюме:</strong> Квалы и продажи — на траектории. Лиды — впритык, нужно +10% к текущему темпу. Выручка — на грани: каждую неделю нужно минимум 417К. Ключ — конверсия пайплайна (63 лида в работе) и активация рассылок.</div>
+</div>
+
+<div class="ins i"><div class="n">ТРЕНД</div><h3>Объём лидов восстанавливается</h3><p>После обвала с 123 (нед.4 фев) до 41–43 (нед.5 фев и нед.1 мар), на нед.2 мар — 63 лида. Рост +47% к прошлой неделе. Основные драйверы: Яндекс (36) и Тг Адс (10). Если Tutortop раскачается и Google запустится — объём может выйти на 80–100 лидов/нед к концу марта.</p></div>
+</div>
+</div><!-- end t3 -->
+
+</div><!-- wrap -->
+
+<script>
+const G='rgba(42,46,61,.6)',TK='#5a5f75';
+Chart.defaults.color=TK;Chart.defaults.font.family="'DM Sans',sans-serif";Chart.defaults.font.size=11;
+const SX={x:{grid:{color:'transparent'},ticks:{color:TK}},y:{grid:{color:G},ticks:{color:TK},beginAtZero:true}};
+const LP={legend:{labels:{usePointStyle:true,pointStyle:'circle',padding:12,font:{size:10}}}};
+const NL={legend:{display:false}};
+const WKS=['Нед.4\nфев','Нед.5\nфев','Нед.1\nмар','Нед.2\nмар'];
+
+// --- W4 charts ---
+new Chart(document.getElementById('w4fun'),{type:'bar',data:{labels:['Лиды','Квалиф.','В ОП','Продажи'],datasets:[{data:[123,40,123,10],backgroundColor:['#4dabf7','#ffd93d','#6c5ce7','#00d68f'],borderRadius:8,barPercentage:.5}]},options:{responsive:true,indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TK}},y:{grid:{color:'transparent'},ticks:{color:TK}}},plugins:NL}});
+
+new Chart(document.getElementById('w4rev'),{type:'doughnut',data:{labels:['Флоктори','Рекоменд.','Яндекс','Рассылка','Psycho'],datasets:[{data:[188593,168682,144018,107236,72454],backgroundColor:['#ff922b','#22b8cf','#6c5ce7','#00d68f','#f06595'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,cutout:'60%',plugins:{legend:{position:'right',labels:{usePointStyle:true,pointStyle:'circle',padding:8,font:{size:10}}}}}});
+
+// --- Comparison 1 (w5 vs w4) ---
+new Chart(document.getElementById('c1leads'),{type:'bar',data:{labels:['Лиды','Квал','Продажи'],datasets:[{label:'Нед 4',data:[123,40,10],backgroundColor:'rgba(138,142,165,.35)',borderRadius:8,barPercentage:.35},{label:'Нед 5',data:[41,23,10],backgroundColor:'rgba(108,92,231,.65)',borderRadius:8,barPercentage:.35}]},options:{responsive:true,scales:SX,plugins:LP}});
+
+new Chart(document.getElementById('c1rev'),{type:'bar',data:{labels:['Расход','Выручка'],datasets:[{label:'Нед 4',data:[169839,680983],backgroundColor:'rgba(138,142,165,.35)',borderRadius:8,barPercentage:.35},{label:'Нед 5',data:[86347,888033],backgroundColor:'rgba(108,92,231,.65)',borderRadius:8,barPercentage:.35}]},options:{responsive:true,scales:{...SX,y:{...SX.y,ticks:{...SX.y.ticks,callback:v=>(v/1e3).toFixed(0)+'К'}}},plugins:LP}});
+
+// --- Comparison 2 (w1m vs w5) ---
+new Chart(document.getElementById('c2leads'),{type:'bar',data:{labels:['Лиды','Квал','Продажи'],datasets:[{label:'Нед 5 фев',data:[41,23,10],backgroundColor:'rgba(138,142,165,.35)',borderRadius:8,barPercentage:.35},{label:'Нед 1 мар',data:[43,19,9],backgroundColor:'rgba(108,92,231,.65)',borderRadius:8,barPercentage:.35}]},options:{responsive:true,scales:SX,plugins:LP}});
+
+new Chart(document.getElementById('c2rev'),{type:'bar',data:{labels:['Расход','Выручка'],datasets:[{label:'Нед 5 фев',data:[86347,888033],backgroundColor:'rgba(138,142,165,.35)',borderRadius:8,barPercentage:.35},{label:'Нед 1 мар',data:[116542,707277],backgroundColor:'rgba(108,92,231,.65)',borderRadius:8,barPercentage:.35}]},options:{responsive:true,scales:{...SX,y:{...SX.y,ticks:{...SX.y.ticks,callback:v=>(v/1e3).toFixed(0)+'К'}}},plugins:LP}});
+
+// --- W3 (week 2 mar) charts ---
+new Chart(document.getElementById('w3fun'),{type:'bar',data:{labels:['Лиды','Квалиф.','В ОП','Продажи'],datasets:[{data:[63,28,63,4],backgroundColor:['#4dabf7','#ffd93d','#6c5ce7','#00d68f'],borderRadius:8,barPercentage:.5}]},options:{responsive:true,indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TK}},y:{grid:{color:'transparent'},ticks:{color:TK}}},plugins:NL}});
+
+new Chart(document.getElementById('w3pipe'),{type:'bar',data:{labels:['В работе','Горячие','Тёплые','Продажи'],datasets:[{label:'Пред. нед',data:[39,5,15,7],backgroundColor:'rgba(138,142,165,.35)',borderRadius:8,barPercentage:.4},{label:'Текущая',data:[63,3,7,6],backgroundColor:'rgba(108,92,231,.65)',borderRadius:8,barPercentage:.4}]},options:{responsive:true,scales:SX,plugins:LP}});
+
+// --- ALL WEEKS comparison charts ---
+new Chart(document.getElementById('allLeads'),{type:'line',data:{labels:WKS,datasets:[
+{label:'Лиды',data:[123,41,43,63],borderColor:'#4dabf7',backgroundColor:'rgba(77,171,247,.1)',fill:true,tension:.4,pointRadius:6,pointBackgroundColor:'#4dabf7'},
+{label:'Квал',data:[40,23,19,28],borderColor:'#ffd93d',backgroundColor:'rgba(255,217,61,.06)',fill:true,tension:.4,pointRadius:6,pointBackgroundColor:'#ffd93d'},
+{label:'Продажи',data:[10,10,9,6],borderColor:'#00d68f',tension:.4,pointRadius:6,pointBackgroundColor:'#00d68f'}
+]},options:{responsive:true,scales:SX,plugins:LP}});
+
+new Chart(document.getElementById('allRev'),{type:'bar',data:{labels:WKS,datasets:[
+{label:'Выручка',data:[680983,888033,707277,415816],backgroundColor:'rgba(108,92,231,.6)',borderRadius:8,barPercentage:.4},
+{label:'Расход',data:[169839,86347,116542,111120],backgroundColor:'rgba(255,107,107,.45)',borderRadius:8,barPercentage:.4}
+]},options:{responsive:true,scales:{...SX,y:{...SX.y,ticks:{...SX.y.ticks,callback:v=>(v/1e3).toFixed(0)+'К'}}},plugins:LP}});
+
+new Chart(document.getElementById('allCR'),{type:'line',data:{labels:WKS,datasets:[
+{label:'CR1',data:[2.18,2.01,null,3.15],borderColor:'#4dabf7',tension:.4,pointRadius:6,pointBackgroundColor:'#4dabf7'},
+{label:'CR2',data:[32.52,56.10,null,44.44],borderColor:'#ffd93d',tension:.4,pointRadius:6,pointBackgroundColor:'#ffd93d'}
+]},options:{responsive:true,scales:{...SX,y:{...SX.y,ticks:{...SX.y.ticks,callback:v=>v+'%'}}},plugins:LP}});
+
+new Chart(document.getElementById('allDRR'),{type:'bar',data:{labels:WKS,datasets:[{data:[24.94,9.72,16.48,26.72],backgroundColor:['rgba(255,217,61,.6)','rgba(0,214,143,.6)','rgba(0,214,143,.5)','rgba(255,217,61,.6)'],borderRadius:8,barPercentage:.45}]},options:{responsive:true,scales:{...SX,y:{...SX.y,ticks:{...SX.y.ticks,callback:v=>v+'%'},max:35}},plugins:NL}});
+
+// Channel evolution
+new Chart(document.getElementById('chEvo'),{type:'bar',data:{labels:WKS,datasets:[
+{label:'Яндекс',data:[31,21,null,36],backgroundColor:'#6c5ce7',borderRadius:6,barPercentage:.15},
+{label:'ВК Сенлер',data:[50,3,null,0],backgroundColor:'#ff6b6b',borderRadius:6,barPercentage:.15},
+{label:'Тг Адс',data:[1,0,null,10],backgroundColor:'#22b8cf',borderRadius:6,barPercentage:.15},
+{label:'Рассылка',data:[25,0,null,2],backgroundColor:'#00d68f',borderRadius:6,barPercentage:.15},
+{label:'SEO',data:[4,7,null,4],backgroundColor:'#4dabf7',borderRadius:6,barPercentage:.15},
+{label:'Psycho',data:[4,7,null,5],backgroundColor:'#f06595',borderRadius:6,barPercentage:.15}
+]},options:{responsive:true,scales:SX,plugins:LP}});
+
+// --- TAB LOGIC ---
+function M(i){document.querySelectorAll('.mtb').forEach((t,j)=>t.classList.toggle('a',j===i));document.querySelectorAll('.tp').forEach((p,j)=>p.classList.toggle('a',j===i))}
+function S(m,s){const p=document.getElementById('t'+m);p.querySelectorAll('.stb').forEach((t,j)=>t.classList.toggle('a',j===s));p.querySelectorAll('.sp').forEach((q,j)=>q.classList.toggle('a',j===s))}
+</script>
+</body>
+</html>
