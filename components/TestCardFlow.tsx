@@ -924,20 +924,20 @@ export function TestCardFlow() {
           />
         )}
 
-        {phase === "question" && question && (
+        {(phase === "question" || phase === "auth_wall" || phase === "migrating") && question && (
           <QuestionScreen
             question={question}
             questionIndex={currentQuestionIndex}
             totalQuestions={TOTAL_QUESTIONS}
             scaleName={scaleName}
-            isLocked={isLocked}
-            selectedScore={selectedScore}
-            animationClass={animationClass}
-            transitioning={transitioning.current}
-            statusMessage={statusMessage}
-            fallbackActive={fallbackActive}
-            onQuickAnswer={handleQuickAnswer}
-            onTextAnswer={handleTextAnswer}
+            isLocked={phase !== "question" ? true : isLocked}
+            selectedScore={phase === "question" ? selectedScore : null}
+            animationClass={phase === "question" ? animationClass : null}
+            transitioning={phase === "question" ? transitioning.current : false}
+            statusMessage={phase === "question" ? statusMessage : null}
+            fallbackActive={phase === "question" ? fallbackActive : false}
+            onQuickAnswer={phase === "question" ? handleQuickAnswer : () => {}}
+            onTextAnswer={phase === "question" ? handleTextAnswer : async () => {}}
           />
         )}
 
@@ -979,12 +979,11 @@ export function TestCardFlow() {
           <CompletionScreen onViewResults={handleViewResults} />
         )}
 
-        {/* Auth overlay */}
-        {phase === "auth_wall" && (
-          <div className="tc-auth-overlay">
-            <div className="tc-auth-overlay-text">
-              <strong>Остался 1 вопрос</strong>
-              Авторизуйся, чтобы сохранить результаты
+        {/* Auth wall: мягкий промпт когда AuthSheet закрыт */}
+        {phase === "auth_wall" && !authSheetOpen && (
+          <div className="tc-auth-soft-prompt">
+            <div className="tc-auth-soft-prompt-text">
+              Для завершения теста необходима авторизация
             </div>
             {migrateError && (
               <div className="tc-error" style={{ marginBottom: 16 }}>
@@ -992,19 +991,8 @@ export function TestCardFlow() {
               </div>
             )}
             <button
+              className="tc-auth-soft-prompt-btn"
               onClick={() => setAuthSheetOpen(true)}
-              style={{
-                padding: "14px 32px",
-                borderRadius: 12,
-                border: "none",
-                background: "#c9a84c",
-                color: "#0f1114",
-                fontSize: 16,
-                fontWeight: 600,
-                fontFamily: "inherit",
-                cursor: "pointer",
-                marginTop: 8,
-              }}
             >
               Войти
             </button>
