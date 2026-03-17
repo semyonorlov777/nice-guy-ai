@@ -114,12 +114,40 @@ export default async function ChatPage({
     lastMessageAt: c.last_message_at,
   }));
 
-  // Новый чат: chatId=null, пустые сообщения
+  // Найти последний active free-чат пользователя (мог быть создан через migrate)
+  let loadedMessages: { role: string; content: string }[] = [];
+  let activeChatId: string | null = null;
+
+  const { data: activeChat } = await supabase
+    .from("chats")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("program_id", program.id)
+    .is("exercise_id", null)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeChat) {
+    // Загрузить сообщения существующего чата
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("role, content")
+      .eq("chat_id", activeChat.id)
+      .order("created_at", { ascending: true });
+
+    if (msgs && msgs.length > 0) {
+      activeChatId = activeChat.id;
+      loadedMessages = msgs;
+    }
+  }
+
   return (
     <ChatWindow
-      key="new-chat"
-      initialMessages={toUIMessages([])}
-      chatId={null}
+      key={activeChatId || "new-chat"}
+      initialMessages={toUIMessages(loadedMessages)}
+      chatId={activeChatId}
       programId={program.id}
       userInitial={userInitial}
       avatarUrl={avatarUrl}

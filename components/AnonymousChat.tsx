@@ -193,17 +193,19 @@ export function AnonymousChat({
         content: getMessageText(m),
       }));
 
-      await fetch("/api/chat/migrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          program_slug: programSlug,
-          messages: simplifiedMessages,
-          session_id: sessionIdRef.current,
-        }),
-      });
+      if (simplifiedMessages.length > 0) {
+        await fetch("/api/chat/migrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            program_slug: programSlug,
+            messages: simplifiedMessages,
+            session_id: sessionIdRef.current,
+          }),
+        });
+      }
     } catch {
-      /* ignore */
+      /* При ошибке — redirect на чистый чат */
     }
 
     try {

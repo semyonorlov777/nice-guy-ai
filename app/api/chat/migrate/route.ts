@@ -35,23 +35,56 @@ export async function POST(request: Request) {
     return Response.json({ error: "Программа не найдена" }, { status: 404 });
   }
 
-  // 4. Check if user already has an active free chat for this program
-  const { data: existingChat } = await supabase
+  // 4. Idempotency: check if this session was already migrated recently
+  // Look for an active free chat created in the last 2 minutes with matching message count
+  const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { data: recentChat } = await supabase
     .from("chats")
     .select("id")
     .eq("user_id", user.id)
     .eq("program_id", program.id)
     .is("exercise_id", null)
+    .in("chat_type", ["free", null])
     .eq("status", "active")
+    .gte("created_at", twoMinAgo)
     .limit(1)
     .maybeSingle();
 
-  if (existingChat) {
-    // Already has a chat — just redirect there, don't duplicate
-    return Response.json({ chat_id: existingChat.id, success: true });
+  if (recentChat) {
+    // Check if it has the same number of messages (likely a duplicate migration)
+    const { count } = await serviceClient
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("chat_id", recentChat.id);
+
+    if (count === messages.length) {
+      console.log(
+        `[migrate] Idempotent: session ${session_id} already migrated to chat ${recentChat.id}`
+      );
+      return Response.json({ chat_id: recentChat.id, success: true });
+    }
   }
 
-  // 5. Create chat
+  // 5. Close ALL existing active free chats for this user+program
+  const { data: existingChats } = await supabase
+    .from("chats")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("program_id", program.id)
+    .is("exercise_id", null)
+    .in("chat_type", ["free", null])
+    .eq("status", "active");
+
+  if (existingChats && existingChats.length > 0) {
+    const chatIds = existingChats.map((c) => c.id);
+    await serviceClient
+      .from("chats")
+      .update({ status: "completed" })
+      .in("id", chatIds);
+    console.log(`[migrate] Closed ${chatIds.length} existing free chat(s) for user ${user.id}`);
+  }
+
+  // 6. Create new chat (no welcome message — anonymous chat already showed it)
   const { data: chat, error: chatError } = await supabase
     .from("chats")
     .insert({
@@ -59,6 +92,8 @@ export async function POST(request: Request) {
       program_id: program.id,
       exercise_id: null,
       status: "active",
+      chat_type: "free",
+      title: messages[0]?.content?.slice(0, 50) || "Анонимный чат",
     })
     .select("id")
     .single();
@@ -68,7 +103,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Не удалось создать чат" }, { status: 500 });
   }
 
-  // 6. Insert messages with staggered created_at
+  // 7. Insert messages with staggered created_at
   const baseTime = new Date();
   const messageRows = (messages as MigrateMessage[]).map(
     (msg: MigrateMessage, i: number) => ({
@@ -88,6 +123,12 @@ export async function POST(request: Request) {
     console.error("[migrate] Failed to insert messages:", insertError);
     return Response.json({ error: "Не удалось сохранить сообщения" }, { status: 500 });
   }
+
+  // 8. Update last_message_at on the new chat
+  await supabase
+    .from("chats")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", chat.id);
 
   console.log(
     `[migrate] Migrated ${messages.length} messages for user ${user.id}, session ${session_id}, chat ${chat.id}`
