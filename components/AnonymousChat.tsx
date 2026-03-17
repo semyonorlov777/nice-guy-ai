@@ -131,18 +131,21 @@ export function AnonymousChat({
   const isStreaming = status === "streaming" || status === "submitted";
   const hasScrolledToSection = useRef(false);
 
-  // --- Scroll (включая landing page scroll) ---
+  // --- Scroll: chat-level only (no page scroll here) ---
   const scrollToBottom = useCallback(() => {
     if (messagesRef.current && !isUserScrolledUp.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
-    // Page-level scroll к секции чата — только один раз
+  }, []);
+
+  // Page-level scroll к секции чата — только при первом взаимодействии
+  const scrollToSection = useCallback(() => {
     if (scrollToSectionId && !hasScrolledToSection.current) {
       hasScrolledToSection.current = true;
-      const section = document.getElementById(scrollToSectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      document.getElementById(scrollToSectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }, [scrollToSectionId]);
 
@@ -160,6 +163,9 @@ export function AnonymousChat({
   function handleSend(text: string) {
     const msgText = text.trim();
     if (!msgText || isStreaming || requiresAuth) return;
+
+    // Page-level scroll при первом сообщении (до отправки, чтобы не дёргало)
+    scrollToSection();
 
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
