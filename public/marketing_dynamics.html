@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Динамика ключевых показателей</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0b0f;--sf:#12141c;--s2:#1a1d28;--s3:#222633;--bd:#2a2e3d;--tx:#e8eaf0;--dm:#8b90a5;--mt:#5a5f75;--ac:#6c5ce7;--ag:rgba(108,92,231,.25);--gn:#00d68f;--gd:rgba(0,214,143,.12);--rd:#ff6b6b;--rdd:rgba(255,107,107,.1);--yl:#ffd93d;--yd:rgba(255,217,61,.1);--bl:#4dabf7;--r:16px;--rs:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;line-height:1.6;overflow-x:hidden}
+.noise{position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+.orb{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(120px);opacity:.06;pointer-events:none;z-index:0}
+.orb.p{background:#6c5ce7;top:-200px;right:-100px}.orb.b{background:#4dabf7;bottom:-200px;left:-100px}
+.W{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:32px 24px 80px}
+.hdr{margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--bd)}
+.hdr h1{font-size:28px;font-weight:700;letter-spacing:-1px;background:linear-gradient(135deg,#e8eaf0,#8b90a5);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr .sub{color:var(--mt);font-size:13px;margin-top:4px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;margin-bottom:40px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:0}
+table{width:100%;border-collapse:collapse}
+thead th{padding:14px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--mt);border-bottom:1px solid var(--bd);text-align:center;white-space:nowrap}
+thead th:first-child{text-align:left;min-width:160px}
+thead th.week{background:var(--s2);color:var(--dm)}
+thead th.delta{background:var(--s3);color:var(--mt);font-size:9px;letter-spacing:.8px;padding:14px 10px}
+tbody td{padding:13px 16px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;border-bottom:1px solid rgba(42,46,61,.5);white-space:nowrap}
+tbody td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-weight:600;font-size:13px;color:var(--tx)}
+tbody tr:hover{background:var(--s2)}
+tbody tr:last-child td{border-bottom:none}
+.up{color:var(--gn)}.dn{color:var(--rd)}.nt{color:var(--mt)}
+.delta-cell{font-size:11px;font-weight:600;background:rgba(0,0,0,.15)}
+.row-sep td{border-bottom:2px solid var(--bd)!important}
+
+/* SECTION */
+.sec{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:9px}
+.sec .dt{width:7px;height:7px;border-radius:50%;background:var(--ac);box-shadow:0 0 10px var(--ag)}
+
+/* CHART GRID */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.cd{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:20px}
+.ct{font-size:11px;font-weight:600;color:var(--dm);margin-bottom:14px;text-transform:uppercase;letter-spacing:.8px}
+
+@media(max-width:900px){.cg{grid-template-columns:1fr}.W{padding:20px 14px 60px}}
+</style>
+</head>
+<body>
+<div class="noise"></div><div class="orb p"></div><div class="orb b"></div>
+<div class="W">
+
+<div class="hdr">
+  <h1>Динамика ключевых показателей</h1>
+  <div class="sub">Неделя за неделей · Февраль–Март 2026</div>
+</div>
+
+<!-- ========== СВОДНАЯ ТАБЛИЦА ========== -->
+<div class="tbl-wrap">
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th class="week">Нед. 4<br><span style="font-weight:500;font-size:9px">16.02–22.02</span></th>
+  <th class="delta">Δ</th>
+  <th class="week">Нед. 5<br><span style="font-weight:500;font-size:9px">23.02–01.03</span></th>
+  <th class="delta">Δ</th>
+  <th class="week">Нед. 1<br><span style="font-weight:500;font-size:9px">02.03–08.03</span></th>
+  <th class="delta">Δ</th>
+  <th class="week">Нед. 2<br><span style="font-weight:500;font-size:9px">09.03–15.03</span></th>
+</tr>
+</thead>
+<tbody>
+<!-- Бюджет -->
+<tr>
+  <td>Бюджет (расход)</td>
+  <td>169 839₽</td>
+  <td class="delta-cell dn">−49,2%</td>
+  <td>86 347₽</td>
+  <td class="delta-cell dn">+34,9%</td>
+  <td>116 542₽</td>
+  <td class="delta-cell up">−4,7%</td>
+  <td>111 120₽</td>
+</tr>
+<!-- Лиды -->
+<tr>
+  <td>Лиды</td>
+  <td>123</td>
+  <td class="delta-cell dn">−66,7%</td>
+  <td>41</td>
+  <td class="delta-cell up">+4,9%</td>
+  <td>43</td>
+  <td class="delta-cell up">+46,5%</td>
+  <td>63</td>
+</tr>
+<!-- Квал -->
+<tr>
+  <td>Квал. лиды</td>
+  <td>40</td>
+  <td class="delta-cell dn">−42,5%</td>
+  <td>23</td>
+  <td class="delta-cell dn">−17,4%</td>
+  <td>19</td>
+  <td class="delta-cell up">+47,4%</td>
+  <td>28</td>
+</tr>
+<!-- Продажи -->
+<tr>
+  <td>Продажи</td>
+  <td>10</td>
+  <td class="delta-cell nt">0%</td>
+  <td>10</td>
+  <td class="delta-cell dn">−10%</td>
+  <td>9</td>
+  <td class="delta-cell dn">−33,3%</td>
+  <td>6</td>
+</tr>
+<!-- Выручка -->
+<tr class="row-sep">
+  <td>Выручка</td>
+  <td>680 983₽</td>
+  <td class="delta-cell up">+30,4%</td>
+  <td>888 033₽</td>
+  <td class="delta-cell dn">−20,3%</td>
+  <td>707 277₽</td>
+  <td class="delta-cell dn">−41,2%</td>
+  <td>415 816₽</td>
+</tr>
+<!-- CR1 -->
+<tr>
+  <td>CR1 (сессии → лиды)</td>
+  <td>2,18%</td>
+  <td class="delta-cell dn">−0,17 п.п.</td>
+  <td>2,01%</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">—</td>
+  <td>3,15%</td>
+</tr>
+<!-- CR2 -->
+<tr>
+  <td>CR2 (лиды → квал)</td>
+  <td>32,52%</td>
+  <td class="delta-cell up">+23,6 п.п.</td>
+  <td>56,10%</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">—</td>
+  <td>44,44%</td>
+</tr>
+<!-- CR3 -->
+<tr class="row-sep">
+  <td>CR3 (квал → продажи)</td>
+  <td>25,00%</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">—</td>
+  <td>21,43%</td>
+</tr>
+<!-- ДРР общий -->
+<tr>
+  <td>ДРР (общий)</td>
+  <td>24,94%</td>
+  <td class="delta-cell up">−15,2 п.п.</td>
+  <td>9,72%</td>
+  <td class="delta-cell dn">+6,8 п.п.</td>
+  <td>16,48%</td>
+  <td class="delta-cell dn">+10,2 п.п.</td>
+  <td>26,72%</td>
+</tr>
+<!-- ДРР платные -->
+<tr>
+  <td>ДРР (платные)</td>
+  <td>41,93%</td>
+  <td class="delta-cell dn">+9,1 п.п.</td>
+  <td>50,98%</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">—</td>
+  <td>61,04%</td>
+</tr>
+<!-- CPL -->
+<tr class="row-sep">
+  <td>CPL (расход / лиды)</td>
+  <td>1 381₽</td>
+  <td class="delta-cell dn">+52,4%</td>
+  <td>2 106₽</td>
+  <td class="delta-cell dn">+28,7%</td>
+  <td>2 710₽</td>
+  <td class="delta-cell up">−35,0%</td>
+  <td>1 764₽</td>
+</tr>
+<!-- Пайплайн -->
+<tr>
+  <td>Пайплайн (лиды в работе)</td>
+  <td>32</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">→</td>
+  <td>39</td>
+  <td class="delta-cell up">+61,5%</td>
+  <td>63</td>
+</tr>
+<tr>
+  <td>Горячие лиды</td>
+  <td>11</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">→</td>
+  <td>5</td>
+  <td class="delta-cell dn">−40%</td>
+  <td>3</td>
+</tr>
+<tr>
+  <td>Тёплые лиды</td>
+  <td>6</td>
+  <td class="delta-cell nt">—</td>
+  <td>—</td>
+  <td class="delta-cell nt">→</td>
+  <td>15</td>
+  <td class="delta-cell dn">−53,3%</td>
+  <td>7</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!-- ========== ГРАФИКИ ========== -->
+<div class="sec"><span class="dt"></span> Тренды по каждому показателю</div>
+
+<div class="cg">
+  <div class="cd"><div class="ct">Лиды</div><canvas id="chLeads"></canvas></div>
+  <div class="cd"><div class="ct">Квал. лиды</div><canvas id="chQual"></canvas></div>
+</div>
+<div class="cg">
+  <div class="cd"><div class="ct">Продажи</div><canvas id="chSales"></canvas></div>
+  <div class="cd"><div class="ct">Выручка</div><canvas id="chRev"></canvas></div>
+</div>
+<div class="cg">
+  <div class="cd"><div class="ct">Расход (бюджет)</div><canvas id="chBudget"></canvas></div>
+  <div class="cd"><div class="ct">CPL (стоимость лида)</div><canvas id="chCPL"></canvas></div>
+</div>
+<div class="cg">
+  <div class="cd"><div class="ct">CR1 (сессии → лиды)</div><canvas id="chCR1"></canvas></div>
+  <div class="cd"><div class="ct">CR2 (лиды → квал)</div><canvas id="chCR2"></canvas></div>
+</div>
+<div class="cg">
+  <div class="cd"><div class="ct">ДРР (общий)</div><canvas id="chDRR"></canvas></div>
+  <div class="cd"><div class="ct">ДРР (только платные)</div><canvas id="chDRRp"></canvas></div>
+</div>
+<div class="cg">
+  <div class="cd"><div class="ct">Пайплайн: лиды в работе</div><canvas id="chPipe"></canvas></div>
+  <div class="cd"><div class="ct">Горячие и тёплые лиды</div><canvas id="chHot"></canvas></div>
+</div>
+
+</div>
+
+<script>
+const W=['Нед.4 фев\n16–22.02','Нед.5 фев\n23.02–01.03','Нед.1 мар\n02–08.03','Нед.2 мар\n09–15.03'];
+const G='rgba(42,46,61,.6)',TK='#5a5f75';
+Chart.defaults.color=TK;Chart.defaults.font.family="'DM Sans',sans-serif";Chart.defaults.font.size=11;
+
+function mkLine(id,data,color,fmt){
+  const isP=fmt==='%',isR=fmt==='₽';
+  new Chart(document.getElementById(id),{
+    type:'line',
+    data:{labels:W,datasets:[{
+      data:data,
+      borderColor:color,
+      backgroundColor:color.replace(')',',0.1)').replace('rgb','rgba'),
+      fill:true,tension:.4,pointRadius:7,pointHoverRadius:10,
+      pointBackgroundColor:color,pointBorderColor:'#12141c',pointBorderWidth:2
+    }]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        let v=ctx.parsed.y;
+        if(v===null)return'нет данных';
+        if(isR)return new Intl.NumberFormat('ru').format(v)+'₽';
+        if(isP)return v.toFixed(2)+'%';
+        return new Intl.NumberFormat('ru').format(v);
+      }}}},
+      scales:{
+        x:{grid:{color:'transparent'},ticks:{color:TK,font:{size:10},maxRotation:0}},
+        y:{grid:{color:G},ticks:{color:TK,callback:v=>{
+          if(isR)return(v/1e3).toFixed(0)+'К';
+          if(isP)return v+'%';
+          return v;
+        }},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function mkBar(id,data,color,fmt){
+  const isP=fmt==='%',isR=fmt==='₽';
+  const colors=data.map((v,i)=>{
+    if(v===null)return'transparent';
+    if(i===0)return color;
+    const prev=data.slice(0,i).reverse().find(x=>x!==null);
+    if(prev===null||prev===undefined)return color;
+    if(fmt==='drr')return v<prev?'rgba(0,214,143,.6)':v>prev?'rgba(255,107,107,.55)':color;
+    return v>=prev?'rgba(0,214,143,.6)':'rgba(255,107,107,.55)';
+  });
+  new Chart(document.getElementById(id),{
+    type:'bar',
+    data:{labels:W,datasets:[{data:data,backgroundColor:colors,borderRadius:10,barPercentage:.5}]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        let v=ctx.parsed.y;if(v===null)return'нет данных';
+        if(isR)return new Intl.NumberFormat('ru').format(v)+'₽';
+        if(isP||fmt==='drr')return v.toFixed(2)+'%';
+        return new Intl.NumberFormat('ru').format(v);
+      }}}},
+      scales:{
+        x:{grid:{color:'transparent'},ticks:{color:TK,font:{size:10},maxRotation:0}},
+        y:{grid:{color:G},ticks:{color:TK,callback:v=>{
+          if(isR)return(v/1e3).toFixed(0)+'К';
+          if(isP||fmt==='drr')return v+'%';
+          return v;
+        }},beginAtZero:true}
+      }
+    }
+  });
+}
+
+// Leads
+mkBar('chLeads',[123,41,43,63],'rgba(77,171,247,.6)','');
+// Qual
+mkBar('chQual',[40,23,19,28],'rgba(255,217,61,.6)','');
+// Sales
+mkBar('chSales',[10,10,9,6],'rgba(0,214,143,.6)','');
+// Revenue
+mkBar('chRev',[680983,888033,707277,415816],'rgba(108,92,231,.6)','₽');
+// Budget
+mkBar('chBudget',[169839,86347,116542,111120],'rgba(255,107,107,.55)','₽');
+// CPL
+mkLine('chCPL',[1381,2106,2710,1764],'rgb(255,107,107)','₽');
+// CR1
+mkLine('chCR1',[2.18,2.01,null,3.15],'rgb(77,171,247)','%');
+// CR2
+mkLine('chCR2',[32.52,56.10,null,44.44],'rgb(255,217,61)','%');
+// DRR
+mkBar('chDRR',[24.94,9.72,16.48,26.72],'rgba(255,217,61,.6)','drr');
+// DRR paid
+mkBar('chDRRp',[41.93,50.98,null,61.04],'rgba(255,107,107,.55)','drr');
+
+// Pipeline
+mkBar('chPipe',[32,null,39,63],'rgba(108,92,231,.6)','');
+
+// Hot & Warm
+new Chart(document.getElementById('chHot'),{
+  type:'bar',
+  data:{labels:W,datasets:[
+    {label:'Горячие',data:[11,null,5,3],backgroundColor:'rgba(255,107,107,.55)',borderRadius:8,barPercentage:.35},
+    {label:'Тёплые',data:[6,null,15,7],backgroundColor:'rgba(255,217,61,.55)',borderRadius:8,barPercentage:.35}
+  ]},
+  options:{responsive:true,
+    plugins:{legend:{labels:{usePointStyle:true,pointStyle:'circle',padding:12,font:{size:10}}}},
+    scales:{x:{grid:{color:'transparent'},ticks:{color:TK,font:{size:10},maxRotation:0}},y:{grid:{color:G},ticks:{color:TK},beginAtZero:true}}
+  }
+});
+</script>
+</body>
+</html>
