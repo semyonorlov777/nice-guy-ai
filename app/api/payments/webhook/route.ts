@@ -3,14 +3,16 @@ import yookassa from "@/lib/yookassa";
 
 export async function POST(request: Request) {
   try {
-    // HTTP Basic Auth verification
+    // HTTP Basic Auth verification (mandatory — reject all if secret not configured)
     const webhookSecret = process.env.YOOKASSA_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const authHeader = request.headers.get("authorization");
-      if (!authHeader || authHeader !== `Basic ${webhookSecret}`) {
-        console.error("[webhook] Invalid authorization header");
-        return new Response("Unauthorized", { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error("[webhook] YOOKASSA_WEBHOOK_SECRET not configured");
+      return new Response("Server misconfigured", { status: 500 });
+    }
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || authHeader !== `Basic ${webhookSecret}`) {
+      console.error("[webhook] Invalid authorization header");
+      return new Response("Unauthorized", { status: 401 });
     }
 
     const body = await request.json();
@@ -77,26 +79,9 @@ export async function POST(request: Request) {
         });
 
         if (balanceError) {
-          // Fallback: обычный select + update (rpc предпочтительнее для атомарности)
-          console.warn("[webhook] rpc add_tokens failed, using fallback:", balanceError);
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("balance_tokens")
-            .eq("id", order.user_id)
-            .single();
-
-          const { error: updateError } = await supabase
-            .from("profiles")
-            .update({
-              balance_tokens: (profile?.balance_tokens || 0) + order.tokens_to_add,
-            })
-            .eq("id", order.user_id);
-
-          if (updateError) {
-            console.error("[webhook] Failed to add tokens:", updateError);
-            // Вернуть 500 чтобы ЮKassa повторила запрос
-            return new Response("Retry", { status: 500 });
-          }
+          console.error("[webhook] rpc add_tokens failed:", balanceError);
+          // Return 500 so YooKassa retries the webhook
+          return new Response("Retry", { status: 500 });
         }
 
         // Обновить статус заказа
@@ -180,6 +165,6 @@ export async function POST(request: Request) {
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("[webhook] Unexpected error:", err);
-    return new Response("OK", { status: 200 });
+    return new Response("Retry", { status: 500 });
   }
 }
