@@ -301,11 +301,17 @@ calledRef паттерн — onSuccess вызывается ровно один 
 
 ## Правила
 
-- Коммить после каждой завершённой подзадачи с описательным сообщением на русском
 - Перед изменениями в нескольких файлах — сначала озвучь план
 - Не меняй `.env.local` без явного запроса
 - При ошибке — ищи корневую причину, не обходной путь
 - Серверные env-переменные недоступны на клиенте — публичные данные хардкодить
+
+## Git commits
+
+- After completing a task, commit each logical change separately, not everything in one commit
+- Use conventional commit format: refactor:, fix:, feat:, chore:
+- Each commit should be independently revertable without breaking other changes
+- If a task involves multiple logical steps (e.g. extract util + update imports + remove dead code), make separate commits for each
 
 ## Тестирование в браузере
 
