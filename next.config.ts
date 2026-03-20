@@ -5,7 +5,7 @@ const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' oauth.telegram.org",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: *.yandex.ru *.yandex.net",
+  "img-src 'self' data: blob: *.yandex.ru *.yandex.net cdn.litres.ru drglover.com",
   "font-src 'self'",
   "connect-src 'self' *.supabase.co generativelanguage.googleapis.com oauth.telegram.org *.sentry.io",
   "frame-src oauth.telegram.org oauth.yandex.ru",
