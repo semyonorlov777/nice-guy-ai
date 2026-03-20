@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { createServiceClient } from "@/lib/supabase-server";
 import { PublicHeader } from "@/components/PublicHeader";
 
 export const metadata: Metadata = {
@@ -9,35 +9,26 @@ export const metadata: Metadata = {
 };
 
 interface LandingData {
-  book?: { author_top?: string };
+  book?: { cover_url?: string; author_top?: string };
 }
 
 export default async function CatalogPage() {
-  const supabase = await createClient();
   const serviceClient = createServiceClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: programs } = await serviceClient
     .from("programs")
-    .select("id, slug, title, landing_data, meta_description")
+    .select("id, slug, title, description, landing_data, features")
     .order("created_at");
 
-  // For logged-in users, load progress (completed chats per program)
-  let progressMap = new Map<string, number>();
-  if (user && programs?.length) {
-    const { data: chats } = await supabase
-      .from("chats")
-      .select("program_id")
-      .eq("user_id", user.id)
-      .eq("status", "completed");
-
-    if (chats) {
-      for (const chat of chats) {
-        progressMap.set(chat.program_id, (progressMap.get(chat.program_id) || 0) + 1);
-      }
+  // Count exercises per program
+  const exerciseCounts = new Map<string, number>();
+  if (programs?.length) {
+    for (const p of programs) {
+      const { count } = await serviceClient
+        .from("exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("program_id", p.id);
+      exerciseCounts.set(p.id, count || 0);
     }
   }
 
@@ -46,36 +37,44 @@ export default async function CatalogPage() {
       <PublicHeader />
       <div className="catalog-container">
         <h1 className="catalog-title">Программы</h1>
-        <p className="catalog-subtitle">Выбери книгу и начни работу над собой с AI-ассистентом</p>
+        <p className="catalog-subtitle">
+          Выбери книгу и начни работу над собой с AI-ассистентом
+        </p>
 
         <div className="catalog-grid">
           {(programs || []).map((program) => {
             const landing = program.landing_data as LandingData | null;
+            const coverUrl = landing?.book?.cover_url;
             const author = landing?.book?.author_top;
-            const completed = progressMap.get(program.id) || 0;
-            const hasProgress = user && completed > 0;
-            const href = user
-              ? `/program/${program.slug}/chat`
-              : `/program/${program.slug}`;
+            const exerciseCount = exerciseCounts.get(program.id) || 0;
 
             return (
-              <Link key={program.id} href={href} className="catalog-card">
+              <Link
+                key={program.id}
+                href={`/program/${program.slug}`}
+                className="catalog-card"
+              >
+                {coverUrl && (
+                  <div className="catalog-card-cover">
+                    <img src={coverUrl} alt="" />
+                  </div>
+                )}
                 <div className="catalog-card-body">
                   <h2 className="catalog-card-title">{program.title}</h2>
-                  {author && <div className="catalog-card-author">{author}</div>}
-                  {program.meta_description && (
-                    <p className="catalog-card-desc">{program.meta_description}</p>
+                  {author && (
+                    <div className="catalog-card-author">{author}</div>
+                  )}
+                  {program.description && (
+                    <p className="catalog-card-desc">{program.description}</p>
                   )}
                 </div>
                 <div className="catalog-card-footer">
-                  {hasProgress && (
-                    <span className="catalog-card-progress">
-                      Пройдено: {completed}
-                    </span>
-                  )}
-                  <span className="catalog-card-btn">
-                    {hasProgress ? "Продолжить" : "Начать"}
+                  <span className="catalog-card-badge">
+                    {exerciseCount > 0
+                      ? `${exerciseCount} упражнений`
+                      : "Свободный чат"}
                   </span>
+                  <span className="catalog-card-btn">Открыть</span>
                 </div>
               </Link>
             );
