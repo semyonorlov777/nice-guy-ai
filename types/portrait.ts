@@ -64,7 +64,7 @@ export function convertLegacyPortrait(old: LegacyPortraitContent): PortraitConte
 
   if (old.nice_guy_patterns?.patterns?.length > 0) {
     sections.push({
-      id: "nice_guy_patterns",
+      id: "core_patterns",
       title: "Паттерны",
       icon: "🔄",
       type: "patterns",
