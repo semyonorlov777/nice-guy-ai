@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 
+// Body не используется — действие определяется только по auth (user.id)
 export async function POST() {
   const supabase = await createClient();
 
