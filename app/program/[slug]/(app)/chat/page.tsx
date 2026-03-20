@@ -86,7 +86,7 @@ export default async function ChatPage({
 
   const { data: activeChat } = await supabase
     .from("chats")
-    .select("id")
+    .select("id, chat_type")
     .eq("user_id", user.id)
     .eq("program_id", program.id)
     .is("exercise_id", null)
@@ -95,14 +95,18 @@ export default async function ChatPage({
     .limit(1)
     .maybeSingle();
 
-  if (activeChat) {
-    // Загрузить сообщения существующего чата
+  // Считаем free-чатом: chat_type = "free" или null (старые чаты до миграции)
+  if (activeChat && (activeChat.chat_type === "free" || !activeChat.chat_type)) {
     const msgs = await getChatMessages(supabase, activeChat.id);
+    const hasUserMessages = msgs.some((m) => m.role === "user");
 
-    if (msgs.length > 0) {
+    if (!hasUserMessages) {
+      // Пустой чат (только welcome или ничего) — переиспользовать
       activeChatId = activeChat.id;
       loadedMessages = msgs;
     }
+    // Чат с user-сообщениями — не загружать, показать новый пустой чат
+    // Старый чат доступен из sidebar-списка
   }
 
   return (

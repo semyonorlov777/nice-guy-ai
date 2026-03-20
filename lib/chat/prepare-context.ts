@@ -200,33 +200,63 @@ export async function loadChatContext(
   let isNewChat = false;
 
   if (!chatId) {
-    const { data: newChat, error: chatError } = await supabase
+    // Попробовать переиспользовать существующий пустой чат (без user-сообщений)
+    const { data: existingChat } = await supabase
       .from("chats")
-      .insert({
-        user_id: userId,
-        program_id: programId,
-        status: "active",
-        exercise_id: exerciseId || null,
-        chat_type: chatType,
-      })
       .select("id")
-      .single();
+      .eq("user_id", userId)
+      .eq("program_id", programId)
+      .eq("chat_type", chatType)
+      .eq("status", "active")
+      .is("exercise_id", exerciseId || null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (chatError || !newChat) {
-      console.error("[chat] Failed to create chat:", chatError);
-      throw new ChatError(500, "Не удалось создать чат");
+    if (existingChat) {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("chat_id", existingChat.id)
+        .eq("role", "user");
+
+      if (count === 0) {
+        // Пустой чат найден — переиспользовать
+        currentChatId = existingChat.id;
+        isNewChat = true; // title всё ещё нужен
+      }
     }
 
-    currentChatId = newChat.id;
-    isNewChat = true;
+    if (!currentChatId) {
+      // Нет пустого чата — создать новый
+      const { data: newChat, error: chatError } = await supabase
+        .from("chats")
+        .insert({
+          user_id: userId,
+          program_id: programId,
+          status: "active",
+          exercise_id: exerciseId || null,
+          chat_type: chatType,
+        })
+        .select("id")
+        .single();
 
-    if (welcomeMessage) {
-      await supabase.from("messages").insert({
-        chat_id: currentChatId,
-        role: "assistant",
-        content: welcomeMessage,
-        tokens_used: 0,
-      });
+      if (chatError || !newChat) {
+        console.error("[chat] Failed to create chat:", chatError);
+        throw new ChatError(500, "Не удалось создать чат");
+      }
+
+      currentChatId = newChat.id;
+      isNewChat = true;
+
+      if (welcomeMessage) {
+        await supabase.from("messages").insert({
+          chat_id: currentChatId,
+          role: "assistant",
+          content: welcomeMessage,
+          tokens_used: 0,
+        });
+      }
     }
   }
 

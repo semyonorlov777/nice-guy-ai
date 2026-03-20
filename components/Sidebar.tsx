@@ -150,7 +150,10 @@ export function Sidebar({
 
       <button
         className="new-chat-btn"
-        onClick={() => router.push(`${base}/chat`)}
+        onClick={() => {
+          if (pathname === `${base}/chat`) return;
+          router.push(`${base}/chat`);
+        }}
         title="Новый чат"
       >
         <span className="new-chat-btn-icon">{"✏️"}</span>

@@ -42,19 +42,34 @@ export async function GET(request: Request) {
     return Response.json({ chats: [] });
   }
 
-  // Превью: последнее assistant-сообщение для каждого чата
+  // Фильтрация пустых чатов (без user-сообщений) из списка
   const chatIds = chats.map((c) => c.id);
-  const previews = await getChatPreviews(supabase, chatIds);
+  const { data: userMsgRows } = await supabase
+    .from("messages")
+    .select("chat_id")
+    .in("chat_id", chatIds)
+    .eq("role", "user");
+  const chatsWithUserMsgs = new Set(userMsgRows?.map((m) => m.chat_id));
+  const filteredChats = chats.filter((c) => chatsWithUserMsgs.has(c.id));
+
+  if (filteredChats.length === 0) {
+    return Response.json({ chats: [] });
+  }
+
+  const filteredIds = filteredChats.map((c) => c.id);
+
+  // Превью: последнее assistant-сообщение для каждого чата
+  const previews = await getChatPreviews(supabase, filteredIds);
 
   // Номера упражнений для exercise-чатов
   const exerciseIds = [
     ...new Set(
-      chats.filter((c) => c.exercise_id).map((c) => c.exercise_id as string)
+      filteredChats.filter((c) => c.exercise_id).map((c) => c.exercise_id as string)
     ),
   ];
   const exerciseMap = await getExerciseNumberMap(supabase, exerciseIds);
 
-  const result = chats.map((chat) => ({
+  const result = filteredChats.map((chat) => ({
     id: chat.id,
     title: chat.title || "Новый чат",
     chatType: chat.chat_type,
