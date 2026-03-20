@@ -59,6 +59,7 @@ app/
 │       ├── balance/page.tsx              # Тариф и оплата (protected)
 │       ├── test/page.tsx                 # Промежуточная страница теста (public)
 │       ├── test/issp/page.tsx            # Тест ISSP (public)
+│       ├── test/issp/client.tsx          # Клиентский компонент теста
 │       └── test/results/[id]/page.tsx    # Результаты теста (public)
 ├── api/
 │   ├── chat/route.ts                     # AI-чат (авторизованный, Vercel AI SDK стриминг)
@@ -139,8 +140,10 @@ lib/
 ├── yandex-auth.ts                        # Яндекс OAuth логика
 ├── telegram-auth.ts                      # Telegram OIDC верификация
 ├── oauth-common.ts                       # Общая OAuth логика (findOrCreateUser)
-├── constants.ts                          # Константы приложения
+├── constants.ts                          # DEFAULT_PROGRAM_SLUG, DEFAULT_REDIRECT, APP_URL
 ├── time.ts                               # Форматирование относительного времени
+├── api-helpers.ts                        # requireAuth(), apiError() — хелперы для API routes
+├── rate-limit.ts                         # createRateLimit() — in-memory rate limiter (per IP)
 ├── utils.ts                              # Утилиты (toUIMessages и др.)
 ├── issp-config.ts                        # Конфигурация шкал ISSP
 ├── issp-scoring.ts                       # Подсчёт баллов ISSP
@@ -148,12 +151,20 @@ lib/
 ├── issp-interpretation.ts                # Интерпретация результатов ISSP
 ├── prompts/portrait-analyst.ts           # Промпт для анализа портрета
 ├── prompts/issp-mini-prompt.ts           # Промпт мини-анализа ISSP
+├── chat/prepare-context.ts              # Подготовка контекста чата (parseBody, loadProgramContext, buildGeminiHistory)
+├── queries/                             # Supabase-запросы (не дублируй — используй хелперы)
+│   ├── chat-previews.ts                 # getChatPreviews() — превью для списка чатов
+│   ├── exercise-map.ts                  # getExerciseNumberMap() — exercise ID → номер
+│   ├── messages.ts                      # getChatMessages() — история сообщений чата
+│   ├── program.ts                       # requireProgramFeature() — feature flags программы
+│   └── user-profile.ts                  # getUserProfileForChat() — профиль для UI чата
 hooks/
 ├── useVoiceInput.ts                      # Голосовой ввод (запись + транскрипция)
 contexts/
 ├── ChatListContext.tsx                    # Контекст списка чатов (React Context)
 types/
 ├── portrait.ts                           # Типы + EMPTY_PORTRAIT
+├── program.ts                            # ProgramFeatures — feature flags программы
 ├── yookassa.d.ts                         # Типы YooKassa API
 middleware.ts                             # Auth guard для защищённых страниц
 instrumentation.ts                        # Sentry серверная инструментация
