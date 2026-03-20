@@ -2,35 +2,67 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import type { ProgramFeatures } from "@/types/program";
+import { useModes } from "@/contexts/ModesContext";
+import { getModeIcon } from "@/components/hub/mode-icons";
+
+function HubIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+function PortraitIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
 
 export function MobileTabs({
   slug,
-  features,
 }: {
   slug: string;
-  features?: ProgramFeatures | null;
 }) {
   const pathname = usePathname();
   const base = `/program/${slug}`;
+  const { modes } = useModes();
 
-  const allTabs = [
-    { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Чат" },
-    { key: "author-chat", feature: "author_chat" as const, path: "/author-chat", icon: "\u270D\uFE0F", label: "Автор" },
-    { key: "test", feature: "test" as const, path: "/test/issp", icon: "\u{1F4DD}", label: "Тест" },
-    { key: "exercises", feature: "exercises" as const, path: "/exercises", icon: "\u{1F4CB}", label: "Тренажёры" },
-    { key: "portrait", feature: "portrait" as const, path: "/portrait", icon: "\u{1F4CA}", label: "Портрет" },
-    { key: "balance", path: "/balance", icon: "\u26A1", label: "Баланс" },
+  // Build tabs: Hub + up to 3 modes (skip coming_soon) + Portrait
+  const modeTabs = modes
+    .filter((m) => !m.config?.coming_soon)
+    .slice(0, 3)
+    .map((m) => ({
+      key: m.key,
+      path: m.route_suffix,
+      label: m.key === "free_chat" ? "Чат"
+        : m.key === "exercises" ? "Тренажёры"
+        : m.key === "test_issp" ? "Тест"
+        : m.key === "author_chat" ? "Автор"
+        : m.name,
+      icon: m.icon,
+    }));
+
+  const tabs = [
+    { key: "hub", path: "/hub", label: "Hub", icon: "__hub__" },
+    ...modeTabs,
+    { key: "portrait", path: "/portrait", label: "Портрет", icon: "__portrait__" },
   ];
-  const tabs = allTabs.filter((tab) => !("feature" in tab) || features?.[tab.feature!]);
 
   function getActiveKey() {
-    if (pathname.includes("/test/issp")) return "test";
+    if (pathname.startsWith(`${base}/hub`)) return "hub";
+    if (pathname.includes("/test/issp")) return "test_issp";
     if (pathname.startsWith(`${base}/exercise`)) return "exercises";
-    for (const tab of tabs) {
-      if (pathname.startsWith(`${base}${tab.path}`)) return tab.key;
-    }
-    return "chat";
+    if (pathname.startsWith(`${base}/portrait`)) return "portrait";
+    if (pathname.startsWith(`${base}/author-chat`)) return "author_chat";
+    if (pathname.startsWith(`${base}/chat`)) return "free_chat";
+    return "hub";
   }
 
   const activeKey = getActiveKey();
@@ -43,7 +75,11 @@ export function MobileTabs({
           href={`${base}${tab.path}`}
           className={`mobile-tab${activeKey === tab.key ? " active" : ""}`}
         >
-          <div className="mobile-tab-icon">{tab.icon}</div>
+          <div className="mobile-tab-icon">
+            {tab.icon === "__hub__" ? <HubIcon />
+              : tab.icon === "__portrait__" ? <PortraitIcon />
+              : getModeIcon(tab.icon)}
+          </div>
           {tab.label}
         </Link>
       ))}
