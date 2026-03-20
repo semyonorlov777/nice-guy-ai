@@ -26,6 +26,8 @@ interface ChatWindowProps {
   programTitle?: string;
   coverUrl?: string;
   balance?: number;
+  slug?: string;
+  currentModeKey?: string;
 }
 
 function classifyError(content: string): "limit" | "ai" {
@@ -52,6 +54,8 @@ export function ChatWindow({
   programTitle,
   coverUrl,
   balance,
+  slug,
+  currentModeKey,
 }: ChatWindowProps) {
   const router = useRouter();
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
@@ -242,9 +246,15 @@ export function ChatWindow({
         <ChatHeader
           programTitle={programTitle}
           coverUrl={coverUrl}
-          currentMode="Свободный чат"
+          currentMode={
+            currentModeKey === "author_chat" ? "Разговор с автором"
+            : currentModeKey === "exercises" ? "Упражнения с психологом"
+            : "Свободный чат"
+          }
+          currentModeKey={currentModeKey}
           balance={balance}
           onBack={() => router.back()}
+          slug={slug}
         />
       )}
       <div className="chat-messages" ref={messagesRef} onScroll={handleScroll} role="log" aria-live="polite">

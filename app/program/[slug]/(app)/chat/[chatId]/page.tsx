@@ -84,6 +84,8 @@ export default async function ExistingChatPage({
       programTitle={program.title}
       coverUrl={coverUrl}
       balance={balanceTokens}
+      slug={slug}
+      currentModeKey={chat.chat_type === "author" ? "author_chat" : chat.exercise_id ? "exercises" : "free_chat"}
     >
       <div className="welcome-card">
         <div className="welcome-book">

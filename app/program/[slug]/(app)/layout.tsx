@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase-server";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTabs } from "@/components/MobileTabs";
 import { ChatListProvider } from "@/contexts/ChatListContext";
+import { ModesProvider } from "@/contexts/ModesContext";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
+import { getProgramModes } from "@/lib/queries/modes";
 import type { ProgramFeatures } from "@/types/program";
 
 export default async function ProgramLayout({
@@ -36,6 +38,7 @@ export default async function ProgramLayout({
     slug: string;
     features: ProgramFeatures | null;
   } | null = null;
+  let loadedModes: import("@/types/modes").ProgramModeWithTemplate[] = [];
 
   if (isAuthed) {
     const { data: program } = await supabase
@@ -113,33 +116,37 @@ export default async function ProgramLayout({
       slug,
       features: program.features as ProgramFeatures | null,
     };
+
+    loadedModes = await getProgramModes(supabase, program.id);
   }
 
   // ВСЕГДА одинаковая структура DOM: div > main > children
   // Sidebar и MobileTabs — условные siblings, но main с children не меняет позицию в дереве
   return (
     <ChatListProvider>
-      <div className={isAuthed ? "app-shell" : "app-shell no-tabs"}>
-        {sidebarProps && (
-          <Sidebar
-            slug={sidebarProps.slug}
-            programId={sidebarProps.programId}
-            user={sidebarProps.user}
-            features={sidebarProps.features}
-            initialChats={sidebarProps.initialChats}
-            exerciseCount={sidebarProps.exerciseCount}
-          />
-        )}
-        <main className="app-main">
-          {children}
-        </main>
-        {mobileTabsProps && (
-          <MobileTabs
-            slug={mobileTabsProps.slug}
-            features={mobileTabsProps.features}
-          />
-        )}
-      </div>
+      <ModesProvider modes={loadedModes}>
+        <div className={isAuthed ? "app-shell" : "app-shell no-tabs"}>
+          {sidebarProps && (
+            <Sidebar
+              slug={sidebarProps.slug}
+              programId={sidebarProps.programId}
+              user={sidebarProps.user}
+              features={sidebarProps.features}
+              initialChats={sidebarProps.initialChats}
+              exerciseCount={sidebarProps.exerciseCount}
+            />
+          )}
+          <main className="app-main">
+            {children}
+          </main>
+          {mobileTabsProps && (
+            <MobileTabs
+              slug={mobileTabsProps.slug}
+              features={mobileTabsProps.features}
+            />
+          )}
+        </div>
+      </ModesProvider>
     </ChatListProvider>
   );
 }

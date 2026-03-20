@@ -122,6 +122,8 @@ export default async function ChatPage({
       programTitle={program.title}
       coverUrl={coverUrl}
       balance={balanceTokens}
+      slug={slug}
+      currentModeKey="free_chat"
     >
       <div className="welcome-card">
         <div className="welcome-book">
