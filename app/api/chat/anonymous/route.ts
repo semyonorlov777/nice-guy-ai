@@ -2,23 +2,9 @@ import { streamText } from "ai";
 import { google } from "@/lib/ai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
+import { createRateLimit } from "@/lib/rate-limit";
 
-// In-memory rate limit: 30 requests/minute per IP
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60_000;
-const RATE_LIMIT_MAX = 30;
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimit.get(ip);
-  if (!entry || entry.resetAt < now) {
-    rateLimit.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
-}
+const checkRateLimit = createRateLimit();
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
