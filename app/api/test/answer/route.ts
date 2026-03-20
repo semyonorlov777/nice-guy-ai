@@ -143,11 +143,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "invalid_chat_id" }, { status: 400 });
     }
 
-    // Load chat + test_state + program_id
+    // Load chat + test_state + program_id (with user_id ownership check)
     const { data: chat } = await serviceClient
       .from("chats")
       .select("id, test_state, user_id, program_id")
       .eq("id", chatId)
+      .eq("user_id", user!.id)
       .single();
 
     if (!chat?.test_state) {
