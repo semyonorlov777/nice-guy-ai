@@ -17,10 +17,36 @@ export async function POST(request: Request) {
   }
 
   // 2. Parse body
-  const { program_slug, messages, session_id } = await request.json();
+  let body: { program_slug?: string; messages?: unknown[]; session_id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Невалидный JSON" }, { status: 400 });
+  }
+
+  const { program_slug, messages, session_id } = body;
 
   if (!program_slug || !Array.isArray(messages) || messages.length === 0) {
     return Response.json({ error: "Невалидные данные" }, { status: 400 });
+  }
+
+  // Лимит на количество сообщений
+  if (messages.length > 200) {
+    return Response.json({ error: "Слишком много сообщений (макс 200)" }, { status: 400 });
+  }
+
+  // Валидация и фильтрация сообщений
+  const validMessages = messages.filter(
+    (m): m is MigrateMessage =>
+      m != null &&
+      typeof m === "object" &&
+      typeof (m as MigrateMessage).content === "string" &&
+      (m as MigrateMessage).content.length <= 10000 &&
+      ((m as MigrateMessage).role === "user" || (m as MigrateMessage).role === "assistant")
+  );
+
+  if (validMessages.length === 0) {
+    return Response.json({ error: "Нет валидных сообщений" }, { status: 400 });
   }
 
   // 3. Find program by slug
@@ -57,7 +83,7 @@ export async function POST(request: Request) {
       .select("id", { count: "exact", head: true })
       .eq("chat_id", recentChat.id);
 
-    if (count === messages.length) {
+    if (count === validMessages.length) {
       console.log(
         `[migrate] Idempotent: session ${session_id} already migrated to chat ${recentChat.id}`
       );
@@ -93,7 +119,7 @@ export async function POST(request: Request) {
       exercise_id: null,
       status: "active",
       chat_type: "free",
-      title: messages[0]?.content?.slice(0, 50) || "Анонимный чат",
+      title: validMessages[0]?.content?.slice(0, 50) || "Анонимный чат",
     })
     .select("id")
     .single();
@@ -105,13 +131,13 @@ export async function POST(request: Request) {
 
   // 7. Insert messages with staggered created_at
   const baseTime = new Date();
-  const messageRows = (messages as MigrateMessage[]).map(
+  const messageRows = validMessages.map(
     (msg: MigrateMessage, i: number) => ({
       chat_id: chat.id,
       role: msg.role,
       content: msg.content,
       tokens_used: 0,
-      created_at: new Date(baseTime.getTime() - (messages.length - i) * 1000).toISOString(),
+      created_at: new Date(baseTime.getTime() - (validMessages.length - i) * 1000).toISOString(),
     })
   );
 
@@ -131,7 +157,7 @@ export async function POST(request: Request) {
     .eq("id", chat.id);
 
   console.log(
-    `[migrate] Migrated ${messages.length} messages for user ${user.id}, session ${session_id}, chat ${chat.id}`
+    `[migrate] Migrated ${validMessages.length} messages for user ${user.id}, session ${session_id}, chat ${chat.id}`
   );
 
   return Response.json({ chat_id: chat.id, success: true });
