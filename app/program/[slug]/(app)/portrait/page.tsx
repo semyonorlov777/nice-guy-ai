@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import type { PortraitContent, PortraitSection } from "@/types/portrait";
 import { isLegacyPortrait, convertLegacyPortrait } from "@/types/portrait";
+import { requireProgramFeature } from "@/lib/queries/program";
 
 export default async function PortraitPage({
   params,
@@ -17,12 +18,7 @@ export default async function PortraitPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (!program) redirect("/");
+  const program = await requireProgramFeature(supabase, slug, "portrait");
 
   // COUNT exercises for this program
   const { count: totalExercises } = await supabase

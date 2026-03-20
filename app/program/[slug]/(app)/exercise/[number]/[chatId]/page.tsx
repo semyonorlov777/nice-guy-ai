@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getUserProfileForChat } from "@/lib/queries/user-profile";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getChatMessages } from "@/lib/queries/messages";
+import { requireProgramFeature } from "@/lib/queries/program";
 
 export default async function ExistingExerciseSessionPage({
   params,
@@ -19,12 +20,7 @@ export default async function ExistingExerciseSessionPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (!program) redirect("/");
+  const program = await requireProgramFeature(supabase, slug, "exercises");
 
   // Загружаем упражнение
   const { data: exercise } = await supabase

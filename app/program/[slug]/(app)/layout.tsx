@@ -5,6 +5,7 @@ import { MobileTabs } from "@/components/MobileTabs";
 import { ChatListProvider } from "@/contexts/ChatListContext";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
+import type { ProgramFeatures } from "@/types/program";
 
 export default async function ProgramLayout({
   children,
@@ -27,13 +28,13 @@ export default async function ProgramLayout({
     slug: string;
     programId: string;
     user: { name: string; username: string | null; avatarUrl: string | null } | null;
-    features: Record<string, boolean> | null;
+    features: ProgramFeatures | null;
     initialChats: { id: string; title: string; chatType: string; exerciseNumber: number | null; preview: string; lastMessageAt: string }[];
     exerciseCount: number;
   } | null = null;
   let mobileTabsProps: {
     slug: string;
-    features: Record<string, boolean> | null;
+    features: ProgramFeatures | null;
   } | null = null;
 
   if (isAuthed) {
@@ -104,13 +105,13 @@ export default async function ProgramLayout({
       slug,
       programId: program.id,
       user: userInfo,
-      features: program.features as Record<string, boolean> | null,
+      features: program.features as ProgramFeatures | null,
       initialChats,
       exerciseCount: exerciseCount || 0,
     };
     mobileTabsProps = {
       slug,
-      features: program.features as Record<string, boolean> | null,
+      features: program.features as ProgramFeatures | null,
     };
   }
 

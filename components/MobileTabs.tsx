@@ -2,27 +2,27 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import type { ProgramFeatures } from "@/types/program";
 
 export function MobileTabs({
   slug,
   features,
 }: {
   slug: string;
-  features?: Record<string, boolean> | null;
+  features?: ProgramFeatures | null;
 }) {
   const pathname = usePathname();
   const base = `/program/${slug}`;
 
-  const tabs = [
+  const allTabs = [
     { key: "chat", path: "/chat", icon: "\u{1F4AC}", label: "Чат" },
-    { key: "author-chat", path: "/author-chat", icon: "\u270D\uFE0F", label: "Автор" },
-    { key: "test", path: "/test/issp", icon: "\u{1F4DD}", label: "Тест" },
-    { key: "exercises", path: "/exercises", icon: "\u{1F4CB}", label: "Тренажёры" },
-    ...(features?.portrait
-      ? [{ key: "portrait", path: "/portrait", icon: "\u{1F4CA}", label: "Портрет" }]
-      : []),
+    { key: "author-chat", feature: "author_chat" as const, path: "/author-chat", icon: "\u270D\uFE0F", label: "Автор" },
+    { key: "test", feature: "test" as const, path: "/test/issp", icon: "\u{1F4DD}", label: "Тест" },
+    { key: "exercises", feature: "exercises" as const, path: "/exercises", icon: "\u{1F4CB}", label: "Тренажёры" },
+    { key: "portrait", feature: "portrait" as const, path: "/portrait", icon: "\u{1F4CA}", label: "Портрет" },
     { key: "balance", path: "/balance", icon: "\u26A1", label: "Баланс" },
   ];
+  const tabs = allTabs.filter((tab) => !("feature" in tab) || features?.[tab.feature!]);
 
   function getActiveKey() {
     if (pathname.includes("/test/issp")) return "test";

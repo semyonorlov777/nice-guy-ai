@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
+import { requireProgramFeature } from "@/lib/queries/program";
 
 interface Exercise {
   id: string;
@@ -24,13 +25,7 @@ export default async function ExercisesPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-
-  if (!program) return null;
+  const program = await requireProgramFeature(supabase, slug, "exercises");
 
   const { data: exercises } = await supabase
     .from("exercises")

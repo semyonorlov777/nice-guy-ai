@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { ChatListItem, type ChatItemData } from "@/components/ChatListItem";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
+import type { ProgramFeatures } from "@/types/program";
 
 interface UserInfo {
   name: string;
@@ -17,7 +18,7 @@ interface SidebarProps {
   slug: string;
   programId: string;
   user?: UserInfo | null;
-  features?: Record<string, boolean> | null;
+  features?: ProgramFeatures | null;
   initialChats: ChatItemData[];
   exerciseCount: number;
 }
@@ -97,31 +98,39 @@ export function Sidebar({
     }
   }
 
-  // Навигация "Тренажёры"
-  const navItems = [
+  // Навигация "Тренажёры" — фильтруется по features программы
+  const allNavItems = [
     {
       key: "test",
+      feature: "test" as const,
       path: "/test/issp",
       icon: "📝",
       label: "Пройти тест",
     },
     {
       key: "author-chat",
+      feature: "author_chat" as const,
       path: "/author-chat",
       icon: "✍️",
       label: "Автор книги",
     },
     {
       key: "exercises",
+      feature: "exercises" as const,
       path: "/exercises",
       icon: "📋",
       label: "Упражнения",
       badge: exerciseCount > 0 ? exerciseCount : undefined,
     },
-    ...(features?.portrait
-      ? [{ key: "portrait", path: "/portrait", icon: "📊", label: "Мой портрет" }]
-      : []),
+    {
+      key: "portrait",
+      feature: "portrait" as const,
+      path: "/portrait",
+      icon: "📊",
+      label: "Мой портрет",
+    },
   ];
+  const navItems = allNavItems.filter((item) => features?.[item.feature]);
 
   return (
     <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>

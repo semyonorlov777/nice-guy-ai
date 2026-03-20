@@ -5,6 +5,7 @@ import { PreviousSessions } from "@/components/PreviousSessions";
 import { redirect } from "next/navigation";
 import { getUserProfileForChat } from "@/lib/queries/user-profile";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
+import { requireProgramFeature } from "@/lib/queries/program";
 
 export default async function ExercisePage({
   params,
@@ -19,13 +20,8 @@ export default async function ExercisePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  // Load program
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-  if (!program) redirect("/");
+  // Load program + check exercises feature
+  const program = await requireProgramFeature(supabase, slug, "exercises");
 
   // Load exercise
   const { data: exercise } = await supabase

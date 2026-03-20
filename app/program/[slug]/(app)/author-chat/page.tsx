@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { ChatWindow } from "@/components/ChatWindow";
 import { toUIMessages } from "@/lib/utils";
 import { getUserProfileForChat } from "@/lib/queries/user-profile";
+import { requireProgramFeature } from "@/lib/queries/program";
 
 export default async function AuthorChatPage({
   params,
@@ -15,13 +16,18 @@ export default async function AuthorChatPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) return null;
+
+  // Проверяем что фича author_chat включена для этой программы
+  await requireProgramFeature(supabase, slug, "author_chat");
+
   const { data: program } = await supabase
     .from("programs")
     .select("id, title, author_chat_welcome, author_chat_system_prompt")
     .eq("slug", slug)
     .single();
 
-  if (!user || !program) return null;
+  if (!program) return null;
 
   // User initial for avatar
   const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);

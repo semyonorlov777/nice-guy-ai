@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
-import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { createClient } from "@/lib/supabase-server";
+import { requireProgramFeature } from "@/lib/queries/program";
 
-export default function OldTestPage() {
-  redirect(`/program/${DEFAULT_PROGRAM_SLUG}/test/issp`);
+export default async function TestPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const supabase = await createClient();
+  await requireProgramFeature(supabase, slug, "test");
+
+  redirect(`/program/${slug}/test/issp`);
 }
