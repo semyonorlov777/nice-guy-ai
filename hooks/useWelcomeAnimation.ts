@@ -57,7 +57,7 @@ async function fakeStream(
       ? 120
       : /[,;:]/.test(lastChar)
         ? 60
-        : 25 + Math.random() * 15;
+        : 30 + Math.random() * 15;
     await new Promise((r) => setTimeout(r, delay));
   }
 }
@@ -146,6 +146,10 @@ export function useWelcomeAnimation({
     await fakeStream(welcomeMessage, (partial) => {
       if (!skippedRef.current) setStreamedText(partial);
     }, controller.signal);
+    if (skippedRef.current) return;
+
+    // Brief pause before quick replies appear
+    await new Promise<void>((r) => addTimer(r, 300));
     if (skippedRef.current) return;
 
     // Phase: quick-replies

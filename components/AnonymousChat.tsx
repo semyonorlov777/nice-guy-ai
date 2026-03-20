@@ -278,10 +278,12 @@ export function AnonymousChat({
           {/* Thinking indicator during welcome animation */}
           {messages.length === 0 && welcomePhase === "thinking" && (
             <div className="thinking-indicator">
-              думаю
-              <span className="thinking-dots">
-                <span>.</span><span>.</span><span>.</span>
-              </span>
+              <div className="msg-avatar ai" />
+              <div className="thinking-bubble">
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+              </div>
             </div>
           )}
 
@@ -344,12 +346,12 @@ export function AnonymousChat({
 
           {status === "submitted" && messages.length > 0 && (
             <div className="thinking-indicator">
-              думаю
-              <span className="thinking-dots">
-                <span>.</span>
-                <span>.</span>
-                <span>.</span>
-              </span>
+              <div className="msg-avatar ai" />
+              <div className="thinking-bubble">
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+              </div>
             </div>
           )}
 
