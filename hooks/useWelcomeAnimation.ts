@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type RefObject } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export type WelcomePhase =
   | "idle"
@@ -14,7 +14,7 @@ interface UseWelcomeAnimationOptions {
   storageKey: string;
   storageType: "local" | "session";
   triggerOnVisible?: boolean;
-  containerRef?: RefObject<HTMLElement | null>;
+  containerEl?: HTMLElement | null;
 }
 
 interface UseWelcomeAnimationReturn {
@@ -68,7 +68,7 @@ export function useWelcomeAnimation({
   storageKey,
   storageType,
   triggerOnVisible,
-  containerRef,
+  containerEl,
 }: UseWelcomeAnimationOptions): UseWelcomeAnimationReturn {
   // Check storage synchronously to avoid flash
   const alreadySeen = useRef(false);
@@ -181,8 +181,7 @@ export function useWelcomeAnimation({
     }
 
     // IntersectionObserver for landing page
-    const el = containerRef?.current;
-    if (!el) return;
+    if (!containerEl) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -191,12 +190,12 @@ export function useWelcomeAnimation({
           runSequence();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.3 }
     );
-    observer.observe(el);
+    observer.observe(containerEl);
 
     return () => observer.disconnect();
-  }, [isActive, triggerOnVisible, containerRef, runSequence]);
+  }, [isActive, triggerOnVisible, containerEl, runSequence]);
 
   // Cleanup on unmount
   useEffect(() => {

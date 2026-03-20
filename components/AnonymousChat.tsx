@@ -30,7 +30,7 @@ export function AnonymousChat({
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const chatZoneRef = useRef<HTMLDivElement>(null);
+  const [chatZoneEl, setChatZoneEl] = useState<HTMLDivElement | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
   const sessionIdRef = useRef<string>("");
@@ -76,7 +76,7 @@ export function AnonymousChat({
     storageKey: "welcome_anim_anon_done",
     storageType: "session",
     triggerOnVisible: true,
-    containerRef: chatZoneRef,
+    containerEl: chatZoneEl,
   });
 
   const animActive = !hasSavedMessages.current && welcomePhase !== "done";
@@ -84,11 +84,11 @@ export function AnonymousChat({
   // Input pulse via DOM
   useEffect(() => {
     if (!inputPulseActive) return;
-    const el = chatZoneRef.current?.querySelector(".input-container");
+    const el = chatZoneEl?.querySelector(".input-container");
     if (!el) return;
     el.classList.add("input-pulse");
     return () => el.classList.remove("input-pulse");
-  }, [inputPulseActive]);
+  }, [inputPulseActive, chatZoneEl]);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
@@ -261,7 +261,7 @@ export function AnonymousChat({
   if (!mounted) return null;
 
   return (
-    <div className="chat-zone" ref={chatZoneRef}>
+    <div className="chat-zone" ref={setChatZoneEl}>
       <div
         className="chat-messages"
         ref={messagesRef}
