@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' oauth.telegram.org",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: *.yandex.ru *.yandex.net",
+  "font-src 'self'",
+  "connect-src 'self' *.supabase.co generativelanguage.googleapis.com oauth.telegram.org *.sentry.io",
+  "frame-src oauth.telegram.org oauth.yandex.ru",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+];
+
 const nextConfig: NextConfig = {
   headers: async () => [
     {
@@ -14,6 +27,10 @@ const nextConfig: NextConfig = {
           value: "camera=(), microphone=(self), geolocation=()",
         },
         { key: "X-DNS-Prefetch-Control", value: "on" },
+        {
+          key: "Content-Security-Policy",
+          value: cspDirectives.join("; "),
+        },
       ],
     },
   ],
