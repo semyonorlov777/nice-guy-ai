@@ -306,6 +306,19 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - При ошибке — ищи корневую причину, не обходной путь
 - Серверные env-переменные недоступны на клиенте — публичные данные хардкодить
 
+## Правила при написании нового кода
+
+- **Новый API-роут**: используй `requireAuth()` и `apiError()` из `lib/api-helpers.ts` — не пиши проверку auth вручную
+- **Запрос к profiles/chats/exercises/messages**: используй хелпер из `lib/queries/`, не пиши Supabase-запрос заново
+- **Не хардкодь slug программы** — используй параметр из URL или `DEFAULT_PROGRAM_SLUG` из `lib/constants.ts`
+- **Не хардкодь URL приложения** — используй `APP_URL` из `lib/constants.ts`
+- **Новая страница программы** (`app/program/[slug]/(app)/`): проверяй features через `requireProgramFeature()` из `lib/queries/program.ts`
+- **Файл > 300 строк** — подумай о разделении на модули
+- **Новый компонент** не должен напрямую вызывать `supabase.from()` — данные через props или API
+- **Все функции в `lib/`** должны иметь явные типы параметров и возврата
+- **Контент программы** (обложка, автор, описание): бери из `programs.landing_data`, не хардкодь
+- **Проверка**: запусти `npm run check` перед коммитом — ищет типичные хардкоды
+
 ## Git commits
 
 - After completing a task, commit each logical change separately, not everything in one commit

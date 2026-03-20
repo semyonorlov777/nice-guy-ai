@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "bash scripts/check-hardcodes.sh"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",
