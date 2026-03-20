@@ -183,6 +183,16 @@ export function useWelcomeAnimation({
     // IntersectionObserver for landing page
     if (!containerEl) return;
 
+    // Immediate check: if already visible, start right away
+    const rect = containerEl.getBoundingClientRect();
+    const alreadyVisible =
+      rect.top < window.innerHeight && rect.bottom > 0 &&
+      rect.height > 0;
+    if (alreadyVisible) {
+      runSequence();
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !startedRef.current) {
