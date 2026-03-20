@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DEFAULT_PROGRAM_SLUG, APP_URL } from "@/lib/constants";
 
 interface ShareButtonsProps {
   resultId: string;
@@ -9,7 +10,7 @@ interface ShareButtonsProps {
 
 export function ShareButtons({ resultId, totalScore }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
-  const url = `https://nice-guy-ai.vercel.app/program/nice-guy/test/results/${resultId}`;
+  const url = `${APP_URL}/program/${DEFAULT_PROGRAM_SLUG}/test/results/${resultId}`;
   const text = `Мой Индекс синдрома славного парня — ${totalScore}/100. Пройди тест сам:`;
 
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;

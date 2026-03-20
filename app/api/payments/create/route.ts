@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import yookassa from "@/lib/yookassa";
 import { PRODUCTS } from "@/lib/products";
+import { APP_URL } from "@/lib/constants";
 import { randomUUID } from "crypto";
 
 export async function POST(request: Request) {
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
         ...(product.type === "subscription" ? { save_payment_method: true } : {}),
         confirmation: {
           type: "redirect",
-          return_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://nice-guy-ai.vercel.app"}/balance?payment=complete&order=${order.id}`,
+          return_url: `${APP_URL}/balance?payment=complete&order=${order.id}`,
         },
         description: product.description,
         metadata: {

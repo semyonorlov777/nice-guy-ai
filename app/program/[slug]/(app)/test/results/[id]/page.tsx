@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { DEFAULT_PROGRAM_SLUG, APP_URL } from "@/lib/constants";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -38,7 +39,7 @@ export async function generateMetadata({
       title: `Мой Индекс синдрома славного парня — ${score}/100`,
       description:
         "Узнай свои паттерны и начни путь к изменениям. Бесплатный тест по книге Роберта Гловера.",
-      url: `https://nice-guy-ai.vercel.app/program/nice-guy/test/results/${id}`,
+      url: `${APP_URL}/program/${DEFAULT_PROGRAM_SLUG}/test/results/${id}`,
       type: "website",
     },
   };
@@ -73,7 +74,7 @@ export default async function TestResultPage({
     .eq("id", result.program_id)
     .single();
 
-  const programSlug = program?.slug ?? "nice-guy";
+  const programSlug = program?.slug ?? DEFAULT_PROGRAM_SLUG;
 
   // Check ownership via cookie auth
   let isOwner = false;
