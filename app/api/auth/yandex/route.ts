@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
   // Encode popup flag and redirect URL in OAuth state
   const state: Record<string, string> = {};
   if (isPopup) state.popup = "true";
-  if (redirect) state.redirect = redirect;
+  // Validate redirect URL — only allow known safe paths (same check as in callback)
+  if (redirect && (redirect.startsWith("/program/") || redirect.startsWith("/balance"))) {
+    state.redirect = redirect;
+  }
   if (Object.keys(state).length > 0) {
     url.searchParams.set("state", JSON.stringify(state));
   }
