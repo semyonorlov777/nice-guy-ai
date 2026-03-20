@@ -25,7 +25,7 @@ export default async function ExistingChatPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, config, free_chat_welcome")
+    .select("id, title, config, free_chat_welcome, landing_data")
     .eq("slug", slug)
     .single();
   if (!program) redirect("/");
@@ -41,10 +41,11 @@ export default async function ExistingChatPage({
   if (!chat) redirect(`/program/${slug}/chat`);
 
   const config = (program.config || {}) as ProgramConfig;
+  const landingData = program.landing_data as { book?: { cover_url?: string } } | null;
+  const coverUrl = landingData?.book?.cover_url || "";
 
   // User initial
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
-  const coverUrl = "https://cdn.litres.ru/pub/c/cover_415/6882766.webp";
 
   // Количество упражнений
   const { count: exerciseCount } = await supabase

@@ -23,11 +23,19 @@ export default async function AuthorChatPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, author_chat_welcome, author_chat_system_prompt")
+    .select("id, title, author_chat_welcome, author_chat_system_prompt, landing_data")
     .eq("slug", slug)
     .single();
 
   if (!program) return null;
+
+  const landingData = program.landing_data as {
+    book?: { cover_url?: string };
+    author?: { name?: string; photo_url?: string | null; credentials?: string; quote?: string };
+  } | null;
+  const coverUrl = landingData?.book?.cover_url || "";
+  const authorName = landingData?.author?.name || program.title;
+  const authorCredentials = landingData?.author?.credentials || "";
 
   // User initial for avatar
   const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
@@ -45,14 +53,13 @@ export default async function AuthorChatPage({
     >
       <div className="welcome-card">
         <div className="welcome-book">
-          <img src="https://cdn.litres.ru/pub/c/cover_415/6882766.webp" alt="" />
+          {coverUrl && <img src={coverUrl} alt="" />}
         </div>
-        <div className="welcome-title">Роберт Гловер</div>
+        <div className="welcome-title">{authorName}</div>
         <div className="welcome-sub">Автор книги</div>
-        <div className="welcome-desc">
-          Задай вопрос автору книги — он ответит, опираясь на свой 30-летний
-          опыт работы с мужчинами.
-        </div>
+        {authorCredentials && (
+          <div className="welcome-desc">{authorCredentials}</div>
+        )}
       </div>
     </ChatWindow>
   );

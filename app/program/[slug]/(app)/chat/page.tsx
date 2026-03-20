@@ -26,18 +26,18 @@ export default async function ChatPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, description, config, free_chat_welcome")
+    .select("id, title, description, config, free_chat_welcome, landing_data")
     .eq("slug", slug)
     .single();
 
   if (!user || !program) return null;
 
   const config = (program.config || {}) as ProgramConfig;
+  const landingData = program.landing_data as { book?: { cover_url?: string } } | null;
+  const coverUrl = landingData?.book?.cover_url || "";
 
   // User initial for avatar
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
-  // TODO: cover_url хранится в programs.landing_data.book.cover_url, пока хардкод
-  const coverUrl = "https://cdn.litres.ru/pub/c/cover_415/6882766.webp";
 
   // Count exercises for this program
   const { count: exerciseCount } = await supabase
@@ -121,7 +121,7 @@ export default async function ChatPage({
     >
       <div className="welcome-card">
         <div className="welcome-book">
-          <img src="https://cdn.litres.ru/pub/c/cover_415/6882766.webp" alt="" />
+          {coverUrl && <img src={coverUrl} alt="" />}
         </div>
         <div className="welcome-title">{program.title}</div>
         {(exerciseCount || 0) > 0 && (
