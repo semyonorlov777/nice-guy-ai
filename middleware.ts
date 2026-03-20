@@ -23,6 +23,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Temporary: support access page for YooKassa verification
+  if (pathname.startsWith("/support-access")) {
+    return NextResponse.next();
+  }
+
   // Always create Supabase client and refresh auth token
   let supabaseResponse = NextResponse.next({ request });
 
