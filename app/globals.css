@@ -889,7 +889,7 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
 
   /* ── CHAT OVERRIDES (AnonymousChat inside v3) ── */
   .landing-v3 .chat-zone { background: transparent; }
-  .landing-v3 .chat-messages { background: transparent; padding-bottom: 20px; }
+  .landing-v3 .chat-messages { background: transparent; padding-bottom: 20px; min-height: 320px; }
   .landing-v3 .chat-input-wrap {
     position: relative; background: var(--bg-card);
     border-top: 1px solid var(--border-light);
