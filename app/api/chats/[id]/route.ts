@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 
 export async function PATCH(
   request: Request,
@@ -6,12 +7,8 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   const body = await request.json();
 

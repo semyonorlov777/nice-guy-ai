@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
+import { getChatPreviews } from "@/lib/queries/chat-previews";
+import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   const url = new URL(request.url);
   const programId = url.searchParams.get("programId");
@@ -45,22 +44,7 @@ export async function GET(request: Request) {
 
   // Превью: последнее assistant-сообщение для каждого чата
   const chatIds = chats.map((c) => c.id);
-  const previews = new Map<string, string>();
-
-  const { data: lastMessages } = await supabase
-    .from("messages")
-    .select("chat_id, content")
-    .in("chat_id", chatIds)
-    .eq("role", "assistant")
-    .order("created_at", { ascending: false });
-
-  if (lastMessages) {
-    for (const msg of lastMessages) {
-      if (!previews.has(msg.chat_id)) {
-        previews.set(msg.chat_id, msg.content.slice(0, 80));
-      }
-    }
-  }
+  const previews = await getChatPreviews(supabase, chatIds);
 
   // Номера упражнений для exercise-чатов
   const exerciseIds = [
@@ -68,20 +52,7 @@ export async function GET(request: Request) {
       chats.filter((c) => c.exercise_id).map((c) => c.exercise_id as string)
     ),
   ];
-  const exerciseMap = new Map<string, number>();
-
-  if (exerciseIds.length > 0) {
-    const { data: exercises } = await supabase
-      .from("exercises")
-      .select("id, number")
-      .in("id", exerciseIds);
-
-    if (exercises) {
-      for (const ex of exercises) {
-        exerciseMap.set(ex.id, ex.number);
-      }
-    }
-  }
+  const exerciseMap = await getExerciseNumberMap(supabase, exerciseIds);
 
   const result = chats.map((chat) => ({
     id: chat.id,

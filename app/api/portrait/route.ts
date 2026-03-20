@@ -1,16 +1,13 @@
 import { createClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 import { EMPTY_PORTRAIT } from "@/types/portrait";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
 
   // 1. Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Get program_id from query params
   const { searchParams } = new URL(request.url);

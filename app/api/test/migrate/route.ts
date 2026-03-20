@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
@@ -8,13 +9,8 @@ const UUID_RE =
 export async function POST(request: Request) {
   // 1. Auth required
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Parse and validate body
   const body = await request.json();

@@ -1,15 +1,12 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 
 // Body не используется — действие определяется только по auth (user.id)
 export async function POST() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   const serviceClient = createServiceClient();
   await serviceClient

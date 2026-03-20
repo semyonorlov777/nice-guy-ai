@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,13 +10,8 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   const { data: result, error } = await supabase
     .from("test_results")

@@ -3,6 +3,7 @@ import {
 } from "ai";
 import { google } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 import { updatePortrait } from "@/app/api/portrait/update/route";
 
 const DEFAULT_BALANCE = 1000;
@@ -11,12 +12,8 @@ export async function POST(request: Request) {
   const supabase = await createClient();
 
   // 1. Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Parse body — useChat отправляет { messages: UIMessage[], ...body }
   const body = await request.json();

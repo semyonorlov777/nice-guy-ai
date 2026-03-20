@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 import yookassa from "@/lib/yookassa";
 import { PRODUCTS } from "@/lib/products";
 import { APP_URL } from "@/lib/constants";
@@ -8,12 +9,8 @@ export async function POST(request: Request) {
   const supabase = await createClient();
 
   // 1. Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Parse body
   const { productKey } = await request.json();

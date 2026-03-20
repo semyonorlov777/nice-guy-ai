@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 
 interface MigrateMessage {
   role: "user" | "assistant";
@@ -8,13 +9,8 @@ interface MigrateMessage {
 export async function POST(request: Request) {
   // 1. Auth check
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Parse body
   let body: { program_slug?: string; messages?: unknown[]; session_id?: string };

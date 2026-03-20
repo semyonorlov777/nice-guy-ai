@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/api-helpers";
 import OpenAI from "openai";
 
 const STT_TOKENS_PER_MINUTE = 50;
@@ -10,12 +11,8 @@ function getOpenAI() {
 export async function POST(request: Request) {
   // 1. Auth
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: "Не авторизован" }, { status: 401 });
-  }
+  const { user, response } = await requireAuth(supabase);
+  if (response) return response;
 
   // 2. Check balance
   const { data: profile } = await supabase
