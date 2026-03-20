@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
+import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -29,6 +30,7 @@ export function AnonymousChat({
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const chatZoneRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
   const sessionIdRef = useRef<string>("");
@@ -51,6 +53,42 @@ export function AnonymousChat({
       sessionIdRef.current = crypto.randomUUID();
     }
   }
+
+  // Check for saved messages synchronously (before mount) for animation decision
+  const hasSavedMessages = useRef(false);
+  if (typeof window !== "undefined" && !hasSavedMessages.current) {
+    try {
+      const saved = localStorage.getItem(storageKeyMessages);
+      if (saved && JSON.parse(saved).length > 0) hasSavedMessages.current = true;
+    } catch { /* ignore */ }
+  }
+
+  const {
+    phase: welcomePhase,
+    streamedText,
+    showCursor,
+    quickReplyStaggerIndex,
+    inputPulseActive,
+    skipToEnd: skipWelcome,
+  } = useWelcomeAnimation({
+    welcomeMessage,
+    enabled: !hasSavedMessages.current,
+    storageKey: "welcome_anim_anon_done",
+    storageType: "session",
+    triggerOnVisible: true,
+    containerRef: chatZoneRef,
+  });
+
+  const animActive = !hasSavedMessages.current && welcomePhase !== "done";
+
+  // Input pulse via DOM
+  useEffect(() => {
+    if (!inputPulseActive) return;
+    const el = chatZoneRef.current?.querySelector(".input-container");
+    if (!el) return;
+    el.classList.add("input-pulse");
+    return () => el.classList.remove("input-pulse");
+  }, [inputPulseActive]);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
@@ -164,6 +202,8 @@ export function AnonymousChat({
     const msgText = text.trim();
     if (!msgText || isStreaming || requiresAuth) return;
 
+    if (animActive) skipWelcome();
+
     // Page-level scroll при первом сообщении (до отправки, чтобы не дёргало)
     scrollToSection();
 
@@ -221,7 +261,7 @@ export function AnonymousChat({
   if (!mounted) return null;
 
   return (
-    <div className="chat-zone">
+    <div className="chat-zone" ref={chatZoneRef}>
       <div
         className="chat-messages"
         ref={messagesRef}
@@ -235,27 +275,44 @@ export function AnonymousChat({
             </div>
           )}
 
-          {messages.length === 0 && (
-            <div className="msg msg-ai">
+          {/* Thinking indicator during welcome animation */}
+          {messages.length === 0 && welcomePhase === "thinking" && (
+            <div className="thinking-indicator">
+              думаю
+              <span className="thinking-dots">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </div>
+          )}
+
+          {/* Welcome AI message */}
+          {messages.length === 0 && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
+            <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`}>
               <div className="msg-avatar ai">НС</div>
               <div className="msg-bubble">
-                <ReactMarkdown>{welcomeMessage}</ReactMarkdown>
+                <ReactMarkdown>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
+                {showCursor && <span className="streaming-cursor">{"▊"}</span>}
               </div>
             </div>
           )}
 
-          {showQuickReplies && quickReplies.length > 0 && (
+          {/* Quick replies */}
+          {showQuickReplies && quickReplies.length > 0 &&
+            (!animActive || welcomePhase === "quick-replies" || welcomePhase === "input-pulse") && (
             <div className="quick-replies">
-              {quickReplies.map((text, i) => (
-                <button
-                  key={i}
-                  className="quick-reply-btn"
-                  onClick={() => handleSend(text)}
-                  disabled={isStreaming}
-                >
-                  {text}
-                </button>
-              ))}
+              {quickReplies.map((text, i) => {
+                if (animActive && i >= quickReplyStaggerIndex) return null;
+                return (
+                  <button
+                    key={i}
+                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}`}
+                    onClick={() => handleSend(text)}
+                    disabled={isStreaming}
+                  >
+                    {text}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -308,7 +365,7 @@ export function AnonymousChat({
         </div>
       </div>
 
-      <div className="chat-input-wrap">
+      <div className="chat-input-wrap" onFocusCapture={animActive ? skipWelcome : undefined}>
         <div className="chat-input-inner">
           <InputBar
             mode="chat"

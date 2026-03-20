@@ -10,6 +10,7 @@ import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import InputBar from "@/components/InputBar/InputBar";
 import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
+import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -57,6 +58,7 @@ export function ChatWindow({
   const chatIdRef = useRef<string | null>(initialChatId);
   const { refreshChatList } = useChatListRefresh();
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
+  const chatZoneRef = useRef<HTMLDivElement>(null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
   const [showScrollFab, setShowScrollFab] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -139,6 +141,7 @@ export function ChatWindow({
     const msgText = text.trim();
     if (!msgText || isStreaming) return;
 
+    if (animActive) skipWelcome();
     setValidationHint(null);
     setShowQuickReplies(false);
     isUserScrolledUp.current = false;
@@ -204,8 +207,37 @@ export function ChatWindow({
   // Show welcome AI message when no history exists
   const showWelcome = welcomeMessage && initialMessages.length === 0;
 
+  // Welcome animation (first visit only)
+  const shouldAnimate = Boolean(showWelcome) &&
+    (typeof window === "undefined" || !localStorage.getItem("welcome_anim_done"));
+
+  const {
+    phase: welcomePhase,
+    streamedText,
+    showCursor,
+    quickReplyStaggerIndex,
+    inputPulseActive,
+    skipToEnd: skipWelcome,
+  } = useWelcomeAnimation({
+    welcomeMessage: welcomeMessage || "",
+    enabled: shouldAnimate,
+    storageKey: "welcome_anim_done",
+    storageType: "local",
+  });
+
+  // Input pulse via DOM (InputBar doesn't accept className)
+  useEffect(() => {
+    if (!inputPulseActive) return;
+    const el = chatZoneRef.current?.querySelector(".input-container");
+    if (!el) return;
+    el.classList.add("input-pulse");
+    return () => el.classList.remove("input-pulse");
+  }, [inputPulseActive]);
+
+  const animActive = shouldAnimate && welcomePhase !== "done";
+
   return (
-    <div className="chat-zone">
+    <div className="chat-zone" ref={chatZoneRef}>
       {programTitle && coverUrl && (
         <ChatHeader
           programTitle={programTitle}
@@ -219,30 +251,49 @@ export function ChatWindow({
         <div className="chat-inner">
           {children}
 
-          {showWelcome && (
-            <div className="msg msg-ai" role="article">
+          {/* Thinking indicator during welcome animation */}
+          {showWelcome && welcomePhase === "thinking" && (
+            <div className="thinking-indicator">
               <div className="msg-avatar ai" />
-              <div className="msg-bubble">
-                <ReactMarkdown>{welcomeMessage}</ReactMarkdown>
+              <div className="thinking-bubble">
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
+                <div className="thinking-dot" />
               </div>
             </div>
           )}
 
-          {showQuickReplies && quickReplies && quickReplies.length > 0 && (
+          {/* Welcome AI message */}
+          {showWelcome && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
+            <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`} role="article">
+              <div className="msg-avatar ai" />
+              <div className="msg-bubble">
+                <ReactMarkdown>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
+                {showCursor && <span className="streaming-cursor">{"▊"}</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Quick replies */}
+          {showQuickReplies && quickReplies && quickReplies.length > 0 &&
+            (!animActive || welcomePhase === "quick-replies" || welcomePhase === "input-pulse") && (
             <div className="quick-replies">
               {initialMessages.length === 0 && (
                 <div className="quick-reply-label">Выбери вариант или напиши своё</div>
               )}
-              {quickReplies.map((text, i) => (
-                <button
-                  key={i}
-                  className="quick-reply-btn"
-                  onClick={() => handleSend(text)}
-                  disabled={isStreaming}
-                >
-                  {text}
-                </button>
-              ))}
+              {quickReplies.map((text, i) => {
+                if (animActive && i >= quickReplyStaggerIndex) return null;
+                return (
+                  <button
+                    key={i}
+                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}`}
+                    onClick={() => handleSend(text)}
+                    disabled={isStreaming}
+                  >
+                    {text}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -296,7 +347,7 @@ export function ChatWindow({
         </div>
       </div>
 
-      <div className="chat-input-wrap">
+      <div className="chat-input-wrap" onFocusCapture={animActive ? skipWelcome : undefined}>
         <button
           className={`scroll-fab ${showScrollFab ? "visible" : ""}`}
           onClick={scrollToBottomForced}

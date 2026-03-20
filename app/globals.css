@@ -392,6 +392,31 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .quick-reply-btn:active { background: var(--accent); color: #fff; transform: scale(0.97); }
   .quick-reply-btn:disabled { opacity: 0.5; cursor: default; }
 
+  /* ── WELCOME ONBOARDING ANIMATIONS ── */
+  .msg-welcome-enter { animation: welcomeMsgIn 300ms ease-out both; }
+  @keyframes welcomeMsgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .quick-reply-enter { animation: quickReplyIn 250ms ease-out both; }
+  @keyframes quickReplyIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .input-container.input-pulse {
+    animation: inputPulseGlow 1500ms ease-in-out 2;
+  }
+  @keyframes inputPulseGlow {
+    0%, 100% { box-shadow: 0 1px 4px rgba(0,0,0,0.04); border-color: var(--border); }
+    50% { box-shadow: 0 0 0 3px var(--accent-glow), 0 0 12px rgba(212,165,69,0.15); border-color: var(--accent); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .msg-welcome-enter,
+    .quick-reply-enter { animation: welcomeFadeOnly 150ms ease-out both; }
+    .input-container.input-pulse { animation: none; }
+  }
+  @keyframes welcomeFadeOnly { from { opacity: 0; } to { opacity: 1; } }
+
   /* ── ERROR CARDS (v2) ── */
   .error-card { display: flex; gap: 10px; max-width: 100%; }
   .error-card-bubble { flex: 1; min-width: 0; padding: 14px 18px; border-radius: var(--radius); background: var(--error-bg); border-left: 3px solid var(--accent); font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
