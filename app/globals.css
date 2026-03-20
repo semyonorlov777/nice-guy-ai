@@ -203,6 +203,9 @@ input, textarea, select { font-size: 16px; }
   .sidebar-item-icon { width: 28px; min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
   .sidebar-item-label { overflow: hidden; text-overflow: ellipsis; }
   .sidebar-item-badge { margin-left: auto; font-size: 11px; color: var(--text-muted); background: var(--bg-elevated); padding: 2px 7px; border-radius: 10px; }
+  .sidebar-book-cover { width: 28px; min-width: 28px; height: 36px; border-radius: 2px 4px 4px 2px; overflow: hidden; flex-shrink: 0; }
+  .sidebar-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .sidebar-book-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
 
   .sidebar-chat-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
   .sidebar-chat-item { display: block; padding: 10px 12px; border-radius: var(--radius-xs); cursor: pointer; transition: background 0.12s; margin-bottom: 2px; position: relative; text-decoration: none; color: inherit; }
@@ -243,7 +246,8 @@ input, textarea, select { font-size: 16px; }
   .mobile-tabs { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabs-h); display: flex; background: var(--bg-card); border-top: 1px solid var(--border-light); z-index: 9999; }
   .mobile-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-family: var(--font-body); color: var(--text-muted); border: none; background: none; cursor: pointer; text-decoration: none; }
   .mobile-tab.active { color: var(--accent); font-weight: 600; }
-  .mobile-tab-icon { font-size: 18px; }
+  .mobile-tab-icon { font-size: 18px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  .mobile-tab-icon svg { width: 20px; height: 20px; }
 
   /* ── CONTENT CONTAINER ── */
   .content-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 24px 24px 40px; }

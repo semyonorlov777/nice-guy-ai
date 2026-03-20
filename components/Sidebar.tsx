@@ -14,6 +14,12 @@ interface UserInfo {
   avatarUrl: string | null;
 }
 
+interface ProgramItem {
+  slug: string;
+  title: string;
+  coverUrl: string | null;
+}
+
 interface SidebarProps {
   slug: string;
   programId: string;
@@ -21,6 +27,7 @@ interface SidebarProps {
   features?: ProgramFeatures | null;
   initialChats: ChatItemData[];
   exerciseCount: number;
+  programs: ProgramItem[];
 }
 
 export function Sidebar({
@@ -30,6 +37,7 @@ export function Sidebar({
   features,
   initialChats,
   exerciseCount,
+  programs,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -75,16 +83,6 @@ export function Sidebar({
     return chatMatch?.[1] || exerciseMatch?.[1] || null;
   })();
 
-  // Активный раздел навигации
-  function getActiveSection() {
-    if (pathname.includes("/test/issp")) return "test";
-    if (pathname.startsWith(`${base}/author-chat`)) return "author-chat";
-    if (pathname.startsWith(`${base}/exercise`)) return "exercises";
-    if (pathname.startsWith(`${base}/portrait`)) return "portrait";
-    return null; // chat не подсвечиваем в навигации — он в списке чатов
-  }
-  const activeSection = getActiveSection();
-
   // Архивация
   async function handleArchive(chatId: string) {
     await fetch(`/api/chats/${chatId}`, {
@@ -94,43 +92,9 @@ export function Sidebar({
     });
     setChats((prev) => prev.filter((c) => c.id !== chatId));
     if (chatId === activeChatId) {
-      router.push(`${base}/chat`);
+      router.push(`${base}/hub`);
     }
   }
-
-  // Навигация "Тренажёры" — фильтруется по features программы
-  const allNavItems = [
-    {
-      key: "test",
-      feature: "test" as const,
-      path: "/test/issp",
-      icon: "📝",
-      label: "Пройти тест",
-    },
-    {
-      key: "author-chat",
-      feature: "author_chat" as const,
-      path: "/author-chat",
-      icon: "✍️",
-      label: "Автор книги",
-    },
-    {
-      key: "exercises",
-      feature: "exercises" as const,
-      path: "/exercises",
-      icon: "📋",
-      label: "Упражнения",
-      badge: exerciseCount > 0 ? exerciseCount : undefined,
-    },
-    {
-      key: "portrait",
-      feature: "portrait" as const,
-      path: "/portrait",
-      icon: "📊",
-      label: "Мой портрет",
-    },
-  ];
-  const navItems = allNavItems.filter((item) => features?.[item.feature]);
 
   return (
     <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
@@ -144,37 +108,31 @@ export function Sidebar({
           onClick={toggleCollapsed}
           title={collapsed ? "Развернуть" : "Свернуть"}
         >
-          {collapsed ? "»" : "«"}
+          {collapsed ? "\u00BB" : "\u00AB"}
         </button>
       </div>
 
-      <button
-        className="new-chat-btn"
-        onClick={() => {
-          if (pathname === `${base}/chat`) return;
-          router.push(`${base}/chat`);
-        }}
-        title="Новый чат"
-      >
-        <span className="new-chat-btn-icon">{"✏️"}</span>
-        <span className="sidebar-item-label">Новый чат</span>
-      </button>
-
-      <div className="sidebar-section-label">Тренажёры</div>
+      <div className="sidebar-section-label">Программы</div>
       <div className="sidebar-nav">
-        {navItems.map((item) => (
-          <Link
-            key={item.key}
-            href={`${base}${item.path}`}
-            className={`sidebar-item${activeSection === item.key ? " active" : ""}`}
-          >
-            <div className="sidebar-item-icon">{item.icon}</div>
-            <span className="sidebar-item-label">{item.label}</span>
-            {"badge" in item && item.badge && (
-              <span className="sidebar-item-badge">{item.badge}</span>
-            )}
-          </Link>
-        ))}
+        {programs.map((p) => {
+          const isActive = p.slug === slug;
+          return (
+            <Link
+              key={p.slug}
+              href={`/program/${p.slug}/hub`}
+              className={`sidebar-item${isActive ? " active" : ""}`}
+            >
+              <div className="sidebar-book-cover">
+                {p.coverUrl ? (
+                  <img src={p.coverUrl} alt="" />
+                ) : (
+                  <div className="sidebar-book-placeholder" />
+                )}
+              </div>
+              <span className="sidebar-item-label">{p.title}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="sidebar-section-label">Все чаты</div>

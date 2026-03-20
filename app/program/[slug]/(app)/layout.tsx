@@ -33,10 +33,10 @@ export default async function ProgramLayout({
     features: ProgramFeatures | null;
     initialChats: { id: string; title: string; chatType: string; exerciseNumber: number | null; preview: string; lastMessageAt: string }[];
     exerciseCount: number;
+    programs: { slug: string; title: string; coverUrl: string | null }[];
   } | null = null;
   let mobileTabsProps: {
     slug: string;
-    features: ProgramFeatures | null;
   } | null = null;
   let loadedModes: import("@/types/modes").ProgramModeWithTemplate[] = [];
 
@@ -104,6 +104,18 @@ export default async function ProgramLayout({
       lastMessageAt: c.last_message_at,
     }));
 
+    // Загрузка всех программ для sidebar
+    const { data: allPrograms } = await supabase
+      .from("programs")
+      .select("slug, title, landing_data")
+      .order("created_at");
+
+    const programsList = (allPrograms || []).map((p) => {
+      const ld = p.landing_data as Record<string, unknown> | null;
+      const coverUrl = (ld?.book as Record<string, unknown>)?.cover_url as string ?? null;
+      return { slug: p.slug, title: p.title, coverUrl };
+    });
+
     sidebarProps = {
       slug,
       programId: program.id,
@@ -111,10 +123,10 @@ export default async function ProgramLayout({
       features: program.features as ProgramFeatures | null,
       initialChats,
       exerciseCount: exerciseCount || 0,
+      programs: programsList,
     };
     mobileTabsProps = {
       slug,
-      features: program.features as ProgramFeatures | null,
     };
 
     loadedModes = await getProgramModes(supabase, program.id);
@@ -134,6 +146,7 @@ export default async function ProgramLayout({
               features={sidebarProps.features}
               initialChats={sidebarProps.initialChats}
               exerciseCount={sidebarProps.exerciseCount}
+              programs={sidebarProps.programs}
             />
           )}
           <main className="app-main">
@@ -142,7 +155,6 @@ export default async function ProgramLayout({
           {mobileTabsProps && (
             <MobileTabs
               slug={mobileTabsProps.slug}
-              features={mobileTabsProps.features}
             />
           )}
         </div>
