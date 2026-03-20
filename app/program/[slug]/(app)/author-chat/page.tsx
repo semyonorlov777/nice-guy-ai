@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { ChatWindow } from "@/components/ChatWindow";
 import { toUIMessages } from "@/lib/utils";
+import { getUserProfileForChat } from "@/lib/queries/user-profile";
 
 export default async function AuthorChatPage({
   params,
@@ -23,18 +24,7 @@ export default async function AuthorChatPage({
   if (!user || !program) return null;
 
   // User initial for avatar
-  const { data: userData } = await supabase
-    .from("profiles")
-    .select("name, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const userInitial =
-    userData?.name?.[0]?.toUpperCase() ||
-    user.email?.[0]?.toUpperCase() ||
-    "?";
-
-  const avatarUrl = userData?.avatar_url || null;
+  const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
 
   return (
     <ChatWindow

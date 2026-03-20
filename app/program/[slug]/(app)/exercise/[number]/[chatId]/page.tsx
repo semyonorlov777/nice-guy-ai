@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase-server";
 import { ChatWindow } from "@/components/ChatWindow";
 import { toUIMessages } from "@/lib/utils";
 import { redirect } from "next/navigation";
+import { getUserProfileForChat } from "@/lib/queries/user-profile";
+import { getChatPreviews } from "@/lib/queries/chat-previews";
+import { getChatMessages } from "@/lib/queries/messages";
 
 export default async function ExistingExerciseSessionPage({
   params,
@@ -48,18 +51,7 @@ export default async function ExistingExerciseSessionPage({
   };
 
   // User initial
-  const { data: userData } = await supabase
-    .from("profiles")
-    .select("name, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const userInitial =
-    userData?.name?.[0]?.toUpperCase() ||
-    user.email?.[0]?.toUpperCase() ||
-    "?";
-
-  const avatarUrl = userData?.avatar_url || null;
+  const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
 
   // Total exercises count
   const { count } = await supabase
@@ -68,16 +60,7 @@ export default async function ExistingExerciseSessionPage({
     .eq("program_id", program.id);
 
   // Сообщения чата
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("role, content")
-    .eq("chat_id", chat.id)
-    .order("created_at", { ascending: true });
-
-  const initialMessages = (messages || []).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  const initialMessages = await getChatMessages(supabase, chat.id);
 
   // Прошлые сессии для этого упражнения (кроме текущей)
   const { data: allSessions } = await supabase
@@ -92,22 +75,7 @@ export default async function ExistingExerciseSessionPage({
 
   // Превью для прошлых сессий
   const sessionIds = (allSessions || []).map((s) => s.id);
-  const previews = new Map<string, string>();
-  if (sessionIds.length > 0) {
-    const { data: lastMsgs } = await supabase
-      .from("messages")
-      .select("chat_id, content")
-      .in("chat_id", sessionIds)
-      .eq("role", "assistant")
-      .order("created_at", { ascending: false });
-    if (lastMsgs) {
-      for (const msg of lastMsgs) {
-        if (!previews.has(msg.chat_id)) {
-          previews.set(msg.chat_id, msg.content.slice(0, 80));
-        }
-      }
-    }
-  }
+  const previews = await getChatPreviews(supabase, sessionIds);
 
   const previousSessions = (allSessions || []).map((s) => ({
     id: s.id,

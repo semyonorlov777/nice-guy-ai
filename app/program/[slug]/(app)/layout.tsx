@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase-server";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTabs } from "@/components/MobileTabs";
 import { ChatListProvider } from "@/contexts/ChatListContext";
+import { getChatPreviews } from "@/lib/queries/chat-previews";
+import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
 
 export default async function ProgramLayout({
   children,
@@ -75,22 +77,7 @@ export default async function ProgramLayout({
 
     // Превью: последнее assistant-сообщение для каждого чата
     const chatIds = (chatsData || []).map((c) => c.id);
-    const previews = new Map<string, string>();
-    if (chatIds.length > 0) {
-      const { data: lastMessages } = await supabase
-        .from("messages")
-        .select("chat_id, content")
-        .in("chat_id", chatIds)
-        .eq("role", "assistant")
-        .order("created_at", { ascending: false });
-      if (lastMessages) {
-        for (const msg of lastMessages) {
-          if (!previews.has(msg.chat_id)) {
-            previews.set(msg.chat_id, msg.content.slice(0, 80));
-          }
-        }
-      }
-    }
+    const previews = await getChatPreviews(supabase, chatIds);
 
     // Номера упражнений для exercise-чатов
     const exerciseIds = [
@@ -100,18 +87,7 @@ export default async function ProgramLayout({
           .map((c) => c.exercise_id as string)
       ),
     ];
-    const exerciseMap = new Map<string, number>();
-    if (exerciseIds.length > 0) {
-      const { data: exercises } = await supabase
-        .from("exercises")
-        .select("id, number")
-        .in("id", exerciseIds);
-      if (exercises) {
-        for (const ex of exercises) {
-          exerciseMap.set(ex.id, ex.number);
-        }
-      }
-    }
+    const exerciseMap = await getExerciseNumberMap(supabase, exerciseIds);
 
     const initialChats = (chatsData || []).map((c) => ({
       id: c.id,
