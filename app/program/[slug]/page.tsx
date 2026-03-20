@@ -11,7 +11,6 @@ import { TestSection } from "@/components/landing/TestSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { ChatSection } from "@/components/landing/ChatSection";
 import { LandingFooter } from "@/components/landing/LandingFooter";
-import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 
 export async function generateMetadata({
@@ -112,31 +111,6 @@ export default async function ProgramLanding({
     data: { user },
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
-
-  // Залогиненный → redirect на hub (если есть чаты) или chat (первый визит)
-  if (isLoggedIn) {
-    const svc = createServiceClient();
-    const { data: prog } = await svc
-      .from("programs")
-      .select("id")
-      .eq("slug", slug)
-      .single();
-
-    if (prog) {
-      const { count } = await supabase
-        .from("chats")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user!.id)
-        .eq("program_id", prog.id)
-        .not("last_message_at", "is", null);
-
-      if ((count ?? 0) >= 1) {
-        redirect(`/program/${slug}/hub`);
-      } else {
-        redirect(`/program/${slug}/chat`);
-      }
-    }
-  }
 
   const svc = createServiceClient();
   const { data: program } = await svc
