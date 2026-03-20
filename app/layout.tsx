@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Onest, Cormorant_Garamond } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -15,6 +15,13 @@ const cormorant = Cormorant_Garamond({
 });
 
 const BUILD_TIME = new Date().toISOString();
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: "AI-тренажёры по книгам",

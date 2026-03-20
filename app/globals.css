@@ -170,6 +170,9 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ═══ iOS Safari zoom prevention — font-size must be >= 16px ═══ */
+input, textarea, select { font-size: 16px; }
+
 /* ═══ COMPONENTS ═══ */
 @layer components {
   /* ── PROGRAM LAYOUT ── */
@@ -294,7 +297,7 @@ body:has(.legal-page) { background: #0f1114 !important; color: #e0e0e0 !importan
   .input-locked .send-btn:disabled,
   .input-locked .voice-btn:disabled { opacity: 1; }
   .chat-input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .chat-input { flex: 1; border: none; outline: none; background: none; font-family: var(--font-body); font-size: 15px; color: var(--text-primary); padding: 10px 0; resize: none; line-height: 1.4; max-height: 100px; }
+  .chat-input { flex: 1; border: none; outline: none; background: none; font-family: var(--font-body); font-size: 16px; color: var(--text-primary); padding: 10px 0; resize: none; line-height: 1.4; max-height: 100px; }
   .chat-input::placeholder { color: var(--text-muted); }
   .send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .send-btn:active { transform: scale(0.92); }
@@ -2715,7 +2718,7 @@ html:not(.no-transition) .app-main {
   background: transparent;
   border: none;
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-primary);
   resize: none;
   outline: none;
@@ -2725,7 +2728,7 @@ html:not(.no-transition) .app-main {
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
-.input-textarea::placeholder { color: var(--text-hint); font-size: 14px; }
+.input-textarea::placeholder { color: var(--text-hint); font-size: 15px; }
 
 /* Hide textarea during recording/locked/error */
 .input-bar.recording .input-textarea,
