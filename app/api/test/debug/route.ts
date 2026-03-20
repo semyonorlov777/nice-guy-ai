@@ -14,7 +14,8 @@ const VALID_PROMPT_TYPES = ["mini", "full"] as const;
 const VALID_MODEL_KEYS = ["flash", "flash-lite"] as const;
 
 export async function POST(request: Request) {
-  if (process.env.NEXT_PUBLIC_DEBUG_ENABLED !== "true") {
+  // DEBUG_ENABLED (server-only, NOT NEXT_PUBLIC_) — prevents client-side exposure
+  if (process.env.DEBUG_ENABLED !== "true") {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
