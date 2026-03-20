@@ -12,6 +12,7 @@ import { generateInterpretation } from "@/lib/issp-interpretation";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
 import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
 import type { TestAnswer } from "@/lib/issp-scoring";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
 export const maxDuration = 60;
 
@@ -186,7 +187,8 @@ export async function POST(request: Request) {
 
   // 2. Parse body
   const body = await request.json();
-  const { message, test_slug, answer_type, answer: quickAnswer, answer_text, question_index } = body;
+  const { message, test_slug, answer_type, answer: quickAnswer, answer_text, question_index, program_slug: rawProgramSlug } = body;
+  const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
   // Common validation
   if (test_slug !== "issp") {
@@ -246,7 +248,7 @@ export async function POST(request: Request) {
   const { data: program } = await serviceClient
     .from("programs")
     .select("id, test_system_prompt")
-    .eq("slug", "nice-guy")
+    .eq("slug", programSlug)
     .single();
 
   if (!program || !program.test_system_prompt) {

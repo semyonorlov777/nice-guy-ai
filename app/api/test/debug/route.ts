@@ -4,6 +4,7 @@ import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/issp-parser"
 import { ISSP_QUESTIONS, ISSP_SCALE_NAMES } from "@/lib/issp-config";
 import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
 import { createServiceClient } from "@/lib/supabase-server";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
 const MODELS: Record<string, string> = {
   "flash": "gemini-2.5-flash",
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const { data: program } = await serviceClient
       .from("programs")
       .select("test_system_prompt")
-      .eq("slug", "nice-guy")
+      .eq("slug", DEFAULT_PROGRAM_SLUG)
       .single();
 
     if (!program?.test_system_prompt) {

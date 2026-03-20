@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { calculateISSP } from "@/lib/issp-scoring";
 import { generateInterpretation } from "@/lib/issp-interpretation";
 import { ISSP_QUESTIONS } from "@/lib/issp-config";
@@ -58,7 +59,9 @@ export async function POST(request: Request) {
     session_id: rawSessionId,
     question_index: questionIndex,
     score,
+    program_slug: rawProgramSlug,
   } = body;
+  const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
   // ── Validate score ──
   if (typeof score !== "number" || score < 1 || score > 5 || !Number.isInteger(score)) {
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
       const { data: program } = await serviceClient
         .from("programs")
         .select("id")
-        .eq("slug", "nice-guy")
+        .eq("slug", programSlug)
         .single();
 
       if (!program) {

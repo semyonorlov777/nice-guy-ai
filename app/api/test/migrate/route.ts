@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
 const UUID_RE =
@@ -17,7 +18,8 @@ export async function POST(request: Request) {
 
   // 2. Parse and validate body
   const body = await request.json();
-  const { session_id } = body;
+  const { session_id, program_slug: rawProgramSlug } = body;
+  const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
   if (!session_id || !UUID_RE.test(session_id)) {
     return Response.json(
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
   const { data: program } = await serviceClient
     .from("programs")
     .select("id")
-    .eq("slug", "nice-guy")
+    .eq("slug", programSlug)
     .single();
 
   if (!program) {
