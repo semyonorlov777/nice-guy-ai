@@ -6,6 +6,7 @@ import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
 import { useRouter } from "next/navigation";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import InputBar from "@/components/InputBar/InputBar";
 import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
@@ -33,7 +34,7 @@ function classifyError(content: string): "limit" | "ai" {
 
 function getSlugFromPath(): string {
   const match = window.location.pathname.match(/\/program\/([^/]+)/);
-  return match ? match[1] : "nice-guy";
+  return match ? match[1] : DEFAULT_PROGRAM_SLUG;
 }
 
 export function ChatWindow({

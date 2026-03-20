@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceClient } from "@/lib/supabase-server";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import crypto from "crypto";
 
 const DEV_EMAIL = "dev_test@niceguy.local";
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to chat with cookies
-    const redirectUrl = new URL("/program/nice-guy/chat", request.url);
+    const redirectUrl = new URL(`/program/${DEFAULT_PROGRAM_SLUG}/chat`, request.url);
     const response = NextResponse.redirect(redirectUrl);
 
     cookiesToSet.forEach(({ name, value, options }) =>

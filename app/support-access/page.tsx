@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
 export default function SupportAccessPage() {
   const [email, setEmail] = useState("");
@@ -28,7 +29,7 @@ export default function SupportAccessPage() {
       return;
     }
 
-    router.push("/program/nice-guy/balance");
+    router.push(`/program/${DEFAULT_PROGRAM_SLUG}/balance`);
   }
 
   return (

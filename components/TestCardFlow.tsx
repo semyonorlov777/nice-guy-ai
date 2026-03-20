@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { AuthSheet } from "@/components/AuthSheet";
 import { WelcomeScreen } from "@/components/test/WelcomeScreen";
 import { QuestionScreen } from "@/components/test/QuestionScreen";
@@ -37,7 +38,7 @@ const TEXT_TIMEOUT_ABORT_MS = 8000;
 export function TestCardFlow() {
   const router = useRouter();
   const pathname = usePathname();
-  const programSlug = pathname.match(/^\/program\/([^/]+)\//)?.[1] ?? "nice-guy";
+  const programSlug = pathname.match(/^\/program\/([^/]+)\//)?.[1] ?? DEFAULT_PROGRAM_SLUG;
 
   // Core state
   const [phase, setPhase] = useState<CardPhase>("loading");
