@@ -65,18 +65,32 @@ export async function POST(request: Request) {
       language: "ru",
     });
 
-    // 6. Deduct tokens
+    // 6. Deduct tokens atomically via RPC (prevents race conditions)
     const serviceClient = createServiceClient();
-    const newBalance = Math.max(0, profile.balance_tokens - tokensToSpend);
-    await serviceClient
+    const { error: deductError } = await serviceClient.rpc("deduct_tokens", {
+      p_user_id: user.id,
+      p_amount: tokensToSpend,
+    });
+
+    if (deductError) {
+      console.error("[transcribe] deduct_tokens failed:", deductError);
+      return Response.json(
+        { error: "Ошибка списания токенов" },
+        { status: 500 }
+      );
+    }
+
+    // Read updated balance for response
+    const { data: updatedProfile } = await supabase
       .from("profiles")
-      .update({ balance_tokens: newBalance })
-      .eq("id", user.id);
+      .select("balance_tokens")
+      .eq("id", user.id)
+      .single();
 
     return Response.json({
       text: transcription.text,
       tokens_spent: tokensToSpend,
-      balance_remaining: newBalance,
+      balance_remaining: updatedProfile?.balance_tokens ?? 0,
     });
   } catch (err) {
     console.error("[transcribe] Error:", err);
