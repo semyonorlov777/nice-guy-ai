@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth } from "@/lib/api-helpers";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { ISSP_AUTH_WALL_QUESTION } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
 
 const UUID_RE =
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
   }
 
   const answers = (session.answers || []) as TestAnswer[];
-  if (answers.length < 34) {
+  if (answers.length < ISSP_AUTH_WALL_QUESTION) {
     return Response.json(
       { error: "Недостаточно ответов для миграции (минимум 34)" },
       { status: 400 }
@@ -167,6 +168,9 @@ export async function POST(request: Request) {
     `[test:migrate] Migrated session ${session_id} → chat ${newChat.id} for user ${user.id} (${answers.length} answers, ${sessionMessages.length} messages)`
   );
 
-  // 9. Return chat_id
-  return Response.json({ chat_id: newChat.id });
+  // 9. Return chat_id + current_question
+  return Response.json({
+    chat_id: newChat.id,
+    current_question: testState.current_question,
+  });
 }
