@@ -466,6 +466,7 @@ export function TestCardFlow() {
 
       const data = await res.json();
       setChatId(data.chat_id);
+      setSessionId("");
       setMode("authenticated");
 
       try {

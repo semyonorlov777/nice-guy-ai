@@ -54,8 +54,41 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Check for existing active test chat FIRST (idempotency)
-  // This handles: double doMigrate, cross-tab auth, page refresh after migration
+  // 5. Idempotency: if session already migrated, find the chat created by this migration
+  if (session.status === "migrated") {
+    const { data: migratedChat } = await supabase
+      .from("chats")
+      .select("id, test_state")
+      .eq("user_id", user.id)
+      .eq("program_id", program.id)
+      .eq("chat_type", "test")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (migratedChat) {
+      const ts = migratedChat.test_state as { current_question?: number } | null;
+      return Response.json({
+        chat_id: migratedChat.id,
+        current_question: ts?.current_question ?? ISSP_AUTH_WALL_QUESTION,
+      });
+    }
+
+    return Response.json(
+      { error: "Сессия уже мигрирована или завершена" },
+      { status: 400 }
+    );
+  }
+
+  if (session.status !== "in_progress") {
+    return Response.json(
+      { error: "Сессия уже мигрирована или завершена" },
+      { status: 400 }
+    );
+  }
+
+  // 6. Complete any existing active test chat (previous incomplete attempt)
   const { data: existingChat } = await supabase
     .from("chats")
     .select("id")
@@ -67,22 +100,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingChat) {
-    // Session may still be "in_progress" if this is a retry — mark it migrated
-    if (session.status === "in_progress") {
-      await serviceClient
-        .from("test_sessions")
-        .update({ status: "migrated", updated_at: new Date().toISOString() })
-        .eq("session_id", session_id);
-    }
-    return Response.json({ chat_id: existingChat.id });
-  }
-
-  // 6. Now check session status — only proceed if in_progress
-  if (session.status !== "in_progress") {
-    return Response.json(
-      { error: "Сессия уже мигрирована или завершена" },
-      { status: 400 }
-    );
+    await serviceClient
+      .from("chats")
+      .update({ status: "completed" })
+      .eq("id", existingChat.id);
+    console.log(`[test:migrate] Completed old test chat ${existingChat.id} for user ${user.id}`);
   }
 
   const answers = (session.answers || []) as TestAnswer[];
@@ -93,7 +115,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 6. Create chat with test_state
+  // 7. Create chat with test_state
   const testState = {
     current_question: session.current_question as number,
     status: "in_progress",
