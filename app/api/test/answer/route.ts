@@ -3,7 +3,7 @@ import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { calculateISSP } from "@/lib/issp-scoring";
 import { generateInterpretation } from "@/lib/issp-interpretation";
-import { ISSP_QUESTIONS } from "@/lib/issp-config";
+import { ISSP_QUESTIONS, ISSP_TOTAL_QUESTIONS, ISSP_AUTH_WALL_QUESTION } from "@/lib/issp-config";
 import type { TestAnswer } from "@/lib/issp-scoring";
 import { createRateLimit } from "@/lib/rate-limit";
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   if (typeof score !== "number" || score < 1 || score > 5 || !Number.isInteger(score)) {
     return Response.json({ error: "invalid_score" }, { status: 400 });
   }
-  if (typeof questionIndex !== "number" || questionIndex < 0 || questionIndex > 34) {
+  if (typeof questionIndex !== "number" || questionIndex < 0 || questionIndex >= ISSP_TOTAL_QUESTIONS) {
     return Response.json({ error: "invalid_question_index" }, { status: 400 });
   }
 
@@ -183,47 +183,49 @@ export async function POST(request: Request) {
     programId = ""; // not needed for anonymous (no test_results insert)
   }
 
-  // ── Desync check (authenticated only) ──
-  // Anonymous mode: RPC append_anonymous_test_answer handles desync atomically under FOR UPDATE lock.
-  // Pre-RPC check would use stale data and cause false 409s on fast clicks.
-  if (isAuthenticated && questionIndex !== testState.current_question) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const responseData: any = {
-      error: "question_mismatch",
-      server_question: testState.current_question,
-    };
-
-    if (testState.current_question >= 35) {
-      const { data: existingResult } = await serviceClient
-        .from("test_results")
-        .select("id, status")
-        .eq("chat_id", chatId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      responseData.test_complete = true;
-      responseData.result_id = existingResult?.id || null;
-      responseData.result_ready = existingResult?.status === "ready";
-    }
-
-    return Response.json(responseData, { status: 409 });
-  }
+  // Desync is now handled atomically inside RPC (FOR UPDATE lock + expected_question check)
+  // for both authenticated and anonymous modes — no pre-RPC check needed.
 
   // ── Build answer ──
   const answer = buildAnswer(score, questionIndex, String(score));
 
   // ── Record answer ──
   if (isAuthenticated) {
-    // Atomic append via RPC
+    // Atomic append via RPC (with desync check)
     const { data: newState, error: rpcError } = await serviceClient.rpc(
       "append_test_answer",
-      { p_chat_id: chatId, p_answer: answer }
+      { p_chat_id: chatId, p_answer: answer, p_expected_question: questionIndex }
     );
 
     if (rpcError) {
       console.error("[test:answer] append_test_answer error:", rpcError);
       return Response.json({ error: "rpc_error" }, { status: 500 });
+    }
+
+    // RPC returns question_mismatch instead of throwing — handle as 409
+    if (newState?.error === "question_mismatch") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const responseData: any = {
+        error: "question_mismatch",
+        server_question: newState.server_question,
+      };
+
+      // If test already complete, include result info
+      if (newState.server_question >= ISSP_TOTAL_QUESTIONS || newState.answers_count >= ISSP_TOTAL_QUESTIONS) {
+        const { data: existingResult } = await serviceClient
+          .from("test_results")
+          .select("id, status")
+          .eq("chat_id", chatId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        responseData.test_complete = true;
+        responseData.result_id = existingResult?.id || null;
+        responseData.result_ready = existingResult?.status === "ready";
+      }
+
+      return Response.json(responseData, { status: 409 });
     }
 
     const updatedState = newState as TestState;
@@ -245,7 +247,7 @@ export async function POST(request: Request) {
     const nextQuestion = updatedState.current_question;
 
     // ═══ Q35: TEST COMPLETE ═══
-    if (answersCount >= 35) {
+    if (answersCount >= ISSP_TOTAL_QUESTIONS) {
       console.log("[test-answer] Q35 detected, answers count:", answersCount);
       const isspResult = calculateISSP(updatedState.answers);
 
@@ -322,7 +324,7 @@ export async function POST(request: Request) {
     }
 
     // ═══ BLOCK BOUNDARY (every 5 questions) ═══
-    const blockComplete = answersCount % 5 === 0 && answersCount < 35;
+    const blockComplete = answersCount % 5 === 0 && answersCount < ISSP_TOTAL_QUESTIONS;
 
     return Response.json({
       success: true,
@@ -361,8 +363,8 @@ export async function POST(request: Request) {
     const answersCount = rpcResult.answers_count as number;
     const nextQuestion = rpcResult.current_question as number;
 
-    // AUTH WALL at Q34 for anonymous
-    if (answersCount >= 34) {
+    // AUTH WALL for anonymous
+    if (answersCount >= ISSP_AUTH_WALL_QUESTION) {
       return Response.json({
         success: true,
         requires_auth: true,
@@ -371,7 +373,7 @@ export async function POST(request: Request) {
     }
 
     // Block boundary
-    const blockComplete = answersCount % 5 === 0 && answersCount < 35;
+    const blockComplete = answersCount % 5 === 0 && answersCount < ISSP_TOTAL_QUESTIONS;
 
     return Response.json({
       success: true,
