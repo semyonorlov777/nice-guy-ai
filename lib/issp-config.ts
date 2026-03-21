@@ -56,6 +56,12 @@ export const ISSP_QUESTIONS: ISSPQuestion[] = [
   { q: 35, scale: "attachment",  type: "reverse", text: "В близких отношениях я говорю о том, что мне не нравится, даже если это может привести к ссоре" },
 ];
 
+/** Total number of questions in the ISSP test */
+export const ISSP_TOTAL_QUESTIONS = ISSP_QUESTIONS.length; // 35
+
+/** Question index at which anonymous users hit the auth wall (0-based) */
+export const ISSP_AUTH_WALL_QUESTION = ISSP_TOTAL_QUESTIONS - 1; // 34
+
 export const ISSP_SCALES: Record<string, { name: string; exercises: number[] }> = {
   approval:    { name: "Зависимость от одобрения", exercises: [4, 5, 8] },
   contracts:   { name: "Скрытые контракты", exercises: [13, 14, 15] },
@@ -96,16 +102,3 @@ export const ISSP_BLOCK_INSIGHTS: string[] = [
   "Отношения и привязанность — «славный парень» часто ищет в партнёре то, что недополучил в детстве. Он растворяется в отношениях, теряя себя, и боится одиночества больше, чем несчастливого союза.",
 ];
 
-export const ISSP_QUICK_REACTIONS: Record<number, string[]> = {
-  1: ["Принял.", "Понял, фиксирую.", "Записал."],
-  2: ["Ок, скорее нет. Зафиксировал.", "Понял — не сильно резонирует."],
-  3: ["Серединка. Записал как 3.", "Бывает, но не всегда. Понял."],
-  4: ["Часто — записал.", "Знакомое ощущение. Фиксирую как 4."],
-  5: ["Полностью откликается. Записал.", "Сильный отклик. Зафиксировал как 5."],
-};
-
-export const ISSP_TEXT_REACTIONS: string[] = [
-  "Понял тебя. Звучит на <strong>{score}</strong> из 5. Записываю.",
-  "Похоже на <strong>{score}</strong>. Фиксирую.",
-  "Ясно. Это ближе к <strong>{score}</strong>. Записал.",
-];
