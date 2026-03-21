@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { AuthSheet } from "@/components/AuthSheet";
@@ -41,6 +41,8 @@ export function TestCardFlow() {
   const router = useRouter();
   const pathname = usePathname();
   const programSlug = pathname.match(/^\/program\/([^/]+)\//)?.[1] ?? DEFAULT_PROGRAM_SLUG;
+  const searchParams = useSearchParams();
+  const isDebug = searchParams.get("debug") === "true";
 
   // Core state
   const [phase, setPhase] = useState<CardPhase>("loading");
@@ -80,6 +82,13 @@ export function TestCardFlow() {
   const startFailedRef = useRef(false);
   const lastAnswerPromiseRef = useRef<Promise<void> | null>(null);
   const migratingRef = useRef(false);
+  const debugLogRef = useRef<Array<{
+    question: number;
+    sentScore: number;
+    serverConfirmed: boolean;
+    serverQuestion: number | null;
+    timestamp: number;
+  }>>([]);
 
   // ── Init ──
   useEffect(() => {
@@ -552,12 +561,27 @@ export function TestCardFlow() {
           setCurrentQuestionIndex(data.server_question);
         }
         console.warn("[ISSP] Question desync, synced to:", data.server_question);
+        if (isDebug) {
+          debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: false, serverQuestion: data.server_question ?? null, timestamp: Date.now() });
+          console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → 409 DESYNC, server at Q${data.server_question}`);
+        }
         return;
       }
 
-      if (!response.ok) throw new Error("API error");
+      if (!response.ok) {
+        if (isDebug) {
+          debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: false, serverQuestion: null, timestamp: Date.now() });
+          console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → ERROR ${response.status}`);
+        }
+        throw new Error("API error");
+      }
 
       const data = await response.json();
+
+      if (isDebug) {
+        debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: true, serverQuestion: data.current_question ?? null, timestamp: Date.now() });
+        console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → server OK, next=${data.current_question}`);
+      }
 
       // Server returned chat_id (auto-created for authenticated user)
       if (data.chat_id && !chatId) {
@@ -577,12 +601,16 @@ export function TestCardFlow() {
       }
     } catch (err) {
       console.error("[ISSP] submitQuickAnswer error:", err);
+      if (isDebug) {
+        debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: false, serverQuestion: null, timestamp: Date.now() });
+        console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → ERROR`);
+      }
       setErrorMessage("Не удалось сохранить ответ. Попробуйте ещё раз.");
       // Откатить фазу если уже перешли в analyzing
       setPhase((prev) => prev === "analyzing" ? "question" : prev);
       setTimeout(() => setErrorMessage(null), 5000);
     }
-  }, [chatId, sessionId, handleRequiresAuth]);
+  }, [chatId, sessionId, handleRequiresAuth, isDebug]);
 
   // ── Handle Quick Answer (Flow 1: ~1s) ──
   const handleQuickAnswer = useCallback(async (score: number) => {
@@ -860,6 +888,19 @@ export function TestCardFlow() {
     setAnimationClass("enter");
     setPhase("question");
   }, [completedBlockIndex]);
+
+  // ── Debug summary when entering analyzing phase ──
+  useEffect(() => {
+    if (phase !== "analyzing" || !isDebug || debugLogRef.current.length === 0) return;
+    console.log("[ISSP DEBUG] === ИТОГО ===");
+    console.table(debugLogRef.current.map(entry => ({
+      "Вопрос": `Q${entry.question}`,
+      "Отправлено": entry.sentScore,
+      "Сервер": entry.serverConfirmed ? "\u2713" : "\u2717",
+      "Следующий Q": entry.serverQuestion,
+    })));
+    console.log(`[ISSP DEBUG] Всего ответов отправлено: ${debugLogRef.current.length}`);
+  }, [phase, isDebug]);
 
   // ── Polling for resultId during analyzing phase ──
   useEffect(() => {
