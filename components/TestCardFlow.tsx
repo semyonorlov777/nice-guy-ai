@@ -13,6 +13,8 @@ import { CompletionScreen } from "@/components/test/CompletionScreen";
 import { HistoryScreen, type TestResultSummary } from "@/components/test/HistoryScreen";
 import {
   ISSP_QUESTIONS,
+  ISSP_TOTAL_QUESTIONS,
+  ISSP_AUTH_WALL_QUESTION,
   ISSP_SCALE_NAMES,
   ISSP_SCALE_ORDER,
   ISSP_BLOCK_INSIGHTS,
@@ -31,7 +33,7 @@ type CardPhase =
 
 type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
 
-const TOTAL_QUESTIONS = 35;
+const TOTAL_QUESTIONS = ISSP_TOTAL_QUESTIONS;
 const TEXT_TIMEOUT_SLOW_MS = 5000;
 const TEXT_TIMEOUT_ABORT_MS = 8000;
 
@@ -75,6 +77,7 @@ export function TestCardFlow() {
   const abortRef = useRef<AbortController | null>(null);
   const initDone = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
+  const startFailedRef = useRef(false);
   const lastAnswerPromiseRef = useRef<Promise<void> | null>(null);
   const migratingRef = useRef(false);
 
@@ -241,8 +244,8 @@ export function TestCardFlow() {
           const cq = data.current_question || 0;
           setCurrentQuestionIndex(cq);
 
-          // Auth wall: anonymous user at Q34+ must authenticate
-          if (cq >= 34) {
+          // Auth wall: anonymous user at auth wall question+ must authenticate
+          if (cq >= ISSP_AUTH_WALL_QUESTION) {
             setPhase("auth_wall");
             setAuthSheetOpen(true);
             return;
@@ -255,11 +258,15 @@ export function TestCardFlow() {
             setPhase("question");
           }
           return;
-        } else {
+        } else if (res.status === 404) {
+          // Session not found on server — clean up stale storage
           try {
             sessionStorage.removeItem("issp_session_id");
             localStorage.removeItem("issp_session_id");
           } catch { /* ignore */ }
+        } else {
+          // Server error (500, timeout) — keep storage, user can retry on refresh
+          console.warn("[ISSP] Failed to restore session (status:", res.status, "), keeping storage for retry");
         }
       }
 
@@ -366,6 +373,7 @@ export function TestCardFlow() {
     setPhase("question");
 
     // Fire-and-forget: create session in background
+    startFailedRef.current = false;
     startPromiseRef.current = (async () => {
       try {
         const body = {
@@ -401,6 +409,7 @@ export function TestCardFlow() {
         ];
       } catch (err) {
         console.error("[TestCardFlow] Start message failed:", err);
+        startFailedRef.current = true;
       }
     })();
   }, [consumeSSE]);
@@ -457,12 +466,13 @@ export function TestCardFlow() {
         // ignore
       }
 
-      // Show last question
+      // Show the question where server left off (usually Q34)
+      const cq = typeof data.current_question === "number" ? data.current_question : TOTAL_QUESTIONS - 1;
       setIsLocked(false);
       setSelectedScore(null);
       setStatusMessage(null);
       setFallbackActive(false);
-      setCurrentQuestionIndex(TOTAL_QUESTIONS - 1);
+      setCurrentQuestionIndex(cq);
       setAnimationClass("enter");
       setPhase("question");
     } catch (err) {
@@ -509,8 +519,8 @@ export function TestCardFlow() {
       return true;
     }
 
-    // Auth wall at Q34 for anonymous
-    if (nextIndex === 34 && mode === "anonymous") {
+    // Auth wall for anonymous
+    if (nextIndex === ISSP_AUTH_WALL_QUESTION && mode === "anonymous") {
       handleRequiresAuth();
       return true;
     }
@@ -537,8 +547,11 @@ export function TestCardFlow() {
         if (data.test_complete) {
           if (data.result_id) setResultId(data.result_id);
           setPhase(data.result_ready ? "complete" : "analyzing");
+        } else if (typeof data.server_question === "number") {
+          // Sync client to server state on desync
+          setCurrentQuestionIndex(data.server_question);
         }
-        console.warn("[ISSP] Question desync:", data.server_question);
+        console.warn("[ISSP] Question desync, synced to:", data.server_question);
         return;
       }
 
@@ -580,6 +593,14 @@ export function TestCardFlow() {
     if (startPromiseRef.current) {
       await startPromiseRef.current;
       startPromiseRef.current = null;
+    }
+
+    // If session creation failed, show error and abort
+    if (startFailedRef.current) {
+      transitioning.current = false;
+      setErrorMessage("Не удалось создать сессию. Перезагрузите страницу.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
     }
 
     // Reset fallback state if active
@@ -639,6 +660,14 @@ export function TestCardFlow() {
     if (startPromiseRef.current) {
       await startPromiseRef.current;
       startPromiseRef.current = null;
+    }
+
+    // If session creation failed, show error and abort
+    if (startFailedRef.current) {
+      transitioning.current = false;
+      setErrorMessage("Не удалось создать сессию. Перезагрузите страницу.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
     }
 
     // Capture question index BEFORE async — stale closure protection
@@ -834,14 +863,28 @@ export function TestCardFlow() {
 
   // ── Polling for resultId during analyzing phase ──
   useEffect(() => {
-    if (phase !== "analyzing" || resultId || !chatId) return;
+    if (phase !== "analyzing" || resultId) return;
 
     let cancelled = false;
     let intervalRef: ReturnType<typeof setInterval> | undefined;
     let notFoundCount = 0;
+    let waitingForChatId = 0;
     const NOT_FOUND_LIMIT = 20; // ~60s (20 polls × 3s)
+    const CHAT_ID_WAIT_LIMIT = 10; // ~30s waiting for chatId to arrive
 
     const poll = async () => {
+      // chatId may arrive later from fire-and-forget submitQuickAnswer
+      if (!chatId) {
+        waitingForChatId++;
+        if (waitingForChatId >= CHAT_ID_WAIT_LIMIT && !cancelled) {
+          console.error("[ISSP] chatId still null after", CHAT_ID_WAIT_LIMIT, "polls — cannot fetch results");
+          setPhase("question");
+          setErrorMessage("Не удалось получить результаты. Попробуйте ответить на последний вопрос ещё раз.");
+          setTimeout(() => setErrorMessage(null), 8000);
+        }
+        return;
+      }
+
       try {
         const res = await fetch(`/api/test/result?chat_id=${chatId}`);
         if (!res.ok || cancelled) return;
