@@ -68,7 +68,7 @@ INSERT INTO programs (
     "hero_cta": "Начать бесплатно ↓",
     "hero_hint": "Без регистрации",
     "book": {
-      "cover_url": "/images/books/games-people-play.jpg",
+      "cover_url": "https://cdn.litres.ru/pub/c/cover_415/73470133.webp",
       "alt": "Игры, в которые играют люди — Эрик Берн",
       "author_top": "Эрик Берн",
       "title": "Игры, в которые играют люди",
@@ -95,7 +95,7 @@ INSERT INTO programs (
       ]
     },
     "author": {
-      "photo_url": "/images/authors/games-people-play.jpg",
+      "photo_url": "https://upload.wikimedia.org/wikipedia/ru/6/67/Erik_Bern.jpg",
       "name": "Эрик Берн",
       "credentials": "Психиатр, создатель транзактного анализа. Автор книг «Игры, в которые играют люди» и «Люди, которые играют в игры».",
       "quote": "Игры — это компромисс между близостью и сохранением дистанции. Люди играют в них не потому что глупые, а потому что боятся настоящей близости."
