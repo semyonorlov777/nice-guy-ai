@@ -4,7 +4,12 @@
 
 ## Проект
 
-AI-платформа тренажёров по книгам. Первая программа — "No More Mr. Nice Guy" (Гловер), 46 упражнений.
+AI-платформа тренажёров по книгам. Три программы:
+- "No More Mr. Nice Guy" (Гловер) — 46 упражнений, тест ISSP, портрет, чат с автором
+- "Games People Play" (Берн) — свободный чат, чат с автором, портрет
+- "5 Love Languages" (Чепмен) — свободный чат, чат с автором, портрет
+
+Новые книги добавляются через INSERT в БД (programs + program_modes), UI data-driven.
 Продакшен: nice-guy-ai.vercel.app
 
 ## Стек
@@ -60,7 +65,8 @@ app/
 │       ├── test/page.tsx                 # Промежуточная страница теста (public)
 │       ├── test/issp/page.tsx            # Тест ISSP (public)
 │       ├── test/issp/client.tsx          # Клиентский компонент теста
-│       └── test/results/[id]/page.tsx    # Результаты теста (public)
+│       ├── test/results/[id]/page.tsx    # Результаты теста (public)
+│       └── hub/page.tsx                  # Хаб программы (выбор режимов)
 ├── api/
 │   ├── chat/route.ts                     # AI-чат (авторизованный, Vercel AI SDK стриминг)
 │   ├── chat/anonymous/route.ts           # AI-чат (анонимный, для лендинга)
@@ -129,6 +135,12 @@ components/
 │   ├── AuthorSection.tsx                 # Об авторе
 │   ├── PersonasSection.tsx               # Для кого
 │   └── SocialProof.tsx                   # Социальное доказательство
+├── hub/                                  # Компоненты хаба программы
+│   ├── HubScreen.tsx                     # Главный экран хаба (режимы + книга)
+│   ├── BookHero.tsx                      # Обложка книги + инфо
+│   ├── ModeCard.tsx                      # Карточка режима (кликабельная)
+│   ├── ContinueBlock.tsx                 # Блок "Продолжить"
+│   └── mode-icons.tsx                    # Иконки режимов
 lib/
 ├── ai.ts                                 # Конфигурация Google Generative AI (Vercel AI SDK)
 ├── supabase.ts                           # Клиент (браузер)
@@ -156,15 +168,19 @@ lib/
 │   ├── chat-previews.ts                 # getChatPreviews() — превью для списка чатов
 │   ├── exercise-map.ts                  # getExerciseNumberMap() — exercise ID → номер
 │   ├── messages.ts                      # getChatMessages() — история сообщений чата
+│   ├── modes.ts                         # getProgramModes(), getLastActiveMode() — режимы программы
 │   ├── program.ts                       # requireProgramFeature() — feature flags программы
 │   └── user-profile.ts                  # getUserProfileForChat() — профиль для UI чата
 hooks/
 ├── useVoiceInput.ts                      # Голосовой ввод (запись + транскрипция)
+├── useWelcomeAnimation.ts                # Анимация приветствия на хабе
 contexts/
 ├── ChatListContext.tsx                    # Контекст списка чатов (React Context)
+├── ModesContext.tsx                       # Контекст режимов программы
 types/
 ├── portrait.ts                           # Типы + EMPTY_PORTRAIT
 ├── program.ts                            # ProgramFeatures — feature flags программы
+├── modes.ts                              # Типы режимов (ModeTemplate, ProgramMode)
 ├── yookassa.d.ts                         # Типы YooKassa API
 middleware.ts                             # Auth guard для защищённых страниц
 instrumentation.ts                        # Sentry серверная инструментация
@@ -208,7 +224,7 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
   - **Тёмная тема (основная):** фон `--bg-main: #111318`, карточки `--bg-card: #1C1F26`, акцент `--accent: #D4A545` (золотой)
   - **Светлая тема (auth):** `--auth-bg: #FAFAF5`, `--auth-bg-card: #FFFFFF`, `--auth-accent: #C9963B`
   - **Тест-результаты:** `--tr-bg: #0f1114`, `--tr-bg2: #16181d`, `--tr-gold: #c9a84c` (отдельные токены)
-- Шрифты: Cormorant Garamond `--font-cormorant` (заголовки), Onest `--font-onest` (текст)
+- Шрифты: Cormorant Garamond `--font-display` (заголовки), Onest `--font-body` (текст)
 - Стили: в основном в `globals.css` (CSS-переменные), Tailwind для утилит
 - Мобильная адаптация: Sidebar скрывается, MobileTabs внизу
 
@@ -227,6 +243,7 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
 
 | URL | Доступ | Описание |
 |-----|--------|----------|
+| `/program/[slug]/(app)/hub` | protected | Хаб программы (выбор режимов) |
 | `/program/[slug]/(app)/chat` | protected | Список чатов / новый свободный чат |
 | `/program/[slug]/(app)/chat/[chatId]` | protected | Конкретный чат по ID |
 | `/program/[slug]/(app)/author-chat` | protected | Разговор с автором |
@@ -309,6 +326,8 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - ISSP тест: полный flow от создания (`/api/test`) до результатов (`/api/test/result`), UI в `components/test/` и `components/test-results/`
 - Управление чатами: `contexts/ChatListContext.tsx`, API `/api/chats/*`
 - Каталог продуктов (токены, подписки): `lib/products.ts`
+- Система режимов: таблицы `mode_templates` (каталог всех режимов) + `program_modes` (включённые per-program). Запросы через `lib/queries/modes.ts`
+- Новые книги: seed SQL в `scripts/` (seed-games-people-play.sql, seed-love-languages.sql), UI автоматически подхватывает из БД
 
 ## Правила
 
