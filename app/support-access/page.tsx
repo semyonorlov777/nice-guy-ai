@@ -33,29 +33,9 @@ export default function SupportAccessPage() {
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "#0f1114",
-      fontFamily: "var(--font-onest), sans-serif",
-    }}>
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "#16181d",
-          borderRadius: 12,
-          padding: 32,
-          width: 360,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-        }}
-      >
-        <h1 style={{ color: "#fff", fontSize: 20, margin: 0, textAlign: "center" }}>
-          Служебный вход
-        </h1>
+    <div className="support-page">
+      <form onSubmit={handleSubmit} className="support-form">
+        <h1 className="support-title">Служебный вход</h1>
 
         <input
           type="email"
@@ -63,15 +43,7 @@ export default function SupportAccessPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #2a2d35",
-            background: "#0f1114",
-            color: "#fff",
-            fontSize: 14,
-            outline: "none",
-          }}
+          className="support-input"
         />
 
         <input
@@ -80,37 +52,14 @@ export default function SupportAccessPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #2a2d35",
-            background: "#0f1114",
-            color: "#fff",
-            fontSize: 14,
-            outline: "none",
-          }}
+          className="support-input"
         />
 
         {error && (
-          <p style={{ color: "#ef4444", fontSize: 13, margin: 0, textAlign: "center" }}>
-            {error}
-          </p>
+          <p className="support-error">{error}</p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: "10px 0",
-            borderRadius: 8,
-            border: "none",
-            background: loading ? "#555" : "#c9a84c",
-            color: "#0f1114",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
+        <button type="submit" disabled={loading} className="support-btn">
           {loading ? "Вход..." : "Войти"}
         </button>
       </form>
