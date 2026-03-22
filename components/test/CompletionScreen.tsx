@@ -6,7 +6,7 @@ export function CompletionScreen({ onViewResults }: CompletionScreenProps) {
   return (
     <div className="tc-screen tc-done-screen">
       <div className="tc-done-orb">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>

@@ -1048,7 +1048,7 @@ export function TestCardFlow() {
             bottom: 24,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "#dc2626",
+            background: "var(--danger)",
             color: "#fff",
             padding: "12px 20px",
             borderRadius: 12,

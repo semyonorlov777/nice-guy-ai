@@ -30,7 +30,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
       return (
         this.props.fallback || (
           <div
-            style={{ padding: "40px", textAlign: "center", color: "#6b6860" }}
+            style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}
           >
             <p>Ошибка загрузки чата</p>
             <button
