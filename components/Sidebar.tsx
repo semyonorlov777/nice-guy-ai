@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { formatRelativeTime } from "@/lib/time";
-import { getChatTypeColorClass } from "@/lib/chat-utils";
 import {
   HomeIcon,
   ChatIcon,
@@ -176,9 +175,6 @@ export function Sidebar({
               href={getChatHref(chat)}
               className={`sb-chat${chat.id === activeChatId ? " active" : ""}`}
             >
-              <div className={`sb-chat-icon i-${getChatTypeColorClass(chat.chatType)}`}>
-                <ChatIcon size={14} />
-              </div>
               <div className="sb-chat-body">
                 <div className="sb-chat-name">{chat.title}</div>
                 <div className="sb-chat-preview">{chat.preview || "Начни разговор..."}</div>
