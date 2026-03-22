@@ -206,7 +206,7 @@ export default function TestDebugPage() {
       minHeight: "100dvh",
     }}>
       <h1 style={{ fontSize: 20, marginBottom: 24, color: "#c9a84c" }}>
-        ИССП — Дебаг промптов
+        Тест — Дебаг промптов
       </h1>
 
       {/* Question selector */}
