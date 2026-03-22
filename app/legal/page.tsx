@@ -7,106 +7,53 @@ export const metadata: Metadata = {
   description: "Публичная оферта и условия использования сервиса.",
 };
 
-const D = "var(--font-display)";
-
-const h2Style = {
-  fontFamily: D,
-  fontSize: 22,
-  fontWeight: 600,
-  color: "#e0e0e0",
-  marginBottom: 16,
-  marginTop: 0,
-} as const;
-
-const pStyle = {
-  fontSize: 14,
-  lineHeight: 1.7,
-  color: "#999",
-  marginBottom: 12,
-} as const;
-
-const sectionStyle = { marginBottom: 32 } as const;
-
 export default function LegalPage() {
   return (
     <>
     <PublicHeader />
-    <div
-      className="legal-page"
-      style={{
-        minHeight: "100vh",
-        background: "#0f1114",
-        color: "#e0e0e0",
-        fontFamily: "var(--font-body)",
-        padding: "80px 16px 60px",
-      }}
-    >
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div className="legal-page">
+      <div className="legal-inner">
         {/* Back link */}
-        <Link
-          href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            color: "#c9a84c",
-            fontSize: 14,
-            textDecoration: "none",
-            marginBottom: 32,
-          }}
-        >
+        <Link href="/" className="legal-back">
           ← На главную
         </Link>
 
-        <h1
-          style={{
-            fontFamily: D,
-            fontSize: 32,
-            fontWeight: 600,
-            color: "#c9a84c",
-            marginBottom: 8,
-            marginTop: 0,
-          }}
-        >
-          Публичная оферта
-        </h1>
-        <p style={{ fontSize: 13, color: "#555", marginBottom: 40 }}>
-          Редакция от 1 марта 2026 г.
-        </p>
+        <h1 className="legal-h1">Публичная оферта</h1>
+        <p className="legal-date">Редакция от 1 марта 2026 г.</p>
 
         {/* 1 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>1. Общие положения</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">1. Общие положения</h2>
+          <p className="legal-p">
             1.1. Настоящий документ является официальным предложением (публичной офертой)
             Индивидуального предпринимателя Орлова Семёна Вячеславовича (далее — «Исполнитель») в
             адрес любого физического лица (далее — «Пользователь») заключить договор на оказание
             информационных услуг на условиях, изложенных ниже.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             1.2. В соответствии со статьёй 437 Гражданского кодекса Российской Федерации настоящий
             документ является публичной офертой. Оплата услуг Пользователем означает полное и
             безоговорочное принятие (акцепт) условий настоящей оферты.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             1.3. Оферта вступает в силу с момента публикации на сайте и действует до момента её
             отзыва Исполнителем.
           </p>
         </div>
 
         {/* 2 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>2. Предмет оферты</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">2. Предмет оферты</h2>
+          <p className="legal-p">
             2.1. Исполнитель предоставляет Пользователю доступ к онлайн-платформе с AI-тренажёрами
             по книгам по саморазвитию (далее — «Сервис»), размещённой в сети Интернет.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             2.2. Сервис включает: доступ к структурированным упражнениям из книг, взаимодействие с
             AI-ассистентом (чат-бот), формирование персонального психологического портрета, свободный
             чат по тематике книги.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             2.3. Сервис НЕ является медицинской, психологической или психотерапевтической помощью.
             AI-ассистент выступает в роли методологического помощника и не заменяет квалифицированного
             специалиста.
@@ -114,199 +61,181 @@ export default function LegalPage() {
         </div>
 
         {/* 3 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>3. Тарифы и стоимость услуг</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">3. Тарифы и стоимость услуг</h2>
+          <p className="legal-p">
             3.1. Доступ к Сервису предоставляется на платной основе. Используются два формата оплаты:
           </p>
-          <p style={{ ...pStyle, color: "#c9a84c", fontWeight: 600 }}>
+          <p className="legal-p legal-accent">
             Подписка (ежемесячная оплата):
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             — Тариф «Старт»: 990 ₽ в месяц
             <br />
             — Тариф «Стандарт»: 2 900 ₽ в месяц
             <br />— Тариф «Премиум»: 7 900 ₽ в месяц
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             Подписка предоставляет доступ к Сервису на 30 календарных дней с момента оплаты. Объём
             включённых услуг (лимит сообщений) определяется выбранным тарифом.
           </p>
-          <p style={{ ...pStyle, color: "#c9a84c", fontWeight: 600 }}>
+          <p className="legal-p legal-accent">
             Пакеты токенов (единоразовая покупка):
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             — Пакет «Стартовый»: 1 000 000 токенов — 1 290 ₽
             <br />
             — Пакет «Стандартный»: 5 000 000 токенов — 3 790 ₽
             <br />— Пакет «Мега»: 50 000 000 токенов — 14 990 ₽
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             Токены приобретаются единоразово, не имеют срока действия и доступны до полного
             использования.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             3.2. Исполнитель вправе изменять стоимость услуг. Изменения вступают в силу с момента
             публикации на сайте и не распространяются на уже оплаченные услуги.
           </p>
         </div>
 
         {/* 4 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>4. Порядок оказания услуг</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">4. Порядок оказания услуг</h2>
+          <p className="legal-p">
             4.1. Доступ к Сервису предоставляется мгновенно после поступления оплаты. Доставка
             физических товаров не осуществляется — услуга является полностью цифровой.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             4.2. Для использования Сервиса Пользователю необходим доступ в Интернет и актуальная
             версия веб-браузера.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             4.3. Исполнитель стремится обеспечить бесперебойную работу Сервиса, но не гарантирует его
             доступность 24/7. Технические перерывы для обслуживания возможны.
           </p>
         </div>
 
         {/* 5 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>5. Оплата</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">5. Оплата</h2>
+          <p className="legal-p">
             5.1. Оплата производится через платёжный сервис ЮKassa (ООО НКО «ЮМани»). Доступные
             способы оплаты: банковские карты (Visa, MasterCard, МИР), Система быстрых платежей (СБП),
             SberPay, T-Pay, кошелёк ЮMoney.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             5.2. Моментом оплаты считается поступление денежных средств на счёт Исполнителя через
             платёжного агента.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             5.3. Электронный чек направляется Пользователю автоматически в соответствии с
             требованиями Федерального закона № 54-ФЗ.
           </p>
         </div>
 
         {/* 6 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>6. Возврат денежных средств</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">6. Возврат денежных средств</h2>
+          <p className="legal-p">
             6.1. Пользователь вправе отказаться от оплаченных услуг и получить полный возврат
             денежных средств при условии, что услуги не были использованы (подписка не активирована,
             токены не израсходованы), в течение 14 (четырнадцати) календарных дней с момента оплаты.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             6.2. В случае частичного использования услуг возврат осуществляется пропорционально
             неиспользованному объёму.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             6.3. Для оформления возврата необходимо направить запрос на электронную почту Исполнителя
             с указанием причины возврата и данных для идентификации платежа.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             6.4. Возврат денежных средств осуществляется в течение 10 рабочих дней с момента
             подтверждения запроса тем же способом, которым была произведена оплата.
           </p>
         </div>
 
         {/* 7 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>7. Конфиденциальность</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">7. Конфиденциальность</h2>
+          <p className="legal-p">
             7.1. Исполнитель обрабатывает персональные данные Пользователя (email, содержание
             диалогов с AI-ассистентом) исключительно для целей оказания услуг.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             7.2. Содержание диалогов Пользователя с AI-ассистентом является конфиденциальным.
             Исполнитель не передаёт данные третьим лицам, за исключением случаев, предусмотренных
             законодательством РФ.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             7.3. Обработка персональных данных осуществляется в соответствии с Федеральным законом №
             152-ФЗ «О персональных данных».
           </p>
         </div>
 
         {/* 8 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>8. Ограничение ответственности</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">8. Ограничение ответственности</h2>
+          <p className="legal-p">
             8.1. Сервис предоставляется «как есть» (as is). Исполнитель не гарантирует достижение
             конкретных результатов от использования Сервиса.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             8.2. AI-ассистент использует искусственный интеллект для генерации ответов. Исполнитель
             не несёт ответственности за точность, полноту и применимость рекомендаций AI-ассистента.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             8.3. Пользователь самостоятельно несёт ответственность за решения, принятые на основе
             информации, полученной через Сервис.
           </p>
         </div>
 
         {/* 9 */}
-        <div style={sectionStyle}>
-          <h2 style={h2Style}>9. Прочие условия</h2>
-          <p style={pStyle}>
+        <div className="legal-section">
+          <h2 className="legal-h2">9. Прочие условия</h2>
+          <p className="legal-p">
             9.1. Исполнитель вправе вносить изменения в условия настоящей оферты. Актуальная версия
             размещается на сайте.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             9.2. Все споры разрешаются путём переговоров. При невозможности достижения согласия — в
             соответствии с законодательством Российской Федерации.
           </p>
-          <p style={pStyle}>
+          <p className="legal-p">
             9.3. Настоящая оферта регулируется законодательством Российской Федерации.
           </p>
         </div>
 
         {/* REQUISITES */}
-        <div
-          style={{
-            padding: 24,
-            background: "#16181d",
-            borderRadius: 14,
-            border: "1px solid #2a2d35",
-            marginTop: 40,
-          }}
-        >
-          <h2 style={{ ...h2Style, fontSize: 18, marginBottom: 16 }}>Реквизиты Исполнителя</h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "140px 1fr",
-              gap: "8px 16px",
-              fontSize: 13,
-            }}
-          >
-            <div style={{ color: "#555" }}>Наименование</div>
-            <div style={{ color: "#999" }}>
+        <div className="legal-requisites">
+          <h2 className="legal-req-h2">Реквизиты Исполнителя</h2>
+          <div className="legal-req-grid">
+            <div className="legal-req-label">Наименование</div>
+            <div className="legal-req-value">
               Индивидуальный предприниматель Орлов Семён Вячеславович
             </div>
-            <div style={{ color: "#555" }}>ИНН</div>
-            <div style={{ color: "#999" }}>381914223321</div>
-            <div style={{ color: "#555" }}>ОГРНИП</div>
-            <div style={{ color: "#999" }}>321385000066066</div>
-            <div style={{ color: "#555" }}>Юридический адрес</div>
-            <div style={{ color: "#999" }}>
+            <div className="legal-req-label">ИНН</div>
+            <div className="legal-req-value">381914223321</div>
+            <div className="legal-req-label">ОГРНИП</div>
+            <div className="legal-req-value">321385000066066</div>
+            <div className="legal-req-label">Юридический адрес</div>
+            <div className="legal-req-value">
               665462, Россия, Иркутская обл., г. Усолье-Сибирское, проезд Фестивальный, д. 1, кв. 14
             </div>
-            <div style={{ color: "#555" }}>Расчётный счёт</div>
-            <div style={{ color: "#999" }}>40802810902500135634</div>
-            <div style={{ color: "#555" }}>Банк</div>
-            <div style={{ color: "#999" }}>ООО «Банк Точка»</div>
-            <div style={{ color: "#555" }}>БИК</div>
-            <div style={{ color: "#999" }}>044525104</div>
-            <div style={{ color: "#555" }}>Корр. счёт</div>
-            <div style={{ color: "#999" }}>30101810745374525104</div>
+            <div className="legal-req-label">Расчётный счёт</div>
+            <div className="legal-req-value">40802810902500135634</div>
+            <div className="legal-req-label">Банк</div>
+            <div className="legal-req-value">ООО «Банк Точка»</div>
+            <div className="legal-req-label">БИК</div>
+            <div className="legal-req-value">044525104</div>
+            <div className="legal-req-label">Корр. счёт</div>
+            <div className="legal-req-value">30101810745374525104</div>
           </div>
         </div>
 
         {/* Footer link */}
-        <div style={{ marginTop: 32, textAlign: "center" }}>
-          <Link
-            href="/"
-            style={{ color: "#c9a84c", fontSize: 14, textDecoration: "none" }}
-          >
+        <div className="legal-footer">
+          <Link href="/">
             ← Вернуться на главную
           </Link>
         </div>
