@@ -21,7 +21,7 @@ export default function GlobalError({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "100vh",
+          minHeight: "100dvh",
           fontFamily: "system-ui, sans-serif",
           background: "#f2f0ed",
           color: "#1a1917",
