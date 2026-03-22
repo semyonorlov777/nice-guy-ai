@@ -1,8 +1,7 @@
 "use client";
 
 import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
-import type { HubState, ThemeData } from "@/lib/hub-data";
-import { getAIMessage } from "@/lib/hub-data";
+import type { ProgramTheme } from "@/lib/queries/themes";
 import { HubHero } from "./HubHero";
 import { HubMobileHeader } from "./HubMobileHeader";
 import { AIMessage } from "./AIMessage";
@@ -10,6 +9,8 @@ import { HubContinueCard } from "./HubContinueCard";
 import { ThemeCardsGrid } from "./ThemeCardsGrid";
 import { InstrumentList } from "./InstrumentList";
 import { HubInputBar } from "./HubInputBar";
+
+type HubState = "first" | "returning-test" | "returning-notest";
 
 interface HubScreenProps {
   state: HubState;
@@ -22,15 +23,17 @@ interface HubScreenProps {
     slug: string;
     exerciseCount?: number;
   };
-  themes: ThemeData[];
+  themes: ProgramTheme[];
   engagedKeys: string[];
   recommendedKeys: string[];
   hasTestResult: boolean;
   balance?: number;
+  aiMessage: string;
 }
 
 export function HubScreen({
   state,
+  modes,
   lastActive,
   program,
   themes,
@@ -38,11 +41,11 @@ export function HubScreen({
   recommendedKeys,
   hasTestResult,
   balance,
+  aiMessage,
 }: HubScreenProps) {
   const isFirst = state === "first";
   const isReturning = state !== "first";
   const showTestCta = state === "first" || state === "returning-notest";
-  const aiMessage = getAIMessage(state);
   const subtitle = `${program.author}${program.exerciseCount ? ` · ${program.exerciseCount} упражнений` : ""}`;
 
   return (
@@ -99,6 +102,7 @@ export function HubScreen({
           </div>
           <InstrumentList
             slug={program.slug}
+            modes={modes}
             exerciseCount={program.exerciseCount}
             hasTestResult={hasTestResult}
           />

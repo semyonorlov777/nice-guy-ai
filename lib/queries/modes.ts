@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
+import type { WelcomeReply, WelcomeConfig } from "@/types/welcome";
 
 /**
  * Загружает все включённые режимы для программы, отсортированные по sort_order.
@@ -16,6 +17,14 @@ export async function getProgramModes(
       access_type,
       welcome_message,
       config,
+      welcome_mode_label,
+      welcome_title,
+      welcome_subtitle,
+      welcome_ai_message,
+      welcome_replies,
+      welcome_system_context,
+      color_class,
+      badge,
       mode_templates!inner (
         key,
         name,
@@ -55,6 +64,14 @@ export async function getProgramModes(
       access_type: row.access_type as "free" | "paid",
       welcome_message: row.welcome_message,
       config: (row.config as Record<string, unknown>) ?? {},
+      welcome_mode_label: row.welcome_mode_label ?? null,
+      welcome_title: row.welcome_title ?? null,
+      welcome_subtitle: row.welcome_subtitle ?? null,
+      welcome_ai_message: row.welcome_ai_message ?? null,
+      welcome_replies: (row.welcome_replies as WelcomeReply[]) ?? [],
+      welcome_system_context: row.welcome_system_context ?? null,
+      color_class: (row.color_class as string) ?? "accent",
+      badge: row.badge ?? null,
     };
   });
 }
@@ -97,5 +114,26 @@ export async function getLastActiveMode(
     route_suffix: mt.route_suffix,
     last_at: data.last_message_at,
     chat_id: data.id,
+  };
+}
+
+/**
+ * Преобразует режим в WelcomeConfig для NewChatScreen.
+ */
+export function modeToWelcomeConfig(mode: ProgramModeWithTemplate): WelcomeConfig {
+  const chatTypeMap: Record<string, "free" | "author" | "exercise"> = {
+    free: "free",
+    author: "author",
+    exercise: "exercise",
+  };
+
+  return {
+    modeLabel: mode.welcome_mode_label ?? mode.name,
+    title: mode.welcome_title ?? mode.name,
+    subtitle: mode.welcome_subtitle ?? mode.description ?? "",
+    aiMessage: mode.welcome_ai_message ?? "",
+    replies: mode.welcome_replies,
+    chatType: mode.chat_type ? chatTypeMap[mode.chat_type] : undefined,
+    systemContext: mode.welcome_system_context ?? undefined,
   };
 }

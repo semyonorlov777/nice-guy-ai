@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { ThemeCard } from "./ThemeCard";
-import type { ThemeData } from "@/lib/hub-data";
+import type { ProgramTheme } from "@/lib/queries/themes";
 
 interface ThemeCardsGridProps {
-  themes: ThemeData[];
+  themes: ProgramTheme[];
   engagedKeys: string[];
   recommendedKeys: string[];
   slug: string;

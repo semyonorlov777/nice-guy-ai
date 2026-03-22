@@ -1,15 +1,15 @@
 import { THEME_ICON_MAP, ArrowRightIcon } from "@/components/icons/hub-icons";
-import type { ThemeData } from "@/lib/hub-data";
+import type { ProgramTheme } from "@/lib/queries/themes";
 
 interface ThemeCardProps {
-  theme: ThemeData;
+  theme: ProgramTheme;
   isEngaged?: boolean;
   isRecommended?: boolean;
   onClick: () => void;
 }
 
 export function ThemeCard({ theme, isEngaged, isRecommended, onClick }: ThemeCardProps) {
-  const Icon = THEME_ICON_MAP[theme.key];
+  const Icon = THEME_ICON_MAP[theme.icon_key];
   let cls = "hub-theme-card";
   if (isEngaged) cls += " engaged";
   if (isRecommended) cls += " recommended";

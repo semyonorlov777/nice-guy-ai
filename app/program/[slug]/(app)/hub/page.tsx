@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { getProgramModes, getLastActiveMode } from "@/lib/queries/modes";
 import { HubScreen } from "@/components/hub/HubScreen";
-import { getThemesOrdered, ISSP_THEMES } from "@/lib/hub-data";
-import type { HubState } from "@/lib/hub-data";
+import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
+
+type HubState = "first" | "returning-test" | "returning-notest";
 
 export default async function HubPage({
   params,
@@ -23,7 +24,7 @@ export default async function HubPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, landing_data")
+    .select("id, title, landing_data, hub_messages")
     .eq("slug", slug)
     .single();
 
@@ -43,6 +44,7 @@ export default async function HubPage({
     { data: testResult },
     { count: chatCount },
     { data: profile },
+    themes,
   ] = await Promise.all([
     supabase
       .from("exercises")
@@ -70,6 +72,7 @@ export default async function HubPage({
       .select("balance_tokens")
       .eq("id", user.id)
       .single(),
+    getProgramThemes(supabase, program.id),
   ]);
 
   // Determine hub state
@@ -89,13 +92,23 @@ export default async function HubPage({
 
   // Sort themes by test scores
   const testScores = testResult?.scores_by_scale as Record<string, number> | null;
-  const themes = getThemesOrdered(testScores);
+  const orderedThemes = getThemesOrdered(themes, testScores);
 
   // Top 2 scales are recommended
-  const recommendedKeys = hasTestResult ? themes.slice(0, 2).map((t) => t.key) : [];
+  const recommendedKeys = hasTestResult ? orderedThemes.slice(0, 2).map((t) => t.key) : [];
 
   // TODO: determine engaged keys from chat data (future)
   const engagedKeys: string[] = [];
+
+  // Resolve AI message from hub_messages with {theme1}/{theme2} placeholders
+  const hubMessages = (program.hub_messages as Record<string, string>) ?? {};
+  const stateKey = state.replace("-", "_"); // "returning-test" → "returning_test"
+  let aiMessage = hubMessages[stateKey] ?? "";
+  if (state === "returning-test" && orderedThemes.length >= 2) {
+    aiMessage = aiMessage
+      .replace("{theme1}", orderedThemes[0].title.toLowerCase())
+      .replace("{theme2}", orderedThemes[1].title.toLowerCase());
+  }
 
   return (
     <HubScreen
@@ -109,11 +122,12 @@ export default async function HubPage({
         slug,
         exerciseCount: exerciseCount ?? undefined,
       }}
-      themes={themes}
+      themes={orderedThemes}
       engagedKeys={engagedKeys}
       recommendedKeys={recommendedKeys}
       hasTestResult={hasTestResult}
       balance={profile?.balance_tokens ?? 0}
+      aiMessage={aiMessage}
     />
   );
 }

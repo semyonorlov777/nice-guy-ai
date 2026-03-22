@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
-import type { WelcomeConfig } from "@/lib/welcome-config";
+import type { WelcomeConfig } from "@/types/welcome";
 import { ArrowRightIcon } from "@/components/icons/hub-icons";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 

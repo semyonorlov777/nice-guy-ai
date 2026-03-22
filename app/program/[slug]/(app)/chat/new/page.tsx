@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { getWelcomeConfig } from "@/lib/welcome-config";
+import { getWelcomeConfig } from "@/lib/queries/welcome";
 import { NewChatScreen } from "@/components/chat/NewChatScreen";
 
 export default async function NewChatPage({
@@ -30,7 +30,7 @@ export default async function NewChatPage({
   const landingData = program.landing_data as { book?: { cover_url?: string } } | null;
   const coverUrl = landingData?.book?.cover_url || null;
 
-  const welcome = getWelcomeConfig({
+  const welcome = await getWelcomeConfig(supabase, program.id, {
     topic: query.topic,
     tool: query.tool,
   });

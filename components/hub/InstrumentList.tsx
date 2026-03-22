@@ -6,57 +6,64 @@ import {
   AuthorIcon,
   FreechatIcon,
 } from "@/components/icons/hub-icons";
+import type { ProgramModeWithTemplate } from "@/types/modes";
+import type { ComponentType } from "react";
+
+interface IconProps {
+  size?: number;
+}
+
+const INSTRUMENT_ICON_MAP: Record<string, ComponentType<IconProps>> = {
+  pen: ExercisesIcon,
+  clock: SelfcheckIcon,
+  check: TestIcon,
+  book: AuthorIcon,
+  chat: FreechatIcon,
+};
 
 interface InstrumentListProps {
   slug: string;
+  modes: ProgramModeWithTemplate[];
   exerciseCount?: number;
   hasTestResult?: boolean;
 }
 
-export function InstrumentList({ slug, exerciseCount, hasTestResult }: InstrumentListProps) {
+export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: InstrumentListProps) {
   const base = `/program/${slug}`;
 
-  const instruments = [
-    {
-      icon: <ExercisesIcon size={16} />,
-      colorClass: "accent" as const,
-      name: "Упражнения по главам",
-      description: exerciseCount ? `${exerciseCount} упражнений Гловера` : "Упражнения по книге",
-      badge: "✦",
-      href: `${base}/exercises`,
-    },
-    {
-      icon: <SelfcheckIcon size={16} />,
-      colorClass: "accent" as const,
-      name: "Самопроверка",
-      description: "Методист даст обратную связь",
-      badge: "✦",
-      href: `${base}/chat/new?tool=selfcheck`,
-    },
-    {
-      icon: <TestIcon size={16} />,
-      colorClass: "green" as const,
-      name: "Пройти тест",
-      description: hasTestResult ? "Профиль построен" : "35 вопросов · 7 минут",
-      isDone: hasTestResult,
-      href: `${base}/test/issp`,
-    },
-    {
-      icon: <AuthorIcon size={16} />,
-      colorClass: "accent" as const,
-      name: "Спросить Гловера",
-      description: "AI в стиле автора книги",
-      badge: "✦",
-      href: `${base}/chat/new?tool=author`,
-    },
-    {
-      icon: <FreechatIcon size={16} />,
-      colorClass: "green" as const,
-      name: "Просто поговорить",
-      description: "Свободный чат без темы",
-      href: `${base}/chat/new?tool=free-chat`,
-    },
-  ];
+  const instruments = modes.map((mode) => {
+    const IconComponent = INSTRUMENT_ICON_MAP[mode.icon];
+
+    // Dynamic description overrides
+    let description = mode.description ?? "";
+    if (mode.key === "exercises" && exerciseCount) {
+      description = `${exerciseCount} упражнений Гловера`;
+    }
+    if (mode.key === "test_issp" && hasTestResult) {
+      description = "Профиль построен";
+    }
+
+    // Determine href: chat-based modes go to /chat/new?tool=KEY, pages go to route_suffix
+    const toolKeyMap: Record<string, string> = {
+      free_chat: "free-chat",
+      author_chat: "author",
+      self_work: "selfcheck",
+      exercises: "exercises",
+    };
+    const href = mode.is_chat_based && toolKeyMap[mode.key]
+      ? `${base}/chat/new?tool=${toolKeyMap[mode.key]}`
+      : `${base}${mode.route_suffix}`;
+
+    return {
+      icon: IconComponent ? <IconComponent size={16} /> : null,
+      colorClass: (mode.color_class ?? "accent") as "accent" | "green",
+      name: mode.name,
+      description,
+      badge: mode.badge ?? undefined,
+      isDone: mode.key === "test_issp" ? hasTestResult : undefined,
+      href,
+    };
+  });
 
   return (
     <div className="hub-instruments">

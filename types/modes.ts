@@ -1,3 +1,5 @@
+import type { WelcomeReply } from "@/types/welcome";
+
 /** Каталог режимов (shared across books) */
 export interface ModeTemplate {
   id: string;
@@ -36,6 +38,14 @@ export interface ProgramModeWithTemplate {
   access_type: "free" | "paid";
   welcome_message: string | null;
   config: Record<string, unknown>;
+  welcome_mode_label: string | null;
+  welcome_title: string | null;
+  welcome_subtitle: string | null;
+  welcome_ai_message: string | null;
+  welcome_replies: WelcomeReply[];
+  welcome_system_context: string | null;
+  color_class: string;
+  badge: string | null;
 }
 
 /** Данные для блока "Продолжить" */
