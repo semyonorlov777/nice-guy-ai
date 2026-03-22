@@ -112,8 +112,7 @@ export function NewChatScreen({
     setErrorText(null);
     setRetryText(text);
 
-    // Анимация: скрыть welcome card + replies
-    setShowWelcome(false);
+    // Анимация: скрыть replies (welcome card остаётся)
     setShowReplies(false);
 
     // Отправить через useChat — стриминг автоматический
