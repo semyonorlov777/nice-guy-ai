@@ -36,7 +36,7 @@ export function InstrumentList({ slug, exerciseCount, hasTestResult }: Instrumen
     {
       icon: <TestIcon size={16} />,
       colorClass: "green" as const,
-      name: "Узнать свой профиль",
+      name: "Пройти тест",
       description: hasTestResult ? "Профиль построен" : "35 вопросов · 7 минут",
       isDone: hasTestResult,
       href: `${base}/test/issp`,
