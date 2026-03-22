@@ -81,12 +81,10 @@ export default async function HubPage({
       ? "returning-test"
       : "returning-notest";
 
-  // Dev override via query param
-  if (process.env.NODE_ENV === "development") {
-    const override = query.hub_state;
-    if (override === "first" || override === "returning-test" || override === "returning-notest") {
-      state = override;
-    }
+  // Override via query param (works in all environments)
+  const override = query.hub_state;
+  if (override === "first" || override === "returning-test" || override === "returning-notest") {
+    state = override;
   }
 
   // Sort themes by test scores
