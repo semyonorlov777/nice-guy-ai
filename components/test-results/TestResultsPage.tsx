@@ -9,6 +9,7 @@ import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
 import { RadarChart } from "./RadarChart";
+import { THEME_ICON_MAP } from "@/components/icons/hub-icons";
 
 // ── Types ──
 
@@ -26,15 +27,6 @@ export interface TestResultsProps {
 
 // ── Constants ──
 
-const SCALE_ICONS: Record<string, string> = {
-  approval: "🎭",
-  contracts: "🤝",
-  suppression: "🫀",
-  control: "🎯",
-  boundaries: "🚧",
-  masculinity: "👤",
-  attachment: "💛",
-};
 
 function getLevelClass(score: number): string {
   if (score <= 30) return "low";
@@ -152,12 +144,12 @@ function ScaleCards({
           const color = colorClass(s.pct);
           const isTop = i < 3 && s.pct >= 50;
           const name = ISSP_SCALES[key]?.name ?? key;
-          const icon = SCALE_ICONS[key] ?? "📊";
+          const ThemeIcon = THEME_ICON_MAP[key];
 
           return (
             <div key={key} className={`tr-scale-card${isTop ? " top-zone" : ""}`}>
               <div className="tr-scale-card-header">
-                <span className="tr-scale-card-icon">{icon}</span>
+                <span className="tr-scale-card-icon">{ThemeIcon ? <ThemeIcon size={20} /> : null}</span>
                 <div className={`tr-scale-card-name color-${color}`}>{name}</div>
               </div>
               <div className={`tr-scale-card-score color-${color}`}>{s.pct}%</div>
