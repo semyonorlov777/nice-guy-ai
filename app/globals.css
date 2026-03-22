@@ -2288,7 +2288,7 @@
 }
 
 /* Stages */
-.analyzing-stages { width: 100%; max-width: 380px; display: flex; flex-direction: column; }
+.analyzing-stages { width: 100%; max-width: 380px; display: flex; flex-direction: column; text-align: left; }
 .analyzing-stage { position: relative; }
 .analyzing-stage-header { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
 .analyzing-stage-dot {
