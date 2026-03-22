@@ -16,7 +16,7 @@ export function ThemeCardsGrid({ themes, engagedKeys, recommendedKeys, slug }: T
 
   return (
     <div className="hub-themes">
-      {themes.map((theme) => (
+      {themes.slice(0, 6).map((theme) => (
         <ThemeCard
           key={theme.key}
           theme={theme}
