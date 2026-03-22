@@ -194,7 +194,7 @@
 
   /* Header */
   .sidebar-header { padding: 16px; min-height: 60px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  .sidebar-toggle { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-shrink: 0; transition: background 0.15s, color 0.15s; }
+  .sidebar-toggle { width: 44px; height: 44px; border-radius: 8px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-shrink: 0; transition: background 0.15s, color 0.15s; }
   .sidebar-toggle:hover { background: var(--accent-soft); color: var(--text-primary); }
   .sidebar-brand { display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; }
   .sidebar-logo { display: flex; align-items: center; }
@@ -207,12 +207,12 @@
   .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 1px; }
   .sidebar-section-label { padding: 14px 8px 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-hint); flex-shrink: 0; }
   .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-xs); border-left: 3px solid transparent; cursor: pointer; color: var(--text-secondary); font-size: 13px; white-space: nowrap; overflow: hidden; transition: background 0.12s, color 0.12s; border-top: none; border-right: none; border-bottom: none; background: none; width: 100%; text-align: left; font-family: var(--font-body); text-decoration: none; }
-  .sidebar-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+  .sidebar-item:hover { background: var(--accent-soft); }
   .sidebar-item.active { background: var(--accent-soft); border-left-color: var(--accent); }
   .sidebar-item-icon { width: 24px; height: 24px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .sidebar-item.active .sidebar-item-icon { color: var(--accent); }
   .sidebar-item-text { font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-item.active .sidebar-item-text { color: var(--accent); font-weight: 500; }
+  .sidebar-item.active .sidebar-item-text { color: var(--text-primary); font-weight: 500; }
 
   /* New chat button */
   .sidebar-new-chat { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; padding: 10px 12px; border-radius: var(--radius-xs); border: 1px dashed var(--border); background: transparent; color: var(--text-secondary); font-size: 13px; font-family: var(--font-body); cursor: pointer; transition: all 0.15s; width: 100%; text-align: left; }
@@ -220,17 +220,6 @@
 
   /* Sidebar chat list */
   .sidebar-chat-list { flex: 1; overflow-y: auto; padding: 0 0 8px; }
-  .sb-chat { display: flex; gap: 10px; padding: 10px; border-radius: var(--radius-xs); margin-bottom: 1px; cursor: pointer; transition: background 0.12s; text-decoration: none; color: inherit; }
-  .sb-chat:hover { background: var(--bg-elevated); }
-  .sb-chat.active { background: var(--accent-soft); }
-  .sb-chat-icon { width: 32px; height: 32px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .sb-chat-icon.i-accent { background: var(--accent-soft); color: var(--accent); }
-  .sb-chat-icon.i-green { background: var(--green-soft); color: var(--green); }
-  .sb-chat-body { flex: 1; min-width: 0; }
-  .sb-chat-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sb-chat.active .sb-chat-name { color: var(--accent); }
-  .sb-chat-preview { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sb-chat-time { font-size: 10px; color: var(--text-hint); flex-shrink: 0; }
   .sidebar-chat-empty { padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center; }
 
   /* Profile footer */
@@ -238,16 +227,16 @@
   .sidebar-profile-btn { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius-sm); background: none; border: none; cursor: pointer; width: 100%; font-family: var(--font-body); text-align: left; transition: background 0.15s; }
   .sidebar-profile-btn:hover, .sidebar-profile-btn.active { background: var(--accent-soft); }
   .sidebar-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; object-fit: cover; border: 1.5px solid var(--border); }
-  .sidebar-avatar-initial { background: var(--accent-soft); border-color: var(--accent-border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .sidebar-avatar-initial { background: var(--bg-elevated); border-color: var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text-muted); }
   .sidebar-user-info { flex: 1; min-width: 0; overflow: hidden; }
   .sidebar-user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-user-plan { font-size: 11px; color: var(--text-muted); }
   .sidebar-balance { font-size: 12px; font-weight: 600; color: var(--accent); margin-left: auto; flex-shrink: 0; }
 
   /* Profile dropdown */
-  .profile-dropdown { position: absolute; bottom: calc(100% + 8px); left: 12px; right: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 -4px 24px rgba(0,0,0,0.12); padding: 6px; opacity: 0; pointer-events: none; transform: translateY(4px); transition: all 0.15s var(--ease); z-index: 200; }
+  .profile-dropdown { position: absolute; bottom: calc(100% + 8px); left: 12px; right: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-elevated); padding: 8px; opacity: 0; pointer-events: none; transform: translateY(4px); transition: all 0.15s var(--ease); z-index: 200; }
   .profile-dropdown.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
-  .pd-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; width: 100%; font-size: 13px; color: var(--text-primary); font-family: var(--font-body); text-align: left; transition: background 0.1s; }
+  .pd-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; width: 100%; font-size: 13px; color: var(--text-secondary); font-family: var(--font-body); text-align: left; transition: background 0.1s; }
   .pd-item:hover { background: var(--bg-elevated); }
   .pd-item-icon { width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .pd-item-right { margin-left: auto; font-size: 12px; color: var(--accent); font-weight: 600; }
@@ -469,8 +458,8 @@
   .error-card { display: flex; gap: 10px; max-width: 100%; }
   .error-card-bubble { flex: 1; min-width: 0; padding: 14px 18px; border-radius: var(--radius); background: var(--error-bg); border-left: 3px solid var(--accent); font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
   .error-card-bubble p { margin-bottom: 10px; }
-  .error-retry-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); color: #fff; border: none; border-radius: 22px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
-  .error-link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: transparent; color: var(--accent); border: 1px solid var(--accent-border); border-radius: 22px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; min-height: 36px; }
+  .error-retry-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); color: #fff; border: none; border-radius: 22px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; min-height: 44px; }
+  .error-link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: transparent; color: var(--accent); border: 1px solid var(--accent-border); border-radius: 22px; font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; min-height: 44px; }
   .input-error-hint { text-align: center; font-size: 11px; color: var(--text-muted); padding: 4px 0 0; animation: hintFade 300ms var(--ease); }
   @keyframes hintFade { from { opacity: 0; } to { opacity: 1; } }
 
@@ -3802,7 +3791,7 @@ html:not(.no-transition) .app-main {
 /* Quick replies + exit animation */
 .nc-replies { display: flex; flex-direction: column; gap: 5px; padding: 2px 0 2px 32px; transition: opacity 200ms ease-out; }
 .nc-replies-exit { opacity: 0; pointer-events: none; }
-.nc-reply { padding: 9px 13px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 18px; font-size: 11px; font-weight: 500; color: var(--accent); width: fit-content; max-width: 92%; min-height: 36px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s var(--ease); text-align: left; }
+.nc-reply { padding: 9px 13px; background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 18px; font-size: 11px; font-weight: 500; color: var(--accent); width: fit-content; max-width: 92%; min-height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--font-body); transition: all 0.15s var(--ease); text-align: left; }
 .nc-reply:hover { background: var(--accent-medium, rgba(201,150,59,0.15)); }
 .nc-reply:active { transform: scale(0.98); }
 .nc-reply svg { flex-shrink: 0; opacity: 0.5; }
