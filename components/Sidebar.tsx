@@ -9,7 +9,7 @@ import { formatRelativeTime } from "@/lib/time";
 import {
   HomeIcon,
   ChatIcon,
-  PortraitIcon,
+  UserIcon,
   PlusIcon,
   CollapseIcon,
   CollapseBackIcon,
@@ -150,7 +150,7 @@ export function Sidebar({
           className={`sidebar-item${activeSection === "portrait" ? " active" : ""}`}
           data-tooltip="Мой профиль"
         >
-          <div className="sidebar-item-icon"><PortraitIcon size={18} /></div>
+          <div className="sidebar-item-icon"><UserIcon size={18} /></div>
           <div className="sidebar-item-text">Мой профиль</div>
         </Link>
 
