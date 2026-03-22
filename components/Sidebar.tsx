@@ -4,9 +4,18 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
-import { ChatListItem, type ChatItemData } from "@/components/ChatListItem";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
-import type { ProgramFeatures } from "@/types/program";
+import { formatRelativeTime } from "@/lib/time";
+import { getChatTypeColorClass } from "@/lib/chat-utils";
+import {
+  HomeIcon,
+  ChatIcon,
+  PortraitIcon,
+  PlusIcon,
+  CollapseIcon,
+  CollapseBackIcon,
+} from "@/components/icons/hub-icons";
+import type { ChatItemData } from "@/components/ChatListItem";
 
 interface UserInfo {
   name: string;
@@ -18,18 +27,18 @@ interface SidebarProps {
   slug: string;
   programId: string;
   user?: UserInfo | null;
-  features?: ProgramFeatures | null;
+  features?: import("@/types/program").ProgramFeatures | null;
   initialChats: ChatItemData[];
   exerciseCount: number;
+  balance?: number;
 }
 
 export function Sidebar({
   slug,
   programId,
   user,
-  features,
   initialChats,
-  exerciseCount,
+  balance,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -68,134 +77,120 @@ export function Sidebar({
     return onRefresh(fetchChats);
   }, [onRefresh, fetchChats]);
 
-  // Активный chatId из URL
+  // Active chatId from URL
   const activeChatId = (() => {
     const chatMatch = pathname.match(/\/chat\/([a-f0-9-]+)/);
     const exerciseMatch = pathname.match(/\/exercise\/\d+\/([a-f0-9-]+)/);
     return chatMatch?.[1] || exerciseMatch?.[1] || null;
   })();
 
-  // Активный раздел навигации
-  function getActiveSection() {
-    if (pathname.includes("/test/issp")) return "test";
-    if (pathname.startsWith(`${base}/author-chat`)) return "author-chat";
-    if (pathname.startsWith(`${base}/exercise`)) return "exercises";
+  // Active nav section
+  function getActiveSection(): string | null {
+    if (pathname.startsWith(`${base}/hub`)) return "hub";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
-    return null; // chat не подсвечиваем в навигации — он в списке чатов
+    if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chat";
+    return "hub";
   }
   const activeSection = getActiveSection();
 
-  // Архивация
-  async function handleArchive(chatId: string) {
-    await fetch(`/api/chats/${chatId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "archived" }),
-    });
-    setChats((prev) => prev.filter((c) => c.id !== chatId));
-    if (chatId === activeChatId) {
-      router.push(`${base}/chat`);
+  // Chat item href
+  function getChatHref(chat: ChatItemData): string {
+    if (chat.chatType === "exercise" && chat.exerciseNumber) {
+      return `${base}/exercise/${chat.exerciseNumber}/${chat.id}`;
     }
+    return `${base}/chat/${chat.id}`;
   }
-
-  // Навигация "Тренажёры" — фильтруется по features программы
-  const allNavItems = [
-    {
-      key: "test",
-      feature: "test" as const,
-      path: "/test/issp",
-      icon: "📝",
-      label: "Пройти тест",
-    },
-    {
-      key: "author-chat",
-      feature: "author_chat" as const,
-      path: "/author-chat",
-      icon: "✍️",
-      label: "Автор книги",
-    },
-    {
-      key: "exercises",
-      feature: "exercises" as const,
-      path: "/exercises",
-      icon: "📋",
-      label: "Упражнения",
-      badge: exerciseCount > 0 ? exerciseCount : undefined,
-    },
-    {
-      key: "portrait",
-      feature: "portrait" as const,
-      path: "/portrait",
-      icon: "📊",
-      label: "Мой портрет",
-    },
-  ];
-  const navItems = allNavItems.filter((item) => features?.[item.feature]);
 
   return (
     <nav className={`sidebar${collapsed ? " collapsed" : ""}`}>
+      {/* Header */}
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-mark">НС</div>
-          <div className="sidebar-logo-text">НеСлавный</div>
-        </div>
         <button
-          className="sidebar-collapse-btn"
+          className="sidebar-toggle"
           onClick={toggleCollapsed}
           title={collapsed ? "Развернуть" : "Свернуть"}
         >
-          {collapsed ? "»" : "«"}
+          {collapsed ? <CollapseIcon size={18} /> : <CollapseBackIcon size={18} />}
         </button>
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-mark">НС</div>
+          </div>
+          <div className="sidebar-brand-wrap">
+            <div className="sidebar-brand-text">НеСлавный</div>
+            <div className="sidebar-brand-sub">AI-тренажёр</div>
+          </div>
+        </div>
       </div>
 
-      <button
-        className="new-chat-btn"
-        onClick={() => {
-          if (pathname === `${base}/chat`) return;
-          router.push(`${base}/chat`);
-        }}
-        title="Новый чат"
-      >
-        <span className="new-chat-btn-icon">{"✏️"}</span>
-        <span className="sidebar-item-label">Новый чат</span>
-      </button>
-
-      <div className="sidebar-section-label">Тренажёры</div>
+      {/* Navigation */}
       <div className="sidebar-nav">
-        {navItems.map((item) => (
-          <Link
-            key={item.key}
-            href={`${base}${item.path}`}
-            className={`sidebar-item${activeSection === item.key ? " active" : ""}`}
-          >
-            <div className="sidebar-item-icon">{item.icon}</div>
-            <span className="sidebar-item-label">{item.label}</span>
-            {"badge" in item && item.badge && (
-              <span className="sidebar-item-badge">{item.badge}</span>
-            )}
-          </Link>
-        ))}
+        <div className="sidebar-section-label">Программа</div>
+
+        <Link
+          href={`${base}/hub`}
+          className={`sidebar-item${activeSection === "hub" ? " active" : ""}`}
+          data-tooltip="Главная"
+        >
+          <div className="sidebar-item-icon"><HomeIcon size={18} /></div>
+          <div className="sidebar-item-text">Главная</div>
+        </Link>
+
+        <Link
+          href={`${base}/chat`}
+          className={`sidebar-item${activeSection === "chat" ? " active" : ""}`}
+          data-tooltip="Свободный чат"
+        >
+          <div className="sidebar-item-icon"><ChatIcon size={18} /></div>
+          <div className="sidebar-item-text">Свободный чат</div>
+        </Link>
+
+        <Link
+          href={`${base}/portrait`}
+          className={`sidebar-item${activeSection === "portrait" ? " active" : ""}`}
+          data-tooltip="Мой профиль"
+        >
+          <div className="sidebar-item-icon"><PortraitIcon size={18} /></div>
+          <div className="sidebar-item-text">Мой профиль</div>
+        </Link>
+
+        {/* New chat button → Hub */}
+        <button
+          className="sidebar-new-chat"
+          onClick={() => router.push(`${base}/hub`)}
+          data-tooltip="Новый чат"
+        >
+          <PlusIcon size={16} />
+          <span className="sidebar-item-text">Новый чат</span>
+        </button>
+
+        {/* Recent chats */}
+        <div className="sidebar-section-label">Недавние чаты</div>
+        <div className="sidebar-chat-list">
+          {chats.length === 0 && (
+            <div className="sidebar-chat-empty">Нет чатов</div>
+          )}
+          {chats.map((chat) => (
+            <Link
+              key={chat.id}
+              href={getChatHref(chat)}
+              className={`sb-chat${chat.id === activeChatId ? " active" : ""}`}
+            >
+              <div className={`sb-chat-icon i-${getChatTypeColorClass(chat.chatType)}`}>
+                <ChatIcon size={14} />
+              </div>
+              <div className="sb-chat-body">
+                <div className="sb-chat-name">{chat.title}</div>
+                <div className="sb-chat-preview">{chat.preview || "Начни разговор..."}</div>
+              </div>
+              <span className="sb-chat-time">{formatRelativeTime(chat.lastMessageAt)}</span>
+            </Link>
+          ))}
+        </div>
       </div>
 
-      <div className="sidebar-section-label">Все чаты</div>
-      <div className="sidebar-chat-list">
-        {chats.length === 0 && (
-          <div className="sidebar-chat-empty">Нет чатов</div>
-        )}
-        {chats.map((chat) => (
-          <ChatListItem
-            key={chat.id}
-            chat={chat}
-            isActive={chat.id === activeChatId}
-            slug={slug}
-            onArchive={() => handleArchive(chat.id)}
-          />
-        ))}
-      </div>
-
-      <div className="sidebar-footer">
-        <ProfileMenu user={user ?? null} slug={slug} collapsed={collapsed} />
-      </div>
+      {/* Profile footer */}
+      <ProfileMenu user={user ?? null} slug={slug} collapsed={collapsed} balance={balance} />
     </nav>
   );
 }

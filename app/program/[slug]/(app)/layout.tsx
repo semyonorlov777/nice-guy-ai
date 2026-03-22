@@ -33,10 +33,10 @@ export default async function ProgramLayout({
     features: ProgramFeatures | null;
     initialChats: { id: string; title: string; chatType: string; exerciseNumber: number | null; preview: string; lastMessageAt: string }[];
     exerciseCount: number;
+    balance: number;
   } | null = null;
   let mobileTabsProps: {
     slug: string;
-    features: ProgramFeatures | null;
   } | null = null;
   let loadedModes: import("@/types/modes").ProgramModeWithTemplate[] = [];
 
@@ -51,7 +51,7 @@ export default async function ProgramLayout({
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name, telegram_username, avatar_url")
+      .select("name, telegram_username, avatar_url, balance_tokens")
       .eq("id", user.id)
       .single();
 
@@ -111,10 +111,10 @@ export default async function ProgramLayout({
       features: program.features as ProgramFeatures | null,
       initialChats,
       exerciseCount: exerciseCount || 0,
+      balance: profile?.balance_tokens ?? 0,
     };
     mobileTabsProps = {
       slug,
-      features: program.features as ProgramFeatures | null,
     };
 
     loadedModes = await getProgramModes(supabase, program.id);
@@ -134,16 +134,14 @@ export default async function ProgramLayout({
               features={sidebarProps.features}
               initialChats={sidebarProps.initialChats}
               exerciseCount={sidebarProps.exerciseCount}
+              balance={sidebarProps.balance}
             />
           )}
           <main className="app-main">
             {children}
           </main>
           {mobileTabsProps && (
-            <MobileTabs
-              slug={mobileTabsProps.slug}
-              features={mobileTabsProps.features}
-            />
+            <MobileTabs slug={mobileTabsProps.slug} />
           )}
         </div>
       </ModesProvider>
