@@ -137,7 +137,7 @@
 
 @layer base {
   /* ── Public pages: force light theme ── */
-  body:has(.landing-v3) { background: #FAFAF5 !important; color: #1A1917 !important; }
+  body:has(.landing-v3) { background: var(--bg-main); color: var(--text-primary); }
 
   /* Landing isolation: override dark-mode CSS vars so landing is always light */
   .landing-v3 {
@@ -167,6 +167,17 @@
     --scrim: rgba(26, 25, 23, 0.3);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
     --shadow-focus: 0 0 0 3px rgba(201,150,59,0.2);
+    /* Landing-specific layout & color vars */
+    --bg: #FAFAF5;
+    --bg-dark: #EFEDE7;
+    --bg-accent-warm: #F9F3E8;
+    --text: #1A1917;
+    --accent-warm-border: rgba(201, 150, 59, 0.18);
+    --green: #4A7A4A;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --content-w: 840px;
+    --wide-w: 1080px;
     color-scheme: light;
   }
   /* ═══ iOS Safari zoom prevention — font-size must be >= 16px ═══ */
@@ -687,29 +698,8 @@
   }
   .public-header .header-cta:hover { background: #a88a3a; }
 
-  /* ── LANDING v3 VARIABLES & BASE ── */
+  /* ── LANDING v3 BASE STYLES ── */
   .landing-v3 {
-    --bg: #FAFAF5;
-    --bg-card: #FFFFFF;
-    --bg-elevated: #F5F3EE;
-    --bg-dark: #EFEDE7;
-    --bg-accent-warm: #F9F3E8;
-    --border: #E8E5DE;
-    --border-light: #EFEDE7;
-    --text: #1A1917;
-    --text-secondary: #6B6860;
-    --text-muted: #9E9B93;
-    --text-hint: #B5B2AA;
-    --accent: #C9963B;
-    --accent-soft: rgba(201, 150, 59, 0.08);
-    --accent-border: rgba(201, 150, 59, 0.25);
-    --accent-glow: rgba(201, 150, 59, 0.12);
-    --accent-warm-border: rgba(201, 150, 59, 0.18);
-    --green: #4A7A4A;
-    --radius: 14px;
-    --radius-sm: 10px;
-    --content-w: 840px;
-    --wide-w: 1080px;
     color: var(--text);
     background: var(--bg);
     font-family: var(--font-body);
@@ -1054,6 +1044,14 @@
 
 }
 
+@layer base {
+  body:has(.test-results-page) {
+    background: var(--tr-bg);
+  }
+}
+
+@layer components {
+
 /* ═══ CHAT HEADER ═══ */
 .chat-header { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 52px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); flex-shrink: 0; position: relative; z-index: 20; }
 .chat-header-back { width: 34px; height: 34px; border-radius: 50%; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.15s; }
@@ -1125,12 +1123,6 @@
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-}
-
-@layer base {
-  body:has(.test-results-page) {
-    background: #0f1114 !important;
-  }
 }
 
 .tr-container {
@@ -3834,3 +3826,5 @@ html:not(.no-transition) .app-main {
   .nc-scroll { padding: 24px 32px; max-width: var(--content-w); margin: 0 auto; width: 100%; }
   .nc-input-wrap { max-width: var(--chat-w); margin: 0 auto; width: 100%; }
 }
+
+} /* end @layer components (part 2) */
