@@ -203,7 +203,7 @@ export default function TestDebugPage() {
       fontFamily: "'Onest', system-ui, sans-serif",
       color: "#e0e0e0",
       background: "#0f1114",
-      minHeight: "100vh",
+      minHeight: "100dvh",
     }}>
       <h1 style={{ fontSize: 20, marginBottom: 24, color: "#c9a84c" }}>
         ИССП — Дебаг промптов
