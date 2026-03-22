@@ -9,6 +9,6 @@ export interface WelcomeConfig {
   subtitle: string;
   aiMessage: string;
   replies: WelcomeReply[];
-  chatType?: "free" | "author" | "exercise";
+  chatType?: string;
   systemContext?: string;
 }

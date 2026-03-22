@@ -151,11 +151,29 @@ export async function loadProgramContext(
     exercise = data;
   }
 
-  // Build system prompt (base + exercise)
-  let systemPrompt =
-    chatType === "author" && program.author_chat_system_prompt
-      ? program.author_chat_system_prompt
-      : (program.system_prompt || "");
+  // Build system prompt: mode-level → program-level fallback
+  // 1. Check program_modes for a custom system_prompt (new modes like self_analysis, theory, etc.)
+  let systemPrompt = "";
+  if (chatType) {
+    const { data: modeRow } = await supabase
+      .from("program_modes")
+      .select("system_prompt, mode_templates!inner(chat_type)")
+      .eq("program_id", programId)
+      .eq("mode_templates.chat_type", chatType)
+      .maybeSingle();
+
+    if (modeRow?.system_prompt) {
+      systemPrompt = modeRow.system_prompt;
+    }
+  }
+
+  // 2. Fallback to program-level prompts
+  if (!systemPrompt) {
+    systemPrompt =
+      chatType === "author" && program.author_chat_system_prompt
+        ? program.author_chat_system_prompt
+        : (program.system_prompt || "");
+  }
 
   if (exercise?.system_prompt) {
     systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;

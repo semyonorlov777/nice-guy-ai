@@ -41,6 +41,12 @@ export async function getWelcomeConfig(
       author: "author_chat",
       selfcheck: "self_work",
       exercises: "exercises",
+      "self-analysis": "self_analysis",
+      "partner-analysis": "partner_analysis",
+      "relationship-map": "relationship_map",
+      theory: "theory",
+      "love-translator": "love_translator",
+      roleplay: "roleplay",
     };
     const modeKey = toolKeyMap[params.tool] ?? params.tool;
 

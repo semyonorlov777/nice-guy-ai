@@ -5,6 +5,12 @@ import {
   TestIcon,
   AuthorIcon,
   FreechatIcon,
+  HeartLoveIcon,
+  UsersLoveIcon,
+  CompassIcon,
+  LightbulbIcon,
+  TranslateIcon,
+  DramaIcon,
 } from "@/components/icons/hub-icons";
 import type { ProgramModeWithTemplate } from "@/types/modes";
 import type { ComponentType } from "react";
@@ -19,6 +25,12 @@ const INSTRUMENT_ICON_MAP: Record<string, ComponentType<IconProps>> = {
   check: TestIcon,
   book: AuthorIcon,
   chat: FreechatIcon,
+  heart: HeartLoveIcon,
+  users: UsersLoveIcon,
+  compass: CompassIcon,
+  lightbulb: LightbulbIcon,
+  translate: TranslateIcon,
+  drama: DramaIcon,
 };
 
 interface InstrumentListProps {
@@ -40,7 +52,7 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       description = `${exerciseCount} упражнений Гловера`;
     }
     if (mode.key === "test_issp" && hasTestResult) {
-      description = "Профиль построен";
+      description = "Пройден · AI учитывает результаты";
     }
 
     // Determine href: chat-based modes go to /chat/new?tool=KEY, pages go to route_suffix
@@ -49,6 +61,12 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       author_chat: "author",
       self_work: "selfcheck",
       exercises: "exercises",
+      self_analysis: "self-analysis",
+      partner_analysis: "partner-analysis",
+      relationship_map: "relationship-map",
+      theory: "theory",
+      love_translator: "love-translator",
+      roleplay: "roleplay",
     };
     const href = mode.is_chat_based && toolKeyMap[mode.key]
       ? `${base}/chat/new?tool=${toolKeyMap[mode.key]}`

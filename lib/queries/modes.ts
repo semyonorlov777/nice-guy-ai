@@ -121,10 +121,16 @@ export async function getLastActiveMode(
  * Преобразует режим в WelcomeConfig для NewChatScreen.
  */
 export function modeToWelcomeConfig(mode: ProgramModeWithTemplate): WelcomeConfig {
-  const chatTypeMap: Record<string, "free" | "author" | "exercise"> = {
+  const chatTypeMap: Record<string, string> = {
     free: "free",
     author: "author",
     exercise: "exercise",
+    self_analysis: "self_analysis",
+    partner_analysis: "partner_analysis",
+    relationship_map: "relationship_map",
+    theory: "theory",
+    love_translator: "love_translator",
+    roleplay: "roleplay",
   };
 
   return {
@@ -133,7 +139,7 @@ export function modeToWelcomeConfig(mode: ProgramModeWithTemplate): WelcomeConfi
     subtitle: mode.welcome_subtitle ?? mode.description ?? "",
     aiMessage: mode.welcome_ai_message ?? "",
     replies: mode.welcome_replies,
-    chatType: mode.chat_type ? chatTypeMap[mode.chat_type] : undefined,
+    chatType: mode.chat_type ? (chatTypeMap[mode.chat_type] ?? mode.chat_type) : undefined,
     systemContext: mode.welcome_system_context ?? undefined,
   };
 }
