@@ -2305,19 +2305,20 @@ body:has(.test-results-page) {
 .analyzing-stage.done .analyzing-substeps { max-height: 300px; }
 
 .analyzing-substep {
-  display: flex; align-items: center; gap: 10px; padding: 5px 0;
+  display: flex; align-items: flex-start; gap: 10px; padding: 5px 0;
   opacity: 0; transform: translateY(4px);
   transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
 }
 .analyzing-substep.visible { opacity: 1; transform: translateY(0); }
 .analyzing-substep-dot {
-  width: 5px; height: 5px; border-radius: 50%;
+  width: 5px; height: 5px; border-radius: 50%; margin-top: 6px;
   background: var(--border); flex-shrink: 0; transition: background 0.3s;
 }
 .analyzing-substep.active .analyzing-substep-dot { background: var(--accent); }
 .analyzing-substep.done .analyzing-substep-dot { background: var(--success); }
 .analyzing-substep-text {
   font-size: 12px; color: var(--text-hint); line-height: 1.4; transition: color 0.3s;
+  flex: 1; min-width: 0;
 }
 .analyzing-substep.active .analyzing-substep-text { color: var(--text-secondary); }
 .analyzing-substep.done .analyzing-substep-text { color: var(--text-muted); }
