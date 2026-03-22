@@ -336,7 +336,7 @@ export function ChatWindow({
             }
 
             return (
-              <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article">
+              <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article" aria-busy={isAi && isLast && isStreaming ? true : undefined}>
                 {isAi
                   ? <div className="msg-avatar ai" />
                   : renderUserAvatar()}
