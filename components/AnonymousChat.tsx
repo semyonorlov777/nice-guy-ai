@@ -8,6 +8,7 @@ import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
+import { isTelegramWebView } from "@/lib/detect-browser";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -190,6 +191,16 @@ export function AnonymousChat({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Telegram WebView на iOS неправильно позиционирует scroll — сбрасываем
+  useEffect(() => {
+    if (isTelegramWebView()) {
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
+    }
+  }, []);
 
   function handleScroll() {
     const el = messagesRef.current;

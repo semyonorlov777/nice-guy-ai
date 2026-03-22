@@ -11,6 +11,7 @@ import InputBar from "@/components/InputBar/InputBar";
 import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
+import { isTelegramWebView } from "@/lib/detect-browser";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -237,6 +238,16 @@ export function ChatWindow({
     el.classList.add("input-pulse");
     return () => el.classList.remove("input-pulse");
   }, [inputPulseActive]);
+
+  // Telegram WebView на iOS неправильно позиционирует scroll — сбрасываем
+  useEffect(() => {
+    if (isTelegramWebView()) {
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
+    }
+  }, []);
 
   const animActive = shouldAnimate && welcomePhase !== "done";
 
