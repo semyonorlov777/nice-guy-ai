@@ -128,13 +128,13 @@ export default async function ProgramLanding({
   // If no landing_data, fall back to a minimal layout
   if (!landingData) {
     return (
-      <div className="landing-v3" style={{ minHeight: "100vh" }}>
+      <div className="landing-v3">
         <div style={{ padding: "120px 24px 60px", maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 40, marginBottom: 16 }}>
             Программа
           </h1>
-          <p style={{ color: "#9E9B93", marginBottom: 32 }}>Данные лендинга не найдены.</p>
-          <Link href={isLoggedIn ? `/program/${slug}/chat` : "/auth"} style={{ padding: "14px 32px", background: "#C9963B", color: "#fff", borderRadius: 10, textDecoration: "none", fontWeight: 600 }}>
+          <p style={{ color: "var(--text-muted)", marginBottom: 32 }}>Данные лендинга не найдены.</p>
+          <Link href={isLoggedIn ? `/program/${slug}/chat` : "/auth"} style={{ padding: "14px 32px", background: "var(--accent)", color: "#fff", borderRadius: 10, textDecoration: "none", fontWeight: 600 }}>
             {isLoggedIn ? "В чат" : "Войти"}
           </Link>
         </div>
