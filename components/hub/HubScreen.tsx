@@ -1,11 +1,18 @@
 "use client";
 
 import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
-import { BookHero } from "./BookHero";
-import { ContinueBlock } from "./ContinueBlock";
-import { ModeCard } from "./ModeCard";
+import type { HubState, ThemeData } from "@/lib/hub-data";
+import { getAIMessage } from "@/lib/hub-data";
+import { HubHero } from "./HubHero";
+import { HubMobileHeader } from "./HubMobileHeader";
+import { AIMessage } from "./AIMessage";
+import { HubContinueCard } from "./HubContinueCard";
+import { ThemeCardsGrid } from "./ThemeCardsGrid";
+import { InstrumentList } from "./InstrumentList";
+import { HubInputBar } from "./HubInputBar";
 
 interface HubScreenProps {
+  state: HubState;
   modes: ProgramModeWithTemplate[];
   lastActive: LastActiveMode | null;
   program: {
@@ -15,31 +22,88 @@ interface HubScreenProps {
     slug: string;
     exerciseCount?: number;
   };
+  themes: ThemeData[];
+  engagedKeys: string[];
+  recommendedKeys: string[];
+  hasTestResult: boolean;
+  balance?: number;
 }
 
-export function HubScreen({ modes, lastActive, program }: HubScreenProps) {
+export function HubScreen({
+  state,
+  lastActive,
+  program,
+  themes,
+  engagedKeys,
+  recommendedKeys,
+  hasTestResult,
+  balance,
+}: HubScreenProps) {
+  const isFirst = state === "first";
+  const isReturning = state !== "first";
+  const aiMessage = getAIMessage(state);
+  const subtitle = `${program.author}${program.exerciseCount ? ` · ${program.exerciseCount} упражнений` : ""}`;
+
   return (
-    <div className="hub-scroll">
-      <div className="hub-inner">
-        <BookHero
-          title={program.title}
-          author={program.author}
-          coverUrl={program.coverUrl}
-          exerciseCount={program.exerciseCount}
-        />
+    <>
+      <HubMobileHeader
+        title={program.title}
+        subtitle={subtitle}
+        coverUrl={program.coverUrl}
+        balance={balance}
+      />
+      <div className="hub-scroll">
+        <div className="hub-inner">
+          <HubHero
+            title={program.title}
+            author={program.author}
+            coverUrl={program.coverUrl}
+            exerciseCount={program.exerciseCount}
+            compact={isReturning}
+          />
 
-        {lastActive && (
-          <ContinueBlock lastActive={lastActive} slug={program.slug} />
-        )}
+          {isReturning && lastActive && (
+            <HubContinueCard lastActive={lastActive} slug={program.slug} />
+          )}
 
-        <div className="hub-section-title">Выберите режим работы</div>
+          <AIMessage text={aiMessage} />
 
-        <div className="hub-modes-grid" role="navigation">
-          {modes.map((mode) => (
-            <ModeCard key={mode.key} mode={mode} slug={program.slug} />
-          ))}
+          {isFirst && (
+            <>
+              <a href={`/program/${program.slug}/test/issp`} className="hub-cta-primary">
+                Пройти тест
+              </a>
+              <a href={`/program/${program.slug}/chat`} className="hub-cta-secondary">
+                Или просто начни общаться →
+              </a>
+            </>
+          )}
+
+          {isReturning && (
+            <>
+              <div className="hub-section-label">
+                {hasTestResult ? "Твои темы" : "Темы для работы"}
+              </div>
+              <ThemeCardsGrid
+                themes={themes}
+                engagedKeys={engagedKeys}
+                recommendedKeys={recommendedKeys}
+                slug={program.slug}
+              />
+            </>
+          )}
+
+          <div className="hub-section-label" style={isReturning ? { marginTop: 4 } : { marginTop: 8 }}>
+            Инструменты
+          </div>
+          <InstrumentList
+            slug={program.slug}
+            exerciseCount={program.exerciseCount}
+            hasTestResult={hasTestResult}
+          />
         </div>
       </div>
-    </div>
+      <HubInputBar slug={program.slug} />
+    </>
   );
 }
