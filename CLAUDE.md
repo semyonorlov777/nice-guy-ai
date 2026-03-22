@@ -54,8 +54,10 @@ app/
 │   ├── page.tsx                          # Лендинг программы (вне (app)/, без sidebar)
 │   └── (app)/                            # Группа с Sidebar + MobileTabs layout
 │       ├── layout.tsx                    # Sidebar (если auth) + авторизация
-│       ├── chat/page.tsx                 # Список чатов / новый свободный чат
+│       ├── chat/page.tsx                 # Страница чата (свободный чат)
+│       ├── chat/new/page.tsx             # Создание нового чата
 │       ├── chat/[chatId]/page.tsx        # Конкретный чат по ID
+│       ├── chats/page.tsx                # Список всех чатов
 │       ├── author-chat/page.tsx          # Разговор с автором (AI в роли Гловера)
 │       ├── exercises/page.tsx            # Список упражнений
 │       ├── exercise/[number]/page.tsx    # Чат по упражнению
@@ -97,7 +99,6 @@ components/
 ├── ChatListItem.tsx                      # Элемент списка чатов
 ├── ChatErrorBoundary.tsx                 # Error boundary для чата
 ├── MobileChatHeader.tsx                  # Мобильный заголовок чата
-├── MobileChatList.tsx                    # Мобильный список чатов
 ├── Sidebar.tsx                           # Десктоп-навигация
 ├── MobileTabs.tsx                        # Мобильная навигация
 ├── ProfileMenu.tsx                       # Меню профиля пользователя
@@ -135,18 +136,31 @@ components/
 │   ├── AuthorSection.tsx                 # Об авторе
 │   ├── PersonasSection.tsx               # Для кого
 │   └── SocialProof.tsx                   # Социальное доказательство
-├── hub/                                  # Компоненты хаба программы
-│   ├── HubScreen.tsx                     # Главный экран хаба (режимы + книга)
-│   ├── BookHero.tsx                      # Обложка книги + инфо
-│   ├── ModeCard.tsx                      # Карточка режима (кликабельная)
-│   ├── ContinueBlock.tsx                 # Блок "Продолжить"
+├── chat/                                 # Компоненты списка и создания чатов
+│   ├── ChatListItemFull.tsx              # Полный элемент списка чатов
+│   ├── ChatListPage.tsx                  # Страница списка чатов
+│   └── NewChatScreen.tsx                 # Экран создания нового чата
+├── hub/                                  # Компоненты хаба программы (v3)
+│   ├── HubScreen.tsx                     # Главный экран хаба
+│   ├── HubHero.tsx                       # Герой-секция хаба
+│   ├── HubContinueCard.tsx               # Карточка "Продолжить"
+│   ├── HubInputBar.tsx                   # Поле ввода на хабе
+│   ├── HubMobileHeader.tsx               # Мобильный заголовок хаба
+│   ├── AIMessage.tsx                     # AI-сообщение на хабе
+│   ├── InstrumentCard.tsx                # Карточка инструмента
+│   ├── InstrumentList.tsx                # Список инструментов
+│   ├── ThemeCard.tsx                     # Карточка темы
+│   ├── ThemeCardsGrid.tsx                # Сетка карточек тем
 │   └── mode-icons.tsx                    # Иконки режимов
+├── icons/                                # SVG-иконки
+│   └── hub-icons.tsx                     # Иконки для хаба
 lib/
 ├── ai.ts                                 # Конфигурация Google Generative AI (Vercel AI SDK)
 ├── supabase.ts                           # Клиент (браузер)
 ├── supabase-server.ts                    # Клиент (сервер) + Service Client
 ├── gemini-portrait.ts                    # analyzeForPortrait() — Gemini Pro
-├── config.ts                             # getConfig() — app_config из БД с кешем
+├── chat-utils.ts                        # Утилиты для чатов
+├── config.ts                             # getConfig() / getConfigs() — app_config из БД с кешем
 ├── products.ts                           # Каталог продуктов (токены, подписки)
 ├── yookassa.ts                           # Клиент YooKassa
 ├── yandex-auth.ts                        # Яндекс OAuth логика
@@ -170,7 +184,9 @@ lib/
 │   ├── messages.ts                      # getChatMessages() — история сообщений чата
 │   ├── modes.ts                         # getProgramModes(), getLastActiveMode() — режимы программы
 │   ├── program.ts                       # requireProgramFeature() — feature flags программы
-│   └── user-profile.ts                  # getUserProfileForChat() — профиль для UI чата
+│   ├── themes.ts                        # Запросы тем программы
+│   ├── user-profile.ts                  # getUserProfileForChat() — профиль для UI чата
+│   └── welcome.ts                       # Запросы приветственных сообщений
 hooks/
 ├── useVoiceInput.ts                      # Голосовой ввод (запись + транскрипция)
 ├── useWelcomeAnimation.ts                # Анимация приветствия на хабе
@@ -181,6 +197,7 @@ types/
 ├── portrait.ts                           # Типы + EMPTY_PORTRAIT
 ├── program.ts                            # ProgramFeatures — feature flags программы
 ├── modes.ts                              # Типы режимов (ModeTemplate, ProgramMode)
+├── welcome.ts                            # Типы приветствий
 ├── yookassa.d.ts                         # Типы YooKassa API
 middleware.ts                             # Auth guard для защищённых страниц
 instrumentation.ts                        # Sentry серверная инструментация
@@ -216,14 +233,14 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
 Профили хранятся в `profiles`, не `users`. Поля: id, email, name, balance_tokens, telegram_username, avatar_url.
 
 ### Конфигурация из БД
-`lib/config.ts` — `getConfig<T>(key, default)` читает из таблицы `app_config` с кешем 60с.
+`lib/config.ts` — `getConfig<T>(key, default)` и `getConfigs(keys[])` читают из таблицы `app_config` с кешем 60с.
 
 ## Дизайн
 
 - Три цветовые системы через CSS-переменные в `globals.css`:
   - **Тёмная тема (основная):** фон `--bg-main: #111318`, карточки `--bg-card: #1C1F26`, акцент `--accent: #D4A545` (золотой)
   - **Светлая тема (auth):** `--auth-bg: #FAFAF5`, `--auth-bg-card: #FFFFFF`, `--auth-accent: #C9963B`
-  - **Тест-результаты:** `--tr-bg: #0f1114`, `--tr-bg2: #16181d`, `--tr-gold: #c9a84c` (отдельные токены)
+  - **Тест-результаты:** `--tr-bg: #0f1114`, `--tr-bg2: #16181d`, `--tr-bg3: #1c1f25`, `--tr-gold: #c9a84c`, `--tr-gold-dim`, `--tr-gold-glow` (отдельные токены)
 - Шрифты: Cormorant Garamond `--font-display` (заголовки), Onest `--font-body` (текст)
 - Стили: в основном в `globals.css` (CSS-переменные), Tailwind для утилит
 - Мобильная адаптация: Sidebar скрывается, MobileTabs внизу
@@ -244,8 +261,10 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
 | URL | Доступ | Описание |
 |-----|--------|----------|
 | `/program/[slug]/(app)/hub` | protected | Хаб программы (выбор режимов) |
-| `/program/[slug]/(app)/chat` | protected | Список чатов / новый свободный чат |
+| `/program/[slug]/(app)/chat` | protected | Страница чата (свободный чат) |
+| `/program/[slug]/(app)/chat/new` | protected | Создание нового чата |
 | `/program/[slug]/(app)/chat/[chatId]` | protected | Конкретный чат по ID |
+| `/program/[slug]/(app)/chats` | protected | Список всех чатов |
 | `/program/[slug]/(app)/author-chat` | protected | Разговор с автором |
 | `/program/[slug]/(app)/exercises` | protected | Список упражнений |
 | `/program/[slug]/(app)/exercise/[number]` | protected | Чат по упражнению |
