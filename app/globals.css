@@ -198,7 +198,7 @@
   .sidebar-toggle:hover { background: var(--accent-soft); color: var(--text-primary); }
   .sidebar-brand { display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; }
   .sidebar-logo { display: flex; align-items: center; }
-  .sidebar-logo-mark { width: 28px; height: 28px; min-width: 28px; background: linear-gradient(135deg, var(--accent), #8a6e24); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+  .sidebar-logo-mark { width: 28px; height: 28px; min-width: 28px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
   .sidebar-brand-wrap { overflow: hidden; transition: opacity 0.2s; }
   .sidebar-brand-text { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text-primary); }
   .sidebar-brand-sub { font-size: 11px; color: var(--text-muted); }
@@ -3693,10 +3693,6 @@ html:not(.no-transition) .app-main {
 
 /* Input bar */
 .hub-input-wrap { padding: 8px 16px; flex-shrink: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-width: 640px; margin: 0 auto; width: 100%; }
-.hub-input-bar { display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow-sm); cursor: pointer; }
-.hub-input-bar input { flex: 1; border: none; outline: none; background: transparent; font-family: var(--font-body); font-size: 14px; color: var(--text-primary); cursor: pointer; }
-.hub-input-bar input::placeholder { color: var(--text-hint); }
-.hub-input-send { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--accent-on); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0.4; }
 .hub-privacy { text-align: center; font-size: 10px; color: var(--text-hint); padding: 4px 0 2px; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .hub-privacy svg { width: 10px; height: 10px; }
 

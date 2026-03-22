@@ -8,7 +8,9 @@ import { AIMessage } from "./AIMessage";
 import { HubContinueCard } from "./HubContinueCard";
 import { ThemeCardsGrid } from "./ThemeCardsGrid";
 import { InstrumentList } from "./InstrumentList";
-import { HubInputBar } from "./HubInputBar";
+import { useRouter } from "next/navigation";
+import InputBar from "@/components/InputBar/InputBar";
+import { LockIcon } from "@/components/icons/hub-icons";
 
 type HubState = "first" | "returning-test" | "returning-notest";
 
@@ -43,6 +45,7 @@ export function HubScreen({
   balance,
   aiMessage,
 }: HubScreenProps) {
+  const router = useRouter();
   const isFirst = state === "first";
   const isReturning = state !== "first";
   const showTestCta = state === "first" || state === "returning-notest";
@@ -108,7 +111,23 @@ export function HubScreen({
           />
         </div>
       </div>
-      <HubInputBar slug={program.slug} />
+      <div className="hub-input-wrap">
+        <InputBar
+          mode="chat"
+          placeholder="Просто напишите, о чём думаете…"
+          onSend={(text) => {
+            router.push(
+              `/program/${program.slug}/chat/new?tool=free-chat&initialMessage=${encodeURIComponent(text)}`,
+            );
+          }}
+          footer={
+            <span className="hub-privacy">
+              <LockIcon size={10} />
+              Диалог анонимизирован и зашифрован
+            </span>
+          }
+        />
+      </div>
     </>
   );
 }

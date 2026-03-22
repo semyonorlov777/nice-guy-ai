@@ -66,7 +66,7 @@ const InputBar = forwardRef<InputBarHandle, InputBarProps>(function InputBar(
     dismissError,
   } = useInputBar();
 
-  const hasVoice = mode !== "test";
+  const hasVoice = true;
 
   // ── Voice input (always called — React rules of hooks) ──
   const voiceInput = useVoiceInput({
