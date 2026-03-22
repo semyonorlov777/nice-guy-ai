@@ -7,10 +7,13 @@ import type { HubState } from "@/lib/hub-data";
 
 export default async function HubPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -72,11 +75,19 @@ export default async function HubPage({
   // Determine hub state
   const hasTestResult = !!testResult;
   const isFirstVisit = (chatCount ?? 0) === 0 && !hasTestResult;
-  const state: HubState = isFirstVisit
+  let state: HubState = isFirstVisit
     ? "first"
     : hasTestResult
       ? "returning-test"
       : "returning-notest";
+
+  // Dev override via query param
+  if (process.env.NODE_ENV === "development") {
+    const override = query.hub_state;
+    if (override === "first" || override === "returning-test" || override === "returning-notest") {
+      state = override;
+    }
+  }
 
   // Sort themes by test scores
   const testScores = testResult?.scores_by_scale as Record<string, number> | null;
