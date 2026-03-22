@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const ctx = await loadProgramContext(supabase, programId, exerciseId, chatType);
 
     // 5. Chat + history + portrait
-    const currentChatType = exerciseId ? "exercise" : (chatType === "author" ? "author" : "free");
+    const currentChatType = exerciseId ? "exercise" : (chatType || "free");
     const chatCtx = await loadChatContext(
       supabase, user.id, chatId, programId, currentChatType, exerciseId, ctx.welcomeMessage,
     );
