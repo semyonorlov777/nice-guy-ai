@@ -79,6 +79,16 @@ export function HubScreen({
             </>
           )}
 
+          {state === "returning-notest" && (
+            <a
+              href={`/program/${program.slug}/test/issp`}
+              className="hub-cta-primary"
+              style={{ maxWidth: 320, margin: "0 auto 16px" }}
+            >
+              Пройти тест
+            </a>
+          )}
+
           {isReturning && (
             <>
               <div className="hub-section-label">
