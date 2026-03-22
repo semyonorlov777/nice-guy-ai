@@ -41,6 +41,7 @@ export function HubScreen({
 }: HubScreenProps) {
   const isFirst = state === "first";
   const isReturning = state !== "first";
+  const showTestCta = state === "first" || state === "returning-notest";
   const aiMessage = getAIMessage(state);
   const subtitle = `${program.author}${program.exerciseCount ? ` · ${program.exerciseCount} упражнений` : ""}`;
 
@@ -68,25 +69,15 @@ export function HubScreen({
 
           <AIMessage text={aiMessage} />
 
-          {isFirst && (
+          {showTestCta && (
             <>
               <a href={`/program/${program.slug}/test/issp`} className="hub-cta-primary">
                 Пройти тест
               </a>
-              <a href={`/program/${program.slug}/chat`} className="hub-cta-secondary">
+              <a href={`/program/${program.slug}/chat/new?tool=free-chat`} className="hub-cta-secondary">
                 Или просто начни общаться →
               </a>
             </>
-          )}
-
-          {state === "returning-notest" && (
-            <a
-              href={`/program/${program.slug}/test/issp`}
-              className="hub-cta-primary"
-              style={{ maxWidth: 320, margin: "0 auto 16px" }}
-            >
-              Пройти тест
-            </a>
           )}
 
           {isReturning && (
