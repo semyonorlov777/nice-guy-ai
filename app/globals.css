@@ -12,6 +12,7 @@
     --border: #E8E5DE;
     --border-light: #EFEDE7;
     --text-primary: #1A1917;
+    --text: var(--text-primary);
     --text-secondary: #6B6860;
     --text-muted: #9E9B93;
     --accent: #C9963B;
@@ -47,6 +48,7 @@
     --radius-xs: 8px;
     --radius-pill: 100px;
     --ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
+    --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
     --font-display: 'Cormorant Garamond', Georgia, serif;
     --font-body: 'Onest', -apple-system, BlinkMacSystemFont, sans-serif;
     --header-h: 56px;
@@ -91,6 +93,7 @@
     --border: #2A2D33;
     --border-light: #232629;
     --text-primary: #E8E6E1;
+    --text: var(--text-primary);
     --text-secondary: #9A978F;
     --text-muted: #5F5D57;
     --accent: #D4A545;
@@ -1093,7 +1096,7 @@ input, textarea, select { font-size: 16px; }
 
   background: var(--tr-bg);
   color: var(--tr-text);
-  font-family: var(--font-onest), 'Onest', sans-serif;
+  font-family: var(--font-body), 'Onest', sans-serif;
   font-size: 16px;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
@@ -1141,7 +1144,7 @@ body:has(.test-results-page) {
 }
 
 .tr-hero-score {
-  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
   font-weight: 800;
   font-size: clamp(72px, 18vw, 120px);
   line-height: 1;
@@ -1211,7 +1214,7 @@ body:has(.test-results-page) {
   border: 1px solid var(--tr-border);
   background: var(--tr-bg2);
   color: var(--tr-text2);
-  font-family: var(--font-onest), 'Onest', sans-serif;
+  font-family: var(--font-body), 'Onest', sans-serif;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1262,7 +1265,7 @@ body:has(.test-results-page) {
 }
 
 .tr-section-title {
-  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
   font-weight: 700;
   font-size: clamp(24px, 5vw, 32px);
   margin-bottom: 32px;
@@ -1353,14 +1356,14 @@ body:has(.test-results-page) {
 .tr-radar-section.visible .tr-radar-dot:nth-child(7) { transition-delay: 1.2s; }
 
 .tr-radar-label-text {
-  font-family: var(--font-onest), 'Onest', sans-serif;
+  font-family: var(--font-body), 'Onest', sans-serif;
   font-size: 11px;
   fill: var(--tr-text2);
   font-weight: 500;
 }
 
 .tr-radar-value-text {
-  font-family: var(--font-onest), 'Onest', sans-serif;
+  font-family: var(--font-body), 'Onest', sans-serif;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1453,7 +1456,7 @@ body:has(.test-results-page) {
 .tr-scale-card-name.color-green { color: var(--tr-green); }
 
 .tr-scale-card-score {
-  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
   font-weight: 800;
   font-size: 28px;
   margin-bottom: 4px;
@@ -1517,7 +1520,7 @@ body:has(.test-results-page) {
 }
 
 .tr-zone-number {
-  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
   font-weight: 800;
   font-size: 24px;
   color: var(--tr-gold);
@@ -1567,7 +1570,7 @@ body:has(.test-results-page) {
 
 .tr-cta-primary {
   display: inline-block;
-  font-family: var(--font-onest), 'Onest', sans-serif;
+  font-family: var(--font-body), 'Onest', sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: var(--tr-bg);
@@ -1603,7 +1606,7 @@ body:has(.test-results-page) {
 }
 
 .tr-cta-guest-title {
-  font-family: var(--font-cormorant), 'Cormorant Garamond', serif;
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
   font-weight: 700;
   font-size: clamp(24px, 5vw, 32px);
   color: var(--tr-text);
@@ -2507,7 +2510,7 @@ body:has(.test-results-page) {
 }
 
 .tc-history-screen h1 {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 32px;
   font-weight: 600;
   line-height: 1.15;
@@ -2552,7 +2555,7 @@ body:has(.test-results-page) {
 }
 
 .tc-history-score {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 56px;
   font-weight: 700;
   line-height: 1;
@@ -2560,7 +2563,7 @@ body:has(.test-results-page) {
 }
 
 .tc-history-score-max {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 400;
   color: var(--text-muted);
@@ -2657,7 +2660,7 @@ body:has(.test-results-page) {
 }
 
 .tc-history-prev-score {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
   color: var(--accent);
@@ -3491,7 +3494,7 @@ html:not(.no-transition) .app-main {
   border-radius: 10px;
   border: 1px solid var(--auth-border);
   background: var(--auth-bg);
-  font-family: var(--auth-font-body);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   color: var(--auth-text-secondary);
@@ -3529,7 +3532,7 @@ html:not(.no-transition) .app-main {
   color: var(--auth-accent);
   background: none;
   border: none;
-  font-family: var(--auth-font-body);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -3675,7 +3678,7 @@ html:not(.no-transition) .app-main {
   .hub-hero-compact h1 { font-size: 22px; }
   .hub-themes { grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .hub-theme-card:hover { transform: translateY(-2px); }
-  .hub-instrument-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: none; border: none; border-radius: 0; }
+  .hub-instrument-list { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 10px; background: none; border: none; border-radius: 0; }
   .hub-instrument { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; gap: 12px; }
   .hub-instrument:hover { background: var(--bg-elevated); }
   .inst-icon { width: 36px; height: 36px; border-radius: 10px; }
@@ -3807,4 +3810,5 @@ html:not(.no-transition) .app-main {
 /* Desktop */
 @media (min-width: 769px) {
   .nc-scroll { padding: 24px 32px; max-width: var(--content-w); margin: 0 auto; width: 100%; }
+  .nc-input-wrap { max-width: var(--chat-w); margin: 0 auto; width: 100%; }
 }
