@@ -87,9 +87,9 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
           <polygon className="tr-radar-grid-line" points={makePolygonPoints(MAX_R * 0.25)} />
 
           {/* Zone labels */}
-          <text x={CX} y={108} textAnchor="middle" fill="#c75050" fontFamily="var(--font-onest), Onest, sans-serif" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
-          <text x={CX} y={155} textAnchor="middle" fill="#d4a843" fontFamily="var(--font-onest), Onest, sans-serif" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
-          <text x={CX} y={202} textAnchor="middle" fill="#5cb87a" fontFamily="var(--font-onest), Onest, sans-serif" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
+          <text x={CX} y={108} textAnchor="middle" fill="var(--tr-red)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
+          <text x={CX} y={155} textAnchor="middle" fill="var(--tr-yellow)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
+          <text x={CX} y={202} textAnchor="middle" fill="var(--tr-green)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
 
           {/* Axis lines */}
           {ISSP_SCALE_ORDER.map((_, i) => {
