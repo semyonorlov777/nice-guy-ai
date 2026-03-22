@@ -112,9 +112,7 @@ export function Sidebar({
           {collapsed ? <CollapseIcon size={18} /> : <CollapseBackIcon size={18} />}
         </button>
         <div className="sidebar-brand">
-          <div className="sidebar-logo">
-            <div className="sidebar-logo-mark">НС</div>
-          </div>
+          <div className="sidebar-logo" />
           <div className="sidebar-brand-wrap">
             <div className="sidebar-brand-text">НеСлавный</div>
             <div className="sidebar-brand-sub">AI-тренажёр</div>
