@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import ReactMarkdown from "react-markdown";
+import type { UIMessage } from "ai";
 import type { WelcomeConfig } from "@/lib/welcome-config";
 import { ArrowRightIcon } from "@/components/icons/hub-icons";
+import { useChatListRefresh } from "@/contexts/ChatListContext";
 
 interface NewChatScreenProps {
   slug: string;
@@ -12,6 +17,7 @@ interface NewChatScreenProps {
   welcome: WelcomeConfig;
   topic?: string;
   tool?: string;
+  initialMessage?: string;
 }
 
 export function NewChatScreen({
@@ -21,92 +27,132 @@ export function NewChatScreen({
   welcome,
   topic,
   tool,
+  initialMessage,
 }: NewChatScreenProps) {
   const router = useRouter();
-  const [sending, setSending] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+  const { refreshChatList } = useChatListRefresh();
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showReplies, setShowReplies] = useState(true);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const chatIdRef = useRef<string | null>(null);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [retryText, setRetryText] = useState<string | null>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const initialMessageSent = useRef(false);
 
-  const sendMessage = useCallback(
-    async (text: string) => {
-      if (sending || !text.trim()) return;
-      setSending(true);
+  const chatType = welcome.chatType || "free";
+  const topicContext = topic
+    ? welcome.systemContext || `Тема: ${welcome.title}`
+    : undefined;
 
-      try {
-        // Create chat via API — sends first message
-        const chatType = welcome.chatType || "free";
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [{ parts: [{ type: "text", text: text.trim() }] }],
-            programId,
-            chatType,
-            topicKey: topic,
-            toolKey: tool,
-          }),
-        });
-
-        if (!res.ok) {
-          console.error("[NewChat] API error:", res.status);
-          setSending(false);
-          return;
+  const {
+    messages,
+    sendMessage,
+    status,
+  } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: () => ({
+        chatId: chatIdRef.current,
+        programId,
+        chatType,
+        topicKey: topic,
+        toolKey: tool,
+        topicContext,
+        chatTitle: welcome.title,
+      }),
+    }),
+    onFinish: ({ message }) => {
+      const meta = message as UIMessage & { metadata?: Record<string, unknown> };
+      if (meta.metadata?.chatId) {
+        const newId = meta.metadata.chatId as string;
+        chatIdRef.current = newId;
+        if (!chatId) {
+          setChatId(newId);
+          // Тихо обновить URL
+          window.history.replaceState(
+            null,
+            "",
+            `/program/${slug}/chat/${newId}`,
+          );
         }
-
-        // Extract chatId from stream metadata
-        const reader = res.body?.getReader();
-        if (!reader) {
-          setSending(false);
-          return;
-        }
-
-        const decoder = new TextDecoder();
-        let chatId: string | null = null;
-
-        // Read stream to find chatId in metadata
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-
-          // Parse metadata from UI message stream
-          const metaMatch = chunk.match(/"chatId"\s*:\s*"([^"]+)"/);
-          if (metaMatch) {
-            chatId = metaMatch[1];
-            break;
-          }
-        }
-
-        // Cancel the rest of the stream — we just needed the chatId
-        await reader.cancel();
-
-        if (chatId) {
-          // Replace URL so back button goes to Hub, not back to welcome
-          router.replace(`/program/${slug}/chat/${chatId}`);
-        } else {
-          console.error("[NewChat] No chatId in stream response");
-          setSending(false);
-        }
-      } catch (err) {
-        console.error("[NewChat] Error:", err);
-        setSending(false);
       }
+      refreshChatList();
     },
-    [sending, programId, welcome.chatType, topic, tool, slug, router],
-  );
+    onError: (err) => {
+      console.error("[NewChat] Stream error:", err);
+      setErrorText("Не удалось отправить сообщение. Попробуй ещё раз.");
+    },
+  });
 
-  const handleReply = (text: string) => {
-    sendMessage(text);
-  };
+  const isStreaming = status === "streaming" || status === "submitted";
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(inputValue);
-  };
+  // Scroll to bottom on new messages
+  const scrollToBottom = useCallback(() => {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  // Auto-send initial message from Hub input bar
+  useEffect(() => {
+    if (initialMessage && !initialMessageSent.current) {
+      initialMessageSent.current = true;
+      handleFirstMessage(initialMessage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage]);
+
+  function handleFirstMessage(text: string) {
+    if (isStreaming) return;
+    setErrorText(null);
+    setRetryText(text);
+
+    // Анимация: скрыть welcome card + replies
+    setShowWelcome(false);
+    setShowReplies(false);
+
+    // Отправить через useChat — стриминг автоматический
+    sendMessage({ text: text.trim() });
+  }
+
+  function handleSend(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || isStreaming) return;
+
+    if (messages.length === 0) {
+      handleFirstMessage(trimmed);
+    } else {
+      setErrorText(null);
+      sendMessage({ text: trimmed });
+    }
+  }
+
+  function handleRetry() {
+    if (retryText) {
+      setErrorText(null);
+      sendMessage({ text: retryText.trim() });
+    }
+  }
+
+  // Helper: extract text from UIMessage
+  function getMessageText(msg: UIMessage): string {
+    return msg.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("");
+  }
+
+  const [inputValue, setInputValue] = useState("");
 
   return (
     <div className="nc-screen">
-      {/* Back button — mobile only */}
-      <div className="nc-header mobile-only">
+      {/* Header */}
+      <div className="nc-header">
         <button
           className="nc-back"
           onClick={() => router.push(`/program/${slug}/hub`)}
@@ -115,13 +161,16 @@ export function NewChatScreen({
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-        <span className="nc-header-title">{welcome.modeLabel}</span>
+        <div className="nc-header-info">
+          <span className="nc-header-title">{welcome.title}</span>
+          <span className="nc-header-sub">{welcome.modeLabel}</span>
+        </div>
       </div>
 
       {/* Scrollable content */}
-      <div className="nc-scroll">
-        {/* Welcome card */}
-        <div className="wc">
+      <div className="nc-scroll" ref={messagesRef}>
+        {/* Welcome card — fades out */}
+        <div className={`wc${showWelcome ? "" : " wc-exit"}`}>
           {coverUrl && (
             <div className="wc-book">
               <img src={coverUrl} alt="" />
@@ -132,21 +181,21 @@ export function NewChatScreen({
           <div className="wc-sub">{welcome.subtitle}</div>
         </div>
 
-        {/* AI message */}
+        {/* Welcome AI message — always visible */}
         <div className="nc-ai-msg">
           <div className="nc-ai-avatar" />
           <div className="nc-ai-text">{welcome.aiMessage}</div>
         </div>
 
-        {/* Quick replies */}
-        {!sending && (
-          <div className="nc-replies">
+        {/* Quick replies — fade out after first message */}
+        {showReplies && (
+          <div className={`nc-replies${messages.length > 0 ? " nc-replies-exit" : ""}`}>
             {welcome.replies.map((reply) => (
               <button
                 key={reply.text}
                 className={`nc-reply${reply.type === "exit" ? " nc-reply-exit" : ""}`}
-                onClick={() => handleReply(reply.text)}
-                disabled={sending}
+                onClick={() => handleFirstMessage(reply.text)}
+                disabled={isStreaming}
               >
                 {reply.text}
                 <ArrowRightIcon size={14} />
@@ -155,29 +204,71 @@ export function NewChatScreen({
           </div>
         )}
 
-        {/* Loading state */}
-        {sending && (
-          <div className="nc-sending">
-            <div className="nc-sending-dot" />
-            <span>Создаю чат...</span>
+        {/* Chat messages */}
+        {messages.map((msg) => {
+          const text = getMessageText(msg);
+          if (!text) return null;
+
+          if (msg.role === "user") {
+            return (
+              <div key={msg.id} className="nc-msg nc-msg-user">
+                <div className="nc-bubble nc-bubble-user">{text}</div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={msg.id} className="nc-msg nc-msg-ai">
+              <div className="nc-ai-avatar" />
+              <div className="nc-bubble nc-bubble-ai">
+                <ReactMarkdown>{text}</ReactMarkdown>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Typing indicator */}
+        {isStreaming && messages.length > 0 && !getMessageText(messages[messages.length - 1]) && (
+          <div className="nc-msg nc-msg-ai">
+            <div className="nc-ai-avatar" />
+            <div className="nc-bubble nc-bubble-ai nc-typing">
+              <span /><span /><span />
+            </div>
+          </div>
+        )}
+
+        {/* Error card */}
+        {errorText && (
+          <div className="nc-error">
+            <p>{errorText}</p>
+            <button className="nc-error-btn" onClick={handleRetry}>
+              ↻ Повторить
+            </button>
           </div>
         )}
       </div>
 
       {/* Input bar */}
-      <form className="nc-input-wrap" onSubmit={handleSubmit}>
+      <form
+        className="nc-input-wrap"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSend(inputValue);
+          setInputValue("");
+        }}
+      >
         <div className="nc-input-bar">
           <input
             type="text"
-            placeholder="Или напиши своё..."
+            placeholder={messages.length > 0 ? "Сообщение..." : "Или напиши своё..."}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            disabled={sending}
+            disabled={isStreaming}
           />
           <button
             type="submit"
             className="nc-input-send"
-            disabled={sending || !inputValue.trim()}
+            disabled={isStreaming || !inputValue.trim()}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 19V5M5 12l7-7 7 7" />

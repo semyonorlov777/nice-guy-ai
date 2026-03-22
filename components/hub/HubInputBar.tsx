@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SendIcon, LockIcon } from "@/components/icons/hub-icons";
 
@@ -9,23 +10,34 @@ interface HubInputBarProps {
 
 export function HubInputBar({ slug }: HubInputBarProps) {
   const router = useRouter();
+  const [value, setValue] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = value.trim();
+    if (!text) return;
+    router.push(
+      `/program/${slug}/chat/new?tool=free-chat&initialMessage=${encodeURIComponent(text)}`,
+    );
+  }
 
   return (
     <div className="hub-input-wrap">
-      <div
-        className="hub-input-bar"
-        onClick={() => router.push(`/program/${slug}/chat`)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") router.push(`/program/${slug}/chat`);
-        }}
-      >
-        <input type="text" placeholder="Напиши что-нибудь..." readOnly />
-        <button className="hub-input-send" tabIndex={-1}>
+      <form className="hub-input-bar" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          placeholder="Просто напишите, о чём думаете…"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="hub-input-send"
+          disabled={!value.trim()}
+        >
           <SendIcon size={16} />
         </button>
-      </div>
+      </form>
       <div className="hub-privacy">
         <LockIcon size={10} />
         Диалог анонимизирован и зашифрован

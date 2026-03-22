@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   try {
-    const { message, chatId, programId, exerciseId, chatType } = parseBody(body);
+    const { message, chatId, programId, exerciseId, chatType, topicContext, chatTitle } = parseBody(body);
 
     // 3. Profile + balance
     const serviceClient = createServiceClient();
@@ -42,8 +42,11 @@ export async function POST(request: Request) {
       supabase, user.id, chatId, programId, currentChatType, exerciseId, ctx.welcomeMessage,
     );
 
-    // 6. Final system prompt (base + portrait)
-    const systemPrompt = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
+    // 6. Final system prompt (base + portrait + topic context)
+    let systemPrompt = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
+    if (topicContext) {
+      systemPrompt += `\n\n---\nКОНТЕКСТ ТЕМЫ:\n${topicContext}`;
+    }
 
     // 7. Build AI messages
     const aiMessages = buildGeminiHistory(chatCtx.messages, message);
@@ -82,7 +85,7 @@ export async function POST(request: Request) {
           last_message_at: new Date().toISOString(),
         };
         if (chatCtx.isNewChat) {
-          chatUpdate.title = message.slice(0, 50);
+          chatUpdate.title = chatTitle || message.slice(0, 50);
         }
         await supabase
           .from("chats")

@@ -26,15 +26,19 @@ interface ParsedBody {
   programId: string;
   exerciseId: string | undefined;
   chatType: string | undefined;
+  topicContext: string | undefined;
+  chatTitle: string | undefined;
 }
 
 export function parseBody(body: Record<string, unknown>): ParsedBody {
-  const { messages: clientMessages, chatId, programId, exerciseId, chatType } = body as {
+  const { messages: clientMessages, chatId, programId, exerciseId, chatType, topicContext, chatTitle } = body as {
     messages?: Array<{ parts?: Array<{ type: string; text: string }>; content?: string }>;
     chatId?: string;
     programId?: string;
     exerciseId?: string;
     chatType?: string;
+    topicContext?: string;
+    chatTitle?: string;
   };
 
   const lastClientMsg = clientMessages?.[clientMessages.length - 1];
@@ -52,7 +56,7 @@ export function parseBody(body: Record<string, unknown>): ParsedBody {
     throw new ChatError(400, "Сообщение слишком длинное");
   }
 
-  return { message, chatId, programId, exerciseId, chatType };
+  return { message, chatId, programId, exerciseId, chatType, topicContext, chatTitle };
 }
 
 // ---------------------------------------------------------------------------

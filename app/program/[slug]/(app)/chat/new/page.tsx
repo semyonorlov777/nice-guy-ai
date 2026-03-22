@@ -43,6 +43,7 @@ export default async function NewChatPage({
       welcome={welcome}
       topic={query.topic}
       tool={query.tool}
+      initialMessage={query.initialMessage}
     />
   );
 }
