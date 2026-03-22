@@ -9,6 +9,7 @@ import type { UIMessage } from "ai";
 import type { WelcomeConfig } from "@/types/welcome";
 import { ArrowRightIcon } from "@/components/icons/hub-icons";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
+import InputBar from "@/components/InputBar/InputBar";
 
 interface NewChatScreenProps {
   slug: string;
@@ -146,8 +147,6 @@ export function NewChatScreen({
       .join("");
   }
 
-  const [inputValue, setInputValue] = useState("");
-
   return (
     <div className="nc-screen">
       {/* Header */}
@@ -248,33 +247,14 @@ export function NewChatScreen({
       </div>
 
       {/* Input bar */}
-      <form
-        className="nc-input-wrap"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend(inputValue);
-          setInputValue("");
-        }}
-      >
-        <div className="nc-input-bar">
-          <input
-            type="text"
-            placeholder={messages.length > 0 ? "Сообщение..." : "Или напиши своё..."}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={isStreaming}
-          />
-          <button
-            type="submit"
-            className="nc-input-send"
-            disabled={isStreaming || !inputValue.trim()}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-      </form>
+      <div className="nc-input-wrap">
+        <InputBar
+          mode="chat"
+          placeholder={messages.length > 0 ? "Сообщение..." : "Или напиши своё..."}
+          disabled={isStreaming}
+          onSend={handleSend}
+        />
+      </div>
     </div>
   );
 }
