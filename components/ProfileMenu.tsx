@@ -25,12 +25,16 @@ interface ProfileMenuProps {
 export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   type ThemeMode = "light" | "dark" | "system";
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("theme") as ThemeMode) || "system";
-  });
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("theme") as ThemeMode | null;
+    if (saved) setThemeMode(saved);
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -136,7 +140,7 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
             {themeOptions.map(({ mode, icon: Icon, tooltip }) => (
               <button
                 key={mode}
-                className={`pd-theme-chip${themeMode === mode ? " active" : ""}`}
+                className={`pd-theme-chip${mounted && themeMode === mode ? " active" : ""}`}
                 data-tooltip={tooltip}
                 onClick={() => applyTheme(mode)}
               >
