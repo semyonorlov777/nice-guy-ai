@@ -10,13 +10,14 @@ export function MobileTabs({ slug }: { slug: string }) {
 
   const tabs = [
     { key: "hub", path: "/hub", icon: HomeIcon, label: "Главная" },
-    { key: "chat", path: "/chat", icon: ChatIcon, label: "Чаты" },
+    { key: "chats", path: "/chats", icon: ChatIcon, label: "Чаты" },
     { key: "portrait", path: "/portrait", icon: PortraitIcon, label: "Профиль" },
   ];
 
   function getActiveKey(): string {
     if (pathname.startsWith(`${base}/hub`)) return "hub";
-    if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chat";
+    if (pathname.startsWith(`${base}/chats`)) return "chats";
+    if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chats";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
     return "hub";
   }

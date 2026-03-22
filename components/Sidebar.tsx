@@ -87,7 +87,8 @@ export function Sidebar({
   function getActiveSection(): string | null {
     if (pathname.startsWith(`${base}/hub`)) return "hub";
     if (pathname.startsWith(`${base}/portrait`)) return "portrait";
-    if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chat";
+    if (pathname.startsWith(`${base}/chats`)) return "chats";
+    if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chats";
     return "hub";
   }
   const activeSection = getActiveSection();
@@ -136,12 +137,12 @@ export function Sidebar({
         </Link>
 
         <Link
-          href={`${base}/chat`}
-          className={`sidebar-item${activeSection === "chat" ? " active" : ""}`}
-          data-tooltip="Свободный чат"
+          href={`${base}/chats`}
+          className={`sidebar-item${activeSection === "chats" ? " active" : ""}`}
+          data-tooltip="Чаты"
         >
           <div className="sidebar-item-icon"><ChatIcon size={18} /></div>
-          <div className="sidebar-item-text">Свободный чат</div>
+          <div className="sidebar-item-text">Чаты</div>
         </Link>
 
         <Link

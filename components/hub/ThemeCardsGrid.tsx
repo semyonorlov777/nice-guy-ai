@@ -22,7 +22,7 @@ export function ThemeCardsGrid({ themes, engagedKeys, recommendedKeys, slug }: T
           theme={theme}
           isEngaged={engagedKeys.includes(theme.key)}
           isRecommended={recommendedKeys.includes(theme.key)}
-          onClick={() => router.push(`/program/${slug}/chat?theme=${theme.key}`)}
+          onClick={() => router.push(`/program/${slug}/chat/new?topic=${theme.key}`)}
         />
       ))}
     </div>

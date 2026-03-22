@@ -31,7 +31,7 @@ export function InstrumentList({ slug, exerciseCount, hasTestResult }: Instrumen
       name: "Самопроверка",
       description: "Методист даст обратную связь",
       badge: "✦",
-      href: `${base}/exercises`,
+      href: `${base}/chat/new?tool=selfcheck`,
     },
     {
       icon: <TestIcon size={16} />,
@@ -47,14 +47,14 @@ export function InstrumentList({ slug, exerciseCount, hasTestResult }: Instrumen
       name: "Спросить Гловера",
       description: "AI в стиле автора книги",
       badge: "✦",
-      href: `${base}/author-chat`,
+      href: `${base}/chat/new?tool=author`,
     },
     {
       icon: <FreechatIcon size={16} />,
       colorClass: "green" as const,
       name: "Просто поговорить",
       description: "Свободный чат без темы",
-      href: `${base}/chat`,
+      href: `${base}/chat/new?tool=free-chat`,
     },
   ];
 
