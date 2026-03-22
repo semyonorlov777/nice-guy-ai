@@ -271,8 +271,8 @@ input, textarea, select { font-size: 16px; }
   .sidebar.collapsed .sidebar-nav { padding: 8px 4px; }
   .sidebar.collapsed .sidebar-item { justify-content: center; padding: 10px; border-left-color: transparent; gap: 0; }
   .sidebar.collapsed .sidebar-item.active .sidebar-item-icon { color: var(--accent); }
-  .sidebar.collapsed .sidebar-new-chat { margin: 8px 4px 4px; padding: 10px; justify-content: center; }
-  .sidebar.collapsed .sidebar-footer { padding: 12px 8px; }
+  .sidebar.collapsed .sidebar-new-chat { margin: 8px 0 4px; padding: 10px; justify-content: center; border: none; gap: 0; width: 100%; }
+  .sidebar.collapsed .sidebar-footer { padding: 8px; }
   .sidebar.collapsed .sidebar-profile-btn { justify-content: center; padding: 6px; gap: 0; }
   .sidebar.collapsed .profile-dropdown { position: fixed; bottom: 60px; left: 72px; right: auto; width: 240px; }
 
