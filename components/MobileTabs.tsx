@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { HomeIcon, ChatIcon, PortraitIcon } from "@/components/icons/hub-icons";
+import { HomeIcon, ChatIcon, UserIcon } from "@/components/icons/hub-icons";
 
 export function MobileTabs({ slug }: { slug: string }) {
   const pathname = usePathname();
@@ -11,14 +11,14 @@ export function MobileTabs({ slug }: { slug: string }) {
   const tabs = [
     { key: "hub", path: "/hub", icon: HomeIcon, label: "Главная" },
     { key: "chats", path: "/chats", icon: ChatIcon, label: "Чаты" },
-    { key: "portrait", path: "/portrait", icon: PortraitIcon, label: "Профиль" },
+    { key: "profile", path: "/profile", icon: UserIcon, label: "Профиль" },
   ];
 
   function getActiveKey(): string {
     if (pathname.startsWith(`${base}/hub`)) return "hub";
     if (pathname.startsWith(`${base}/chats`)) return "chats";
     if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chats";
-    if (pathname.startsWith(`${base}/portrait`)) return "portrait";
+    if (pathname.startsWith(`${base}/profile`) || pathname.startsWith(`${base}/portrait`)) return "profile";
     return "hub";
   }
 

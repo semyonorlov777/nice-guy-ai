@@ -5,6 +5,8 @@ import { DEFAULT_REDIRECT } from "@/lib/constants";
 function isProtected(pathname: string): boolean {
   // Test pages are public (anonymous start)
   if (/^\/program\/[^/]+\/test\//.test(pathname)) return false;
+  // Profile page is public (anon sees State C)
+  if (/^\/program\/[^/]+\/profile$/.test(pathname)) return false;
   // /program/<slug>/<subpage> (chat, exercise, exercises, portrait, balance)
   if (/^\/program\/[^/]+\/.+/.test(pathname)) return true;
   if (pathname.startsWith("/balance")) return true;
