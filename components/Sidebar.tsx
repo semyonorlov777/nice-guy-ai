@@ -14,6 +14,7 @@ import {
   CollapseBackIcon,
 } from "@/components/icons/hub-icons";
 import type { ChatItemData } from "@/components/ChatListItem";
+import { formatChatTime } from "@/lib/time";
 
 interface UserInfo {
   name: string;
@@ -61,7 +62,7 @@ export function Sidebar({
 
   const fetchChats = useCallback(async () => {
     try {
-      const res = await fetch(`/api/chats?programId=${programId}&limit=30`);
+      const res = await fetch(`/api/chats?programId=${programId}&limit=15`);
       if (res.ok) {
         const data = await res.json();
         setChats(data.chats);
@@ -165,17 +166,17 @@ export function Sidebar({
         <div className="sidebar-section-label sidebar-section-label--spaced">Недавние чаты</div>
         <div className="sidebar-chat-list">
           {chats.length === 0 && (
-            <div className="sidebar-chat-empty">Нет чатов</div>
+            <div className="sidebar-chat-empty">Начните диалог на Главной — он появится здесь</div>
           )}
           {chats.map((chat) => (
             <Link
               key={chat.id}
               href={getChatHref(chat)}
-              className={`sidebar-item${chat.id === activeChatId ? " active" : ""}`}
+              className={`sidebar-chat${chat.id === activeChatId ? " active" : ""}`}
               data-tooltip={chat.title}
             >
-              <div className="sidebar-item-icon"><ChatIcon size={18} /></div>
-              <div className="sidebar-item-text sidebar-item-text--dim">{chat.title}</div>
+              <div className="sidebar-chat-name">{chat.title}</div>
+              <div className="sidebar-chat-time">{formatChatTime(chat.lastMessageAt)}</div>
             </Link>
           ))}
         </div>

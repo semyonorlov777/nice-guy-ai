@@ -77,7 +77,7 @@ export default async function ProgramLayout({
       .eq("program_id", program.id)
       .in("status", ["active", "completed"])
       .order("last_message_at", { ascending: false })
-      .limit(30);
+      .limit(15);
 
     // Превью: последнее assistant-сообщение для каждого чата
     const chatIds = (chatsData || []).map((c) => c.id);

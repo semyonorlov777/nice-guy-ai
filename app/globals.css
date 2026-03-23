@@ -79,6 +79,8 @@
     --auth-tg-blue-hover: #229ED9;
     --auth-ya-red: #FC3F1D;
     --auth-ya-red-hover: #E5391A;
+    --auth-google-bg: #FFFFFF;
+    --auth-google-bg-hover: #F5F5F5;
     --auth-ease: cubic-bezier(0.25, 0.1, 0.25, 1.0);
 
     color-scheme: light;
@@ -3357,6 +3359,14 @@ html:not(.no-transition) .app-main {
 }
 .auth-sheet-btn.tg:hover:not(:disabled) {
   background: var(--auth-tg-blue-hover);
+}
+.auth-sheet-btn.google {
+  background: var(--auth-google-bg);
+  color: #3c4043;
+  border: 1px solid #dadce0;
+}
+.auth-sheet-btn.google:hover:not(:disabled) {
+  background: var(--auth-google-bg-hover);
 }
 .auth-sheet-btn.ya {
   background: var(--auth-ya-red);
