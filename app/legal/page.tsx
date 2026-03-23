@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicHeader } from "@/components/PublicHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Публичная оферта",
@@ -233,14 +234,9 @@ export default function LegalPage() {
           </div>
         </div>
 
-        {/* Footer link */}
-        <div className="legal-footer">
-          <Link href="/">
-            ← Вернуться на главную
-          </Link>
-        </div>
       </div>
     </div>
+    <SiteFooter />
     </>
   );
 }

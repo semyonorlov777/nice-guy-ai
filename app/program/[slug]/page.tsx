@@ -10,7 +10,7 @@ import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { TestSection } from "@/components/landing/TestSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { ChatSection } from "@/components/landing/ChatSection";
-import { LandingFooter } from "@/components/landing/LandingFooter";
+import { SiteFooter } from "@/components/SiteFooter";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 
 export async function generateMetadata({
@@ -219,7 +219,7 @@ export default async function ProgramLanding({
         quickReplies={anonymousQuickReplies}
       />
 
-      <LandingFooter />
+      <SiteFooter variant="program" />
     </div>
   );
 }

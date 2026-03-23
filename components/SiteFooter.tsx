@@ -1,8 +1,12 @@
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
-export function LandingFooter() {
+interface SiteFooterProps {
+  variant?: "program" | "default";
+}
+
+export function SiteFooter({ variant = "default" }: SiteFooterProps) {
   return (
-    <footer className="footer">
+    <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-grid">
           <div>
@@ -12,7 +16,13 @@ export function LandingFooter() {
           <div className="footer-col">
             <div className="footer-col-title">Продукт</div>
             <ul>
-              <li><a href="#chat-block">Начать бесплатно</a></li>
+              <li>
+                {variant === "program" ? (
+                  <a href="#chat-block">Начать бесплатно</a>
+                ) : (
+                  <a href="/">Главная</a>
+                )}
+              </li>
               <li><a href="/auth">Войти в аккаунт</a></li>
               <li><a href={`/program/${DEFAULT_PROGRAM_SLUG}/test/issp`} target="_blank" rel="noopener noreferrer">Пройти тест</a></li>
               <li><a href="/balance" target="_blank" rel="noopener noreferrer">Тарифы и цены</a></li>

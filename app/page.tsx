@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase-server";
 import { PublicHeader } from "@/components/PublicHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "AI-тренажёры по книгам",
@@ -81,6 +82,7 @@ export default async function CatalogPage() {
           })}
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

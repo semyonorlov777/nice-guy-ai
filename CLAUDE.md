@@ -94,6 +94,7 @@ app/
 │   ├── auth/yandex/route.ts              # Инициация Яндекс OAuth
 │   └── auth/yandex/callback/route.ts     # Яндекс OAuth callback
 components/
+├── SiteFooter.tsx                        # Единый подвал для всех публичных страниц
 ├── ChatWindow.tsx                        # Основной чат (стриминг, markdown, retry)
 ├── ChatHeader.tsx                        # Заголовок чата (название, действия)
 ├── ChatListItem.tsx                      # Элемент списка чатов
@@ -126,7 +127,6 @@ components/
 │   └── useScrollReveal.ts               # Анимация при скролле
 ├── landing/                              # Секции лендинга программы
 │   ├── LandingHeader.tsx                 # Хедер лендинга
-│   ├── LandingFooter.tsx                 # Футер лендинга
 │   ├── HeroSection.tsx                   # Герой-секция
 │   ├── TestSection.tsx                   # Секция теста
 │   ├── ChatSection.tsx                   # Секция чата
@@ -259,6 +259,7 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
    - Пример: `if (/^\/program\/[^/]+\/test\//.test(pathname)) return false;`
 5. Sidebar показывается автоматически для залогиненных, скрывается для анонимов (решает layout)
 6. Для разного контента по auth: в page.tsx проверять user через `supabase.auth.getUser()`
+7. **Публичные страницы без авторизации** (вне `(app)/` группы — например `/`, `/legal`, лендинги) должны включать `<SiteFooter />` из `components/SiteFooter.tsx` перед закрывающим тегом. На лендингах программ использовать `<SiteFooter variant="program" />`
 
 ### URL-структура кабинета
 
