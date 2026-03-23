@@ -4,6 +4,21 @@ import { ISSP_SCALE_ORDER } from "@/lib/issp-config";
 import type { ScaleResult } from "@/lib/issp-scoring";
 import { useScrollReveal } from "./useScrollReveal";
 
+/* SVG gradients don't support CSS custom properties as stopColor reliably across browsers,
+   so we use named constants aligned with design-system tokens */
+const RADAR_GRADIENT_STOPS = {
+  area: [
+    { offset: "0%",   color: "rgba(106, 174, 106, 0.05)" },   // --tr-green
+    { offset: "40%",  color: "rgba(212, 165, 69, 0.12)" },     // --tr-gold
+    { offset: "100%", color: "rgba(212, 80, 80, 0.18)" },      // --tr-red
+  ],
+  bg: [
+    { offset: "0%",   color: "rgba(106, 174, 106, 0.03)" },    // --tr-green
+    { offset: "50%",  color: "rgba(212, 165, 69, 0.02)" },     // --tr-gold
+    { offset: "100%", color: "rgba(212, 80, 80, 0.03)" },      // --tr-red
+  ],
+} as const;
+
 const CX = 250;
 const CY = 250;
 const MAX_R = 185;
@@ -66,14 +81,14 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
         <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="areaGradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(92, 184, 122, 0.05)" />
-              <stop offset="40%" stopColor="rgba(201, 168, 76, 0.12)" />
-              <stop offset="100%" stopColor="rgba(199, 80, 80, 0.18)" />
+              {RADAR_GRADIENT_STOPS.area.map((s) => (
+                <stop key={s.offset} offset={s.offset} stopColor={s.color} />
+              ))}
             </radialGradient>
             <radialGradient id="bgGradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(92, 184, 122, 0.03)" />
-              <stop offset="50%" stopColor="rgba(201, 168, 76, 0.02)" />
-              <stop offset="100%" stopColor="rgba(199, 80, 80, 0.03)" />
+              {RADAR_GRADIENT_STOPS.bg.map((s) => (
+                <stop key={s.offset} offset={s.offset} stopColor={s.color} />
+              ))}
             </radialGradient>
           </defs>
 

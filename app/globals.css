@@ -482,6 +482,7 @@
   .scroll-fab svg { width: 16px; height: 16px; color: var(--text-secondary); }
 
   /* ── RESPONSIVE ── */
+  /* specificity: !important overrides flex/block set by layout containers */
   @media (max-width: 768px) {
     .sidebar { display: none !important; }
     .mobile-tabs { display: flex; }
@@ -497,6 +498,7 @@
     .hub-input-wrap { display: none; }
     .mobile-only-flex { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   }
+  /* specificity: !important overrides flex/block set by layout containers */
   @media (min-width: 769px) {
     .sidebar { display: flex; }
     .mobile-tabs { display: none; }
@@ -511,7 +513,7 @@
   }
 
   /* ── CATALOG PAGE ── */
-  .catalog-page { min-height: 100vh; background: var(--bg-main); font-family: var(--font-body); }
+  .catalog-page { min-height: 100dvh; background: var(--bg-main); font-family: var(--font-body); }
   .catalog-container { max-width: 1200px; margin: 0 auto; padding: 80px 16px 60px; }
   .catalog-title { font-family: var(--font-display); font-size: 32px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
   .catalog-subtitle { font-size: 15px; color: var(--text-secondary); margin-bottom: 32px; }
@@ -1120,11 +1122,11 @@
 
   background: var(--tr-bg);
   color: var(--tr-text);
-  font-family: var(--font-body), 'Onest', sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .tr-container {
@@ -1164,7 +1166,7 @@
 }
 
 .tr-hero-score {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(72px, 18vw, 120px);
   line-height: 1;
@@ -1234,7 +1236,7 @@
   border: 1px solid var(--tr-border);
   background: var(--tr-bg2);
   color: var(--tr-text2);
-  font-family: var(--font-body), 'Onest', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1285,7 +1287,7 @@
 }
 
 .tr-section-title {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(24px, 5vw, 32px);
   margin-bottom: 32px;
@@ -1376,14 +1378,14 @@
 .tr-radar-section.visible .tr-radar-dot:nth-child(7) { transition-delay: 1.2s; }
 
 .tr-radar-label-text {
-  font-family: var(--font-body), 'Onest', sans-serif;
+  font-family: var(--font-body);
   font-size: 11px;
   fill: var(--tr-text2);
   font-weight: 500;
 }
 
 .tr-radar-value-text {
-  font-family: var(--font-body), 'Onest', sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1476,7 +1478,7 @@
 .tr-scale-card-name.color-green { color: var(--tr-green); }
 
 .tr-scale-card-score {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 28px;
   margin-bottom: 4px;
@@ -1540,7 +1542,7 @@
 }
 
 .tr-zone-number {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 24px;
   color: var(--tr-gold);
@@ -1590,7 +1592,7 @@
 
 .tr-cta-primary {
   display: inline-block;
-  font-family: var(--font-body), 'Onest', sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   font-weight: 700;
   color: var(--tr-bg);
@@ -1626,7 +1628,7 @@
 }
 
 .tr-cta-guest-title {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(24px, 5vw, 32px);
   color: var(--tr-text);
@@ -3128,7 +3130,7 @@ html:not(.no-transition) .app-main {
   padding: 0 4px;
 }
 
-/* ── Reduced motion ── */
+/* ── Reduced motion: disable all InputBar animations for a11y (!important overrides inline/JS-set styles) ── */
 @media (prefers-reduced-motion: reduce) {
   .ib-action-btn.s-recording {
     box-shadow: 0 0 0 4px rgba(201,76,76,0.25) !important;
@@ -3213,7 +3215,7 @@ html:not(.no-transition) .app-main {
 
 /* Fullscreen wrapper */
 .auth-sheet-fullscreen-wrap {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 80px 16px 40px;
   background: var(--auth-bg);
   display: flex;
