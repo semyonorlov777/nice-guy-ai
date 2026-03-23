@@ -162,7 +162,7 @@ export function Sidebar({
         </button>
 
         {/* Recent chats */}
-        <div className="sidebar-section-label" style={{ marginTop: 16 }}>Недавние чаты</div>
+        <div className="sidebar-section-label sidebar-section-label--spaced">Недавние чаты</div>
         <div className="sidebar-chat-list">
           {chats.length === 0 && (
             <div className="sidebar-chat-empty">Нет чатов</div>
@@ -175,7 +175,7 @@ export function Sidebar({
               data-tooltip={chat.title}
             >
               <div className="sidebar-item-icon"><ChatIcon size={18} /></div>
-              <div className="sidebar-item-text" style={{ opacity: 0.7 }}>{chat.title}</div>
+              <div className="sidebar-item-text sidebar-item-text--dim">{chat.title}</div>
             </Link>
           ))}
         </div>

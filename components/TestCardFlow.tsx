@@ -1043,20 +1043,7 @@ export function TestCardFlow() {
 
         {/* Error toast */}
         {errorMessage && (
-          <div style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--danger)",
-            color: "#fff",
-            padding: "12px 20px",
-            borderRadius: 12,
-            fontSize: 14,
-            zIndex: 1000,
-            maxWidth: "90vw",
-            textAlign: "center",
-          }}>
+          <div className="tc-error-toast">
             {errorMessage}
           </div>
         )}

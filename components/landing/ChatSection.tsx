@@ -20,7 +20,7 @@ export function ChatSection({ isLoggedIn, slug, chatHeader, price, welcomeMessag
         </div>
 
         {isLoggedIn ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <div className="chat-section-placeholder">
             <Link href={`/program/${slug}/chat`} className="chat-login-cta">
               Перейти в чат
             </Link>

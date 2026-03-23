@@ -29,21 +29,11 @@ export class ChatErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div
-            style={{ padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}
-          >
+          <div className="chat-error-container">
             <p>Ошибка загрузки чата</p>
             <button
               onClick={() => this.setState({ hasError: false })}
-              style={{
-                marginTop: "12px",
-                padding: "8px 16px",
-                background: "var(--accent-soft)",
-                border: "1px solid var(--accent-border)",
-                borderRadius: "8px",
-                cursor: "pointer",
-                color: "var(--accent)",
-              }}
+              className="chat-error-retry"
             >
               Повторить
             </button>

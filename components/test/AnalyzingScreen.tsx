@@ -179,7 +179,7 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
 
   if (error) {
     return (
-      <div className="tc-screen" style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px 36px", gap: "28px" }}>
+      <div className="tc-screen tc-analyzing-center">
         <div className="analyzing-error">
           <p className="analyzing-error-text">
             Произошла ошибка при анализе. Попробуйте обновить страницу.
@@ -196,7 +196,7 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
   }
 
   return (
-    <div className="tc-screen" style={{ justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px 36px", gap: "28px" }}>
+    <div className="tc-screen tc-analyzing-center">
       {/* Orb */}
       <div className={`analyzing-orb-wrap${orbDone ? " done" : ""}`}>
         <div className="analyzing-orb-bg" />
@@ -231,10 +231,10 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
       ) : (
         <>
           <div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+            <h2 className="tc-analyzing-title">
               Анализируем ваши ответы
             </h2>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "6px" }}>
+            <p className="tc-analyzing-subtitle">
               Это займёт около 30–60 секунд
             </p>
           </div>

@@ -153,14 +153,13 @@ export function HistoryScreen({ results, onRetake, isStarting, programSlug }: Hi
       {/* Divider + Retake button + Meta */}
       <div className="tc-history-divider" />
       <button
-        className="tc-btn-primary"
+        className="tc-btn-primary tc-history-actions"
         onClick={onRetake}
         disabled={isStarting}
-        style={{ marginTop: 28 }}
       >
         {isStarting ? "Запуск…" : "Пройти заново"}
       </button>
-      <div className="tc-meta-line" style={{ marginTop: 14 }}>
+      <div className="tc-meta-line tc-history-meta">
         <LockIcon />
         Результаты конфиденциальны. Правильных ответов нет.
       </div>
