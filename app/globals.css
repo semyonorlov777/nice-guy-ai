@@ -43,6 +43,7 @@
     --scrim: rgba(26, 25, 23, 0.3);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
     --shadow-focus: 0 0 0 3px rgba(201,150,59,0.2);
+    --shadow-elevated: 0 4px 16px rgba(0,0,0,0.10);
     --radius: 16px;
     --radius-sm: 12px;
     --radius-xs: 8px;
@@ -124,6 +125,7 @@
     --scrim: rgba(0, 0, 0, 0.5);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
     --shadow-focus: 0 0 0 3px rgba(212,165,69,0.15);
+    --shadow-elevated: none;
     color-scheme: dark;
   }
 
@@ -1114,6 +1116,7 @@
   --tr-text2: #8a8780;
   --tr-border: #262930;
   --tr-border-hover: #3a3d46;
+  --tr-muted: #5a5850;
 
   background: var(--tr-bg);
   color: var(--tr-text);
