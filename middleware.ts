@@ -18,6 +18,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api/auth/telegram") ||
     pathname.startsWith("/api/auth/yandex") ||
+    pathname.startsWith("/api/auth/google") ||
     pathname.startsWith("/api/auth/dev-login")
   ) {
     return NextResponse.next();
