@@ -3,6 +3,16 @@ interface IconProps {
   className?: string;
 }
 
+// ═══ UI — Balance ═══
+
+export function LightningIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none" className={className}>
+      <path d="M8 1L3 8h4l-1 5 6-7H8L8 1z" fill="currentColor" />
+    </svg>
+  );
+}
+
 // ═══ ISSP Theme Icons ═══
 
 export function ApprovalIcon({ size = 18, className }: IconProps) {

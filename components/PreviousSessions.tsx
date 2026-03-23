@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatRelativeTime } from "@/lib/time";
+import { ChatIcon } from "@/components/icons/hub-icons";
 
 interface Session {
   id: string;
@@ -43,7 +44,7 @@ export function PreviousSessions({
           href={`/program/${slug}/exercise/${exerciseNumber}/${s.id}`}
           className="prev-chat-item"
         >
-          <div className="prev-chat-icon">{"💬"}</div>
+          <div className="prev-chat-icon"><ChatIcon size={16} /></div>
           <div className="prev-chat-info">
             <div className="prev-chat-title">{s.title}</div>
             <div className="prev-chat-meta">

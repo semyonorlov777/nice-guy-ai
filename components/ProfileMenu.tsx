@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import {
   CreditCardIcon,
+  LightningIcon,
   SunIcon,
   MoonIcon,
   MonitorIcon,
@@ -115,7 +116,7 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
           <div className="sidebar-user-plan">Свободный</div>
         </div>
         {balance !== undefined && (
-          <span className="sidebar-balance">⚡ {balance}</span>
+          <span className="sidebar-balance"><LightningIcon size={14} /> {balance}</span>
         )}
       </button>
 
@@ -128,7 +129,7 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
           <span className="pd-item-icon"><CreditCardIcon size={16} /></span>
           Тариф и оплата
           {balance !== undefined && (
-            <span className="pd-item-right">⚡ {balance}</span>
+            <span className="pd-item-right"><LightningIcon size={14} /> {balance}</span>
           )}
         </button>
 

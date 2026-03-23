@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useModes } from "@/contexts/ModesContext";
 import { getModeIcon } from "@/components/hub/mode-icons";
+import { LightningIcon } from "@/components/icons/hub-icons";
 
 interface ChatHeaderProps {
   programTitle: string;
@@ -64,7 +65,7 @@ export function ChatHeader({
       </button>
 
       {balance !== undefined && (
-        <div className="chat-header-balance">&#9889; {balance}</div>
+        <div className="chat-header-balance"><LightningIcon size={14} /> {balance}</div>
       )}
 
       {isPanelOpen && (

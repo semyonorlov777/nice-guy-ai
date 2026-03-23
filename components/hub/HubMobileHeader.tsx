@@ -1,3 +1,5 @@
+import { LightningIcon } from "@/components/icons/hub-icons";
+
 interface HubMobileHeaderProps {
   title: string;
   subtitle: string;
@@ -20,7 +22,7 @@ export function HubMobileHeader({ title, subtitle, coverUrl, balance }: HubMobil
         <div className="hub-header-sub">{subtitle}</div>
       </div>
       {balance !== undefined && (
-        <div className="hub-header-balance">⚡ {balance}</div>
+        <div className="hub-header-balance"><LightningIcon size={14} /> {balance}</div>
       )}
     </div>
   );
