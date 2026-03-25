@@ -35,20 +35,13 @@ export async function getWelcomeConfig(
 
   // 2. По инструменту (tool key → mode_template key mapping)
   if (params.tool) {
-    // tool URL keys use hyphens, mode_template keys use underscores
-    const toolKeyMap: Record<string, string> = {
-      "free-chat": "free_chat",
+    // Known aliases where URL key differs from DB key beyond simple hyphen→underscore
+    const toolAliases: Record<string, string> = {
       author: "author_chat",
       selfcheck: "self_work",
-      exercises: "exercises",
-      "self-analysis": "self_analysis",
-      "partner-analysis": "partner_analysis",
-      "relationship-map": "relationship_map",
-      theory: "theory",
-      "love-translator": "love_translator",
-      roleplay: "roleplay",
     };
-    const modeKey = toolKeyMap[params.tool] ?? params.tool;
+    // First check aliases, then auto-convert hyphens to underscores
+    const modeKey = toolAliases[params.tool] ?? params.tool.replace(/-/g, "_");
 
     const { data: row } = await supabase
       .from("program_modes")
