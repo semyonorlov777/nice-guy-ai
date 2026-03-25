@@ -17,7 +17,7 @@ export default async function ParentsPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, landing_data")
+    .select("id, title, landing_data")
     .eq("slug", slug)
     .single();
 
@@ -25,6 +25,13 @@ export default async function ParentsPage({
 
   const landingData = program.landing_data as { book?: { cover_url?: string } } | null;
   const coverUrl = landingData?.book?.cover_url || "";
+
+  const { data: modeData } = await supabase
+    .from("program_modes")
+    .select("welcome_message, mode_templates!inner(chat_type)")
+    .eq("program_id", program.id)
+    .eq("mode_templates.chat_type", "ng_parents")
+    .maybeSingle();
 
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
 
@@ -41,6 +48,8 @@ export default async function ParentsPage({
       balance={balanceTokens}
       slug={slug}
       currentModeKey="ng_parents"
+      programTitle={program.title}
+      welcomeMessage={modeData?.welcome_message || undefined}
     />
   );
 }
