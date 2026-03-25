@@ -43,6 +43,35 @@ const MODE_NAMES: Record<string, string> = {
   ng_theory: "Теория книги",
 };
 
+/**
+ * Извлекает «кавычки-ёлочки» из конца текста как быстрые ответы.
+ * Паттерн: строки вида «Текст» в конце сообщения (каждая на отдельной строке).
+ */
+function parseQuickReplies(text: string): { cleanText: string; replies: string[] } {
+  // Ищем блок строк «...» в конце текста
+  const lines = text.trimEnd().split("\n");
+  const replies: string[] = [];
+  let i = lines.length - 1;
+
+  // Собираем строки с «кавычками» с конца
+  while (i >= 0) {
+    const line = lines[i].trim();
+    if (!line) { i--; continue; } // пропускаем пустые строки
+    const match = line.match(/^[«""](.+?)[»""]$/);
+    if (match) {
+      replies.unshift(match[1]);
+      i--;
+    } else {
+      break;
+    }
+  }
+
+  if (replies.length === 0) return { cleanText: text, replies: [] };
+
+  const cleanText = lines.slice(0, i + 1).join("\n").trimEnd();
+  return { cleanText, replies };
+}
+
 function classifyError(content: string): "limit" | "ai" {
   if (/Недостаточно|лимит|закончились/i.test(content)) return "limit";
   return "ai";
@@ -224,6 +253,20 @@ export function ChatWindow({
   // Show welcome AI message when no history exists
   const showWelcome = welcomeMessage && initialMessages.length === 0;
 
+  // Parse quick replies from welcome message (if not provided via props)
+  const parsedWelcome = welcomeMessage ? parseQuickReplies(welcomeMessage) : null;
+  const effectiveWelcomeMessage = parsedWelcome?.cleanText || welcomeMessage;
+  const effectiveQuickReplies = quickReplies && quickReplies.length > 0
+    ? quickReplies
+    : parsedWelcome?.replies || [];
+
+  // Parse quick replies from last AI message (inline «кавычки»)
+  const lastMsg = messages[messages.length - 1];
+  const lastAiText = lastMsg?.role === "assistant" ? getMessageText(lastMsg) : "";
+  const parsedLastAi = lastAiText ? parseQuickReplies(lastAiText) : null;
+  const inlineReplies = parsedLastAi?.replies || [];
+  const showInlineReplies = !isStreaming && inlineReplies.length > 0 && messages.length > 0;
+
   // Welcome animation (first visit only)
   const shouldAnimate = Boolean(showWelcome) &&
     (typeof window === "undefined" || !localStorage.getItem("welcome_anim_done"));
@@ -236,7 +279,7 @@ export function ChatWindow({
     inputPulseActive,
     skipToEnd: skipWelcome,
   } = useWelcomeAnimation({
-    welcomeMessage: welcomeMessage || "",
+    welcomeMessage: effectiveWelcomeMessage || "",
     enabled: shouldAnimate,
     storageKey: "welcome_anim_done",
     storageType: "local",
@@ -297,20 +340,20 @@ export function ChatWindow({
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`} role="article">
               <div className="msg-avatar ai" />
               <div className="msg-bubble">
-                <ReactMarkdown>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
+                <ReactMarkdown>{animActive ? streamedText : effectiveWelcomeMessage}</ReactMarkdown>
                 {showCursor && <span className="streaming-cursor">{"▊"}</span>}
               </div>
             </div>
           )}
 
-          {/* Quick replies */}
-          {showQuickReplies && quickReplies && quickReplies.length > 0 &&
+          {/* Quick replies (from props, welcome message, or parsed from welcome text) */}
+          {showQuickReplies && effectiveQuickReplies.length > 0 &&
             (!animActive || welcomePhase === "quick-replies" || welcomePhase === "input-pulse") && (
             <div className="quick-replies">
               {initialMessages.length === 0 && (
                 <div className="quick-reply-label">Выбери вариант или напиши своё</div>
               )}
-              {quickReplies.map((text, i) => {
+              {effectiveQuickReplies.map((text, i) => {
                 if (animActive && i >= quickReplyStaggerIndex) return null;
                 return (
                   <button
@@ -343,13 +386,18 @@ export function ChatWindow({
               );
             }
 
+            // Для последнего AI-сообщения: убираем «кавычки» из текста, показываем как кнопки ниже
+            const displayText = (isAi && isLast && !isStreaming && parsedLastAi?.cleanText)
+              ? parsedLastAi.cleanText
+              : text;
+
             return (
               <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article" aria-busy={isAi && isLast && isStreaming ? true : undefined}>
                 {isAi
                   ? <div className="msg-avatar ai" />
                   : renderUserAvatar()}
                 <div className="msg-bubble">
-                  {renderContent(text, isAi)}
+                  {renderContent(displayText, isAi)}
                   {status === "streaming" && isLast && isAi && (
                     <span className="streaming-cursor">{"▊"}</span>
                   )}
@@ -357,6 +405,23 @@ export function ChatWindow({
               </div>
             );
           })}
+
+          {/* Inline quick replies parsed from last AI message */}
+          {showInlineReplies && (
+            <div className="quick-replies">
+              <div className="quick-reply-label">Выбери вариант или напиши своё</div>
+              {inlineReplies.map((text, i) => (
+                <button
+                  key={i}
+                  className="quick-reply-btn"
+                  onClick={() => handleSend(text)}
+                  disabled={isStreaming}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          )}
 
           {status === "submitted" && messages.length > 0 && (
             <div className="thinking-indicator">

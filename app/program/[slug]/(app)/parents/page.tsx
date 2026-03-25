@@ -28,11 +28,12 @@ export default async function ParentsPage({
 
   const { data: modeData } = await supabase
     .from("program_modes")
-    .select("welcome_message, mode_templates!inner(chat_type)")
+    .select("welcome_message, config, mode_templates!inner(chat_type)")
     .eq("program_id", program.id)
     .eq("mode_templates.chat_type", "ng_parents")
     .maybeSingle();
 
+  const modeConfig = (modeData?.config || {}) as { quick_replies?: string[] };
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
 
   return (
@@ -50,6 +51,7 @@ export default async function ParentsPage({
       currentModeKey="ng_parents"
       programTitle={program.title}
       welcomeMessage={modeData?.welcome_message || undefined}
+      quickReplies={modeConfig.quick_replies}
     />
   );
 }
