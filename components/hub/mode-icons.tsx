@@ -157,6 +157,33 @@ export function TimeIcon() {
   );
 }
 
+export function HeartIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  );
+}
+
+export function UsersIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" />
+      <path d="M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+export function ShieldIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
 /** Маппинг icon key → компонент */
 const iconMap: Record<string, () => React.JSX.Element> = {
   pen: PenIcon,
@@ -171,6 +198,9 @@ const iconMap: Record<string, () => React.JSX.Element> = {
   map: MapIcon,
   drama: DramaIcon,
   sparkles: SparklesIcon,
+  heart: HeartIcon,
+  users: UsersIcon,
+  shield: ShieldIcon,
 };
 
 export function getModeIcon(iconKey: string): React.JSX.Element {
