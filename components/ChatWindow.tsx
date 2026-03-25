@@ -18,7 +18,7 @@ interface ChatWindowProps {
   chatId: string | null;
   programId: string;
   exerciseId?: string;
-  chatType?: "exercise" | "free" | "author";
+  chatType?: string;
   userInitial: string;
   avatarUrl?: string | null;
   welcomeMessage?: string;

@@ -152,18 +152,22 @@ export async function loadProgramContext(
   }
 
   // Build system prompt: mode-level → program-level fallback
-  // 1. Check program_modes for a custom system_prompt (new modes like self_analysis, theory, etc.)
+  // 1. Check program_modes for a custom system_prompt and welcome_message
   let systemPrompt = "";
+  let modeWelcome: string | null = null;
   if (chatType) {
     const { data: modeRow } = await supabase
       .from("program_modes")
-      .select("system_prompt, mode_templates!inner(chat_type)")
+      .select("system_prompt, welcome_message, mode_templates!inner(chat_type)")
       .eq("program_id", programId)
       .eq("mode_templates.chat_type", chatType)
       .maybeSingle();
 
     if (modeRow?.system_prompt) {
       systemPrompt = modeRow.system_prompt;
+    }
+    if (modeRow?.welcome_message) {
+      modeWelcome = modeRow.welcome_message;
     }
   }
 
@@ -179,8 +183,9 @@ export async function loadProgramContext(
     systemPrompt += `\n\n---\nТЕКУЩЕЕ УПРАЖНЕНИЕ: ${exercise.title}\n${exercise.system_prompt}`;
   }
 
-  // Welcome message
+  // Welcome message: mode-level → exercise → program-level fallback
   const welcomeMessage =
+    modeWelcome ||
     exercise?.welcome_message ||
     (chatType === "author" ? program.author_chat_welcome : program.free_chat_welcome);
 
