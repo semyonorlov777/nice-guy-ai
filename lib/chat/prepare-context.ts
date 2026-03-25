@@ -312,6 +312,31 @@ export function appendPortraitContext(
 }
 
 // ---------------------------------------------------------------------------
+// appendIsspScores — добавляет результаты теста ISSP к system prompt
+// ---------------------------------------------------------------------------
+
+export async function appendIsspScores(
+  supabase: SupabaseClient,
+  systemPrompt: string,
+  userId: string,
+  programId: string,
+): Promise<string> {
+  const { data: testResult } = await supabase
+    .from("test_results")
+    .select("scores_by_scale")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .eq("status", "ready")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!testResult?.scores_by_scale) return systemPrompt;
+
+  return systemPrompt + `\n\n---\nДАННЫЕ ТЕСТА ISSP:\n${JSON.stringify(testResult.scores_by_scale)}`;
+}
+
+// ---------------------------------------------------------------------------
 // buildGeminiHistory — конвертация сообщений в формат Gemini (user-first)
 // ---------------------------------------------------------------------------
 
