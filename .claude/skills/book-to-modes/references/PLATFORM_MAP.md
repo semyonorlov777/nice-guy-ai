@@ -114,6 +114,24 @@ WHERE slug = 'BOOK_SLUG';
 Должен быть уникальным внутри программы. Для новых режимов можно группировать:
 - `/ta/game-quiz`, `/ta/script`, `/ta/matrix` — под общим префиксом
 
+## Чеклист реализации (после утверждения промптов)
+
+Задачи в порядке зависимостей. Задачи без зависимостей можно запускать параллельно через worktree-агентов.
+
+| # | Задача | Тип | Зависит от | Параллельно? |
+|---|--------|-----|-----------|-------------|
+| 1 | SQL: INSERT mode_templates (новые ключи) | SQL (Supabase MCP) | — | — |
+| 2 | SQL: INSERT/UPDATE program_modes (промпты, welcome, sort_order) | SQL (Supabase MCP) | 1 | — |
+| 3 | Код: новые routes (page.tsx для каждого нового route_suffix) | Код | — | ✅ с 4, 5, 7 |
+| 4 | Код: иконки в mode-icons.tsx (если нужны новые) | Код | — | ✅ с 3, 5, 7 |
+| 5 | Код: prepare-context.ts (если нужна новая логика загрузки) | Код | — | ✅ с 3, 4, 7 |
+| 6 | SQL: маппинг тем → режимы (program_themes.recommended_route) | SQL (Supabase MCP) | 1, 2 | — |
+| 7 | Код: инжекция данных теста в контекст чата (если есть тест) | Код | — | ✅ с 3, 4, 5 |
+| 8 | Проверка: npm run build + dev + runtime в браузере | Ручная | все | — |
+
+**Код-задачи (3, 4, 5, 7)** можно запускать параллельно через `isolation: "worktree"` агентов.
+**SQL-задачи (1, 2, 6)** выполнять в основном чате через Supabase MCP.
+
 ## Чеклист файлов при добавлении режимов
 
 | Файл | Что сделать | Обязательно? |
@@ -124,6 +142,42 @@ WHERE slug = 'BOOK_SLUG';
 | `middleware.ts` | Добавить исключение если route должен быть public | Только для public |
 | `app/program/[slug]/(app)/` | Создать page.tsx если нужен новый route | Только если route новый |
 | `types/modes.ts` | Добавить новые chat_type если нужно | По ситуации |
+| `components/hub/mode-icons.tsx` | Добавить иконку + в iconMap | Только если icon нет в iconMap |
+
+## program_themes → режимы
+
+Если у программы есть Темы (program_themes), привязанные к шкалам теста — каждая тема должна вести в конкретный режим, а не только в свободный чат.
+
+### Поле recommended_route
+
+`program_themes.recommended_route` (text, nullable) — куда тема ведёт при клике. Если null — fallback на `/chat/new?topic=<key>`.
+
+### SQL шаблон
+
+```sql
+UPDATE program_themes
+SET recommended_route = '/ROUTE_SUFFIX'
+WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
+  AND key = 'THEME_KEY';
+```
+
+### Маппинг (заполнять на этапе 4, после таблицы режимов)
+
+| Тема (key) | Шкала теста | → Режим (route_suffix) |
+|-----------|------------|----------------------|
+| ... | ... | ... |
+
+---
+
+## Доступные иконки (mode-icons.tsx)
+
+Перед назначением icon в таблице маппинга — проверь что иконка существует в `components/hub/mode-icons.tsx` → `iconMap`.
+
+**Существующие:** pen, clock, check, book, chat, target, search, message-circle, book-open, map, drama, sparkles, heart, users, shield
+
+Если нужной иконки нет → добавь SVG-компонент + запись в iconMap. Формат: Feather/Lucide-style (24x24 viewBox, stroke, no fill).
+
+---
 
 ## Таблица маппинга (заполнять на этапе 4)
 
