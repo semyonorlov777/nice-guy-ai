@@ -17,6 +17,7 @@ import {
   BookOpenIcon,
   MapIcon,
   SparklesIcon,
+  ShieldIcon,
 } from "@/components/icons/hub-icons";
 import type { ProgramModeWithTemplate } from "@/types/modes";
 import type { ComponentType } from "react";
@@ -43,6 +44,7 @@ const INSTRUMENT_ICON_MAP: Record<string, ComponentType<IconProps>> = {
   "book-open": BookOpenIcon,
   map: MapIcon,
   sparkles: SparklesIcon,
+  shield: ShieldIcon,
 };
 
 interface InstrumentListProps {
