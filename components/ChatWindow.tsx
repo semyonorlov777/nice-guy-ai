@@ -31,6 +31,18 @@ interface ChatWindowProps {
   currentModeKey?: string;
 }
 
+const MODE_NAMES: Record<string, string> = {
+  free_chat: "Свободный чат",
+  author_chat: "Разговор с автором",
+  exercises: "Упражнения с психологом",
+  ng_my_syndrome: "Мой синдром",
+  ng_relationships: "Мои отношения",
+  ng_parents: "Мои родители и я",
+  ng_boundaries: "Тренировка границ",
+  ng_quiz: "Славный парень или нет?",
+  ng_theory: "Теория книги",
+};
+
 function classifyError(content: string): "limit" | "ai" {
   if (/Недостаточно|лимит|закончились/i.test(content)) return "limit";
   return "ai";
@@ -257,11 +269,7 @@ export function ChatWindow({
         <ChatHeader
           programTitle={programTitle}
           coverUrl={coverUrl}
-          currentMode={
-            currentModeKey === "author_chat" ? "Разговор с автором"
-            : currentModeKey === "exercises" ? "Упражнения с психологом"
-            : "Свободный чат"
-          }
+          currentMode={MODE_NAMES[currentModeKey ?? ""] ?? "Свободный чат"}
           currentModeKey={currentModeKey}
           balance={balance}
           onBack={() => router.back()}
