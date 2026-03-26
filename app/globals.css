@@ -39,6 +39,7 @@
     --danger: #C94C4C;
     --danger-text: #B85C5C;
     --danger-soft: rgba(201,76,76,0.08);
+    --danger-border: rgba(201, 76, 76, 0.25);
     --error-bg: #FFF9F0;
     --scrim: rgba(26, 25, 23, 0.3);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
@@ -123,6 +124,7 @@
     --danger: #D46B6B;
     --danger-text: #C07070;
     --danger-soft: rgba(220,80,80,0.10);
+    --danger-border: rgba(220, 80, 80, 0.25);
     --error-bg: rgba(212, 165, 69, 0.06);
     --scrim: rgba(0, 0, 0, 0.5);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);

@@ -62,6 +62,7 @@
 | `--danger` | `#C94C4C` | `#D46B6B` <!-- design: dark #dc5050 / #D46B6B --> |
 | `--danger-text` | `#B85C5C` | `#C07070` |
 | `--danger-soft` | `rgba(201,76,76, 0.08)` | `rgba(220,80,80, 0.10)` |
+| `--danger-border` | `rgba(201,76,76, 0.25)` | `rgba(220,80,80, 0.25)` |
 | `--status-done` | `#5a8c5a` | `#6aae6a` |
 | `--status-done-bg` | `rgba(90,140,90, 0.10)` | `rgba(106,174,106, 0.12)` |
 | `--status-active-bg` | `rgba(201,150,59, 0.12)` | `rgba(212,165,69, 0.12)` |
