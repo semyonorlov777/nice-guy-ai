@@ -4,18 +4,19 @@ import { ISSP_SCALE_ORDER } from "@/lib/issp-config";
 import type { ScaleResult } from "@/lib/issp-scoring";
 import { useScrollReveal } from "./useScrollReveal";
 
-/* SVG gradients don't support CSS custom properties as stopColor reliably across browsers,
-   so we use named constants aligned with design-system tokens */
+/* SVG <stop stopColor> doesn't support CSS custom properties or color-mix(),
+   so we use hardcoded rgba aligned with global design-system tokens:
+   green → --green (#6AAE6A dark), accent → --accent (#D4A545 dark), danger → --danger (#D46B6B dark) */
 const RADAR_GRADIENT_STOPS = {
   area: [
-    { offset: "0%",   color: "rgba(106, 174, 106, 0.05)" },   // --tr-green
-    { offset: "40%",  color: "rgba(212, 165, 69, 0.12)" },     // --tr-gold
-    { offset: "100%", color: "rgba(212, 80, 80, 0.18)" },      // --tr-red
+    { offset: "0%",   color: "rgba(106, 174, 106, 0.05)" },   // --green
+    { offset: "40%",  color: "rgba(212, 165, 69, 0.12)" },     // --accent
+    { offset: "100%", color: "rgba(212, 107, 107, 0.18)" },    // --danger
   ],
   bg: [
-    { offset: "0%",   color: "rgba(106, 174, 106, 0.03)" },    // --tr-green
-    { offset: "50%",  color: "rgba(212, 165, 69, 0.02)" },     // --tr-gold
-    { offset: "100%", color: "rgba(212, 80, 80, 0.03)" },      // --tr-red
+    { offset: "0%",   color: "rgba(106, 174, 106, 0.03)" },   // --green
+    { offset: "50%",  color: "rgba(212, 165, 69, 0.02)" },     // --accent
+    { offset: "100%", color: "rgba(212, 107, 107, 0.03)" },    // --danger
   ],
 } as const;
 
@@ -48,9 +49,9 @@ function makePolygonPoints(radius: number): string {
 }
 
 function dotColor(pct: number): string {
-  if (pct >= 60) return "var(--tr-red)";
-  if (pct >= 40) return "var(--tr-yellow)";
-  return "var(--tr-green)";
+  if (pct >= 60) return "var(--danger)";
+  if (pct >= 40) return "var(--accent)";
+  return "var(--green)";
 }
 
 interface RadarChartProps {
@@ -102,9 +103,9 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
           <polygon className="tr-radar-grid-line" points={makePolygonPoints(MAX_R * 0.25)} />
 
           {/* Zone labels */}
-          <text x={CX} y={108} textAnchor="middle" fill="var(--tr-red)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
-          <text x={CX} y={155} textAnchor="middle" fill="var(--tr-yellow)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
-          <text x={CX} y={202} textAnchor="middle" fill="var(--tr-green)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
+          <text x={CX} y={108} textAnchor="middle" fill="var(--danger)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
+          <text x={CX} y={155} textAnchor="middle" fill="var(--accent)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
+          <text x={CX} y={202} textAnchor="middle" fill="var(--green)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
 
           {/* Axis lines */}
           {ISSP_SCALE_ORDER.map((_, i) => {
@@ -127,7 +128,7 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
             className="tr-radar-area"
             points={dataPolygon}
             fill="url(#areaGradient)"
-            stroke="var(--tr-gold)"
+            stroke="var(--accent)"
             strokeWidth={2}
           />
 
@@ -142,7 +143,7 @@ export function RadarChart({ scoresByScale }: RadarChartProps) {
                 cy={dataPoints[i].y}
                 r={5}
                 fill={dotColor(pct)}
-                stroke="var(--tr-bg)"
+                stroke="var(--bg-main)"
                 strokeWidth={2}
               />
             );
