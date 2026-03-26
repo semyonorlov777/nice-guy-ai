@@ -237,7 +237,14 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
 
 ## Дизайн-система
 
-Перед любыми UI-изменениями прочитай `DESIGN_SYSTEM.md` — source of truth для цветов, отступов, компонентов, иконок и CSS-классов. Раздел "Антипаттерны" — обязателен к прочтению.
+Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-изменениях он подключается автоматически. Содержит:
+- `SKILL.md` — принципы, архитектура CSS, антипаттерны, чеклист
+- `references/tokens.md` — токены (цвета, шрифты, отступы, тени, темы)
+- `references/components.md` — CSS-классы всех компонентов
+- `references/animations.md` — анимации, easing, keyframes
+- `references/patterns.md` — UX-паттерны, ошибки, доступность
+
+При изменениях в дизайн-системе обновляй файлы скилла, не `DESIGN_SYSTEM.md`.
 
 ## Дизайн (краткая справка)
 
