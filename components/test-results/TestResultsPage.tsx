@@ -251,7 +251,7 @@ function CTASection({
       ) : (
         <div className="tr-cta-guest">
           <div className="tr-cta-guest-title">А какой твой профиль?</div>
-          <Link href={`/program/${programSlug}`} className="tr-cta-primary">
+          <Link href={`/program/${programSlug}/test/issp`} className="tr-cta-primary">
             Пройти тест бесплатно
           </Link>
         </div>
