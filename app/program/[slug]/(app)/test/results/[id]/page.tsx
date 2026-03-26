@@ -67,14 +67,15 @@ export default async function TestResultPage({
 
   if (!result) notFound();
 
-  // Fetch program slug
+  // Fetch program slug + landing data for test title
   const { data: program } = await svc
     .from("programs")
-    .select("slug")
+    .select("slug, landing_data")
     .eq("id", result.program_id)
     .single();
 
   const programSlug = program?.slug ?? DEFAULT_PROGRAM_SLUG;
+  const testTitle = (program?.landing_data as { test?: { title?: string } } | null)?.test?.title;
 
   // Check ownership via cookie auth
   let isOwner = false;
@@ -101,6 +102,7 @@ export default async function TestResultPage({
     isOwner,
     createdAt: result.created_at,
     programSlug,
+    testTitle,
   };
 
   return <TestResultsPage {...props} />;

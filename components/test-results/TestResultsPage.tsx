@@ -23,6 +23,7 @@ export interface TestResultsProps {
   isOwner: boolean;
   createdAt: string;
   programSlug: string;
+  testTitle?: string;
 }
 
 // ── Constants ──
@@ -228,9 +229,11 @@ function TopZones({
 function CTASection({
   isOwner,
   programSlug,
+  testTitle,
 }: {
   isOwner: boolean;
   programSlug: string;
+  testTitle?: string;
 }) {
   const { ref, isVisible } = useScrollReveal();
 
@@ -250,7 +253,7 @@ function CTASection({
         </>
       ) : (
         <div className="tr-cta-guest">
-          <div className="tr-cta-guest-title">А какой твой профиль?</div>
+          <div className="tr-cta-guest-title">{testTitle || "А какой твой профиль?"}</div>
           <Link href={`/program/${programSlug}/test/issp`} className="tr-cta-primary">
             Пройти тест бесплатно
           </Link>
@@ -289,6 +292,7 @@ export function TestResultsPage(props: TestResultsProps) {
     interpretation: initialInterpretation,
     isOwner,
     programSlug,
+    testTitle,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -383,7 +387,7 @@ export function TestResultsPage(props: TestResultsProps) {
             </>
           )}
 
-        <CTASection isOwner={isOwner} programSlug={programSlug} />
+        <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} />
 
         <ResultsFooter />
       </div>
