@@ -146,24 +146,11 @@
 
 ### 1.11 Тема результатов теста (.test-results-page)
 
-| Токен | Значение |
-|---|---|
-| `--tr-bg` | `#0f1114` |
-| `--tr-bg2` | `#16181d` |
-| `--tr-bg3` | `#1c1f25` |
-| `--tr-gold` | `#c9a84c` |
-| `--tr-gold-dim` | `rgba(201,168,76, 0.15)` |
-| `--tr-gold-glow` | `rgba(201,168,76, 0.08)` |
-| `--tr-green` | `#5cb87a` |
-| `--tr-green-dim` | `rgba(92,184,122, 0.15)` |
-| `--tr-yellow` | `#d4a843` |
-| `--tr-yellow-dim` | `rgba(212,168,67, 0.15)` |
-| `--tr-red` | `#c75050` |
-| `--tr-red-dim` | `rgba(199,80,80, 0.15)` |
-| `--tr-text` | `#e8e5df` |
-| `--tr-text2` | `#8a8780` |
-| `--tr-border` | `#262930` |
-| `--tr-border-hover` | `#3a3d46` |
+Страница использует глобальные токены из §1.1–1.6. Приватных `--tr-*` переменных нет.
+
+CSS-классы сохраняют префикс `.tr-*` (`.tr-hero`, `.tr-radar-wrapper`, `.tr-scale-card`).
+
+**Исключение:** RadarChart SVG gradient `<stop stopColor>` использует hardcoded rgba, выровненные с `--green`, `--accent`, `--danger` — SVG-атрибут `stopColor` не поддерживает CSS custom properties и `color-mix()`.
 
 ---
 
