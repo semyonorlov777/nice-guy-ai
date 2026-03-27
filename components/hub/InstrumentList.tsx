@@ -18,6 +18,10 @@ import {
   MapIcon,
   SparklesIcon,
   ShieldIcon,
+  UnlockIcon,
+  RocketIcon,
+  InstrumentLightningIcon,
+  FlaskIcon,
 } from "@/components/icons/hub-icons";
 import type { ProgramModeWithTemplate } from "@/types/modes";
 import type { ComponentType } from "react";
@@ -45,6 +49,10 @@ const INSTRUMENT_ICON_MAP: Record<string, ComponentType<IconProps>> = {
   map: MapIcon,
   sparkles: SparklesIcon,
   shield: ShieldIcon,
+  unlock: UnlockIcon,
+  rocket: RocketIcon,
+  lightning: InstrumentLightningIcon,
+  flask: FlaskIcon,
 };
 
 interface InstrumentListProps {
@@ -88,6 +96,13 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       ta_script_matrix: "ta-script-matrix",
       ta_game_exit: "ta-game-exit",
       ta_permission: "ta-permission",
+      notes_fear_deconstruct: "notes-fear-deconstruct",
+      notes_scale_thinking: "notes-scale-thinking",
+      notes_energy_architect: "notes-energy-architect",
+      notes_pleasure_switch: "notes-pleasure-switch",
+      notes_environment_audit: "notes-environment-audit",
+      notes_business_lab: "notes-business-lab",
+      notes_self_journal: "notes-self-journal",
     };
     const href = mode.is_chat_based && toolKeyMap[mode.key]
       ? `${base}/chat/new?tool=${toolKeyMap[mode.key]}`

@@ -425,6 +425,47 @@ export function LogoutIcon({ size = 18, className }: IconProps) {
   );
 }
 
+// ═══ 100-notes mode icons ═══
+
+export function UnlockIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 019.9-1" />
+    </svg>
+  );
+}
+
+export function RocketIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
+      <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+    </svg>
+  );
+}
+
+export function InstrumentLightningIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+export function FlaskIcon({ size = 18, className }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3h6" />
+      <path d="M10 9V3" />
+      <path d="M14 9V3" />
+      <path d="M10 9l-4.5 9.5A2 2 0 007.3 21h9.4a2 2 0 001.8-2.5L14 9" />
+    </svg>
+  );
+}
+
 // ═══ Theme Icon Map (for ISSP scales) ═══
 
 export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
