@@ -266,7 +266,7 @@ function CTASection({
     >
       {isOwner ? (
         <>
-          <Link href={`/program/${programSlug}/exercises`} className="tr-cta-primary">
+          <Link href={`/program/${programSlug}/hub`} className="tr-cta-primary">
             Начать путь к изменениям
           </Link>
           {ctaText && <div className="tr-cta-sub">{ctaText}</div>}
@@ -274,7 +274,7 @@ function CTASection({
       ) : (
         <div className="tr-cta-guest">
           <div className="tr-cta-guest-title">{testTitle || "А какой твой профиль?"}</div>
-          <Link href={`/program/${programSlug}/test/${testSlug || "issp"}`} className="tr-cta-primary">
+          <Link href={`/program/${programSlug}/test/${testSlug || "test"}`} className="tr-cta-primary">
             Пройти тест бесплатно
           </Link>
         </div>

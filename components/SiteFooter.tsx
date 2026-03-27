@@ -24,7 +24,7 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
                 )}
               </li>
               <li><a href="/auth">Войти в аккаунт</a></li>
-              <li><a href={`/program/${DEFAULT_PROGRAM_SLUG}/test/issp`} target="_blank" rel="noopener noreferrer">Пройти тест</a></li>
+              <li><a href={`/program/${DEFAULT_PROGRAM_SLUG}/test`} target="_blank" rel="noopener noreferrer">Пройти тест</a></li>
               <li><a href="/balance" target="_blank" rel="noopener noreferrer">Тарифы и цены</a></li>
             </ul>
           </div>

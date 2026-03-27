@@ -77,7 +77,7 @@ export function HubScreen({
 
           {showTestCta && (
             <>
-              <a href={`/program/${program.slug}/test/issp`} className="hub-cta-primary">
+              <a href={`/program/${program.slug}/test`} className="hub-cta-primary">
                 Пройти тест
               </a>
               <a href={`/program/${program.slug}/chat/new?tool=free-chat`} className="hub-cta-secondary">
