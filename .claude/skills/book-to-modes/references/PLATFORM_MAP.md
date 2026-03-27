@@ -99,6 +99,7 @@ WHERE slug = 'BOOK_SLUG';
 - nice-guy → без префикса (первая книга, legacy)
 - games-people-play → `ta_`
 - 5-love-languages → `ll_`
+- razgovorny-gipnoz → `hypno_`
 
 ### chat_type
 
@@ -166,6 +167,315 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 | Тема (key) | Шкала теста | → Режим (route_suffix) |
 |-----------|------------|----------------------|
 | ... | ... | ... |
+
+---
+
+## programs.landing_data — JSON-схема лендинга
+
+`landing_data` — JSONB-поле в таблице `programs`. Содержит ВСЕ данные для лендинга программы. UI (компоненты в `components/landing/`) полностью data-driven — рендерит то, что есть в JSON.
+
+**TypeScript-интерфейс** определён в `app/program/[slug]/page.tsx` → `interface LandingData`.
+
+### Секции
+
+| Секция | Тип | Обязательна? | Компонент | Описание |
+|--------|-----|-------------|-----------|----------|
+| `hero_tag` | string | ✅ | HeroSection | Мини-тег над заголовком, обычно «AI-тренажёр по книге» |
+| `hero_title` | string | ✅ | HeroSection | H1, поддерживает `<em>` для акцента |
+| `hero_subtitle` | string | ✅ | HeroSection | 1-2 предложения, value proposition |
+| `hero_cta` | string | ✅ | HeroSection | Текст кнопки CTA |
+| `hero_hint` | string | ✅ | HeroSection | Подпись под кнопкой (обычно «Без регистрации» или «Бесплатно, без регистрации») |
+| `book` | object | ✅ | HeroSection | Данные книги (см. ниже) |
+| `social_proof` | array | ✅ | SocialProof | 4 карточки `{icon, main, sub}` |
+| `problem` | object | ✅ | PersonasSection | Блок «боль ЦА» (см. ниже) |
+| `personas` | object | ✅ | PersonasSection | Сегменты ЦА `{label, title, items: [{headline, body}]}` |
+| `outcomes` | object | ✅ | OutcomesSection | Блок «что получишь» (см. ниже) |
+| `comparison` | object | ✅ | ComparisonSection | Таблица сравнения (см. ниже) |
+| `how_it_works` | object | ✅ | HowItWorksSection | Шаги работы `{label, title, steps: [{type, title}], summary_text}` |
+| `chat_header` | object | ✅ | ChatSection | CTA для демо-чата `{title, subtitle}` |
+| `price` | object | ✅ | — | Цены `{trial_text, price_text, anchor_text}` |
+| `author` | object | ⚡ | AuthorSection | Секция автора, если `features.author_chat=true` |
+| `test` | object | ⚡ | TestSection | Секция теста, если `features.test=true` |
+
+### Детали вложенных объектов
+
+**book:**
+```json
+{
+  "cover_url": "https://cdn.litres.ru/pub/c/cover_415/XXXXX.webp",
+  "alt": "Название книги — Автор",
+  "author_top": "Имя Автора (рус)",
+  "title": "Название книги (рус)",
+  "subtitle": "Original Title (eng)",
+  "author_bottom": "Author Name, Credentials"
+}
+```
+
+> **cover_url**: ВСЕГДА брать с Литрес (cdn.litres.ru). Найти книгу на litres.ru → ПКМ на обложку → «Копировать адрес изображения». Формат: `https://cdn.litres.ru/pub/c/cover_415/{id}.webp` (или `.jpg`). Размер 415px — оптимальный для лендинга.
+
+**author** (секция автора книги):
+```json
+{
+  "photo_url": "https://...",
+  "name": "Имя Автора",
+  "credentials": "Краткая биография (1-2 предложения)",
+  "quote": "Цитата автора, которая отражает суть книги"
+}
+```
+
+> **photo_url**: Найти фото автора в интернете. Приоритет источников: (1) Wikipedia Commons — лицензионно чисто, (2) официальный сайт автора, (3) издательство. Формат: прямая ссылка на изображение, не на страницу. Проверить что ссылка работает.
+
+**problem:**
+```json
+{
+  "label": "Проблема",
+  "title": "Текст с <em>акцентом</em>",
+  "lead": "1-2 предложения — контекст проблемы",
+  "pain_cards": [
+    { "icon": "🔄", "title": "Цитата боли", "text": "Раскрытие в 1-2 предложения" }
+  ]
+}
+```
+
+**outcomes:**
+```json
+{
+  "label": "Решение",
+  "title": "AI, который <em>глагол</em> результат",
+  "subtitle": "Позиционирование — что это и что НЕ это",
+  "items": [
+    { "icon": "🎯", "title": "Конкретный результат", "description": "Как именно AI это делает" }
+  ]
+}
+```
+
+**comparison:**
+```json
+{
+  "label": "Сравнение",
+  "title": "Как <em>работать</em> с книгой?",
+  "subtitle": "Три способа применить методику",
+  "columns": [
+    { "icon": "📕", "name": "Книга", "role": "Теория" },
+    { "icon": "🧠", "name": "Профессионал", "role": "Очный специалист" },
+    { "icon": "🤖", "name": "AI-тренажёр", "role": "Ежедневная практика", "highlight": true }
+  ],
+  "rows": [
+    { "param": "Критерий", "values": ["Книга", "Проф", "AI"], "dim": [0] }
+  ],
+  "conclusion": "Позиционирование AI как <em>моста</em>."
+}
+```
+
+**test** (только если `features.test=true`):
+```json
+{
+  "emoji": "📊",
+  "title": "Название теста",
+  "description": "Краткое описание",
+  "time_label": "~10 минут",
+  "questions_label": "35 вопросов",
+  "cta_text": "Пройти тест",
+  "cta_href": "/program/SLUG/test"
+}
+```
+
+### Смежные поля в programs (НЕ внутри landing_data)
+
+Эти поля — часть лендинга, но хранятся отдельно:
+
+| Поле | Описание | Пример |
+|------|----------|--------|
+| `anonymous_system_prompt` | Промпт для демо-чата на лендинге | Короткий, зацепить интерес |
+| `anonymous_quick_replies` | Стартовые кнопки демо-чата | `["Вопрос 1?", "Вопрос 2?"]` |
+| `free_chat_welcome` | Welcome-сообщение свободного чата | Используется как fallback на ленде |
+| `meta_title` | SEO title | `"AI-тренажёр: Название — Автор"` |
+| `meta_description` | SEO description | 1-2 предложения |
+
+### Реестр обложек и фото авторов
+
+| Книга | cover_url | author photo_url |
+|-------|-----------|-----------------|
+| Гловер «Славные парни» | (в seed-landing-data.sql, без cover_url) | — |
+| Берн «Игры» | `cdn.litres.ru/pub/c/cover_415/73470133.webp` | `upload.wikimedia.org/wikipedia/ru/6/67/Erik_Bern.jpg` |
+| Чепмен «5 языков» | `cdn.litres.ru/pub/c/cover_415/161177.jpg` | `upload.wikimedia.org/.../Gary_D._Chapman.jpg` |
+| Бакиров «Разговорный гипноз» | `cdn.litres.ru/pub/c/cover_415/70789098.webp` | (найти) |
+
+---
+
+## test_configs — таблица тестов
+
+Тесты хранятся в таблице `test_configs`. Один INSERT = один полностью работающий тест. UI, скоринг и интерпретация адаптируются автоматически.
+
+### Схема таблицы
+
+```sql
+CREATE TABLE test_configs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  program_id uuid NOT NULL REFERENCES programs(id),
+  slug text NOT NULL UNIQUE,              -- 'issp', 'ta_ego_states', etc.
+  title text NOT NULL,                    -- 'Тест ИССП'
+  short_title text,                       -- 'ИССП' (для UI)
+  description text,                       -- Описание на лендинге
+
+  -- Вопросы (JSONB-массив)
+  questions jsonb NOT NULL,               -- [{q, scale, type, text}]
+  total_questions int GENERATED ALWAYS AS (jsonb_array_length(questions)) STORED,
+
+  -- Шкалы (JSONB-массив)
+  scales jsonb NOT NULL,                  -- [{key, name, order, exercises?, radar_label?}]
+
+  -- Скоринг
+  scoring jsonb NOT NULL DEFAULT '{}',
+
+  -- UI-конфиг
+  ui_config jsonb NOT NULL DEFAULT '{}',
+
+  -- Промпты
+  interpretation_prompt text,             -- Промпт для AI-интерпретации (Gemini Pro)
+  mini_analysis_prompt_template text,     -- Шаблон мини-анализа ({{questionText}})
+
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+### Структура JSONB-полей
+
+**questions** — массив вопросов:
+```json
+[
+  {"q": 1, "scale": "nice_guy", "type": "direct", "text": "Я часто ставлю потребности других выше своих"},
+  {"q": 2, "scale": "nice_guy", "type": "reverse", "text": "Я легко говорю «нет» другим людям"}
+]
+```
+- `q` — порядковый номер (1-based)
+- `scale` — ключ шкалы (должен совпадать с `scales[].key`)
+- `type` — `"direct"` (высокий балл = высокий показатель) или `"reverse"` (инвертируется)
+- `text` — текст вопроса (русский)
+
+**scales** — массив шкал:
+```json
+[
+  {
+    "key": "nice_guy",
+    "name": "Синдром славного парня",
+    "order": 0,
+    "exercises": [1, 5, 12],
+    "radar_label": ["Синдром", "славного парня"]
+  }
+]
+```
+- `key` — уникальный идентификатор (с префиксом книги: `ta_`, `ll_`, etc.)
+- `name` — человеческое название
+- `order` — порядок на радар-диаграмме (0-based)
+- `exercises` — номера упражнений, связанных со шкалой (опционально)
+- `radar_label` — как подписывать на радаре (массив строк для переноса)
+
+**scoring:**
+```json
+{
+  "answer_range": [1, 5],
+  "score_direction": "lower_is_better",
+  "level_thresholds": [25, 50, 75],
+  "level_labels": ["Низкий уровень", "Умеренный уровень", "Выраженный уровень", "Высокий уровень"]
+}
+```
+- `answer_range` — диапазон ответов по Ликерту (обычно [1, 5])
+- `score_direction` — `"lower_is_better"` (ISSP: низкий = здоровый) или `"higher_is_better"`
+- `level_thresholds` — границы уровней в процентах (N порогов = N+1 уровень)
+- `level_labels` — названия уровней (от низкого к высокому)
+
+**ui_config:**
+```json
+{
+  "questions_per_block": 5,
+  "auth_wall_question": 14,
+  "welcome_stats": [
+    {"num": "18", "label": "вопросов"},
+    {"num": "4", "label": "шкалы"},
+    {"num": "~5", "label": "минут"}
+  ],
+  "block_insights": [
+    "Хороший старт! Уже видны первые паттерны.",
+    "Интересная картина. Продолжаем.",
+    "Последний рывок — почти готово!"
+  ],
+  "quick_answer_labels": ["Совсем нет", "Скорее нет", "Иногда", "Скорее да", "Полностью"],
+  "radar_labels": {
+    "scale_key": ["Строка 1", "Строка 2"]
+  },
+  "analyzing_stages": [
+    {"title": "Анализируем ответы", "substeps": ["Обрабатываем паттерны", "Считаем баллы"]},
+    {"title": "Готовим интерпретацию", "substeps": ["Формируем профиль", "Подбираем рекомендации"]}
+  ],
+  "timeframe_text": "за последние 6 месяцев"
+}
+```
+- `questions_per_block` — вопросов в блоке (после каждого — переход/insight)
+- `auth_wall_question` — на каком вопросе показать auth wall (0-based index, `null` = нет auth wall)
+- `welcome_stats` — статистика на экране приветствия
+- `block_insights` — мотивирующие фразы между блоками
+- `quick_answer_labels` — подписи под шкалой Ликерта (от 1 до max)
+- `analyzing_stages` — этапы анимации «анализируем» (опционально)
+- `timeframe_text` — подсказка «за какой период оценивать» (опционально)
+
+### SQL-шаблон создания теста
+
+```sql
+INSERT INTO test_configs (
+  program_id, slug, title, short_title, description,
+  questions, scales, scoring, ui_config,
+  interpretation_prompt, mini_analysis_prompt_template
+) VALUES (
+  (SELECT id FROM programs WHERE slug = 'BOOK_SLUG'),
+  'TEST_SLUG',
+  'Название теста',
+  'Короткое название',
+  'Описание для лендинга',
+
+  -- questions (JSONB массив)
+  '[
+    {"q":1, "scale":"scale_key", "type":"direct", "text":"Текст вопроса 1"},
+    {"q":2, "scale":"scale_key", "type":"reverse", "text":"Текст вопроса 2"}
+  ]'::jsonb,
+
+  -- scales (JSONB массив)
+  '[
+    {"key":"scale_key", "name":"Название шкалы", "order":0, "radar_label":["Строка 1","Строка 2"]}
+  ]'::jsonb,
+
+  -- scoring
+  '{"answer_range":[1,5], "score_direction":"lower_is_better", "level_thresholds":[25,50,75], "level_labels":["Низкий","Умеренный","Выраженный","Высокий"]}'::jsonb,
+
+  -- ui_config
+  '{"questions_per_block":5, "auth_wall_question":null, "welcome_stats":[{"num":"N","label":"вопросов"},{"num":"K","label":"шкал"},{"num":"~M","label":"минут"}], "block_insights":["Insight 1","Insight 2"], "quick_answer_labels":["Совсем нет","Скорее нет","Иногда","Скорее да","Полностью"]}'::jsonb,
+
+  -- interpretation_prompt
+  E'Ты — психолог, специализирующийся на [тема книги].\n\nТвоя задача — написать персонализированную интерпретацию результатов теста.\n\n...',
+
+  -- mini_analysis_prompt_template ({{questionText}} будет заменён)
+  E'Вопрос: «{{questionText}}»\nОцени ответ пользователя по шкале от 1 до 5.\n...'
+);
+```
+
+### После создания теста — чеклист
+
+| # | Задача | Описание |
+|---|--------|----------|
+| 1 | Обновить `programs.features` | Добавить `"test": true` если ещё нет |
+| 2 | Обновить `landing_data.test` | Секция теста на лендинге (emoji, title, description, cta_href) |
+| 3 | Создать URL роут | `app/program/[slug]/(app)/test/[testSlug]/page.tsx` (если slug ≠ issp) |
+| 4 | Проверить middleware | Route `/program/*/test/*` должен быть public |
+| 5 | Маппинг шкалы → режим | `scales[].exercises` указывает на режимы для рекомендаций |
+
+### Реестр тестов
+
+| Книга | test slug | Вопросов | Шкал | Auth wall | Статус |
+|-------|-----------|----------|------|-----------|--------|
+| Гловер «Славные парни» | issp | 35 | 7 | Q34 | ✅ Работает |
+| Берн «Игры» | — | — | — | — | ❌ Нет (ta_diagnostic = чат-режим) |
+| Чепмен «5 языков» | — | — | — | — | ❌ Нет |
 
 ---
 
