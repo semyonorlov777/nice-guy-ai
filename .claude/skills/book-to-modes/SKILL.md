@@ -169,7 +169,7 @@ description: "Проектирование режимов AI-тренажёра 
 | Режим | mode_template.key | chat_type | route_suffix | icon | icon_exists? | sort_order |
 |-------|-------------------|-----------|-------------|------|-------------|------------|
 
-Колонка `icon_exists?` — проверь по списку в PLATFORM_MAP.md секция «Доступные иконки». Если ❌ → добавь задачу: создать иконку в mode-icons.tsx.
+Колонка `icon_exists?` — проверь по списку в PLATFORM_MAP.md секция «Иконки режимов». Если ❌ → добавь задачу: создать иконку в **трёх файлах** (mode-icons.tsx, hub-icons.tsx, InstrumentList.tsx) + добавить toolKeyMap для chat-based режимов. Подробности в PLATFORM_MAP.md → «Чеклист при добавлении иконки».
 
 **Если у программы есть Темы** (program_themes) — добавь таблицу маппинга тем → режимы (см. PLATFORM_MAP.md секция «program_themes → режимы»).
 

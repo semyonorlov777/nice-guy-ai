@@ -479,13 +479,34 @@ INSERT INTO test_configs (
 
 ---
 
-## Доступные иконки (mode-icons.tsx)
+## Иконки режимов — ДВЕ системы (обе обязательны)
 
-Перед назначением icon в таблице маппинга — проверь что иконка существует в `components/hub/mode-icons.tsx` → `iconMap`.
+В проекте **две независимые системы иконок**, обе нужны для корректного отображения:
 
-**Существующие:** pen, clock, check, book, chat, target, search, message-circle, book-open, map, drama, sparkles, heart, users, shield
+### 1. Лендинг: `components/hub/mode-icons.tsx` → `iconMap`
+Используется на публичном лендинге программы (секция "Решение").
+Формат: Feather/Lucide-style (24×24 viewBox, stroke, no fill).
 
-Если нужной иконки нет → добавь SVG-компонент + запись в iconMap. Формат: Feather/Lucide-style (24x24 viewBox, stroke, no fill).
+### 2. Хаб (кабинет): `components/icons/hub-icons.tsx` → `InstrumentList.tsx` → `INSTRUMENT_ICON_MAP`
+Используется на странице хаба (`/program/[slug]/hub`) — карточки инструментов.
+Формат: `IconProps { size?: number; className?: string }`, viewBox 0 0 24 24, stroke-based.
+
+**ВАЖНО:** Также нужно добавить `toolKeyMap` в `InstrumentList.tsx` для каждого нового chat-based режима (маппинг `mode_key` → `tool-slug` для URL `/chat/new?tool=...`).
+
+### Чеклист при добавлении иконки (Этап 5)
+
+| Шаг | Файл | Что сделать |
+|-----|------|-------------|
+| 1 | `components/hub/mode-icons.tsx` | Добавить SVG-компонент + запись в `iconMap` |
+| 2 | `components/icons/hub-icons.tsx` | Добавить SVG-компонент (с `size`/`className` props) |
+| 3 | `components/hub/InstrumentList.tsx` | Добавить import + запись в `INSTRUMENT_ICON_MAP` |
+| 4 | `components/hub/InstrumentList.tsx` | Добавить записи в `toolKeyMap` для chat-based режимов |
+
+### Существующие ключи (hub-icons + INSTRUMENT_ICON_MAP)
+
+pen, clock, check, book, chat, target, search, message-circle, book-open, map, drama, sparkles, heart, users, shield, compass, lightbulb, translate, unlock, rocket, lightning, flask
+
+Если нужной иконки нет — добавь во **все три файла** (шаги 1-3).
 
 ---
 
