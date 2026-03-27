@@ -184,6 +184,77 @@ export function ShieldIcon() {
   );
 }
 
+export function CompassIcon() {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  );
+}
+
+export function LightbulbIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M9 18h6" />
+      <path d="M10 22h4" />
+      <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14" />
+    </svg>
+  );
+}
+
+export function TranslateIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M5 8l6 6" />
+      <path d="M4 14l6-6 2-3" />
+      <path d="M2 5h12" />
+      <path d="M7 2h1" />
+      <path d="M22 22l-5-10-5 10" />
+      <path d="M14 18h6" />
+    </svg>
+  );
+}
+
+export function UnlockIcon() {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 019.9-1" />
+    </svg>
+  );
+}
+
+export function RocketIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
+      <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+    </svg>
+  );
+}
+
+export function LightningIcon() {
+  return (
+    <svg {...svgProps}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+export function FlaskIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M9 3h6" />
+      <path d="M10 9V3" />
+      <path d="M14 9V3" />
+      <path d="M10 9l-4.5 9.5A2 2 0 007.3 21h9.4a2 2 0 001.8-2.5L14 9" />
+    </svg>
+  );
+}
+
 /** Маппинг icon key → компонент */
 const iconMap: Record<string, () => React.JSX.Element> = {
   pen: PenIcon,
@@ -201,6 +272,13 @@ const iconMap: Record<string, () => React.JSX.Element> = {
   heart: HeartIcon,
   users: UsersIcon,
   shield: ShieldIcon,
+  compass: CompassIcon,
+  lightbulb: LightbulbIcon,
+  translate: TranslateIcon,
+  unlock: UnlockIcon,
+  rocket: RocketIcon,
+  lightning: LightningIcon,
+  flask: FlaskIcon,
 };
 
 export function getModeIcon(iconKey: string): React.JSX.Element {
