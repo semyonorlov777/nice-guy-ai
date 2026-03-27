@@ -6,6 +6,8 @@ import {
   TestResultsPage,
   type TestResultsProps,
 } from "@/components/test-results/TestResultsPage";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
+import { getScaleOrder, getScaleNames } from "@/lib/test-config";
 
 // UUID v4 regex
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,7 +77,11 @@ export default async function TestResultPage({
     .single();
 
   const programSlug = program?.slug ?? DEFAULT_PROGRAM_SLUG;
-  const testTitle = (program?.landing_data as { test?: { title?: string } } | null)?.test?.title;
+  const landingData = program?.landing_data as { test?: { title?: string } } | null;
+  const testTitle = landingData?.test?.title;
+
+  // Load test config for scale metadata
+  const testConfig = await getTestConfigByProgram(programSlug);
 
   // Check ownership via cookie auth
   let isOwner = false;
@@ -91,6 +97,19 @@ export default async function TestResultPage({
     // Not authenticated — public view
   }
 
+  // Derive scale metadata from testConfig (or use empty defaults)
+  const scaleOrder = testConfig ? getScaleOrder(testConfig) : [];
+  const scaleNameMap = testConfig ? getScaleNames(testConfig) : {};
+  const scaleExercises: Record<string, number[]> = {};
+  const radarLabels: Record<string, string[]> = {};
+  if (testConfig) {
+    for (const s of testConfig.scales) {
+      if (s.exercises) scaleExercises[s.key] = s.exercises;
+      if (s.radar_label) radarLabels[s.key] = s.radar_label;
+      else radarLabels[s.key] = [s.name];
+    }
+  }
+
   const props: TestResultsProps = {
     id: result.id,
     totalScore: result.total_score,
@@ -103,6 +122,15 @@ export default async function TestResultPage({
     createdAt: result.created_at,
     programSlug,
     testTitle,
+    scaleOrder,
+    scaleNames: scaleNameMap,
+    scaleExercises,
+    radarLabels,
+    heroSubtitle: testConfig
+      ? `${testConfig.total_questions} вопросов \u2022 ${testConfig.scales.length} шкал`
+      : undefined,
+    ctaText: undefined,
+    testSlug: testConfig?.slug,
   };
 
   return <TestResultsPage {...props} />;

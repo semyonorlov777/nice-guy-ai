@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { ISSPQuestion } from "@/lib/issp-config";
+import type { TestQuestion } from "@/lib/test-config";
 import InputBar from "@/components/InputBar/InputBar";
 
 const QUICK_LABELS = ["Не про меня", "Скорее нет", "Иногда", "Часто", "Полностью"];
@@ -9,7 +9,7 @@ const QUICK_LABELS = ["Не про меня", "Скорее нет", "Иногд
 type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
 
 interface QuestionScreenProps {
-  question: ISSPQuestion;
+  question: TestQuestion;
   questionIndex: number;
   totalQuestions: number;
   scaleName: string;

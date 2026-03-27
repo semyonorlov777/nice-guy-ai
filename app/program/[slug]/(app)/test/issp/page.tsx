@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { requireProgramFeature } from "@/lib/queries/program";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { ISSPTestClient } from "./client";
 
 export default async function ISSPTestPage({
@@ -11,5 +12,7 @@ export default async function ISSPTestPage({
   const supabase = await createClient();
   await requireProgramFeature(supabase, slug, "test");
 
-  return <ISSPTestClient />;
+  const testConfig = await getTestConfigByProgram(slug);
+
+  return <ISSPTestClient testConfig={testConfig} />;
 }

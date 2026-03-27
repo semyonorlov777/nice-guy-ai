@@ -2,9 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
-import { ISSP_SCALES, ISSP_SCALE_ORDER } from "@/lib/issp-config";
-import type { ScaleResult } from "@/lib/issp-scoring";
-import type { ISSPInterpretation } from "@/lib/issp-interpretation";
+import type { ScaleResult } from "@/lib/test-scoring";
+import type { TestInterpretation } from "@/lib/test-interpretation";
 import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
@@ -19,11 +18,18 @@ export interface TestResultsProps {
   scoresByScale: Record<string, ScaleResult>;
   topScales: string[];
   recommendedExercises: number[];
-  interpretation: ISSPInterpretation | null;
+  interpretation: TestInterpretation | null;
   isOwner: boolean;
   createdAt: string;
   programSlug: string;
   testTitle?: string;
+  scaleOrder: string[];
+  scaleNames: Record<string, string>;
+  scaleExercises: Record<string, number[]>;
+  radarLabels: Record<string, string[]>;
+  heroSubtitle?: string;
+  ctaText?: string;
+  testSlug?: string;
 }
 
 // ── Constants ──
@@ -58,25 +64,29 @@ function HeroScore({
   totalScore,
   levelLabel,
   resultId,
+  testTitle,
+  heroSubtitle,
 }: {
   totalScore: number;
   levelLabel: string;
   resultId: string;
+  testTitle?: string;
+  heroSubtitle?: string;
 }) {
   const displayScore = useCountUp(totalScore);
   const levelClass = getLevelClass(totalScore);
 
   return (
     <div className="tr-hero">
-      <div className="tr-hero-label">Индекс синдрома славного парня</div>
+      <div className="tr-hero-label">{testTitle || "Результат теста"}</div>
       <div className="tr-hero-score">
         <span>{displayScore}</span>
         <span className="tr-denominator">/100</span>
       </div>
       <div className={`tr-hero-level ${levelClass}`}>{levelLabel}</div>
-      <div className="tr-hero-subtitle">
-        Тест по книге &laquo;Хватит быть славным парнем&raquo; &bull; 35 вопросов &bull; 7 шкал
-      </div>
+      {heroSubtitle && (
+        <div className="tr-hero-subtitle">{heroSubtitle}</div>
+      )}
       <ShareButtons resultId={resultId} totalScore={totalScore} />
     </div>
   );
@@ -102,10 +112,14 @@ function ScaleCards({
   scoresByScale,
   topScales,
   interpretation,
+  scaleOrder,
+  scaleNames,
 }: {
   scoresByScale: Record<string, ScaleResult>;
   topScales: string[];
-  interpretation: ISSPInterpretation | null;
+  interpretation: TestInterpretation | null;
+  scaleOrder: string[];
+  scaleNames: Record<string, string>;
 }) {
   const { ref, isVisible } = useScrollReveal();
   const [animated, setAnimated] = useState(false);
@@ -118,7 +132,7 @@ function ScaleCards({
   }, [isVisible, animated]);
 
   // Sort by pct desc
-  const sorted = [...ISSP_SCALE_ORDER].sort(
+  const sorted = [...scaleOrder].sort(
     (a, b) => (scoresByScale[b]?.pct ?? 0) - (scoresByScale[a]?.pct ?? 0)
   );
 
@@ -144,7 +158,7 @@ function ScaleCards({
           if (!s) return null;
           const color = colorClass(s.pct);
           const isTop = i < 3 && s.pct >= 50;
-          const name = ISSP_SCALES[key]?.name ?? key;
+          const name = scaleNames[key] ?? key;
           const ThemeIcon = THEME_ICON_MAP[key];
 
           return (
@@ -175,10 +189,14 @@ function TopZones({
   topZones,
   scoresByScale,
   programSlug,
+  scaleNames,
+  scaleExercises,
 }: {
   topZones: Array<{ scale_key: string; action_text: string }>;
   scoresByScale: Record<string, ScaleResult>;
   programSlug: string;
+  scaleNames: Record<string, string>;
+  scaleExercises: Record<string, number[]>;
 }) {
   const { ref, isVisible } = useScrollReveal();
 
@@ -192,9 +210,9 @@ function TopZones({
 
       <div className="tr-zones-block">
         {topZones.map((zone, i) => {
-          const name = ISSP_SCALES[zone.scale_key]?.name ?? zone.scale_key;
+          const name = scaleNames[zone.scale_key] ?? zone.scale_key;
           const pct = scoresByScale[zone.scale_key]?.pct ?? 0;
-          const exercises = ISSP_SCALES[zone.scale_key]?.exercises ?? [];
+          const exercises = scaleExercises[zone.scale_key] ?? [];
 
           return (
             <div key={zone.scale_key} className="tr-zone-item">
@@ -230,10 +248,14 @@ function CTASection({
   isOwner,
   programSlug,
   testTitle,
+  ctaText,
+  testSlug,
 }: {
   isOwner: boolean;
   programSlug: string;
   testTitle?: string;
+  ctaText?: string;
+  testSlug?: string;
 }) {
   const { ref, isVisible } = useScrollReveal();
 
@@ -247,14 +269,12 @@ function CTASection({
           <Link href={`/program/${programSlug}/exercises`} className="tr-cta-primary">
             Начать путь к изменениям
           </Link>
-          <div className="tr-cta-sub">
-            46 упражнений по книге &laquo;Хватит быть славным парнем&raquo;
-          </div>
+          {ctaText && <div className="tr-cta-sub">{ctaText}</div>}
         </>
       ) : (
         <div className="tr-cta-guest">
           <div className="tr-cta-guest-title">{testTitle || "А какой твой профиль?"}</div>
-          <Link href={`/program/${programSlug}/test/issp`} className="tr-cta-primary">
+          <Link href={`/program/${programSlug}/test/${testSlug || "issp"}`} className="tr-cta-primary">
             Пройти тест бесплатно
           </Link>
         </div>
@@ -293,6 +313,13 @@ export function TestResultsPage(props: TestResultsProps) {
     isOwner,
     programSlug,
     testTitle,
+    scaleOrder,
+    scaleNames,
+    scaleExercises,
+    radarLabels,
+    heroSubtitle,
+    ctaText,
+    testSlug,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -344,6 +371,8 @@ export function TestResultsPage(props: TestResultsProps) {
           totalScore={totalScore}
           levelLabel={levelLabel}
           resultId={id}
+          testTitle={testTitle}
+          heroSubtitle={heroSubtitle}
         />
 
         <Divider />
@@ -364,7 +393,7 @@ export function TestResultsPage(props: TestResultsProps) {
           </>
         )}
 
-        <RadarChart scoresByScale={scoresByScale} />
+        <RadarChart scoresByScale={scoresByScale} scaleOrder={scaleOrder} radarLabels={radarLabels} />
 
         <Divider />
 
@@ -372,6 +401,8 @@ export function TestResultsPage(props: TestResultsProps) {
           scoresByScale={scoresByScale}
           topScales={topScales}
           interpretation={interpretation}
+          scaleOrder={scaleOrder}
+          scaleNames={scaleNames}
         />
         <Divider />
 
@@ -382,12 +413,14 @@ export function TestResultsPage(props: TestResultsProps) {
                 topZones={interpretation.top_zones}
                 scoresByScale={scoresByScale}
                 programSlug={programSlug}
+                scaleNames={scaleNames}
+                scaleExercises={scaleExercises}
               />
               <Divider />
             </>
           )}
 
-        <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} />
+        <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} ctaText={ctaText} testSlug={testSlug} />
 
         <ResultsFooter />
       </div>

@@ -11,14 +11,8 @@ import { BlockTransition } from "@/components/test/BlockTransition";
 import { AnalyzingScreen } from "@/components/test/AnalyzingScreen";
 import { CompletionScreen } from "@/components/test/CompletionScreen";
 import { HistoryScreen, type TestResultSummary } from "@/components/test/HistoryScreen";
-import {
-  ISSP_QUESTIONS,
-  ISSP_TOTAL_QUESTIONS,
-  ISSP_AUTH_WALL_QUESTION,
-  ISSP_SCALE_NAMES,
-  ISSP_SCALE_ORDER,
-  ISSP_BLOCK_INSIGHTS,
-} from "@/lib/issp-config";
+import type { TestConfig } from "@/lib/test-config";
+import { getScaleOrder, getScaleNames } from "@/lib/test-config";
 
 type CardPhase =
   | "loading"
@@ -33,11 +27,18 @@ type CardPhase =
 
 type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
 
-const TOTAL_QUESTIONS = ISSP_TOTAL_QUESTIONS;
 const TEXT_TIMEOUT_SLOW_MS = 5000;
 const TEXT_TIMEOUT_ABORT_MS = 8000;
 
-export function TestCardFlow() {
+export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
+  // Derived from config
+  const TOTAL_QUESTIONS = testConfig.total_questions;
+  const AUTH_WALL_QUESTION = testConfig.ui_config.auth_wall_question;
+  const QUESTIONS_PER_BLOCK = testConfig.ui_config.questions_per_block;
+  const scaleOrder = getScaleOrder(testConfig);
+  const scaleNames = getScaleNames(testConfig);
+  const blockInsights = testConfig.ui_config.block_insights;
+  const storageKey = `test_session_${testConfig.slug}`;
   const router = useRouter();
   const pathname = usePathname();
   const programSlug = pathname.match(/^\/program\/([^/]+)\//)?.[1] ?? DEFAULT_PROGRAM_SLUG;
@@ -143,8 +144,8 @@ export function TestCardFlow() {
 
           setChatId(chat.id);
 
-          // Test completed or at Q35 — go to analyzing
-          if (cq >= 35 || testState?.status === "completed") {
+          // Test completed or at last question — go to analyzing
+          if (cq >= TOTAL_QUESTIONS || testState?.status === "completed") {
             setPhase("analyzing");
             return;
           }
@@ -168,6 +169,8 @@ export function TestCardFlow() {
       let savedSessionId: string | null = null;
       try {
         savedSessionId =
+          sessionStorage.getItem(storageKey) ||
+          localStorage.getItem(storageKey) ||
           sessionStorage.getItem("issp_session_id") ||
           localStorage.getItem("issp_session_id");
       } catch {
@@ -212,12 +215,14 @@ export function TestCardFlow() {
               setChatId(newChatId);
               setMode("authenticated");
               try {
+                sessionStorage.removeItem(storageKey);
+                localStorage.removeItem(storageKey);
                 sessionStorage.removeItem("issp_session_id");
                 localStorage.removeItem("issp_session_id");
               } catch { /* ignore */ }
 
-              // Test completed or at Q35 — go to analyzing
-              if (cq >= 35 || testState?.status === "completed") {
+              // Test completed or at last question — go to analyzing
+              if (cq >= TOTAL_QUESTIONS || testState?.status === "completed") {
                 setPhase("analyzing");
                 return;
               }
@@ -254,7 +259,7 @@ export function TestCardFlow() {
           setCurrentQuestionIndex(cq);
 
           // Auth wall: anonymous user at auth wall question+ must authenticate
-          if (cq >= ISSP_AUTH_WALL_QUESTION) {
+          if (AUTH_WALL_QUESTION !== null && cq >= AUTH_WALL_QUESTION) {
             setPhase("auth_wall");
             setAuthSheetOpen(true);
             return;
@@ -275,7 +280,7 @@ export function TestCardFlow() {
           } catch { /* ignore */ }
         } else {
           // Server error (500, timeout) — keep storage, user can retry on refresh
-          console.warn("[ISSP] Failed to restore session (status:", res.status, "), keeping storage for retry");
+          console.warn("[Test] Failed to restore session (status:", res.status, "), keeping storage for retry");
         }
       }
 
@@ -368,8 +373,8 @@ export function TestCardFlow() {
 
     const newSessionId = crypto.randomUUID();
     try {
-      sessionStorage.setItem("issp_session_id", newSessionId);
-      localStorage.setItem("issp_session_id", newSessionId);
+      sessionStorage.setItem(storageKey, newSessionId);
+      localStorage.setItem(storageKey, newSessionId);
     } catch {
       // ignore
     }
@@ -387,7 +392,7 @@ export function TestCardFlow() {
       try {
         const body = {
           message: "Готов, начнём",
-          test_slug: "issp",
+          test_slug: testConfig.slug,
           session_id: newSessionId,
           messages: [],
         };
@@ -520,17 +525,17 @@ export function TestCardFlow() {
       return true;
     }
 
-    // Block boundary (every 5 questions)
-    const prevBlock = Math.floor((nextIndex - 1) / 5);
-    const nextBlock = Math.floor(nextIndex / 5);
-    if (nextBlock > prevBlock && nextIndex < TOTAL_QUESTIONS) {
+    // Block boundary
+    const prevBlock = Math.floor((nextIndex - 1) / QUESTIONS_PER_BLOCK);
+    const nextBlock = Math.floor(nextIndex / QUESTIONS_PER_BLOCK);
+    if (QUESTIONS_PER_BLOCK > 0 && nextBlock > prevBlock && nextIndex < TOTAL_QUESTIONS) {
       setCompletedBlockIndex(prevBlock);
       setPhase("block_transition");
       return true;
     }
 
     // Auth wall for anonymous
-    if (nextIndex === ISSP_AUTH_WALL_QUESTION && mode === "anonymous") {
+    if (AUTH_WALL_QUESTION !== null && nextIndex === AUTH_WALL_QUESTION && mode === "anonymous") {
       handleRequiresAuth();
       return true;
     }
@@ -561,7 +566,7 @@ export function TestCardFlow() {
           // Sync client to server state on desync
           setCurrentQuestionIndex(data.server_question);
         }
-        console.warn("[ISSP] Question desync, synced to:", data.server_question);
+        console.warn("[Test] Question desync, synced to:", data.server_question);
         if (isDebug) {
           debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: false, serverQuestion: data.server_question ?? null, timestamp: Date.now() });
           console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → 409 DESYNC, server at Q${data.server_question}`);
@@ -601,7 +606,7 @@ export function TestCardFlow() {
         handleRequiresAuth();
       }
     } catch (err) {
-      console.error("[ISSP] submitQuickAnswer error:", err);
+      console.error("[Test] submitQuickAnswer error:", err);
       if (isDebug) {
         debugLogRef.current.push({ question: questionIndex, sentScore: score, serverConfirmed: false, serverQuestion: null, timestamp: Date.now() });
         console.log(`[ISSP DEBUG] Q${questionIndex}: sent=${score} → ERROR`);
@@ -718,7 +723,7 @@ export function TestCardFlow() {
     try {
       // Send text answer to /api/test (existing SSE endpoint)
       const body = {
-        test_slug: "issp",
+        test_slug: testConfig.slug,
         answer_type: "text",
         answer_text: text,
         question_index: questionIdx,
@@ -749,7 +754,7 @@ export function TestCardFlow() {
           transitioning.current = false;
           return;
         }
-        if (data.server_question >= 35) {
+        if (data.server_question >= TOTAL_QUESTIONS) {
           setPhase("analyzing");
           transitioning.current = false;
           return;
@@ -880,7 +885,7 @@ export function TestCardFlow() {
 
   // ── Block transition continue ──
   const handleBlockContinue = useCallback(() => {
-    const nextIndex = (completedBlockIndex + 1) * 5;
+    const nextIndex = (completedBlockIndex + 1) * QUESTIONS_PER_BLOCK;
     setCurrentQuestionIndex(nextIndex);
     setIsLocked(false);
     setSelectedScore(null);
@@ -910,8 +915,10 @@ export function TestCardFlow() {
     let cancelled = false;
     let intervalRef: ReturnType<typeof setInterval> | undefined;
     let notFoundCount = 0;
+    let processingCount = 0;
     let waitingForChatId = 0;
     const NOT_FOUND_LIMIT = 20; // ~60s (20 polls × 3s)
+    const PROCESSING_LIMIT = 20; // ~60s — accept result without interpretation
     const CHAT_ID_WAIT_LIMIT = 10; // ~30s waiting for chatId to arrive
 
     const poll = async () => {
@@ -919,7 +926,7 @@ export function TestCardFlow() {
       if (!chatId) {
         waitingForChatId++;
         if (waitingForChatId >= CHAT_ID_WAIT_LIMIT && !cancelled) {
-          console.error("[ISSP] chatId still null after", CHAT_ID_WAIT_LIMIT, "polls — cannot fetch results");
+          console.error("[Test] chatId still null after", CHAT_ID_WAIT_LIMIT, "polls — cannot fetch results");
           setPhase("question");
           setErrorMessage("Не удалось получить результаты. Попробуйте ответить на последний вопрос ещё раз.");
           setTimeout(() => setErrorMessage(null), 8000);
@@ -931,7 +938,7 @@ export function TestCardFlow() {
         const res = await fetch(`/api/test/result?chat_id=${chatId}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        console.log("[ISSP] polling response:", data.status, data.result_id);
+        console.log("[Test] polling response:", data.status, data.result_id);
 
         if (data.result_id && data.status === "ready" && !cancelled) {
           setResultId(data.result_id);
@@ -939,18 +946,20 @@ export function TestCardFlow() {
         }
 
         // Fallback: если result_id есть но status не ready — возможно after() зависло
-        // Через 90с (30 polls) принимаем processing результат как есть
-        if (data.result_id && data.status === "processing" && notFoundCount > 30 && !cancelled) {
-          console.warn("[ISSP] accepting processing result after timeout, id:", data.result_id);
-          setResultId(data.result_id);
-          return;
+        if (data.result_id && data.status === "processing") {
+          processingCount++;
+          if (processingCount >= PROCESSING_LIMIT && !cancelled) {
+            console.warn("[Test] accepting processing result after", processingCount, "polls, id:", data.result_id);
+            setResultId(data.result_id);
+            return;
+          }
         }
 
         // Если запись не найдена слишком долго — INSERT вероятно упал
         if (data.status === "not_found") {
           notFoundCount++;
           if (notFoundCount >= NOT_FOUND_LIMIT && !cancelled) {
-            console.error("[ISSP] result not_found after", NOT_FOUND_LIMIT, "polls — INSERT likely failed");
+            console.error("[Test] result not_found after", NOT_FOUND_LIMIT, "polls — INSERT likely failed");
             setPhase("question");
             setErrorMessage("Не удалось сохранить результаты. Попробуйте ответить на последний вопрос ещё раз.");
             setTimeout(() => setErrorMessage(null), 8000);
@@ -992,9 +1001,9 @@ export function TestCardFlow() {
   }, [resultId, router]);
 
   // ── Render ──
-  const question = ISSP_QUESTIONS[currentQuestionIndex];
-  const scaleKey = question?.scale || ISSP_SCALE_ORDER[0];
-  const scaleName = ISSP_SCALE_NAMES[scaleKey] || "";
+  const question = testConfig.questions[currentQuestionIndex];
+  const scaleKey = question?.scale || scaleOrder[0];
+  const scaleName = scaleNames[scaleKey] || "";
 
   if (phase === "loading") {
     return (
@@ -1051,9 +1060,9 @@ export function TestCardFlow() {
         {phase === "block_transition" && (
           <BlockTransition
             blockIndex={completedBlockIndex}
-            completedScaleName={ISSP_SCALE_NAMES[ISSP_SCALE_ORDER[completedBlockIndex]] || ""}
-            nextScaleName={ISSP_SCALE_NAMES[ISSP_SCALE_ORDER[completedBlockIndex + 1]] || ""}
-            insight={ISSP_BLOCK_INSIGHTS[completedBlockIndex] || ""}
+            completedScaleName={scaleNames[scaleOrder[completedBlockIndex]] || ""}
+            nextScaleName={scaleNames[scaleOrder[completedBlockIndex + 1]] || ""}
+            insight={blockInsights[completedBlockIndex] || ""}
             onContinue={handleBlockContinue}
           />
         )}
