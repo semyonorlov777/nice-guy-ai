@@ -445,16 +445,21 @@ CREATE TABLE test_configs (
 ```json
 {
   "questions_per_block": 5,
-  "auth_wall_question": 14,
+  "auth_wall_question": 19,
+  "welcome_title": "Название теста<br /><span>вторая строка</span>",
+  "welcome_subtitle": "Подзаголовок (необязательно)",
+  "welcome_description": "Описание теста на экране приветствия",
+  "welcome_badge": "Диагностика",
+  "welcome_cta": "Начать тест",
+  "welcome_meta": "Результаты конфиденциальны. Правильных ответов нет.",
   "welcome_stats": [
-    {"num": "18", "label": "вопросов"},
-    {"num": "4", "label": "шкалы"},
+    {"num": "25", "label": "вопросов"},
+    {"num": "5", "label": "шкал"},
     {"num": "~5", "label": "минут"}
   ],
   "block_insights": [
-    "Хороший старт! Уже видны первые паттерны.",
-    "Интересная картина. Продолжаем.",
-    "Последний рывок — почти готово!"
+    "Insight после блока 1",
+    "Insight после блока 2"
   ],
   "quick_answer_labels": ["Совсем нет", "Скорее нет", "Иногда", "Скорее да", "Полностью"],
   "radar_labels": {
@@ -464,13 +469,19 @@ CREATE TABLE test_configs (
     {"title": "Анализируем ответы", "substeps": ["Обрабатываем паттерны", "Считаем баллы"]},
     {"title": "Готовим интерпретацию", "substeps": ["Формируем профиль", "Подбираем рекомендации"]}
   ],
-  "timeframe_text": "за последние 6 месяцев"
+  "timeframe_text": "Вспомни последние 2–4 недели"
 }
 ```
 - `questions_per_block` — вопросов в блоке (после каждого — переход/insight)
-- `auth_wall_question` — на каком вопросе показать auth wall (0-based index, `null` = нет auth wall)
+- `auth_wall_question` — на каком вопросе показать auth wall (0-based index, `null` = нет auth wall). Формула: `Math.floor(total_questions * 0.8) - 1`
+- **welcome_title** — заголовок WelcomeScreen (поддерживает HTML: `<br />`, `<span>`). Fallback: `testConfig.title`
+- **welcome_subtitle** — подзаголовок (опционально)
+- **welcome_description** — описание (опционально). Fallback: `testConfig.description`
+- **welcome_badge** — бейдж вверху (опционально). Fallback: `"Диагностика"`
+- **welcome_cta** — текст кнопки (опционально). Fallback: `"Начать тест"`
+- **welcome_meta** — текст под кнопкой (опционально). Fallback: `"Результаты конфиденциальны. Правильных ответов нет."`
 - `welcome_stats` — статистика на экране приветствия
-- `block_insights` — мотивирующие фразы между блоками
+- `block_insights` — мотивирующие фразы между блоками (по 1 на блок, count = `ceil(total_questions / questions_per_block)`)
 - `quick_answer_labels` — подписи под шкалой Ликерта (от 1 до max)
 - `analyzing_stages` — этапы анимации «анализируем» (опционально)
 - `timeframe_text` — подсказка «за какой период оценивать» (опционально)
@@ -516,20 +527,35 @@ INSERT INTO test_configs (
 
 ### После создания теста — чеклист
 
-| # | Задача | Описание |
-|---|--------|----------|
-| 1 | Обновить `programs.features` | Добавить `"test": true` если ещё нет |
-| 2 | Обновить `landing_data.test` | Секция теста на лендинге (emoji, title, description, cta_href) |
-| 3 | Создать URL роут | `app/program/[slug]/(app)/test/[testSlug]/page.tsx` (если slug ≠ issp) |
-| 4 | Проверить middleware | Route `/program/*/test/*` должен быть public |
-| 5 | Маппинг шкалы → режим | `scales[].exercises` указывает на режимы для рекомендаций |
+| # | Задача | Тип | Описание |
+|---|--------|-----|----------|
+| 1 | INSERT в `test_configs` | SQL | Основной INSERT (или ON CONFLICT DO UPDATE для идемпотентности) |
+| 2 | `programs.features` += `"test": true` | SQL | Feature flag, без него тест не появится в UI |
+| 3 | `landing_data.test` | SQL | Секция теста на лендинге (emoji, title, description, cta_href) |
+| 4 | `programs.test_system_prompt` | SQL | System prompt для AI в тесте. **Без него API вернёт 404** |
+| 5 | Проверить `test_results.test_slug` | DB | Колонка ОБЯЗАТЕЛЬНА. Если нет — INSERT результатов упадёт (баг GPP #1) |
+| 6 | Проверить middleware | Код | Route `/program/*/test/*` уже public (regex в middleware.ts). Новых роутов добавлять не нужно |
+| 7 | Роут `test/[testSlug]` | Код | Уже существует и работает для любого slug. Создавать не нужно |
+| 8 | WelcomeScreen | Код | Динамический, читает `ui_config.welcome_*`. Убедись что `welcome_title` с HTML-разметкой |
+| 9 | Маппинг шкалы → режим | SQL | В `interpretation_prompt`: связь шкал с режимами для `top_zones[].action_text` |
+| 10 | Пройти тест в браузере | Verify | Полный путь: welcome → 25 вопросов → auth wall → результаты → radar chart |
+
+### Известные баги и грабли (lessons learned)
+
+| # | Баг | Причина | Как избежать |
+|---|-----|---------|-------------|
+| 1 | INSERT в test_results падает | Колонка `test_slug` отсутствовала в таблице | Чеклист п.5: проверять схему `test_results` перед первым тестом |
+| 2 | WelcomeScreen показывал ИССП для всех тестов | Компонент был захардкожен | Исправлено: WelcomeScreen теперь динамический (ui_config.welcome_*) |
+| 3 | `/test/issp` хардкод в HubScreen, SiteFooter | Ссылки вели на конкретный slug | Исправлено: используют `/program/{slug}/test` → redirect на правильный slug |
+| 4 | Build проходит, но данные не доходят | TypeScript не проверяет что DB-колонка существует | Правило: после SQL seed — обязательно пройти тест в браузере до результатов |
+| 5 | `/api/test/config` возвращает только DEFAULT_PROGRAM | GET-эндпоинт не принимает program_slug | Не критично: клиент использует `/api/test?program_slug=...`, не `/api/test/config` |
 
 ### Реестр тестов
 
 | Книга | test slug | Вопросов | Шкал | Auth wall | Статус |
 |-------|-----------|----------|------|-----------|--------|
-| Гловер «Славные парни» | issp | 35 | 7 | Q34 | ✅ Работает |
-| Берн «Игры» | — | — | — | — | ❌ Нет (ta_diagnostic = чат-режим) |
+| Гловер «Славные парни» | issp | 35 | 7 | Q34 (idx 33) | ✅ Работает |
+| Берн «Игры» | gpp-test | 25 | 5 | Q20 (idx 19) | ✅ Работает |
 | Чепмен «5 языков» | — | — | — | — | ❌ Нет |
 
 ---
