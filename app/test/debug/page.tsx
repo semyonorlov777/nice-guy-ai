@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { ISSP_QUESTIONS, ISSP_SCALE_NAMES } from "@/lib/issp-config";
+import { useState, useEffect } from "react";
+import type { TestQuestion } from "@/lib/test-config";
+
+interface DebugQuestion {
+  text: string;
+  scale: string;
+  type: string;
+  scaleName: string;
+}
 
 interface DebugResult {
   question_index: number;
@@ -49,6 +56,7 @@ const toggleStyle = (active: boolean): React.CSSProperties => ({
 const shortModel = (m: string) => m.replace("gemini-", "").replace("2.5-", "");
 
 export default function TestDebugPage() {
+  const [questions, setQuestions] = useState<DebugQuestion[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerText, setAnswerText] = useState("");
   const [promptType, setPromptType] = useState<PromptType>("mini");
@@ -65,6 +73,25 @@ export default function TestDebugPage() {
   const [allProgress, setAllProgress] = useState({ done: 0, total: 0 });
   const [allResults, setAllResults] = useState<DebugResult[] | null>(null);
 
+  // Load questions from test config API
+  useEffect(() => {
+    fetch("/api/test/config")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.questions && data?.scaleNames) {
+          setQuestions(
+            (data.questions as TestQuestion[]).map((q: TestQuestion) => ({
+              text: q.text,
+              scale: q.scale,
+              type: q.type,
+              scaleName: data.scaleNames[q.scale] || q.scale,
+            }))
+          );
+        }
+      })
+      .catch(() => {/* ignore */});
+  }, []);
+
   if (!DEBUG_ENABLED) {
     return (
       <div style={{ padding: 40, color: "#888", fontFamily: "sans-serif" }}>
@@ -73,8 +100,9 @@ export default function TestDebugPage() {
     );
   }
 
-  const question = ISSP_QUESTIONS[questionIndex];
-  const scaleName = ISSP_SCALE_NAMES[question?.scale] || "";
+  const questionsLoaded = questions.length > 0;
+  const question = questions[questionIndex];
+  const scaleName = question?.scaleName || "";
 
   async function sendRequestForQ(qi: number, pt: PromptType, mt: ModelType, text: string): Promise<DebugResult> {
     const res = await fetch("/api/test/debug", {
@@ -101,11 +129,11 @@ export default function TestDebugPage() {
   }
 
   function makeErrorResult(qi: number, pt: PromptType, mt: ModelType, text: string, errMsg: string): DebugResult {
-    const q = ISSP_QUESTIONS[qi];
+    const q = questions[qi];
     return {
       question_index: qi,
-      question_text: q.text,
-      scale_name: ISSP_SCALE_NAMES[q.scale] || q.scale,
+      question_text: q?.text ?? `Q${qi + 1}`,
+      scale_name: q?.scaleName ?? "",
       answer_text: text,
       prompt_type: pt,
       model: mt,
@@ -163,9 +191,8 @@ export default function TestDebugPage() {
     setError(null);
     setAllResults(null);
 
-    // 35 вопросов × 4 комбинации = 140 запросов, батчами по BATCH_SIZE
     const tasks: { qi: number; pt: PromptType; mt: ModelType }[] = [];
-    for (let qi = 0; qi < 35; qi++) {
+    for (let qi = 0; qi < questions.length; qi++) {
       for (const c of ALL_COMBOS) {
         tasks.push({ qi, pt: c.prompt_type, mt: c.model });
       }
@@ -209,6 +236,12 @@ export default function TestDebugPage() {
         Тест — Дебаг промптов
       </h1>
 
+      {!questionsLoaded && (
+        <div style={{ padding: "12px 16px", background: "#16181d", borderRadius: 8, marginBottom: 16, fontSize: 14, color: "#888" }}>
+          Загрузка вопросов…
+        </div>
+      )}
+
       {/* Question selector */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", fontSize: 13, color: "#888", marginBottom: 4 }}>
@@ -227,7 +260,7 @@ export default function TestDebugPage() {
             fontSize: 14,
           }}
         >
-          {ISSP_QUESTIONS.map((q, i) => (
+          {questions.map((q, i) => (
             <option key={i} value={i}>
               {i + 1}. {q.text.slice(0, 60)}...
             </option>
@@ -306,7 +339,7 @@ export default function TestDebugPage() {
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <button
           onClick={handleSubmit}
-          disabled={loading || !answerText.trim()}
+          disabled={loading || !answerText.trim() || !questionsLoaded}
           style={{
             padding: "10px 24px",
             background: loading ? "#333" : "#c9a84c",
@@ -322,7 +355,7 @@ export default function TestDebugPage() {
         </button>
         <button
           onClick={handleCompareAll}
-          disabled={comparing || !answerText.trim()}
+          disabled={comparing || !answerText.trim() || !questionsLoaded}
           style={{
             padding: "10px 24px",
             background: comparing ? "#333" : "#1a1d22",
@@ -338,7 +371,7 @@ export default function TestDebugPage() {
         </button>
         <button
           onClick={handleRunAllQuestions}
-          disabled={runningAll || !answerText.trim()}
+          disabled={runningAll || !answerText.trim() || !questionsLoaded}
           style={{
             padding: "10px 24px",
             background: runningAll ? "#333" : "#1a1d22",
@@ -352,7 +385,7 @@ export default function TestDebugPage() {
         >
           {runningAll
             ? `Все вопросы... ${allProgress.done}/${allProgress.total}`
-            : "Все вопросы (35x4)"}
+            : `Все вопросы (${questions.length}x4)`}
         </button>
       </div>
 
