@@ -30,11 +30,22 @@ CREATE TABLE program_modes (
   enabled boolean DEFAULT true,
   sort_order int DEFAULT 0,
   access_type text DEFAULT 'paid',   -- 'free' | 'paid'
-  welcome_message text,              -- Welcome-сообщение для этого режима
+  welcome_message text,              -- Welcome-сообщение (первое сообщение в истории чата)
   system_prompt text,                -- Системный промпт (если отличается от program-level)
-  config jsonb DEFAULT '{}'
+  config jsonb DEFAULT '{}',
+  -- Welcome-поля для NewChatScreen (ВСЕ обязательны для корректного отображения):
+  welcome_mode_label text,           -- Лейбл типа режима ('Анализ', 'Воркшоп', 'Свободный чат')
+  welcome_title text,                -- Заголовок ('Деконструктор страхов', 'Спросить Гловера')
+  welcome_subtitle text,             -- Подзаголовок (описание 1 строка)
+  welcome_ai_message text,           -- AI-сообщение на welcome-экране (markdown)
+  welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}]
+  welcome_system_context text,       -- Контекст для системного промпта (для тем)
+  color_class text DEFAULT 'accent', -- CSS-класс цвета ('accent', 'green')
+  badge text                         -- Бейдж на карточке ('Бесплатно', 'Новое')
 );
 ```
+
+**КРИТИЧНО:** Без `welcome_mode_label`, `welcome_title`, `welcome_ai_message` и `welcome_replies` — welcome-экран режима будет пустым (нет AI-сообщения, нет кнопок suggested replies). Это касается **ВСЕХ** режимов, включая `free_chat` и `author_chat`.
 
 **Ключевой момент:** `system_prompt` в `program_modes` переопределяет program-level промпт. Это позволяет каждому режиму иметь свой промпт.
 
@@ -59,22 +70,52 @@ VALUES
 ON CONFLICT (key) DO NOTHING;
 ```
 
-### 2. Привязать к программе с промптами
+### 2. Привязать к программе с промптами и welcome-данными
 
 ```sql
-INSERT INTO program_modes (program_id, mode_template_id, enabled, sort_order, access_type, welcome_message, system_prompt)
+INSERT INTO program_modes (
+  program_id, mode_template_id, enabled, sort_order, access_type,
+  welcome_message, system_prompt,
+  welcome_mode_label, welcome_title, welcome_subtitle,
+  welcome_ai_message, welcome_replies, color_class, badge
+)
 SELECT
   p.id,
   mt.id,
   true,
-  N,                          -- sort_order
-  'paid',                     -- или 'free'
-  E'Welcome-сообщение...',   -- из этапа 3b
-  E'Системный промпт...'     -- из этапа 4
+  N,                              -- sort_order
+  'paid',                         -- или 'free'
+  E'Welcome-сообщение (история)',  -- первое сообщение в чате (из этапа 3b)
+  E'Системный промпт...',         -- из этапа 4
+  'Анализ',                       -- welcome_mode_label (из этапа 3)
+  'Название режима',              -- welcome_title (из этапа 3)
+  'Описание в 1 строку',          -- welcome_subtitle
+  E'AI-сообщение на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
+  '[{"text": "Кнопка 1", "type": "normal"}, {"text": "Кнопка 2", "type": "normal"}]'::jsonb,
+  'accent',                       -- color_class ('accent' | 'green')
+  NULL                            -- badge ('Бесплатно', 'Новое', или NULL)
 FROM programs p
 CROSS JOIN mode_templates mt
 WHERE p.slug = 'BOOK_SLUG'
   AND mt.key = 'BOOK_mode_key';
+```
+
+**ВАЖНО: free_chat и author_chat тоже нуждаются в welcome-данных!**
+
+```sql
+-- Шаблон для free_chat:
+-- welcome_mode_label = 'Свободный чат'
+-- welcome_title = 'Просто поговорить'
+-- welcome_subtitle = 'Любой вопрос по [тема книги]'
+-- welcome_ai_message = 'Привет! Спроси о чём угодно — я отвечу через призму [книга]...'
+-- welcome_replies = [3-4 стартовых вопроса от первого лица]
+
+-- Шаблон для author_chat:
+-- welcome_mode_label = 'Разговор с автором'
+-- welcome_title = 'Спросить [Фамилия]'
+-- welcome_subtitle = 'AI в стиле автора книги'
+-- welcome_ai_message = 'Привет, я [Имя Фамилия]... [1-2 фразы в стиле автора]'
+-- welcome_replies = [3-4 вопроса к автору]
 ```
 
 ### 3. Обновить features (если нужно)
@@ -137,13 +178,27 @@ WHERE slug = 'BOOK_SLUG';
 
 | Файл | Что сделать | Обязательно? |
 |------|-------------|-------------|
-| SQL миграция | INSERT mode_templates + program_modes | Да |
+| SQL миграция | INSERT mode_templates + program_modes **со всеми welcome_* полями** | Да |
+| SQL: free_chat/author_chat | Заполнить welcome_* поля для free_chat и author_chat | **Да** — без них welcome-экран пустой |
 | `programs.features` | Обновить если нужны новые feature flags | По ситуации |
 | `lib/chat/prepare-context.ts` | Проверить что chat_type обрабатывается | Только если новая логика |
 | `middleware.ts` | Добавить исключение если route должен быть public | Только для public |
 | `app/program/[slug]/(app)/` | Создать page.tsx если нужен новый route | Только если route новый |
 | `types/modes.ts` | Добавить новые chat_type если нужно | По ситуации |
 | `components/hub/mode-icons.tsx` | Добавить иконку + в iconMap | Только если icon нет в iconMap |
+
+### Верификация welcome-данных после INSERT
+
+После выполнения SQL проверь что ВСЕ режимы имеют welcome-данные:
+
+```sql
+-- Проверка: все режимы должны вернуть has_msg=true и has_replies=true
+SELECT mt.key, pm.welcome_title, pm.welcome_ai_message IS NOT NULL as has_msg,
+  pm.welcome_replies::text != '[]' as has_replies
+FROM program_modes pm
+JOIN mode_templates mt ON mt.id = pm.mode_template_id
+WHERE pm.program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG');
+```
 
 ## program_themes → режимы
 
