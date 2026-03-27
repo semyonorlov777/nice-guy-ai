@@ -6,12 +6,13 @@ import { createClient, createServiceClient } from "@/lib/supabase-server";
 import {
   parseAIResponse,
   extractScoreFromUserMessage,
-} from "@/lib/issp-parser";
-import { calculateISSP } from "@/lib/issp-scoring";
-import { generateInterpretation } from "@/lib/issp-interpretation";
-import { ISSP_QUESTIONS } from "@/lib/issp-config";
-import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
-import type { TestAnswer } from "@/lib/issp-scoring";
+} from "@/lib/test-parser";
+import { calculateTestScore } from "@/lib/test-scoring";
+import { generateTestInterpretation } from "@/lib/test-interpretation";
+import { buildMiniPrompt } from "@/lib/test-mini-prompt";
+import type { TestAnswer } from "@/lib/test-scoring";
+import type { TestConfig, TestQuestion } from "@/lib/test-config";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { createRateLimit } from "@/lib/rate-limit";
 
@@ -116,15 +117,18 @@ function extractScores(
 function buildAnswer(
   score: number,
   questionIdx: number,
-  message: string
+  message: string,
+  questions: TestQuestion[],
+  answerRange: [number, number]
 ): TestAnswer {
-  const question = ISSP_QUESTIONS[questionIdx];
+  const question = questions[questionIdx];
+  const reverseBase = answerRange[0] + answerRange[1];
   return {
     q: question.q,
     scale: question.scale,
     type: question.type,
     rawAnswer: score,
-    score: question.type === "reverse" ? 6 - score : score,
+    score: question.type === "reverse" ? reverseBase - score : score,
     text: /^\d$/.test(message.trim()) ? undefined : message,
   };
 }
@@ -177,13 +181,17 @@ export async function POST(request: Request) {
   const { message, test_slug, answer_type, answer: quickAnswer, answer_text, question_index, program_slug: rawProgramSlug } = body;
   const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
-  // Common validation
-  if (test_slug !== "issp") {
+  // Load test config from DB
+  const testConfig = await getTestConfigByProgram(programSlug);
+  if (!testConfig) {
     return Response.json(
-      { error: "Неизвестный тест: " + test_slug },
-      { status: 400 }
+      { error: "Тест не найден для программы: " + programSlug },
+      { status: 404 }
     );
   }
+
+  const totalQuestions = testConfig.total_questions;
+  const authWallQuestion = testConfig.ui_config.auth_wall_question;
 
   // answer_type validation
   if (answer_type && !["quick", "text"].includes(answer_type)) {
@@ -192,7 +200,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (answer_type && (typeof question_index !== "number" || question_index < 0 || question_index >= 35)) {
+  if (answer_type && (typeof question_index !== "number" || question_index < 0 || question_index >= totalQuestions)) {
     return Response.json(
       { error: "Невалидный question_index" },
       { status: 400 }
@@ -350,6 +358,7 @@ export async function POST(request: Request) {
       clientMessages: body.messages,
       systemPrompt,
       programId: program.id,
+      testConfig,
     });
   }
 
@@ -363,6 +372,7 @@ export async function POST(request: Request) {
       message,
       systemPrompt,
       programId: program.id,
+      testConfig,
     });
   } else {
     return handleAnonymous({
@@ -371,6 +381,7 @@ export async function POST(request: Request) {
       clientMessages: body.messages,
       message,
       systemPrompt,
+      testConfig,
     });
   }
 }
@@ -393,6 +404,7 @@ async function handleTypedAnswer({
   clientMessages,
   systemPrompt,
   programId,
+  testConfig,
 }: {
   serviceClient: ReturnType<typeof createServiceClient>;
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -407,6 +419,7 @@ async function handleTypedAnswer({
   clientMessages?: Array<{ role: string; content: string }>;
   systemPrompt: string;
   programId: string;
+  testConfig: TestConfig;
 }) {
   // ── Step 1: Load state ──
   let serverCurrentQuestion: number;
@@ -477,7 +490,7 @@ async function handleTypedAnswer({
     };
 
     // Test already completed — include result info for recovery
-    if (isAuthenticated && serverCurrentQuestion >= 35) {
+    if (isAuthenticated && serverCurrentQuestion >= testConfig.total_questions) {
       const { data: existingResult } = await serviceClient
         .from("test_results")
         .select("id, status")
@@ -495,8 +508,11 @@ async function handleTypedAnswer({
   }
 
   // ── Step 3: Handle answer_type === "quick" ──
+  const lastQuestionIdx = testConfig.total_questions - 1;
+  const authWallQuestion = testConfig.ui_config.auth_wall_question;
+
   if (answerType === "quick" && score !== undefined) {
-    const answer = buildAnswer(score, questionIndex, String(score));
+    const answer = buildAnswer(score, questionIndex, String(score), testConfig.questions, testConfig.scoring.answer_range);
     const userMsg = { role: "user", content: String(score) };
     const assistantMsg = { role: "assistant", content: `Записываю как ${score}.` };
 
@@ -507,8 +523,8 @@ async function handleTypedAnswer({
         { chat_id: chatId, role: "assistant", content: `Записываю как ${score}.`, tokens_used: 0 },
       ]);
 
-      // Check if this is the final answer (question_index === 34)
-      if (questionIndex === 34) {
+      // Check if this is the final answer
+      if (questionIndex === lastQuestionIdx) {
         // Append answer via RPC first
         const { data: newState, error: rpcError } = await serviceClient.rpc(
           "append_test_answer",
@@ -520,16 +536,16 @@ async function handleTypedAnswer({
         }
 
         const finalState = newState as TestState;
-        if (finalState.answers.length >= 35) {
+        if (finalState.answers.length >= testConfig.total_questions) {
           // Background: calculate scores + interpretation
           after(() => calculateAndSaveResult({
             serviceClient, user: user!, chatId: chatId!,
-            programId, testState: finalState,
+            programId, testState: finalState, testConfig,
           }));
           return Response.json({
             success: true,
             calculating: true,
-            next_question: 35,
+            next_question: testConfig.total_questions,
             chat_id: chatId,
           });
         }
@@ -575,8 +591,8 @@ async function handleTypedAnswer({
         })
         .eq("session_id", sessionId);
 
-      // Check requires_auth: anonymous user completed 34 answers
-      if (updatedAnswers.length >= 34) {
+      // Check requires_auth: anonymous user hit auth wall
+      if (authWallQuestion !== null && updatedAnswers.length >= authWallQuestion) {
         return Response.json({
           success: true,
           requires_auth: true,
@@ -590,8 +606,8 @@ async function handleTypedAnswer({
 
   // ── Step 4: Handle answer_type === "text" ──
   if (answerType === "text" && answerText) {
-    const questionText = ISSP_QUESTIONS[questionIndex].text;
-    const miniPrompt = buildMiniPrompt(questionText);
+    const questionText = testConfig.questions[questionIndex].text;
+    const miniPrompt = buildMiniPrompt(questionText, testConfig.mini_analysis_prompt_template);
 
     return createSSEResponse(async (send) => {
       const result = streamText({
@@ -621,7 +637,7 @@ async function handleTypedAnswer({
       }
 
       // Score found — record the answer
-      const answer = buildAnswer(extractedScore, questionIndex, answerText);
+      const answer = buildAnswer(extractedScore, questionIndex, answerText, testConfig.questions, testConfig.scoring.answer_range);
 
       if (isAuthenticated) {
         // Save messages
@@ -630,8 +646,8 @@ async function handleTypedAnswer({
           { chat_id: chatId, role: "assistant", content: fullText, tokens_used: 0 },
         ]);
 
-        // Final answer check (question_index === 34)
-        if (questionIndex === 34) {
+        // Final answer check
+        if (questionIndex === lastQuestionIdx) {
           const { data: newState, error: rpcError } = await serviceClient.rpc(
             "append_test_answer",
             { p_chat_id: chatId, p_answer: answer }
@@ -644,16 +660,16 @@ async function handleTypedAnswer({
           }
 
           const finalState = newState as TestState;
-          if (finalState.answers.length >= 35) {
+          if (finalState.answers.length >= testConfig.total_questions) {
             // Signal client: answer accepted, calculation starting
-            send({ type: "answer_confirmed", score: extractedScore, next_question: 35 });
+            send({ type: "answer_confirmed", score: extractedScore, next_question: testConfig.total_questions });
             send({ type: "calculating" });
             send({ type: "done" });
 
             // Background: calculate scores + interpretation
             calculateAndSaveResult({
               serviceClient, user: user!, chatId: chatId!,
-              programId, testState: finalState,
+              programId, testState: finalState, testConfig,
             }).catch(err => {
               console.error("[test:typed:text] Background calculation failed:", err);
             });
@@ -704,8 +720,8 @@ async function handleTypedAnswer({
 
         send({ type: "answer_confirmed", score: extractedScore, next_question: nextQuestion });
 
-        // Check requires_auth: anonymous completed 34 answers
-        if (updatedAnswers.length >= 34) {
+        // Check requires_auth: anonymous hit auth wall
+        if (authWallQuestion !== null && updatedAnswers.length >= authWallQuestion) {
           send({ type: "requires_auth" });
         }
 
@@ -726,18 +742,20 @@ async function calculateAndSaveResult({
   chatId,
   programId,
   testState,
+  testConfig,
 }: {
   serviceClient: ReturnType<typeof createServiceClient>;
   user: { id: string };
   chatId: string;
   programId: string;
   testState: TestState;
+  testConfig: TestConfig;
 }) {
   try {
     // Step 1: Calculate scores (sync, fast)
-    console.log("[test:bg] Step 1: calculateISSP, answers:", testState.answers.length);
-    const isspResult = calculateISSP(testState.answers);
-    console.log("[test:bg] Step 1 done. Score:", isspResult.totalScore, "topScales:", isspResult.topScales);
+    console.log("[test:bg] Step 1: calculateTestScore, answers:", testState.answers.length);
+    const testResult = calculateTestScore(testState.answers, testConfig);
+    console.log("[test:bg] Step 1 done. Score:", testResult.totalScore, "topScales:", testResult.topScales);
 
     // Step 2: Insert test_results with status='processing' (not ready until interpretation done)
     console.log("[test:bg] Step 2: INSERT test_results (status=processing)");
@@ -747,12 +765,13 @@ async function calculateAndSaveResult({
         user_id: user.id,
         program_id: programId,
         chat_id: chatId,
-        total_score: isspResult.totalScore,
-        total_raw: isspResult.totalRaw,
-        scores_by_scale: isspResult.scoresByScale,
+        test_slug: testConfig.slug,
+        total_score: testResult.totalScore,
+        total_raw: testResult.totalRaw,
+        scores_by_scale: testResult.scoresByScale,
         answers: testState.answers,
-        recommended_exercises: isspResult.recommendedExercises,
-        top_scales: isspResult.topScales,
+        recommended_exercises: testResult.recommendedExercises,
+        top_scales: testResult.topScales,
         status: "processing",
       })
       .select("id")
@@ -775,11 +794,12 @@ async function calculateAndSaveResult({
     console.log("[test:bg] Step 3 done.");
 
     // Step 4: Generate interpretation (slow, 20-30s) — only set 'ready' after this completes
-    console.log("[test:bg] Step 4: generateInterpretation (slow)");
+    console.log("[test:bg] Step 4: generateTestInterpretation (slow)");
     try {
-      const interpretation = await generateInterpretation(
-        isspResult.totalScore,
-        isspResult.scoresByScale
+      const interpretation = await generateTestInterpretation(
+        testResult.totalScore,
+        testResult.scoresByScale,
+        testConfig
       );
       console.log("[test:bg] Step 4 done. Updating interpretation + status=ready...");
 
@@ -789,7 +809,7 @@ async function calculateAndSaveResult({
         .eq("id", resultId);
       console.log("[test:bg] Interpretation saved for result:", resultId);
     } catch (interpErr) {
-      console.error("[test:bg] Step 4 FAILED: generateInterpretation error:", interpErr);
+      console.error("[test:bg] Step 4 FAILED: generateTestInterpretation error:", interpErr);
       // Still mark as ready so user isn't stuck — scores are available without interpretation
       await serviceClient
         .from("test_results")
@@ -812,12 +832,14 @@ async function handleAnonymous({
   clientMessages,
   message,
   systemPrompt,
+  testConfig,
 }: {
   serviceClient: ReturnType<typeof createServiceClient>;
   sessionId: string;
   clientMessages: Array<{ role: string; content: string }>;
   message: string;
   systemPrompt: string;
+  testConfig: TestConfig;
 }) {
   // Load or create session
   let session: TestSession | null = null;
@@ -841,7 +863,7 @@ async function handleAnonymous({
       .from("test_sessions")
       .insert({
         session_id: sessionId,
-        test_slug: "issp",
+        test_slug: testConfig.slug,
         status: "in_progress",
         current_question: 0,
         answers: [],
@@ -867,8 +889,9 @@ async function handleAnonymous({
     content: string;
   }>;
 
-  // Safety net: don't allow 35th answer anonymously
-  if (existingAnswers.length >= 34) {
+  // Safety net: don't allow answers past auth wall anonymously
+  const authWallQ = testConfig.ui_config.auth_wall_question;
+  if (authWallQ !== null && existingAnswers.length >= authWallQ) {
     return createSSEResponse(async (send) => {
       send({ type: "requires_auth" });
       send({ type: "done" });
@@ -927,8 +950,8 @@ async function handleAnonymous({
       const updatedAnswers = [...existingAnswers];
 
       for (const score of scores) {
-        if (updatedQuestion >= ISSP_QUESTIONS.length) break;
-        const answer = buildAnswer(score, updatedQuestion, message);
+        if (updatedQuestion >= testConfig.total_questions) break;
+        const answer = buildAnswer(score, updatedQuestion, message, testConfig.questions, testConfig.scoring.answer_range);
         updatedAnswers.push(answer);
         updatedQuestion++;
       }
@@ -950,8 +973,8 @@ async function handleAnonymous({
         })
         .eq("session_id", sessionId);
 
-      // Special signal: requires_auth at 34+ answers
-      if (updatedAnswers.length >= 34) {
+      // Special signal: requires_auth at auth wall
+      if (authWallQ !== null && updatedAnswers.length >= authWallQ) {
         send({ type: "requires_auth" });
       }
     } else {
@@ -987,6 +1010,7 @@ async function handleAuthenticated({
   message,
   systemPrompt,
   programId,
+  testConfig,
 }: {
   supabase: Awaited<ReturnType<typeof createClient>>;
   serviceClient: ReturnType<typeof createServiceClient>;
@@ -995,6 +1019,7 @@ async function handleAuthenticated({
   message: string;
   systemPrompt: string;
   programId: string;
+  testConfig: TestConfig;
 }) {
   // Load chat
   const { data: chat } = await supabase
@@ -1063,9 +1088,10 @@ async function handleAuthenticated({
     );
   }
 
-  // Detect potential final (35th) answer
+  // Detect potential final answer
+  const lastQuestionIdx = testConfig.total_questions - 1;
   const isPotentiallyFinalAnswer =
-    testState.current_question >= 34 && testState.status === "in_progress";
+    testState.current_question >= lastQuestionIdx && testState.status === "in_progress";
 
   if (isPotentiallyFinalAnswer) {
     return handleFinalTestAnswer({
@@ -1078,6 +1104,7 @@ async function handleAuthenticated({
       programId,
       aiMessages,
       testState,
+      testConfig,
     });
   }
 
@@ -1123,8 +1150,8 @@ async function handleAuthenticated({
       );
 
       for (const score of scores) {
-        if (testState.current_question >= ISSP_QUESTIONS.length) break;
-        const answer = buildAnswer(score, testState.current_question, message);
+        if (testState.current_question >= testConfig.total_questions) break;
+        const answer = buildAnswer(score, testState.current_question, message, testConfig.questions, testConfig.scoring.answer_range);
 
         const { error: rpcError } = await serviceClient.rpc(
           "append_test_answer",
@@ -1159,6 +1186,7 @@ async function handleFinalTestAnswer({
   programId,
   aiMessages,
   testState,
+  testConfig,
 }: {
   serviceClient: ReturnType<typeof createServiceClient>;
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -1169,6 +1197,7 @@ async function handleFinalTestAnswer({
   programId: string;
   aiMessages: { role: "user" | "assistant"; content: string }[];
   testState: TestState;
+  testConfig: TestConfig;
 }) {
   console.log(
     "[test:final] handleFinalTestAnswer: current_question =",
@@ -1210,11 +1239,13 @@ async function handleFinalTestAnswer({
     // Update test_state atomically via RPC
     let currentTestState = testState;
     for (const score of scoresToRecord) {
-      if (currentTestState.current_question >= ISSP_QUESTIONS.length) break;
+      if (currentTestState.current_question >= testConfig.total_questions) break;
       const answer = buildAnswer(
         score,
         currentTestState.current_question,
-        message
+        message,
+        testConfig.questions,
+        testConfig.scoring.answer_range
       );
 
       const { data: newState, error: rpcError } = await serviceClient.rpc(
@@ -1229,7 +1260,7 @@ async function handleFinalTestAnswer({
       currentTestState = newState as TestState;
     }
 
-    if (currentTestState.answers.length < 35) {
+    if (currentTestState.answers.length < testConfig.total_questions) {
       // Not yet 35 — finish with single phase
       console.warn(
         "[test:final] Expected 35 answers but got",
@@ -1254,13 +1285,13 @@ async function handleFinalTestAnswer({
 
     // ── Calculate scores ──
     currentTestState.status = "completed";
-    const isspResult = calculateISSP(currentTestState.answers);
+    const scoringResult = calculateTestScore(currentTestState.answers, testConfig);
 
     console.log(
       "[test:final] Scores calculated: totalScore =",
-      isspResult.totalScore,
+      scoringResult.totalScore,
       "topScales =",
-      isspResult.topScales
+      scoringResult.topScales
     );
 
     // Save test_results (status=processing — not ready until interpretation done)
@@ -1270,12 +1301,13 @@ async function handleFinalTestAnswer({
         user_id: user.id,
         program_id: programId,
         chat_id: chatId,
-        total_score: isspResult.totalScore,
-        total_raw: isspResult.totalRaw,
-        scores_by_scale: isspResult.scoresByScale,
+        test_slug: testConfig.slug,
+        total_score: scoringResult.totalScore,
+        total_raw: scoringResult.totalRaw,
+        scores_by_scale: scoringResult.scoresByScale,
         answers: currentTestState.answers,
-        recommended_exercises: isspResult.recommendedExercises,
-        top_scales: isspResult.topScales,
+        recommended_exercises: scoringResult.recommendedExercises,
+        top_scales: scoringResult.topScales,
         status: "processing",
       })
       .select("id")
@@ -1302,11 +1334,12 @@ async function handleFinalTestAnswer({
     }
 
     // Generate interpretation (Gemini Pro, JSON) — set status='ready' only after this completes
-    let interpretation = { level_label: "не определён" } as Awaited<ReturnType<typeof generateInterpretation>>;
+    let interpretation = { level_label: "не определён" } as Awaited<ReturnType<typeof generateTestInterpretation>>;
     try {
-      interpretation = await generateInterpretation(
-        isspResult.totalScore,
-        isspResult.scoresByScale
+      interpretation = await generateTestInterpretation(
+        scoringResult.totalScore,
+        scoringResult.scoresByScale,
+        testConfig
       );
 
       if (insertData?.id) {
@@ -1339,7 +1372,7 @@ async function handleFinalTestAnswer({
       { role: "assistant" as const, content: phase1Text },
       {
         role: "user" as const,
-        content: `[СИСТЕМА] Тест завершён. Общий балл: ${isspResult.totalScore}/100 (${interpretation.level_label}). Напиши короткое поздравление (2-3 предложения) и скажи что подробные результаты с визуализацией по 7 шкалам доступны на странице результатов.`,
+        content: `[СИСТЕМА] Тест завершён. Общий балл: ${scoringResult.totalScore}/100 (${interpretation.level_label}). Напиши короткое поздравление (2-3 предложения) и скажи что подробные результаты с визуализацией по ${testConfig.scales.length} шкалам доступны на странице результатов.`,
       },
     ];
 

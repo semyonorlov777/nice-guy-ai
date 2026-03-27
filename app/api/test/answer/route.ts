@@ -1,13 +1,14 @@
 import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
-import { calculateISSP } from "@/lib/issp-scoring";
-import { generateInterpretation } from "@/lib/issp-interpretation";
-import { ISSP_QUESTIONS, ISSP_TOTAL_QUESTIONS, ISSP_AUTH_WALL_QUESTION } from "@/lib/issp-config";
-import type { TestAnswer } from "@/lib/issp-scoring";
+import { calculateTestScore } from "@/lib/test-scoring";
+import { generateTestInterpretation } from "@/lib/test-interpretation";
+import type { TestAnswer } from "@/lib/test-scoring";
+import type { TestConfig } from "@/lib/test-config";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createRateLimit } from "@/lib/rate-limit";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,15 +23,18 @@ type TestState = {
 function buildAnswer(
   score: number,
   questionIdx: number,
-  message: string
+  message: string,
+  testConfig: TestConfig
 ): TestAnswer {
-  const question = ISSP_QUESTIONS[questionIdx];
+  const question = testConfig.questions[questionIdx];
+  const [min, max] = testConfig.scoring.answer_range;
+  const reverseBase = max + min;
   return {
     q: question.q,
     scale: question.scale,
     type: question.type,
     rawAnswer: score,
-    score: question.type === "reverse" ? 6 - score : score,
+    score: question.type === "reverse" ? reverseBase - score : score,
     text: /^\d$/.test(message.trim()) ? undefined : message,
   };
 }
@@ -50,11 +54,22 @@ export async function POST(request: Request) {
   } = body;
   const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
+  // ── Load test config from DB ──
+  const testConfig = await getTestConfigByProgram(programSlug);
+  if (!testConfig) {
+    return Response.json({ error: "test_config_not_found" }, { status: 404 });
+  }
+
+  const [minScore, maxScore] = testConfig.scoring.answer_range;
+  const totalQuestions = testConfig.total_questions;
+  const authWallQuestion = testConfig.ui_config.auth_wall_question;
+  const questionsPerBlock = testConfig.ui_config.questions_per_block;
+
   // ── Validate score ──
-  if (typeof score !== "number" || score < 1 || score > 5 || !Number.isInteger(score)) {
+  if (typeof score !== "number" || score < minScore || score > maxScore || !Number.isInteger(score)) {
     return Response.json({ error: "invalid_score" }, { status: 400 });
   }
-  if (typeof questionIndex !== "number" || questionIndex < 0 || questionIndex >= ISSP_TOTAL_QUESTIONS) {
+  if (typeof questionIndex !== "number" || questionIndex < 0 || questionIndex >= totalQuestions) {
     return Response.json({ error: "invalid_question_index" }, { status: 400 });
   }
 
@@ -187,7 +202,7 @@ export async function POST(request: Request) {
   // for both authenticated and anonymous modes — no pre-RPC check needed.
 
   // ── Build answer ──
-  const answer = buildAnswer(score, questionIndex, String(score));
+  const answer = buildAnswer(score, questionIndex, String(score), testConfig);
 
   // ── Record answer ──
   if (isAuthenticated) {
@@ -211,7 +226,7 @@ export async function POST(request: Request) {
       };
 
       // If test already complete, include result info
-      if (newState.server_question >= ISSP_TOTAL_QUESTIONS || newState.answers_count >= ISSP_TOTAL_QUESTIONS) {
+      if (newState.server_question >= totalQuestions || newState.answers_count >= totalQuestions) {
         const { data: existingResult } = await serviceClient
           .from("test_results")
           .select("id, status")
@@ -246,10 +261,10 @@ export async function POST(request: Request) {
     const answersCount = updatedState.answers.length;
     const nextQuestion = updatedState.current_question;
 
-    // ═══ Q35: TEST COMPLETE ═══
-    if (answersCount >= ISSP_TOTAL_QUESTIONS) {
-      console.log("[test-answer] Q35 detected, answers count:", answersCount);
-      const isspResult = calculateISSP(updatedState.answers);
+    // ═══ TEST COMPLETE ═══
+    if (answersCount >= totalQuestions) {
+      console.log("[test-answer] Test complete detected, answers count:", answersCount);
+      const testResult_ = calculateTestScore(updatedState.answers, testConfig);
 
       const { data: testResult, error: insertError } = await serviceClient
         .from("test_results")
@@ -257,12 +272,13 @@ export async function POST(request: Request) {
           user_id: user!.id,
           program_id: programId,
           chat_id: chatId,
-          total_score: isspResult.totalScore,
-          total_raw: isspResult.totalRaw,
-          scores_by_scale: isspResult.scoresByScale,
+          test_slug: testConfig.slug,
+          total_score: testResult_.totalScore,
+          total_raw: testResult_.totalRaw,
+          scores_by_scale: testResult_.scoresByScale,
           answers: updatedState.answers,
-          recommended_exercises: isspResult.recommendedExercises,
-          top_scales: isspResult.topScales,
+          recommended_exercises: testResult_.recommendedExercises,
+          top_scales: testResult_.topScales,
           status: "processing",
         })
         .select("id")
@@ -292,9 +308,10 @@ export async function POST(request: Request) {
       after(async () => {
         try {
           console.log("[test-answer] after() starting interpretation for:", resultId);
-          const interpretation = await generateInterpretation(
-            isspResult.totalScore,
-            isspResult.scoresByScale
+          const interpretation = await generateTestInterpretation(
+            testResult_.totalScore,
+            testResult_.scoresByScale,
+            testConfig
           );
           const { error: updateError } = await serviceClient
             .from("test_results")
@@ -323,8 +340,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // ═══ BLOCK BOUNDARY (every 5 questions) ═══
-    const blockComplete = answersCount % 5 === 0 && answersCount < ISSP_TOTAL_QUESTIONS;
+    // ═══ BLOCK BOUNDARY ═══
+    const blockComplete = questionsPerBlock > 0 && answersCount % questionsPerBlock === 0 && answersCount < totalQuestions;
 
     return Response.json({
       success: true,
@@ -364,7 +381,7 @@ export async function POST(request: Request) {
     const nextQuestion = rpcResult.current_question as number;
 
     // AUTH WALL for anonymous
-    if (answersCount >= ISSP_AUTH_WALL_QUESTION) {
+    if (authWallQuestion !== null && answersCount >= authWallQuestion) {
       return Response.json({
         success: true,
         requires_auth: true,
@@ -373,7 +390,7 @@ export async function POST(request: Request) {
     }
 
     // Block boundary
-    const blockComplete = answersCount % 5 === 0 && answersCount < ISSP_TOTAL_QUESTIONS;
+    const blockComplete = questionsPerBlock > 0 && answersCount % questionsPerBlock === 0 && answersCount < totalQuestions;
 
     return Response.json({
       success: true,

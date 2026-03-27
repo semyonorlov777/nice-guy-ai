@@ -18,6 +18,8 @@ export async function analyzeForPortrait(
     },
   });
 
-  const result = await model.generateContent(userMessage);
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: userMessage }] }],
+  }, { timeout: 50_000 });
   return result.response.text();
 }

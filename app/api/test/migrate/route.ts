@@ -1,8 +1,8 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth } from "@/lib/api-helpers";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
-import { ISSP_AUTH_WALL_QUESTION } from "@/lib/issp-config";
-import type { TestAnswer } from "@/lib/issp-scoring";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
+import type { TestAnswer } from "@/lib/test-scoring";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,6 +54,10 @@ export async function POST(request: Request) {
     );
   }
 
+  // 4.5. Load test config
+  const testConfig = await getTestConfigByProgram(programSlug);
+  const authWallQuestion = testConfig?.ui_config.auth_wall_question ?? 34;
+
   // 5. Idempotency: if session already migrated, find the chat created by this migration
   if (session.status === "migrated") {
     const { data: migratedChat } = await supabase
@@ -71,7 +75,7 @@ export async function POST(request: Request) {
       const ts = migratedChat.test_state as { current_question?: number } | null;
       return Response.json({
         chat_id: migratedChat.id,
-        current_question: ts?.current_question ?? ISSP_AUTH_WALL_QUESTION,
+        current_question: ts?.current_question ?? authWallQuestion,
       });
     }
 
@@ -108,9 +112,9 @@ export async function POST(request: Request) {
   }
 
   const answers = (session.answers || []) as TestAnswer[];
-  if (answers.length < ISSP_AUTH_WALL_QUESTION) {
+  if (answers.length < authWallQuestion) {
     return Response.json(
-      { error: "Недостаточно ответов для миграции (минимум 34)" },
+      { error: `Недостаточно ответов для миграции (минимум ${authWallQuestion})` },
       { status: 400 }
     );
   }

@@ -1,8 +1,9 @@
 import { generateText } from "ai";
 import { google } from "@/lib/ai";
-import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/issp-parser";
-import { ISSP_QUESTIONS, ISSP_SCALE_NAMES } from "@/lib/issp-config";
-import { buildMiniPrompt } from "@/lib/prompts/issp-mini-prompt";
+import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/test-parser";
+import { buildMiniPrompt } from "@/lib/test-mini-prompt";
+import { getScaleNames } from "@/lib/test-config";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createServiceClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
@@ -25,9 +26,6 @@ export async function POST(request: Request) {
   const promptType: string = body.prompt_type || "mini";
   const modelKey: string = body.model || "flash";
 
-  if (typeof question_index !== "number" || question_index < 0 || question_index >= 35) {
-    return Response.json({ error: "Невалидный question_index (0-34)" }, { status: 400 });
-  }
   if (!answer_text || typeof answer_text !== "string") {
     return Response.json({ error: "Невалидный answer_text" }, { status: 400 });
   }
@@ -38,9 +36,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Невалидный model (flash|flash-lite)" }, { status: 400 });
   }
 
-  const question = ISSP_QUESTIONS[question_index];
+  const testConfig = await getTestConfigByProgram(DEFAULT_PROGRAM_SLUG);
+  if (!testConfig) {
+    return Response.json({ error: "Тест не найден" }, { status: 404 });
+  }
+
+  if (typeof question_index !== "number" || question_index < 0 || question_index >= testConfig.total_questions) {
+    return Response.json({ error: `Невалидный question_index (0-${testConfig.total_questions - 1})` }, { status: 400 });
+  }
+
+  const question = testConfig.questions[question_index];
   const questionText = question.text;
-  const scaleName = ISSP_SCALE_NAMES[question.scale] || question.scale;
+  const scaleNames = getScaleNames(testConfig);
+  const scaleName = scaleNames[question.scale] || question.scale;
   const modelName = MODELS[modelKey];
 
   // Build prompt
@@ -61,7 +69,7 @@ export async function POST(request: Request) {
     }
     fullPrompt = program.test_system_prompt;
   } else {
-    fullPrompt = buildMiniPrompt(questionText);
+    fullPrompt = buildMiniPrompt(questionText, testConfig.mini_analysis_prompt_template);
   }
 
   const startTime = Date.now();
