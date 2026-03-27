@@ -554,6 +554,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
           session_id: sessionId || undefined,
           question_index: questionIndex,
           score,
+          test_slug: testConfig.slug,
         }),
       });
 

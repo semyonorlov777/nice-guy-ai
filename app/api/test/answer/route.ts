@@ -5,7 +5,7 @@ import { calculateTestScore } from "@/lib/test-scoring";
 import { generateTestInterpretation } from "@/lib/test-interpretation";
 import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig } from "@/lib/test-config";
-import { getTestConfigByProgram } from "@/lib/queries/test-config";
+import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
@@ -51,11 +51,18 @@ export async function POST(request: Request) {
     question_index: questionIndex,
     score,
     program_slug: rawProgramSlug,
+    test_slug: rawTestSlug,
   } = body;
-  const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
-  // ── Load test config from DB ──
-  const testConfig = await getTestConfigByProgram(programSlug);
+  // ── Load test config: prefer test_slug (direct), fallback to program_slug ──
+  let testConfig: TestConfig | null = null;
+  if (typeof rawTestSlug === "string" && rawTestSlug) {
+    testConfig = await getTestConfig(rawTestSlug);
+  }
+  if (!testConfig) {
+    const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
+    testConfig = await getTestConfigByProgram(programSlug);
+  }
   if (!testConfig) {
     return Response.json({ error: "test_config_not_found" }, { status: 404 });
   }
@@ -100,7 +107,7 @@ export async function POST(request: Request) {
       const { data: program } = await serviceClient
         .from("programs")
         .select("id")
-        .eq("slug", programSlug)
+        .eq("id", testConfig.program_id)
         .single();
 
       if (!program) {

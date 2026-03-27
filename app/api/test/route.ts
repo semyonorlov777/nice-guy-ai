@@ -12,7 +12,7 @@ import { generateTestInterpretation } from "@/lib/test-interpretation";
 import { buildMiniPrompt } from "@/lib/test-mini-prompt";
 import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig, TestQuestion } from "@/lib/test-config";
-import { getTestConfigByProgram } from "@/lib/queries/test-config";
+import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { createRateLimit } from "@/lib/rate-limit";
 
@@ -179,16 +179,23 @@ export async function POST(request: Request) {
   // 2. Parse body
   const body = await request.json();
   const { message, test_slug, answer_type, answer: quickAnswer, answer_text, question_index, program_slug: rawProgramSlug } = body;
-  const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
-  // Load test config from DB
-  const testConfig = await getTestConfigByProgram(programSlug);
+  // Load test config: prefer test_slug (direct), fallback to program_slug
+  let testConfig: TestConfig | null = null;
+  if (typeof test_slug === "string" && test_slug) {
+    testConfig = await getTestConfig(test_slug);
+  }
+  if (!testConfig) {
+    const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
+    testConfig = await getTestConfigByProgram(programSlug);
+  }
   if (!testConfig) {
     return Response.json(
-      { error: "Тест не найден для программы: " + programSlug },
+      { error: "Тест не найден" },
       { status: 404 }
     );
   }
+
 
   const totalQuestions = testConfig.total_questions;
   const authWallQuestion = testConfig.ui_config.auth_wall_question;
@@ -243,7 +250,7 @@ export async function POST(request: Request) {
   const { data: program } = await serviceClient
     .from("programs")
     .select("id, test_system_prompt")
-    .eq("slug", programSlug)
+    .eq("id", testConfig.program_id)
     .single();
 
   if (!program || !program.test_system_prompt) {
