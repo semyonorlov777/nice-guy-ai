@@ -37,6 +37,12 @@ export interface TestUIConfig {
   questions_per_block: number;
   auth_wall_question: number | null; // 0-based index, null = no auth wall
   welcome_stats: WelcomeStat[];
+  welcome_title?: string;
+  welcome_subtitle?: string;
+  welcome_description?: string;
+  welcome_badge?: string;
+  welcome_cta?: string;
+  welcome_meta?: string;
   block_insights: string[];
   quick_answer_labels: string[];
   radar_labels: Record<string, string[]>;

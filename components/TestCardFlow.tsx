@@ -1021,7 +1021,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
     <div className="tc-page">
       <div className="tc-frame">
         {phase === "welcome" && (
-          <WelcomeScreen onStart={handleStart} isStarting={isStarting} />
+          <WelcomeScreen onStart={handleStart} isStarting={isStarting} testConfig={testConfig} />
         )}
 
         {phase === "history" && (
