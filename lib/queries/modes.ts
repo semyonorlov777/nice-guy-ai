@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
-import type { WelcomeReply, WelcomeConfig } from "@/types/welcome";
+import type { WelcomeConfig } from "@/types/welcome";
+import { normalizeWelcomeReplies } from "@/types/welcome";
 
 /**
  * Загружает все включённые режимы для программы, отсортированные по sort_order.
@@ -68,7 +69,7 @@ export async function getProgramModes(
       welcome_title: row.welcome_title ?? null,
       welcome_subtitle: row.welcome_subtitle ?? null,
       welcome_ai_message: row.welcome_ai_message ?? null,
-      welcome_replies: (row.welcome_replies as WelcomeReply[]) ?? [],
+      welcome_replies: normalizeWelcomeReplies(row.welcome_replies),
       welcome_system_context: row.welcome_system_context ?? null,
       color_class: (row.color_class as string) ?? "accent",
       badge: row.badge ?? null,

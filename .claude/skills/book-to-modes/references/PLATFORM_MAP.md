@@ -38,7 +38,7 @@ CREATE TABLE program_modes (
   welcome_title text,                -- Заголовок ('Деконструктор страхов', 'Спросить Гловера')
   welcome_subtitle text,             -- Подзаголовок (описание 1 строка)
   welcome_ai_message text,           -- AI-сообщение на welcome-экране (markdown)
-  welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}]
+  welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}] — СТРОГО объекты, НЕ строки!
   welcome_system_context text,       -- Контекст для системного промпта (для тем)
   color_class text DEFAULT 'accent', -- CSS-класс цвета ('accent', 'green')
   badge text                         -- Бейдж на карточке ('Бесплатно', 'Новое')
@@ -91,7 +91,7 @@ SELECT
   'Название режима',              -- welcome_title (из этапа 3)
   'Описание в 1 строку',          -- welcome_subtitle
   E'AI-сообщение на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
-  '[{"text": "Кнопка 1", "type": "normal"}, {"text": "Кнопка 2", "type": "normal"}]'::jsonb,
+  '[{"text": "Кнопка 1", "type": "normal"}, {"text": "Кнопка 2", "type": "normal"}]'::jsonb,  -- ⚠️ ОБЯЗАТЕЛЬНО объекты {text, type}, НЕ строки ["текст"] — иначе кнопки будут пустыми!
   'accent',                       -- color_class ('accent' | 'green')
   NULL                            -- badge ('Бесплатно', 'Новое', или NULL)
 FROM programs p
@@ -108,14 +108,14 @@ WHERE p.slug = 'BOOK_SLUG'
 -- welcome_title = 'Просто поговорить'
 -- welcome_subtitle = 'Любой вопрос по [тема книги]'
 -- welcome_ai_message = 'Привет! Спроси о чём угодно — я отвечу через призму [книга]...'
--- welcome_replies = [3-4 стартовых вопроса от первого лица]
+-- welcome_replies = [{"text": "Стартовый вопрос 1", "type": "normal"}, ...] — ОБЪЕКТЫ, не строки!
 
 -- Шаблон для author_chat:
 -- welcome_mode_label = 'Разговор с автором'
 -- welcome_title = 'Спросить [Фамилия]'
 -- welcome_subtitle = 'AI в стиле автора книги'
 -- welcome_ai_message = 'Привет, я [Имя Фамилия]... [1-2 фразы в стиле автора]'
--- welcome_replies = [3-4 вопроса к автору]
+-- welcome_replies = [{"text": "Вопрос к автору", "type": "normal"}, ...] — ОБЪЕКТЫ, не строки!
 ```
 
 ### 3. Обновить features (если нужно)

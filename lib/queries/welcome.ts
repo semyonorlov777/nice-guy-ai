@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WelcomeReply, WelcomeConfig } from "@/types/welcome";
+import type { WelcomeConfig } from "@/types/welcome";
+import { normalizeWelcomeReplies } from "@/types/welcome";
 import { themeToWelcomeConfig } from "@/lib/queries/themes";
 import { modeToWelcomeConfig } from "@/lib/queries/modes";
 import type { ProgramModeWithTemplate } from "@/types/modes";
@@ -28,7 +29,7 @@ export async function getWelcomeConfig(
     if (theme) {
       return themeToWelcomeConfig({
         ...theme,
-        welcome_replies: (theme.welcome_replies as WelcomeReply[]) ?? [],
+        welcome_replies: normalizeWelcomeReplies(theme.welcome_replies),
       });
     }
   }
@@ -87,7 +88,7 @@ export async function getWelcomeConfig(
         welcome_title: row.welcome_title ?? null,
         welcome_subtitle: row.welcome_subtitle ?? null,
         welcome_ai_message: row.welcome_ai_message ?? null,
-        welcome_replies: (row.welcome_replies as WelcomeReply[]) ?? [],
+        welcome_replies: normalizeWelcomeReplies(row.welcome_replies),
         welcome_system_context: row.welcome_system_context ?? null,
         color_class: (row.color_class as string) ?? "accent",
         badge: row.badge ?? null,
@@ -140,7 +141,7 @@ export async function getWelcomeConfig(
       welcome_title: fallback.welcome_title ?? null,
       welcome_subtitle: fallback.welcome_subtitle ?? null,
       welcome_ai_message: fallback.welcome_ai_message ?? null,
-      welcome_replies: (fallback.welcome_replies as WelcomeReply[]) ?? [],
+      welcome_replies: normalizeWelcomeReplies(fallback.welcome_replies),
       welcome_system_context: fallback.welcome_system_context ?? null,
       color_class: (fallback.color_class as string) ?? "accent",
       badge: fallback.badge ?? null,

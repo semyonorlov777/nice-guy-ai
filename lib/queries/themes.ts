@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WelcomeReply, WelcomeConfig } from "@/types/welcome";
+import { normalizeWelcomeReplies } from "@/types/welcome";
 
 export interface ProgramTheme {
   key: string;
@@ -36,7 +37,7 @@ export async function getProgramThemes(
 
   return data.map((row) => ({
     ...row,
-    welcome_replies: (row.welcome_replies as WelcomeReply[]) ?? [],
+    welcome_replies: normalizeWelcomeReplies(row.welcome_replies),
   }));
 }
 
