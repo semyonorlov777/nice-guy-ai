@@ -420,6 +420,26 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - **Контент программы** (обложка, автор, описание): бери из `programs.landing_data`, не хардкодь
 - **Проверка**: запусти `npm run check` перед коммитом — ищет типичные хардкоды
 
+## Документация
+
+- **Почему так сделано** → `docs/adr/` (Architecture Decision Records)
+- **Как выполнить операцию** → `docs/runbooks/` (пошаговые инструкции)
+- **Схема БД** → `docs/schema/` (ER-диаграммы, связи, RLS)
+- **Env-переменные** → `docs/env-vars.md` (справочник всех переменных)
+- **Что нового** → `CHANGELOG.md` (user-facing изменения)
+
+### Когда обновлять документацию
+
+| Что изменилось | Что обновить |
+|---|---|
+| Новое архитектурное решение | Создать ADR в `docs/adr/` |
+| Новая типовая операция | Создать runbook в `docs/runbooks/` |
+| Изменение схемы БД (миграция) | Обновить `docs/schema/` |
+| Новая env-переменная | Добавить в `docs/env-vars.md` |
+| User-facing изменение | Добавить в `CHANGELOG.md` секцию [Unreleased] |
+| Баг от неочевидного поведения | Добавить в memory |
+| Изменение паттерна кода | Обновить CLAUDE.md |
+
 ## Git commits
 
 - After completing a task, commit each logical change separately, not everything in one commit
