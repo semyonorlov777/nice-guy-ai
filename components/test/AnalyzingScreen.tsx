@@ -2,12 +2,19 @@
 
 import { useState, useEffect } from "react";
 
+interface AnalyzingStage {
+  title?: string;
+  label?: string;
+  substeps: string[];
+}
+
 interface AnalyzingScreenProps {
   resultId: string | null;
   onComplete: (resultId: string) => void;
+  stages?: AnalyzingStage[];
 }
 
-const ANALYZING_STAGES = [
+const DEFAULT_ANALYZING_STAGES: AnalyzingStage[] = [
   {
     label: "Анализ ответов",
     substeps: [
@@ -42,7 +49,9 @@ const STAGE_GAP = 1200;
 const HINT_DELAY = 15000;
 const TIMEOUT_LIMIT = 120000;
 
-export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) {
+export function AnalyzingScreen({ resultId, onComplete, stages }: AnalyzingScreenProps) {
+  const ANALYZING_STAGES = stages && stages.length > 0 ? stages : DEFAULT_ANALYZING_STAGES;
+
   const [animationDone, setAnimationDone] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [waitingForBackend, setWaitingForBackend] = useState(false);
@@ -50,13 +59,11 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
   const [allDone, setAllDone] = useState(false);
   const [orbProgress, setOrbProgress] = useState(0);
 
-  const [stageStates, setStageStates] = useState<("idle" | "active" | "done")[]>([
-    "idle",
-    "idle",
-    "idle",
-  ]);
+  const [stageStates, setStageStates] = useState<("idle" | "active" | "done")[]>(
+    ANALYZING_STAGES.map(() => "idle" as const)
+  );
   const [substepStates, setSubstepStates] = useState<("idle" | "active" | "done")[][]>(
-    ANALYZING_STAGES.map((s) => s.substeps.map(() => "idle"))
+    ANALYZING_STAGES.map((s) => s.substeps.map(() => "idle" as const))
   );
 
   // Dev-mode warning: resultId data flow check
@@ -78,7 +85,7 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
   useEffect(() => {
     const timeouts: number[] = [];
     let delay = 600;
-    const totalSubs = 12;
+    const totalSubs = ANALYZING_STAGES.reduce((sum, s) => sum + s.substeps.length, 0);
     let count = 0;
 
     ANALYZING_STAGES.forEach((stage, si) => {
@@ -249,7 +256,7 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
                       <polyline points="2,5 4.5,7.5 8,3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <span className="analyzing-stage-label">{stage.label}</span>
+                  <span className="analyzing-stage-label">{stage.label || stage.title}</span>
                 </div>
                 <div className="analyzing-substeps">
                   {stage.substeps.map((text, ssi) => {
@@ -272,7 +279,7 @@ export function AnalyzingScreen({ resultId, onComplete }: AnalyzingScreenProps) 
 
           {/* Hint */}
           <div className={`analyzing-hint${showHint ? " visible" : ""}`}>
-            Вы увидите профиль по 7 сферам жизни с персональными рекомендациями и научным обоснованием
+            Вы увидите персональный профиль с рекомендациями и научным обоснованием
           </div>
 
           {/* Waiting for backend */}

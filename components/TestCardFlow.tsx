@@ -239,7 +239,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
         )}
 
         {phase === "analyzing" && (
-          <AnalyzingScreen resultId={resultId} onComplete={handleResultReady} />
+          <AnalyzingScreen resultId={resultId} onComplete={handleResultReady} stages={testConfig.ui_config.analyzing_stages} />
         )}
 
         {phase === "complete" && (
