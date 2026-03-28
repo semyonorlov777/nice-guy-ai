@@ -6,6 +6,7 @@ import type { CardPhase } from "./types";
 
 interface UseTestInitParams {
   testConfig: TestConfig;
+  programId: string;
   storageKey: string;
   totalQuestions: number;
   authWallQuestion: number | null;
@@ -22,6 +23,7 @@ interface UseTestInitParams {
 
 export function useTestInit({
   testConfig,
+  programId,
   storageKey,
   totalQuestions,
   authWallQuestion,
@@ -54,6 +56,7 @@ export function useTestInit({
             .from("chats")
             .select("id, test_state")
             .eq("chat_type", "test")
+            .eq("program_id", programId)
             .eq("status", "active")
             .order("created_at", { ascending: false })
             .maybeSingle(),
@@ -61,6 +64,7 @@ export function useTestInit({
             .from("test_results")
             .select("id, total_score, created_at, interpretation")
             .eq("user_id", user.id)
+            .eq("program_id", programId)
             .order("created_at", { ascending: false }),
         ]);
 

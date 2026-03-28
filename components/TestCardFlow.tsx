@@ -66,6 +66,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
 
   useTestInit({
     testConfig,
+    programId: testConfig.program_id,
     storageKey,
     totalQuestions: TOTAL_QUESTIONS,
     authWallQuestion: AUTH_WALL_QUESTION,

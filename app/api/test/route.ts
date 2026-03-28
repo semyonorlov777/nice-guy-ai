@@ -113,8 +113,8 @@ export async function POST(request: Request) {
     .eq("id", testConfig.program_id)
     .single();
 
-  if (!program || !program.test_system_prompt) {
-    return apiError("Программа или промпт теста не найдены", 404);
+  if (!program) {
+    return apiError("Программа не найдена", 404);
   }
 
   // Mode-specific validation
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const systemPrompt = program.test_system_prompt;
+  const systemPrompt = program.test_system_prompt ?? "";
 
   // 5. Typed answer mode (quick/text)
   if (answer_type === "quick" || answer_type === "text") {
@@ -210,7 +210,10 @@ export async function POST(request: Request) {
     });
   }
 
-  // 6. Legacy mode (no answer_type)
+  // 6. Legacy mode (no answer_type) — requires system prompt
+  if (!systemPrompt) {
+    return apiError("Промпт теста не настроен для этой программы", 404);
+  }
   if (isAuthenticated) {
     return handleAuthenticated({
       supabase,
