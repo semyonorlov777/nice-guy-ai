@@ -8,37 +8,8 @@ import type { TestConfig } from "@/lib/test-config";
 import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createRateLimit } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-helpers";
-
-export const maxDuration = 60;
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-type TestState = {
-  current_question: number;
-  status: string;
-  started_at: string;
-  answers: TestAnswer[];
-};
-
-function buildAnswer(
-  score: number,
-  questionIdx: number,
-  message: string,
-  testConfig: TestConfig
-): TestAnswer {
-  const question = testConfig.questions[questionIdx];
-  const [min, max] = testConfig.scoring.answer_range;
-  const reverseBase = max + min;
-  return {
-    q: question.q,
-    scale: question.scale,
-    type: question.type,
-    rawAnswer: score,
-    score: question.type === "reverse" ? reverseBase - score : score,
-    text: /^\d$/.test(message.trim()) ? undefined : message,
-  };
-}
+import { insertMessage } from "@/lib/queries/messages";
+import { UUID_RE, buildAnswerFromConfig, type TestState } from "@/lib/test-helpers";
 
 // ── Rate limiting (anonymous only) ──
 
@@ -214,7 +185,7 @@ export async function POST(request: Request) {
   // for both authenticated and anonymous modes — no pre-RPC check needed.
 
   // ── Build answer ──
-  const answer = buildAnswer(score, questionIndex, String(score), testConfig);
+  const answer = buildAnswerFromConfig(score, questionIndex, String(score), testConfig);
 
   // ── Record answer ──
   if (isAuthenticated) {
@@ -256,11 +227,10 @@ export async function POST(request: Request) {
     const updatedState = newState as TestState;
 
     // Save user message (no assistant message — user never sees the score)
-    await serviceClient.from("messages").insert({
-      chat_id: chatId,
+    await insertMessage(serviceClient, {
+      chatId: chatId!,
       role: "user",
       content: String(score),
-      tokens_used: 0,
     });
 
     await supabase
