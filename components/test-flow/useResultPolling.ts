@@ -32,14 +32,14 @@ export function useResultPolling({
   // Debug summary when entering analyzing phase
   useEffect(() => {
     if (phase !== "analyzing" || !isDebug || debugLogRef.current.length === 0) return;
-    console.log("[ISSP DEBUG] === ИТОГО ===");
+    console.log("[TEST DEBUG] === ИТОГО ===");
     console.table(debugLogRef.current.map(entry => ({
       "Вопрос": `Q${entry.question}`,
       "Отправлено": entry.sentScore,
       "Сервер": entry.serverConfirmed ? "\u2713" : "\u2717",
       "Следующий Q": entry.serverQuestion,
     })));
-    console.log(`[ISSP DEBUG] Всего ответов отправлено: ${debugLogRef.current.length}`);
+    console.log(`[TEST DEBUG] Всего ответов отправлено: ${debugLogRef.current.length}`);
   }, [phase, isDebug]);
 
   // Polling for resultId during analyzing phase

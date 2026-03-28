@@ -312,10 +312,10 @@ export function appendPortraitContext(
 }
 
 // ---------------------------------------------------------------------------
-// appendIsspScores — добавляет результаты теста ISSP к system prompt
+// appendTestScores — добавляет результаты теста к system prompt
 // ---------------------------------------------------------------------------
 
-export async function appendIsspScores(
+export async function appendTestScores(
   supabase: SupabaseClient,
   systemPrompt: string,
   userId: string,
@@ -333,7 +333,7 @@ export async function appendIsspScores(
 
   if (!testResult?.scores_by_scale) return systemPrompt;
 
-  return systemPrompt + `\n\n---\nДАННЫЕ ТЕСТА ISSP:\n${JSON.stringify(testResult.scores_by_scale)}`;
+  return systemPrompt + `\n\n---\nРЕЗУЛЬТАТЫ ТЕСТА:\n${JSON.stringify(testResult.scores_by_scale)}`;
 }
 
 // ---------------------------------------------------------------------------
