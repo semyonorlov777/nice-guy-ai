@@ -19,7 +19,7 @@ export async function getWelcomeConfig(
     const { data: theme } = await supabase
       .from("program_themes")
       .select(
-        "key, title, description, icon_key, sort_order, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_replies, welcome_system_context, issp_scale_key",
+        "key, title, description, icon_key, sort_order, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_replies, welcome_system_context, test_scale_key",
       )
       .eq("program_id", programId)
       .eq("key", params.topic)

@@ -14,7 +14,7 @@ export interface ProgramTheme {
   welcome_ai_message: string | null;
   welcome_replies: WelcomeReply[];
   welcome_system_context: string | null;
-  issp_scale_key: string | null;
+  test_scale_key: string | null;
 }
 
 /**
@@ -27,7 +27,7 @@ export async function getProgramThemes(
   const { data, error } = await supabase
     .from("program_themes")
     .select(
-      "key, title, description, icon_key, sort_order, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_replies, welcome_system_context, issp_scale_key",
+      "key, title, description, icon_key, sort_order, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_replies, welcome_system_context, test_scale_key",
     )
     .eq("program_id", programId)
     .eq("enabled", true)
@@ -42,7 +42,7 @@ export async function getProgramThemes(
 }
 
 /**
- * Сортирует темы по баллам ISSP-теста (наивысший балл первый).
+ * Сортирует темы по баллам теста (наивысший балл первый).
  * Если баллов нет — возвращает в порядке sort_order.
  */
 export function getThemesOrdered(
@@ -52,8 +52,8 @@ export function getThemesOrdered(
   if (!testScores) return themes;
 
   return [...themes].sort((a, b) => {
-    const scoreA = testScores[a.issp_scale_key ?? a.key] ?? 0;
-    const scoreB = testScores[b.issp_scale_key ?? b.key] ?? 0;
+    const scoreA = testScores[a.test_scale_key ?? a.key] ?? 0;
+    const scoreB = testScores[b.test_scale_key ?? b.key] ?? 0;
     return scoreB - scoreA;
   });
 }
