@@ -446,6 +446,13 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - Use conventional commit format: refactor:, fix:, feat:, chore:
 - Each commit should be independently revertable without breaking other changes
 - If a task involves multiple logical steps (e.g. extract util + update imports + remove dead code), make separate commits for each
+- **Перед коммитом — проверь документацию.** Пройдись по чеклисту:
+  - [ ] Новая env-переменная? → `docs/env-vars.md`
+  - [ ] Новое архитектурное решение (выбор технологии, паттерн, trade-off)? → `docs/adr/`
+  - [ ] Новая операция которую придётся повторять? → `docs/runbooks/`
+  - [ ] User-facing изменение (фича, фикс, удаление)? → `CHANGELOG.md` [Unreleased]
+  - [ ] Изменился паттерн кода или структура проекта? → `CLAUDE.md`
+  - Если ничего не подходит — коммить без изменений в docs
 
 ## Тестирование в браузере
 
