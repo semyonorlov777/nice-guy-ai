@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nice Guy AI
 
-## Getting Started
+AI-платформа тренажёров по книгам по психологии и саморазвитию.
 
-First, run the development server:
+🌐 **Production:** [nice-guy-ai.vercel.app](https://nice-guy-ai.vercel.app)
+
+## Программы
+
+- **"No More Mr. Nice Guy"** (Гловер) — 46 упражнений, тест ISSP, портрет, чат с автором
+- **"Games People Play"** (Берн) — свободный чат, чат с автором, портрет
+- **"5 Love Languages"** (Чепмен) — свободный чат, чат с автором, портрет
+
+Новые книги добавляются через seed SQL → UI подхватывает автоматически.
+
+## Quick Start
 
 ```bash
+# 1. Установка зависимостей
+npm install
+
+# 2. Настройка окружения
+cp .env.local.example .env.local
+# Заполни переменные — см. docs/env-vars.md
+
+# 3. Запуск
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 4. Авторизация (dev-режим)
+# Открой http://localhost:3000/api/auth/dev-login
+# Создаст тестовую сессию и перенаправит в приложение
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Архитектура
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+Browser → Next.js 16 (Vercel)
+            ├── Google Gemini Flash → AI-чат (стриминг)
+            ├── Google Gemini Pro   → Психологический портрет
+            ├── Supabase            → PostgreSQL + Auth + RLS
+            └── YooKassa            → Платежи, подписки
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Стек
 
-## Learn More
+- **Next.js 16** + TypeScript + Tailwind CSS 4
+- **Supabase** — PostgreSQL, Auth (Telegram, Google, Яндекс, Magic Link), RLS
+- **Google Gemini API** — Flash (чат), Pro (анализ портретов)
+- **Vercel AI SDK** — стриминг чата
+- **YooKassa** — платежи, подписки, webhook
+- **Sentry** — мониторинг ошибок
 
-To learn more about Next.js, take a look at the following resources:
+## Команды
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev          # Локальный сервер (localhost:3000)
+npm run build        # Проверка сборки
+npm run lint         # Линтер
+npx tsc --noEmit     # Проверка TypeScript
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Документация
 
-## Deploy on Vercel
+| Что | Где |
+|-----|-----|
+| Полная структура проекта, паттерны, правила | [CLAUDE.md](CLAUDE.md) |
+| Почему приняты архитектурные решения | [docs/adr/](docs/adr/) |
+| Пошаговые инструкции операций | [docs/runbooks/](docs/runbooks/) |
+| Схема базы данных | [docs/schema/](docs/schema/) |
+| Справочник env-переменных | [docs/env-vars.md](docs/env-vars.md) |
+| Что нового | [CHANGELOG.md](CHANGELOG.md) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Для Claude Code
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Основной контекст — **[CLAUDE.md](CLAUDE.md)**. AI-навыки в `.claude/skills/`. Архитектурные решения в `docs/adr/`.
