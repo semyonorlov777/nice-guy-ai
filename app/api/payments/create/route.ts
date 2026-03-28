@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import yookassa from "@/lib/yookassa";
 import { PRODUCTS } from "@/lib/products";
 import { APP_URL } from "@/lib/constants";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const { productKey } = await request.json();
   const product = PRODUCTS[productKey];
   if (!product) {
-    return Response.json({ error: "Неизвестный продукт" }, { status: 400 });
+    return apiError("Неизвестный продукт", 400);
   }
 
   // 3. Idempotency key
@@ -39,10 +39,7 @@ export async function POST(request: Request) {
 
   if (orderError || !order) {
     console.error("[payments/create] Order creation failed:", orderError);
-    return Response.json(
-      { error: "Ошибка создания заказа" },
-      { status: 500 }
-    );
+    return apiError("Ошибка создания заказа", 500);
   }
 
   // 5. Создать платёж в ЮKassa
@@ -100,10 +97,7 @@ export async function POST(request: Request) {
     const confirmationUrl = payment.confirmation?.confirmation_url;
     if (!confirmationUrl) {
       console.error("[payments/create] No confirmation_url:", payment);
-      return Response.json(
-        { error: "Не получен URL для оплаты" },
-        { status: 500 }
-      );
+      return apiError("Не получен URL для оплаты", 500);
     }
 
     return Response.json({
@@ -113,9 +107,6 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[payments/create] YooKassa error:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
     await serviceClient.from("orders").delete().eq("id", order.id);
-    return Response.json(
-      { error: "Ошибка платёжной системы" },
-      { status: 500 }
-    );
+    return apiError("Ошибка платёжной системы", 500);
   }
 }

@@ -7,6 +7,7 @@ import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig } from "@/lib/test-config";
 import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createRateLimit } from "@/lib/rate-limit";
+import { apiError } from "@/lib/api-helpers";
 
 export const maxDuration = 60;
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     testConfig = await getTestConfigByProgram(programSlug);
   }
   if (!testConfig) {
-    return Response.json({ error: "test_config_not_found" }, { status: 404 });
+    return apiError("test_config_not_found", 404);
   }
 
   const [minScore, maxScore] = testConfig.scoring.answer_range;
@@ -74,10 +75,10 @@ export async function POST(request: Request) {
 
   // ── Validate score ──
   if (typeof score !== "number" || score < minScore || score > maxScore || !Number.isInteger(score)) {
-    return Response.json({ error: "invalid_score" }, { status: 400 });
+    return apiError("invalid_score", 400);
   }
   if (typeof questionIndex !== "number" || questionIndex < 0 || questionIndex >= totalQuestions) {
-    return Response.json({ error: "invalid_question_index" }, { status: 400 });
+    return apiError("invalid_question_index", 400);
   }
 
   // ── Auth: soft (works for both authenticated and anonymous) ──
@@ -93,8 +94,12 @@ export async function POST(request: Request) {
   let chatId: string | undefined;
   let sessionId: string | undefined;
   let testState: TestState;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let session: any = null;
+  let session: {
+    current_question: number;
+    created_at: string;
+    answers: TestAnswer[];
+    status: string;
+  } | null = null;
   let programId: string;
   let autoCreatedChatId: string | null = null;
 
@@ -111,7 +116,7 @@ export async function POST(request: Request) {
         .single();
 
       if (!program) {
-        return Response.json({ error: "program_not_found" }, { status: 404 });
+        return apiError("program_not_found", 404);
       }
 
       const { data: existingChat } = await serviceClient
@@ -145,14 +150,14 @@ export async function POST(request: Request) {
           .single();
 
         if (chatErr || !newChat) {
-          return Response.json({ error: "chat_create_failed" }, { status: 500 });
+          return apiError("chat_create_failed", 500);
         }
 
         chatId = newChat.id;
         autoCreatedChatId = newChat.id;
       }
     } else {
-      return Response.json({ error: "invalid_chat_id" }, { status: 400 });
+      return apiError("invalid_chat_id", 400);
     }
 
     // Load chat + test_state + program_id (with user_id ownership check)
@@ -164,7 +169,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!chat?.test_state) {
-      return Response.json({ error: "no_test_state" }, { status: 404 });
+      return apiError("no_test_state", 404);
     }
 
     testState = chat.test_state as TestState;
@@ -173,7 +178,7 @@ export async function POST(request: Request) {
     // Anonymous mode
     sessionId = rawSessionId;
     if (!sessionId || !UUID_RE.test(sessionId)) {
-      return Response.json({ error: "invalid_session_id" }, { status: 400 });
+      return apiError("invalid_session_id", 400);
     }
 
     // Rate limiting
@@ -182,7 +187,7 @@ export async function POST(request: Request) {
       request.headers.get("x-real-ip") ||
       "unknown";
     if (!checkRateLimit(ip)) {
-      return Response.json({ error: "rate_limited" }, { status: 429 });
+      return apiError("rate_limited", 429);
     }
 
     const { data: existingSession } = await serviceClient
@@ -192,15 +197,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (!existingSession || existingSession.status !== "in_progress") {
-      return Response.json({ error: "session_not_found" }, { status: 404 });
+      return apiError("session_not_found", 404);
     }
 
     session = existingSession;
     testState = {
-      current_question: session.current_question,
+      current_question: existingSession.current_question as number,
       status: "in_progress",
-      started_at: session.created_at,
-      answers: session.answers || [],
+      started_at: existingSession.created_at as string,
+      answers: (existingSession.answers || []) as TestAnswer[],
     };
     programId = ""; // not needed for anonymous (no test_results insert)
   }
@@ -221,14 +226,12 @@ export async function POST(request: Request) {
 
     if (rpcError) {
       console.error("[test:answer] append_test_answer error:", rpcError);
-      return Response.json({ error: "rpc_error" }, { status: 500 });
+      return apiError("rpc_error", 500);
     }
 
     // RPC returns question_mismatch instead of throwing — handle as 409
     if (newState?.error === "question_mismatch") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const responseData: any = {
-        error: "question_mismatch",
+      const extra: Record<string, unknown> = {
         server_question: newState.server_question,
       };
 
@@ -242,12 +245,12 @@ export async function POST(request: Request) {
           .limit(1)
           .maybeSingle();
 
-        responseData.test_complete = true;
-        responseData.result_id = existingResult?.id || null;
-        responseData.result_ready = existingResult?.status === "ready";
+        extra.test_complete = true;
+        extra.result_id = existingResult?.id || null;
+        extra.result_ready = existingResult?.status === "ready";
       }
 
-      return Response.json(responseData, { status: 409 });
+      return apiError("question_mismatch", 409, extra);
     }
 
     const updatedState = newState as TestState;
@@ -370,18 +373,14 @@ export async function POST(request: Request) {
 
     if (rpcError) {
       console.error("[test:answer] append_anonymous_test_answer error:", rpcError);
-      return Response.json({ error: "rpc_error" }, { status: 500 });
+      return apiError("rpc_error", 500);
     }
 
     // RPC returns question_mismatch instead of throwing — handle as 409
     if (rpcResult?.error === "question_mismatch") {
-      return Response.json(
-        {
-          error: "question_mismatch",
-          server_question: rpcResult.server_question,
-        },
-        { status: 409 }
-      );
+      return apiError("question_mismatch", 409, {
+        server_question: rpcResult.server_question,
+      });
     }
 
     const answersCount = rpcResult.answers_count as number;

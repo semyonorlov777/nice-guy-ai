@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 
 interface MigrateMessage {
   role: "user" | "assistant";
@@ -17,18 +17,18 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Невалидный JSON" }, { status: 400 });
+    return apiError("Невалидный JSON", 400);
   }
 
   const { program_slug, messages, session_id } = body;
 
   if (!program_slug || !Array.isArray(messages) || messages.length === 0) {
-    return Response.json({ error: "Невалидные данные" }, { status: 400 });
+    return apiError("Невалидные данные", 400);
   }
 
   // Лимит на количество сообщений
   if (messages.length > 200) {
-    return Response.json({ error: "Слишком много сообщений (макс 200)" }, { status: 400 });
+    return apiError("Слишком много сообщений (макс 200)", 400);
   }
 
   // Валидация и фильтрация сообщений
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   );
 
   if (validMessages.length === 0) {
-    return Response.json({ error: "Нет валидных сообщений" }, { status: 400 });
+    return apiError("Нет валидных сообщений", 400);
   }
 
   // 3. Find program by slug
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!program) {
-    return Response.json({ error: "Программа не найдена" }, { status: 404 });
+    return apiError("Программа не найдена", 404);
   }
 
   // 4. Idempotency: check if this session was already migrated recently
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
 
   if (chatError || !chat) {
     console.error("[migrate] Failed to create chat:", chatError);
-    return Response.json({ error: "Не удалось создать чат" }, { status: 500 });
+    return apiError("Не удалось создать чат", 500);
   }
 
   // 7. Insert messages with staggered created_at
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
 
   if (insertError) {
     console.error("[migrate] Failed to insert messages:", insertError);
-    return Response.json({ error: "Не удалось сохранить сообщения" }, { status: 500 });
+    return apiError("Не удалось сохранить сообщения", 500);
   }
 
   // 8. Update last_message_at on the new chat

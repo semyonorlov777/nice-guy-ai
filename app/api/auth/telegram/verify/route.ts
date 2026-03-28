@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { verifyTelegramToken, findOrCreateUser } from "@/lib/telegram-auth";
+import { apiError } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest) {
   try {
     const { id_token } = await request.json();
 
     if (!id_token || typeof id_token !== "string") {
-      return NextResponse.json(
-        { error: "Missing id_token" },
-        { status: 400 },
-      );
+      return apiError("Отсутствует id_token", 400);
     }
 
     const clientId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
@@ -22,10 +20,7 @@ export async function POST(request: NextRequest) {
     const session = await findOrCreateUser(tgUser);
 
     if (!session) {
-      return NextResponse.json(
-        { error: "Failed to create session" },
-        { status: 500 },
-      );
+      return apiError("Не удалось создать сессию", 500);
     }
 
     // Set Supabase session cookies on the response
@@ -59,9 +54,6 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("Telegram verify error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Verification failed" },
-      { status: 500 },
-    );
+    return apiError(err instanceof Error ? err.message : "Ошибка верификации", 500);
   }
 }

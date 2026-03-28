@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import OpenAI from "openai";
 
 const STT_TOKENS_PER_MINUTE = 50;
@@ -22,10 +22,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!profile || profile.balance_tokens < STT_TOKENS_PER_MINUTE) {
-    return Response.json(
-      { error: "Недостаточно токенов для голосового ввода" },
-      { status: 403 }
-    );
+    return apiError("Недостаточно токенов для голосового ввода", 403);
   }
 
   // 3. Parse multipart form data
@@ -34,13 +31,10 @@ export async function POST(request: Request) {
   const durationSec = Number(formData.get("duration")) || 1;
 
   if (!audioFile) {
-    return Response.json({ error: "Аудио не найдено" }, { status: 400 });
+    return apiError("Аудио не найдено", 400);
   }
   if (audioFile.size > 25 * 1024 * 1024) {
-    return Response.json(
-      { error: "Файл слишком большой (макс. 25 MB)" },
-      { status: 400 }
-    );
+    return apiError("Файл слишком большой (макс. 25 MB)", 400);
   }
 
   // 4. Calculate cost BEFORE calling OpenAI
@@ -48,10 +42,7 @@ export async function POST(request: Request) {
   const tokensToSpend = durationMin * STT_TOKENS_PER_MINUTE;
 
   if (profile.balance_tokens < tokensToSpend) {
-    return Response.json(
-      { error: "Недостаточно токенов для этой записи" },
-      { status: 403 }
-    );
+    return apiError("Недостаточно токенов для этой записи", 403);
   }
 
   // 5. Transcribe
@@ -71,10 +62,7 @@ export async function POST(request: Request) {
 
     if (deductError) {
       console.error("[transcribe] deduct_tokens failed:", deductError);
-      return Response.json(
-        { error: "Ошибка списания токенов" },
-        { status: 500 }
-      );
+      return apiError("Ошибка списания токенов", 500);
     }
 
     // Read updated balance for response
@@ -91,9 +79,6 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[transcribe] Error:", err);
-    return Response.json(
-      { error: "Ошибка транскрипции" },
-      { status: 500 }
-    );
+    return apiError("Ошибка транскрипции", 500);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { apiError } from "@/lib/api-helpers";
 import crypto from "crypto";
 
 const DEV_EMAIL = "dev_test@niceguy.local";
@@ -39,10 +40,7 @@ export async function GET(request: NextRequest) {
         });
 
       if (createError) {
-        return NextResponse.json(
-          { error: `User creation failed: ${createError.message}` },
-          { status: 500 },
-        );
+        return apiError(`Ошибка создания пользователя: ${createError.message}`, 500);
       }
 
       // Set up profile with generous balance
@@ -60,10 +58,7 @@ export async function GET(request: NextRequest) {
       });
 
     if (signInError) {
-      return NextResponse.json(
-        { error: `Login failed: ${signInError.message}` },
-        { status: 500 },
-      );
+      return apiError(`Ошибка входа: ${signInError.message}`, 500);
     }
 
     const session = signInData.session;
@@ -110,9 +105,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("Dev login error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Dev login failed" },
-      { status: 500 },
-    );
+    return apiError(err instanceof Error ? err.message : "Ошибка dev-логина", 500);
   }
 }

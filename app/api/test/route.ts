@@ -15,6 +15,7 @@ import type { TestConfig, TestQuestion } from "@/lib/test-config";
 import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { createRateLimit } from "@/lib/rate-limit";
+import { apiError } from "@/lib/api-helpers";
 
 export const maxDuration = 60;
 
@@ -436,7 +437,7 @@ async function handleTypedAnswer({
 
   if (isAuthenticated) {
     if (!chatId || !UUID_RE.test(chatId)) {
-      return Response.json({ error: "Невалидный chat_id" }, { status: 400 });
+      return apiError("Невалидный chat_id", 400);
     }
 
     const { data: chat } = await supabase
@@ -446,7 +447,7 @@ async function handleTypedAnswer({
       .single();
 
     if (!chat || chat.chat_type !== "test") {
-      return Response.json({ error: "Чат не найден или не является тестом" }, { status: 404 });
+      return apiError("Чат не найден или не является тестом", 404);
     }
 
     const { data: chatRow } = await serviceClient
@@ -466,7 +467,7 @@ async function handleTypedAnswer({
     existingAnswers = testState.answers || [];
   } else {
     if (!sessionId || !UUID_RE.test(sessionId)) {
-      return Response.json({ error: "Невалидный session_id" }, { status: 400 });
+      return apiError("Невалидный session_id", 400);
     }
 
     const { data: existingSession } = await serviceClient
@@ -489,9 +490,7 @@ async function handleTypedAnswer({
 
   // ── Step 2: Validate question_index ──
   if (questionIndex !== serverCurrentQuestion) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const responseData: any = {
-      error: "question_mismatch",
+    const extra: Record<string, unknown> = {
       server_question: serverCurrentQuestion,
       message: `Ожидался вопрос ${serverCurrentQuestion}, получен ${questionIndex}`,
     };
@@ -506,12 +505,12 @@ async function handleTypedAnswer({
         .limit(1)
         .maybeSingle();
 
-      responseData.test_complete = true;
-      responseData.result_id = existingResult?.id || null;
-      responseData.result_ready = existingResult?.status === "ready";
+      extra.test_complete = true;
+      extra.result_id = existingResult?.id || null;
+      extra.result_ready = existingResult?.status === "ready";
     }
 
-    return Response.json(responseData, { status: 409 });
+    return apiError("question_mismatch", 409, extra);
   }
 
   // ── Step 3: Handle answer_type === "quick" ──
@@ -539,7 +538,7 @@ async function handleTypedAnswer({
         );
         if (rpcError) {
           console.error("[test:typed] append_test_answer error:", rpcError);
-          return Response.json({ error: "Не удалось записать ответ" }, { status: 500 });
+          return apiError("Не удалось записать ответ", 500);
         }
 
         const finalState = newState as TestState;
@@ -738,7 +737,7 @@ async function handleTypedAnswer({
   }
 
   // Fallback — shouldn't reach here
-  return Response.json({ error: "Невалидные параметры запроса" }, { status: 400 });
+  return apiError("Невалидные параметры запроса", 400);
 }
 
 // ── Helper: background calculation (Q35 async) ──
@@ -1036,7 +1035,7 @@ async function handleAuthenticated({
     .single();
 
   if (!chat) {
-    return Response.json({ error: "Чат не найден" }, { status: 404 });
+    return apiError("Чат не найден", 404);
   }
   if (chat.chat_type !== "test") {
     return Response.json(

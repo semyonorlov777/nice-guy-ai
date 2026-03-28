@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { getScaleNames } from "@/lib/test-config";
+import { apiError } from "@/lib/api-helpers";
 
 /**
  * GET /api/test/config — return questions + scaleNames for the default program test.
@@ -11,13 +11,10 @@ export async function GET() {
   const testConfig = await getTestConfigByProgram(DEFAULT_PROGRAM_SLUG);
 
   if (!testConfig) {
-    return NextResponse.json(
-      { error: "Test config not found" },
-      { status: 404 }
-    );
+    return apiError("Конфигурация теста не найдена", 404);
   }
 
-  return NextResponse.json({
+  return Response.json({
     slug: testConfig.slug,
     title: testConfig.title,
     totalQuestions: testConfig.total_questions,

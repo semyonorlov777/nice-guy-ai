@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const offset = parseInt(url.searchParams.get("offset") || "0");
 
   if (!programId) {
-    return Response.json({ error: "programId обязателен" }, { status: 400 });
+    return apiError("programId обязателен", 400);
   }
 
   let query = supabase
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[chats] List error:", error);
-    return Response.json({ error: "Ошибка загрузки чатов" }, { status: 500 });
+    return apiError("Ошибка загрузки чатов", 500);
   }
 
   if (!chats || chats.length === 0) {

@@ -3,6 +3,7 @@ import { google } from "@/lib/ai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
 import { createRateLimit } from "@/lib/rate-limit";
+import { apiError } from "@/lib/api-helpers";
 
 const checkRateLimit = createRateLimit();
 
@@ -17,10 +18,7 @@ export async function POST(request: Request) {
     "unknown";
 
   if (!checkRateLimit(ip)) {
-    return Response.json(
-      { error: "Слишком много запросов. Попробуйте позже." },
-      { status: 429 }
-    );
+    return apiError("Слишком много запросов. Попробуйте позже.", 429);
   }
 
   // 2. Parse body — useChat отправляет { messages: UIMessage[], session_id, program_slug }
@@ -28,16 +26,13 @@ export async function POST(request: Request) {
   const { messages: clientMessages, session_id, program_slug } = body;
 
   if (!session_id || !UUID_RE.test(session_id)) {
-    return Response.json({ error: "Невалидный session_id" }, { status: 400 });
+    return apiError("Невалидный session_id", 400);
   }
   if (!program_slug) {
-    return Response.json({ error: "Не указан program_slug" }, { status: 400 });
+    return apiError("Не указан program_slug", 400);
   }
   if (!Array.isArray(clientMessages) || clientMessages.length === 0) {
-    return Response.json(
-      { error: "Пустой массив сообщений" },
-      { status: 400 }
-    );
+    return apiError("Пустой массив сообщений", 400);
   }
 
   // 3. Convert UIMessage → simple format для валидации
@@ -61,16 +56,10 @@ export async function POST(request: Request) {
   // Validate messages
   for (const msg of messages) {
     if (msg.role !== "user" && msg.role !== "assistant") {
-      return Response.json(
-        { error: "Невалидная роль сообщения" },
-        { status: 400 }
-      );
+      return apiError("Невалидная роль сообщения", 400);
     }
     if (typeof msg.content !== "string" || msg.content.length > 5000) {
-      return Response.json(
-        { error: "Сообщение слишком длинное (макс 5000 символов)" },
-        { status: 400 }
-      );
+      return apiError("Сообщение слишком длинное (макс 5000 символов)", 400);
     }
   }
 
@@ -112,7 +101,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!program) {
-    return Response.json({ error: "Программа не найдена" }, { status: 404 });
+    return apiError("Программа не найдена", 404);
   }
 
   // 7. System prompt

@@ -6,6 +6,7 @@ import { getScaleNames } from "@/lib/test-config";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { createServiceClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { apiError } from "@/lib/api-helpers";
 
 const MODELS: Record<string, string> = {
   "flash": "gemini-2.5-flash",
@@ -18,7 +19,7 @@ const VALID_MODEL_KEYS = ["flash", "flash-lite"] as const;
 export async function POST(request: Request) {
   // DEBUG_ENABLED (server-only, NOT NEXT_PUBLIC_) — prevents client-side exposure
   if (process.env.DEBUG_ENABLED !== "true") {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return apiError("Не найдено", 404);
   }
 
   const body = await request.json();
@@ -27,22 +28,22 @@ export async function POST(request: Request) {
   const modelKey: string = body.model || "flash";
 
   if (!answer_text || typeof answer_text !== "string") {
-    return Response.json({ error: "Невалидный answer_text" }, { status: 400 });
+    return apiError("Невалидный answer_text", 400);
   }
   if (!VALID_PROMPT_TYPES.includes(promptType as typeof VALID_PROMPT_TYPES[number])) {
-    return Response.json({ error: "Невалидный prompt_type (mini|full)" }, { status: 400 });
+    return apiError("Невалидный prompt_type (mini|full)", 400);
   }
   if (!VALID_MODEL_KEYS.includes(modelKey as typeof VALID_MODEL_KEYS[number])) {
-    return Response.json({ error: "Невалидный model (flash|flash-lite)" }, { status: 400 });
+    return apiError("Невалидный model (flash|flash-lite)", 400);
   }
 
   const testConfig = await getTestConfigByProgram(DEFAULT_PROGRAM_SLUG);
   if (!testConfig) {
-    return Response.json({ error: "Тест не найден" }, { status: 404 });
+    return apiError("Тест не найден", 404);
   }
 
   if (typeof question_index !== "number" || question_index < 0 || question_index >= testConfig.total_questions) {
-    return Response.json({ error: `Невалидный question_index (0-${testConfig.total_questions - 1})` }, { status: 400 });
+    return apiError(`Невалидный question_index (0-${testConfig.total_questions - 1})`, 400);
   }
 
   const question = testConfig.questions[question_index];

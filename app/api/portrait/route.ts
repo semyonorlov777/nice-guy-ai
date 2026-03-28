@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import { EMPTY_PORTRAIT } from "@/types/portrait";
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const programId = searchParams.get("program_id");
   if (!programId) {
-    return Response.json({ error: "Не указан program_id" }, { status: 400 });
+    return apiError("Не указан program_id", 400);
   }
 
   // 3. Load portrait
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[portrait] Failed to load portrait:", error);
-    return Response.json({ error: "Ошибка загрузки портрета" }, { status: 500 });
+    return apiError("Ошибка загрузки портрета", 500);
   }
 
   // 4. Return portrait or empty structure

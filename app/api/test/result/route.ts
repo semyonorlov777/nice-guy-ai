@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import { getTestConfig } from "@/lib/queries/test-config";
 import { generateTestInterpretation } from "@/lib/test-interpretation";
 import type { ScaleResult } from "@/lib/test-scoring";
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const chatId = searchParams.get("chat_id");
 
   if (!chatId) {
-    return Response.json({ error: "chat_id required" }, { status: 400 });
+    return apiError("chat_id обязателен", 400);
   }
 
   const supabase = await createClient();

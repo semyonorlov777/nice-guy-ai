@@ -1,12 +1,12 @@
 import { createClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const orderId = searchParams.get("order_id");
 
   if (!orderId) {
-    return Response.json({ error: "order_id required" }, { status: 400 });
+    return apiError("order_id обязателен", 400);
   }
 
   const supabase = await createClient();
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     .single();
 
   if (!order) {
-    return Response.json({ error: "Заказ не найден" }, { status: 404 });
+    return apiError("Заказ не найден", 404);
   }
 
   return Response.json({ status: order.yookassa_status || "created" });

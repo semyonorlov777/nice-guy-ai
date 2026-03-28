@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase-server";
 import { analyzeForPortrait } from "@/lib/gemini-portrait";
 import { PORTRAIT_ANALYST_PROMPT } from "@/lib/prompts/portrait-analyst";
+import { apiError } from "@/lib/api-helpers";
 
 /**
  * Core logic — called both from HTTP route and directly from chat/route.ts
@@ -145,24 +146,24 @@ export async function POST(request: Request) {
       !internalSecret ||
       request.headers.get("x-internal-secret") !== internalSecret
     ) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Не авторизован", 401);
     }
 
     const { chat_id, trigger } = await request.json();
 
     if (!chat_id) {
-      return Response.json({ error: "chat_id обязателен" }, { status: 400 });
+      return apiError("chat_id обязателен", 400);
     }
 
     const result = await updatePortrait(chat_id, trigger || "manual");
 
     if (!result.success) {
-      return Response.json({ error: result.error }, { status: 500 });
+      return apiError(result.error || "Ошибка обновления портрета", 500);
     }
 
     return Response.json({ success: true });
   } catch (error) {
     console.error("[PORTRAIT] HTTP handler error:", error);
-    return Response.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
+    return apiError("Внутренняя ошибка сервера", 500);
   }
 }

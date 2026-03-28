@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import type { TestAnswer } from "@/lib/test-scoring";
@@ -19,10 +19,7 @@ export async function POST(request: Request) {
   const programSlug: string = (typeof rawProgramSlug === "string" && rawProgramSlug) ? rawProgramSlug : DEFAULT_PROGRAM_SLUG;
 
   if (!session_id || !UUID_RE.test(session_id)) {
-    return Response.json(
-      { error: "Невалидный session_id" },
-      { status: 400 }
-    );
+    return apiError("Невалидный session_id", 400);
   }
 
   // 3. Load test_session
@@ -34,10 +31,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!session || sessionError) {
-    return Response.json(
-      { error: "Сессия теста не найдена" },
-      { status: 404 }
-    );
+    return apiError("Сессия теста не найдена", 404);
   }
 
   // 4. Load program
@@ -48,10 +42,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!program) {
-    return Response.json(
-      { error: "Программа не найдена" },
-      { status: 404 }
-    );
+    return apiError("Программа не найдена", 404);
   }
 
   // 4.5. Load test config
@@ -79,17 +70,11 @@ export async function POST(request: Request) {
       });
     }
 
-    return Response.json(
-      { error: "Сессия уже мигрирована или завершена" },
-      { status: 400 }
-    );
+    return apiError("Сессия уже мигрирована или завершена", 400);
   }
 
   if (session.status !== "in_progress") {
-    return Response.json(
-      { error: "Сессия уже мигрирована или завершена" },
-      { status: 400 }
-    );
+    return apiError("Сессия уже мигрирована или завершена", 400);
   }
 
   // 6. Complete any existing active test chat (previous incomplete attempt)
@@ -113,10 +98,7 @@ export async function POST(request: Request) {
 
   const answers = (session.answers || []) as TestAnswer[];
   if (answers.length < authWallQuestion) {
-    return Response.json(
-      { error: `Недостаточно ответов для миграции (минимум ${authWallQuestion})` },
-      { status: 400 }
-    );
+    return apiError(`Недостаточно ответов для миграции (минимум ${authWallQuestion})`, 400);
   }
 
   // 7. Create chat with test_state
@@ -141,10 +123,7 @@ export async function POST(request: Request) {
 
   if (chatError || !newChat) {
     console.error("[test:migrate] Failed to create chat:", chatError);
-    return Response.json(
-      { error: "Не удалось создать чат" },
-      { status: 500 }
-    );
+    return apiError("Не удалось создать чат", 500);
   }
 
   // 7. Bulk insert messages with staggered created_at
@@ -174,10 +153,7 @@ export async function POST(request: Request) {
         "[test:migrate] Failed to insert messages:",
         insertError
       );
-      return Response.json(
-        { error: "Не удалось перенести сообщения" },
-        { status: 500 }
-      );
+      return apiError("Не удалось перенести сообщения", 500);
     }
   }
 

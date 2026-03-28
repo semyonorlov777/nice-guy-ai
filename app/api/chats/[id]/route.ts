@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
 
 export async function PATCH(
   request: Request,
@@ -13,10 +13,7 @@ export async function PATCH(
   const body = await request.json();
 
   if (body.status !== "archived") {
-    return Response.json(
-      { error: "Можно только архивировать" },
-      { status: 400 }
-    );
+    return apiError("Можно только архивировать", 400);
   }
 
   const { error } = await supabase
@@ -27,10 +24,7 @@ export async function PATCH(
 
   if (error) {
     console.error("[chats] Archive error:", error);
-    return Response.json(
-      { error: "Не удалось архивировать" },
-      { status: 500 }
-    );
+    return apiError("Не удалось архивировать", 500);
   }
 
   return Response.json({ success: true });
