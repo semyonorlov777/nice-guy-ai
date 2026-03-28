@@ -83,7 +83,12 @@ app/
 │   ├── chats/[id]/route.ts               # GET/DELETE конкретного чата
 │   ├── portrait/route.ts                 # GET портрет
 │   ├── portrait/update/route.ts          # Обновление портрета (Gemini Pro)
-│   ├── test/route.ts                     # Создание теста
+│   ├── test/route.ts                     # Создание теста (оркестратор, делегирует в _handlers/)
+│   ├── test/_handlers/                   # Модули-обработчики (из route.ts)
+│   │   ├── typed-answer.ts               # Обработка типизированных ответов
+│   │   ├── anonymous.ts                  # Анонимные сессии
+│   │   ├── authenticated.ts              # Авторизованные сессии
+│   │   └── final-answer.ts               # Финальный ответ + запуск анализа
 │   ├── test/answer/route.ts              # Отправка ответа на вопрос теста
 │   ├── test/result/route.ts              # Получение результата теста
 │   ├── test/results/[id]/route.ts        # Результаты по ID (публичный)
@@ -118,7 +123,15 @@ components/
 ├── BalanceClient.tsx                     # Клиентская часть страницы баланса
 ├── PublicHeader.tsx                      # Хедер для публичных страниц
 ├── ProfileScreen.tsx                     # Экран профиля пользователя
-├── TestCardFlow.tsx                      # Оркестратор тест-flow
+├── TestCardFlow.tsx                      # Оркестратор тест-flow (тонкий, логика в test-flow/)
+├── test-flow/                            # Хуки и типы TestCardFlow (рефакторинг)
+│   ├── types.ts                          # Типы тест-flow
+│   ├── consumeSSE.ts                     # SSE-потребитель
+│   ├── useTestInit.ts                    # Инициализация теста
+│   ├── useTestSession.ts                 # Управление сессией
+│   ├── useAuthFlow.ts                    # Auth wall flow
+│   ├── useTestAnswers.ts                 # Отправка ответов
+│   └── useResultPolling.ts              # Polling результатов
 ├── InputBar/                             # Текстовый + голосовой ввод
 │   ├── InputBar.tsx                      # Компонент ввода сообщений
 │   └── useInputBar.ts                    # Хук логики ввода
@@ -154,7 +167,6 @@ components/
 │   ├── HubScreen.tsx                     # Главный экран хаба
 │   ├── HubHero.tsx                       # Герой-секция хаба
 │   ├── HubContinueCard.tsx               # Карточка "Продолжить"
-│   ├── HubInputBar.tsx                   # Поле ввода на хабе
 │   ├── HubMobileHeader.tsx               # Мобильный заголовок хаба
 │   ├── AIMessage.tsx                     # AI-сообщение на хабе
 │   ├── InstrumentCard.tsx                # Карточка инструмента
@@ -186,6 +198,9 @@ lib/
 ├── test-parser.ts                        # Парсинг ответов теста
 ├── test-interpretation.ts                # Интерпретация результатов теста
 ├── test-mini-prompt.ts                   # Промпт мини-анализа теста
+├── test-helpers.ts                       # Общие хелперы тестов
+├── test-sse.ts                           # SSE утилиты (создание stream, отправка событий)
+├── test-completion.ts                    # Логика завершения теста (анализ, портрет)
 ├── google-auth.ts                        # Google OAuth логика
 ├── detect-browser.ts                     # Определение браузера
 ├── prompts/portrait-analyst.ts           # Промпт для анализа портрета
@@ -214,6 +229,7 @@ types/
 ├── yookassa.d.ts                         # Типы YooKassa API
 middleware.ts                             # Auth guard для защищённых страниц
 instrumentation.ts                        # Sentry серверная инструментация
+instrumentation-client.ts                 # Sentry клиентская инструментация
 sentry.server.config.ts                   # Sentry конфиг (сервер)
 sentry.client.config.ts                   # Sentry конфиг (клиент)
 sentry.edge.config.ts                     # Sentry конфиг (edge)
