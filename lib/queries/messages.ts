@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/postgrest-js";
 
 /**
  * Загружает сообщения чата в хронологическом порядке.
@@ -18,4 +19,45 @@ export async function getChatMessages(
     role: m.role,
     content: m.content,
   }));
+}
+
+export interface InsertMessageParams {
+  chatId: string;
+  role: "user" | "assistant";
+  content: string;
+  tokensUsed?: number;
+}
+
+/**
+ * Вставляет одно сообщение в чат.
+ */
+export async function insertMessage(
+  supabase: SupabaseClient,
+  params: InsertMessageParams,
+): Promise<{ error: PostgrestError | null }> {
+  const { error } = await supabase.from("messages").insert({
+    chat_id: params.chatId,
+    role: params.role,
+    content: params.content,
+    tokens_used: params.tokensUsed ?? 0,
+  });
+  return { error };
+}
+
+/**
+ * Вставляет несколько сообщений в чат за один запрос.
+ */
+export async function insertMessages(
+  supabase: SupabaseClient,
+  messages: InsertMessageParams[],
+): Promise<{ error: PostgrestError | null }> {
+  const { error } = await supabase.from("messages").insert(
+    messages.map((m) => ({
+      chat_id: m.chatId,
+      role: m.role,
+      content: m.content,
+      tokens_used: m.tokensUsed ?? 0,
+    })),
+  );
+  return { error };
 }
