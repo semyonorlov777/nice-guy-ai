@@ -6,6 +6,7 @@ import type { MutableRefObject } from "react";
 
 interface UseAuthFlowParams {
   sessionId: string;
+  storageKey: string;
   totalQuestions: number;
   lastAnswerPromiseRef: MutableRefObject<Promise<void> | null>;
   setPhase: (phase: CardPhase) => void;
@@ -23,6 +24,7 @@ interface UseAuthFlowParams {
 
 export function useAuthFlow({
   sessionId,
+  storageKey,
   totalQuestions,
   lastAnswerPromiseRef,
   setPhase,
@@ -72,8 +74,8 @@ export function useAuthFlow({
       setMode("authenticated");
 
       try {
-        sessionStorage.removeItem("issp_session_id");
-        localStorage.removeItem("issp_session_id");
+        sessionStorage.removeItem(storageKey);
+        localStorage.removeItem(storageKey);
       } catch {
         // ignore
       }

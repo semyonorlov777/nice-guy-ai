@@ -75,8 +75,8 @@ export function useTestSession({
           setChatId(result.chatId);
           setMode("authenticated");
           try {
-            sessionStorage.removeItem("issp_session_id");
-            localStorage.removeItem("issp_session_id");
+            sessionStorage.removeItem(storageKey);
+            localStorage.removeItem(storageKey);
           } catch { /* ignore */ }
         }
 

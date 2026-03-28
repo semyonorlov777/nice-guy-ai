@@ -98,6 +98,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
 
   const { migrateError, handleRequiresAuth, handleAuthSuccess } = useAuthFlow({
     sessionId,
+    storageKey,
     totalQuestions: TOTAL_QUESTIONS,
     lastAnswerPromiseRef,
     setPhase,
@@ -115,6 +116,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
 
   const { handleQuickAnswer, handleTextAnswer } = useTestAnswers({
     testConfig,
+    storageKey,
     mode,
     sessionId,
     chatId,

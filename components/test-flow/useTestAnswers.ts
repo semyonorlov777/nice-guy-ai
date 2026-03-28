@@ -6,6 +6,7 @@ import { consumeSSE } from "./consumeSSE";
 
 interface UseTestAnswersParams {
   testConfig: TestConfig;
+  storageKey: string;
   mode: "anonymous" | "authenticated";
   sessionId: string;
   chatId: string | null;
@@ -40,6 +41,7 @@ interface UseTestAnswersParams {
 
 export function useTestAnswers({
   testConfig,
+  storageKey,
   mode,
   sessionId,
   chatId,
@@ -142,8 +144,8 @@ export function useTestAnswers({
         setChatId(data.chat_id);
         setMode("authenticated");
         try {
-          sessionStorage.removeItem("issp_session_id");
-          localStorage.removeItem("issp_session_id");
+          sessionStorage.removeItem(storageKey);
+          localStorage.removeItem(storageKey);
         } catch { /* ignore */ }
       }
 
@@ -315,8 +317,8 @@ export function useTestAnswers({
         setChatId(result.chatId);
         setMode("authenticated");
         try {
-          sessionStorage.removeItem("issp_session_id");
-          localStorage.removeItem("issp_session_id");
+          sessionStorage.removeItem(storageKey);
+          localStorage.removeItem(storageKey);
         } catch { /* ignore */ }
       }
 

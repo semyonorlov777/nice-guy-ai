@@ -113,9 +113,7 @@ export function useTestInit({
       try {
         savedSessionId =
           sessionStorage.getItem(storageKey) ||
-          localStorage.getItem(storageKey) ||
-          sessionStorage.getItem("issp_session_id") ||
-          localStorage.getItem("issp_session_id");
+          localStorage.getItem(storageKey);
       } catch {
         // storage unavailable
       }
@@ -160,8 +158,8 @@ export function useTestInit({
               try {
                 sessionStorage.removeItem(storageKey);
                 localStorage.removeItem(storageKey);
-                sessionStorage.removeItem("issp_session_id");
-                localStorage.removeItem("issp_session_id");
+                sessionStorage.removeItem(storageKey);
+                localStorage.removeItem(storageKey);
               } catch { /* ignore */ }
 
               if (cq >= totalQuestions || ts?.status === "completed") {
@@ -187,8 +185,8 @@ export function useTestInit({
 
           if (data.status === "migrated" || data.status === "completed") {
             try {
-              sessionStorage.removeItem("issp_session_id");
-              localStorage.removeItem("issp_session_id");
+              sessionStorage.removeItem(storageKey);
+              localStorage.removeItem(storageKey);
             } catch { /* ignore */ }
             setPhase("welcome");
             return;
@@ -213,8 +211,8 @@ export function useTestInit({
           return;
         } else if (res.status === 404) {
           try {
-            sessionStorage.removeItem("issp_session_id");
-            localStorage.removeItem("issp_session_id");
+            sessionStorage.removeItem(storageKey);
+            localStorage.removeItem(storageKey);
           } catch { /* ignore */ }
         } else {
           console.warn("[Test] Failed to restore session (status:", res.status, "), keeping storage for retry");
