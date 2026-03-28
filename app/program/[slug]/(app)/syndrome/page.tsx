@@ -28,12 +28,17 @@ export default async function SyndromePage({
 
   const { data: modeData } = await supabase
     .from("program_modes")
-    .select("welcome_message, config, mode_templates!inner(chat_type)")
+    .select("welcome_message, welcome_ai_message, welcome_replies, config, mode_templates!inner(chat_type)")
     .eq("program_id", program.id)
     .eq("mode_templates.chat_type", "ng_my_syndrome")
     .maybeSingle();
 
   const modeConfig = (modeData?.config || {}) as { quick_replies?: string[] };
+  const welcomeMsg = modeData?.welcome_ai_message || modeData?.welcome_message || undefined;
+  const welcomeReplies = Array.isArray(modeData?.welcome_replies) ? modeData.welcome_replies as { text: string }[] : [];
+  const quickRepliesArr = welcomeReplies.length > 0
+    ? welcomeReplies.map((r) => r.text)
+    : modeConfig.quick_replies;
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
 
   return (
@@ -50,8 +55,8 @@ export default async function SyndromePage({
       slug={slug}
       currentModeKey="ng_my_syndrome"
       programTitle={program.title}
-      welcomeMessage={modeData?.welcome_message || undefined}
-      quickReplies={modeConfig.quick_replies}
+      welcomeMessage={welcomeMsg}
+      quickReplies={quickRepliesArr}
     />
   );
 }
