@@ -73,7 +73,8 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
     if (mode.key === "exercises" && exerciseCount) {
       description = `${exerciseCount} упражнений Гловера`;
     }
-    if (mode.key === "test_issp" && hasTestResult) {
+    const isTestMode = !mode.is_chat_based && mode.route_suffix?.startsWith("/test");
+    if (isTestMode && hasTestResult) {
       description = "Пройден · AI учитывает результаты";
     }
 
@@ -114,7 +115,7 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       name: mode.name,
       description,
       badge: mode.badge ?? undefined,
-      isDone: mode.key === "test_issp" ? hasTestResult : undefined,
+      isDone: isTestMode ? hasTestResult : undefined,
       href,
     };
   });
