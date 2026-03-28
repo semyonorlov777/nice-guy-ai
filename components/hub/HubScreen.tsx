@@ -86,7 +86,7 @@ export function HubScreen({
             </>
           )}
 
-          {isReturning && (
+          {isReturning && themes.length > 0 && (
             <>
               <div className="hub-section-label">
                 {hasTestResult ? "Твои темы" : "Темы для работы"}

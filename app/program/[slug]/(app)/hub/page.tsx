@@ -109,6 +109,11 @@ export default async function HubPage({
       .replace("{theme1}", orderedThemes[0].title.toLowerCase())
       .replace("{theme2}", orderedThemes[1].title.toLowerCase());
   }
+  // Strip unresolved {theme} placeholders for programs without themes
+  if (aiMessage.includes("{theme")) {
+    aiMessage = aiMessage.replace(/\{theme\d+\}/g, "").replace(/\s{2,}/g, " ").trim();
+    if (!aiMessage) aiMessage = hubMessages["returning_notest"] ?? "";
+  }
 
   return (
     <HubScreen
