@@ -45,30 +45,50 @@ FROM program_themes
 WHERE program_id = (SELECT id FROM programs WHERE slug = '{SLUG}')
 ORDER BY sort_order;
 
--- 3. Тест/диагностика (если есть)
-SELECT id, status, scores_by_scale
-FROM test_results
+-- 3. Тест-конфигурация (если есть)
+SELECT tc.slug, tc.title,
+  jsonb_array_length(tc.questions) as q_count,
+  jsonb_array_length(tc.scales) as scale_count,
+  tc.interpretation_prompt IS NOT NULL as has_interpretation,
+  p.test_system_prompt IS NOT NULL as has_test_system_prompt,
+  p.features->>'test' as test_feature_flag,
+  p.landing_data->'test' IS NOT NULL as has_landing_test
+FROM programs p
+LEFT JOIN test_configs tc ON tc.program_id = p.id
+WHERE p.slug = '{SLUG}';
+
+-- 4. Тест mode_template (хаб-карточка)
+SELECT mt.key, mt.is_chat_based, mt.route_suffix, pm.enabled
+FROM program_modes pm
+JOIN mode_templates mt ON mt.id = pm.mode_template_id
+JOIN programs p ON p.id = pm.program_id
+WHERE p.slug = '{SLUG}'
+  AND mt.route_suffix LIKE '/test/%';
+
+-- 5. Темы с привязкой к тесту
+SELECT key, title, test_scale_key
+FROM program_themes
 WHERE program_id = (SELECT id FROM programs WHERE slug = '{SLUG}')
-LIMIT 1;
+  AND test_scale_key IS NOT NULL;
 ```
 
 **Из кода:**
 
 ```
--- 4. Routes
+-- 6. Routes
 Glob: app/program/[slug]/(app)/**/page.tsx
 
--- 5. Иконки
+-- 7. Иконки
 Read: components/hub/mode-icons.tsx → найти iconMap
 
--- 6. prepare-context.ts
-Read: lib/chat/prepare-context.ts → найти как загружается system_prompt и welcome
+-- 8. prepare-context.ts
+Read: lib/chat/prepare-context.ts → найти appendTestScores()
 ```
 
 **Из файлов скилла:**
 
 ```
--- 7. Ретроспектива
+-- 9. Ретроспектива
 Read: .claude/skills/book-to-modes/examples/{slug}.md (если существует)
 ```
 
