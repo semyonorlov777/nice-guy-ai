@@ -54,6 +54,13 @@ export function useTestSession({
     startFailedRef.current = false;
     startPromiseRef.current = (async () => {
       try {
+        // Typed-answer tests: questions are pre-defined in testConfig,
+        // no legacy AI start needed. Session/chat auto-created on first answer.
+        if (testConfig.questions && testConfig.questions.length > 0) {
+          return;
+        }
+
+        // Legacy mode: AI generates questions via SSE streaming
         const body = {
           message: "Готов, начнём",
           test_slug: testConfig.slug,

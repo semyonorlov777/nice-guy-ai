@@ -167,16 +167,39 @@ export async function POST(request: Request) {
       .eq("session_id", sessionId)
       .maybeSingle();
 
-    if (!existingSession || existingSession.status !== "in_progress") {
+    if (existingSession && existingSession.status !== "in_progress") {
       return apiError("session_not_found", 404);
     }
 
-    session = existingSession;
+    if (existingSession) {
+      session = existingSession;
+    } else {
+      // Auto-create session for typed-answer tests (session created lazily on first answer)
+      const { data: newSession, error: createErr } = await serviceClient
+        .from("test_sessions")
+        .insert({
+          session_id: sessionId,
+          test_slug: testConfig.slug,
+          status: "in_progress",
+          current_question: 0,
+          answers: [],
+          messages: [],
+        })
+        .select("*")
+        .single();
+
+      if (createErr || !newSession) {
+        console.error("[test:answer] Auto-create session failed:", createErr);
+        return apiError("session_create_failed", 500);
+      }
+      session = newSession;
+    }
+
     testState = {
-      current_question: existingSession.current_question as number,
+      current_question: session!.current_question as number,
       status: "in_progress",
-      started_at: existingSession.created_at as string,
-      answers: (existingSession.answers || []) as TestAnswer[],
+      started_at: session!.created_at as string,
+      answers: (session!.answers || []) as TestAnswer[],
     };
     programId = ""; // not needed for anonymous (no test_results insert)
   }

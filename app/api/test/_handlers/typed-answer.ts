@@ -90,11 +90,34 @@ export async function handleTypedAnswer({
       .eq("session_id", sessionId)
       .maybeSingle();
 
-    if (!existingSession || existingSession.status !== "in_progress") {
+    if (existingSession && existingSession.status !== "in_progress") {
       return apiError("Сессия не найдена или завершена", 400);
     }
 
-    session = existingSession as TestSession;
+    if (existingSession) {
+      session = existingSession as TestSession;
+    } else {
+      // Auto-create session for typed-answer tests (session created lazily on first answer)
+      const { data: newSession, error: createErr } = await serviceClient
+        .from("test_sessions")
+        .insert({
+          session_id: sessionId,
+          test_slug: testConfig.slug,
+          status: "in_progress",
+          current_question: 0,
+          answers: [],
+          messages: [],
+        })
+        .select("*")
+        .single();
+
+      if (createErr || !newSession) {
+        console.error("[test:typed] Auto-create session failed:", createErr);
+        return apiError("Не удалось создать сессию", 500);
+      }
+      session = newSession as TestSession;
+    }
+
     serverCurrentQuestion = session.current_question;
     existingAnswers = (session.answers || []) as TestAnswer[];
   }
