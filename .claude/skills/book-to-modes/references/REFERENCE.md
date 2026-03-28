@@ -443,7 +443,7 @@
 **Auth wall:**
 - Если тест — точка входа (виральный, на лендинге): auth wall после 60-80% вопросов (мотивация «я уже столько прошёл»)
 - Если тест — внутренний инструмент: auth wall = null (пользователь уже залогинен)
-- Формула: `auth_wall_question = floor(total_questions * 0.7) - 1` (0-based index)
+- Формула: `auth_wall_question = floor(total_questions * 0.7) - 1` (0-based index). Примеры: 35 вопросов → idx 23, 25 вопросов → idx 16
 
 **Interpretation prompt:**
 Промпт для AI-интерпретации должен содержать:

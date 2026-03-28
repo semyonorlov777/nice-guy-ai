@@ -177,9 +177,22 @@ description: "Проектирование режимов AI-тренажёра 
 
 ### Этап 4.1: Создание теста (если решили «да» на этапе 2)
 
-Если на этапе 2 решили, что тесту быть — создай полный `test_config` для вставки в БД. Формат, SQL-шаблон, полная схема ui_config — см. PLATFORM_MAP.md секция «test_configs». Принципы дизайна вопросов — см. REFERENCE.md секция 12.
+Если на этапе 2 решили, что тесту быть — создай полный seed SQL-файл. Принципы дизайна вопросов — REFERENCE.md секция 12. Полный SQL-шаблон, схема всех JSONB-полей и чеклист — PLATFORM_MAP.md секция «test_configs».
 
-#### Принципы дизайна (из документа принципов тестов)
+#### Что делать
+
+1. **Спроектировать контент** — шкалы, вопросы, интерпретации (см. ниже)
+2. **Заполнить SQL-шаблон** из PLATFORM_MAP.md → «SQL-шаблон создания теста»
+3. **Проверить по чеклисту** из PLATFORM_MAP.md → «После создания теста — чеклист»
+4. **Сохранить** как `scripts/seed-{book-slug}-test.sql`
+
+⚠️ **Критичные моменты (из lessons learned):**
+- `programs.test_system_prompt` ОБЯЗАТЕЛЬНО заполнить — без него API вернёт 404
+- `mode_template` с `is_chat_based=false` и `route_suffix=/test/SLUG` — без этого тест не появится на хабе
+- `auth_wall_question` формула: `floor(total_questions * 0.7) - 1` (0-based index)
+- После выполнения SQL — **обязательно** пройти тест в браузере до результатов
+
+#### Принципы дизайна
 
 **Зачем тест:** лидмагнит (вовлечение без регистрации) + диагностика (какие темы релевантны) + данные для портрета (текстовые ответы).
 
@@ -216,29 +229,9 @@ description: "Проектирование режимов AI-тренажёра 
 - **Связь с режимами** — какой режим раскрывает эту шкалу
 - **radar_label** — 1-2 строки для отображения на радар-диаграмме
 
-#### Технические поля
+#### Выход
 
-- **scoring** — `answer_range`, `score_direction`, `level_thresholds`, `level_labels`
-- **ui_config** — `welcome_title` (с HTML), `welcome_description`, `welcome_badge`, `questions_per_block`, `auth_wall_question` (формула: `floor(total * 0.8) - 1`), `welcome_stats`, `block_insights` (1 на блок), `quick_answer_labels`, `analyzing_stages`
-- **interpretation_prompt** — роль + книга + шкалы с ресурсами + 7 правил тона + JSON-схема ответа + связь шкал с режимами
-- **mini_analysis_prompt_template** — шаблон с `{{questionText}}`, запрет патологизации
-
-#### Обязательные SQL-операции (кроме INSERT в test_configs)
-
-```sql
--- 1. Feature flag
-UPDATE programs SET features = features || '{"test": true}'::jsonb WHERE slug = 'BOOK_SLUG';
-
--- 2. Landing секция
-UPDATE programs SET landing_data = jsonb_set(landing_data, '{test}', '{"emoji":"🎭","title":"...","description":"...","cta_text":"Пройти тест бесплатно","cta_href":"/program/BOOK_SLUG/test"}'::jsonb) WHERE slug = 'BOOK_SLUG';
-
--- 3. System prompt для AI в тесте (если ещё нет)
-UPDATE programs SET test_system_prompt = '...' WHERE slug = 'BOOK_SLUG' AND test_system_prompt IS NULL;
-```
-
-Полный чеклист с проверками DB-схемы — см. PLATFORM_MAP.md → «После создания теста — чеклист».
-
-Выход: готовый SQL seed файл `scripts/seed-{book-slug}-test.sql` (оборачивай в ``` для копирования).
+Готовый SQL seed файл `scripts/seed-{book-slug}-test.sql` по шаблону из PLATFORM_MAP.md. Файл содержит ВСЕ операции: INSERT test_configs + feature flag + test_system_prompt + landing_data + mode_template + program_mode + верификационный SELECT.
 
 ### Этап 4.5: Лендинг
 

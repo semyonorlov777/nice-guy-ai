@@ -486,59 +486,172 @@ CREATE TABLE test_configs (
 - `analyzing_stages` — этапы анимации «анализируем» (опционально)
 - `timeframe_text` — подсказка «за какой период оценивать» (опционально)
 
-### SQL-шаблон создания теста
+### SQL-шаблон создания теста (полный seed-файл)
+
+**ВАЖНО:** Весь SQL ниже — единый файл `scripts/seed-{book-slug}-test.sql`. Выполняется за один раз в Supabase SQL Editor. Порядок операций критичен — не менять!
 
 ```sql
+-- =============================================================
+-- Seed: Тест для программы {BOOK_NAME}
+-- Файл: scripts/seed-{book-slug}-test.sql
+-- =============================================================
+
+-- 1. INSERT тест (основная операция)
 INSERT INTO test_configs (
   program_id, slug, title, short_title, description,
   questions, scales, scoring, ui_config,
   interpretation_prompt, mini_analysis_prompt_template
 ) VALUES (
   (SELECT id FROM programs WHERE slug = 'BOOK_SLUG'),
-  'TEST_SLUG',
-  'Название теста',
-  'Короткое название',
+  'TEST_SLUG',          -- URL: /program/BOOK_SLUG/test/TEST_SLUG
+  'Полное название теста',
+  'Короткое',           -- Для UI-заголовков
   'Описание для лендинга',
 
-  -- questions (JSONB массив)
+  -- questions: [{q, scale, type, text}]
+  -- q: 1-based номер, scale: ключ шкалы, type: direct|reverse
   '[
-    {"q":1, "scale":"scale_key", "type":"direct", "text":"Текст вопроса 1"},
-    {"q":2, "scale":"scale_key", "type":"reverse", "text":"Текст вопроса 2"}
+    {"q":1, "scale":"scale_key", "type":"direct", "text":"Утверждение 1..."},
+    {"q":2, "scale":"scale_key", "type":"reverse", "text":"Утверждение 2..."}
   ]'::jsonb,
 
-  -- scales (JSONB массив)
+  -- scales: [{key, name, order, radar_label}]
+  -- key: с префиксом книги (ta_, ll_, ng_), order: 0-based для radar
   '[
-    {"key":"scale_key", "name":"Название шкалы", "order":0, "radar_label":["Строка 1","Строка 2"]}
+    {"key":"prefix_scale1", "name":"Название шкалы", "order":0, "radar_label":["Строка 1","Строка 2"]}
   ]'::jsonb,
 
   -- scoring
-  '{"answer_range":[1,5], "score_direction":"lower_is_better", "level_thresholds":[25,50,75], "level_labels":["Низкий","Умеренный","Выраженный","Высокий"]}'::jsonb,
+  '{
+    "answer_range": [1, 5],
+    "score_direction": "lower_is_better",
+    "level_thresholds": [25, 50, 75],
+    "level_labels": ["Низкий", "Умеренный", "Выраженный", "Высокий"]
+  }'::jsonb,
 
-  -- ui_config
-  '{"questions_per_block":5, "auth_wall_question":null, "welcome_stats":[{"num":"N","label":"вопросов"},{"num":"K","label":"шкал"},{"num":"~M","label":"минут"}], "block_insights":["Insight 1","Insight 2"], "quick_answer_labels":["Совсем нет","Скорее нет","Иногда","Скорее да","Полностью"]}'::jsonb,
+  -- ui_config (все поля обязательны для корректного UI)
+  '{
+    "questions_per_block": 5,
+    "auth_wall_question": null,
+    "welcome_title": "Название<br /><span>подзаголовок</span>",
+    "welcome_subtitle": "N вопросов · ~M минут",
+    "welcome_description": "Описание на welcome screen",
+    "welcome_badge": "Бесплатно",
+    "welcome_cta": "Начать тест",
+    "welcome_meta": "~M минут",
+    "welcome_stats": [
+      {"num": "N", "label": "вопросов"},
+      {"num": "K", "label": "шкал"},
+      {"num": "~M", "label": "минут"}
+    ],
+    "block_insights": ["Блок 1: Тема", "Блок 2: Тема"],
+    "quick_answer_labels": ["Совсем нет", "Скорее нет", "Иногда", "Скорее да", "Полностью"],
+    "analyzing_stages": [
+      {"title": "Анализ ответов", "substeps": ["Обработка данных", "Подсчёт баллов"]},
+      {"title": "Интерпретация", "substeps": ["Анализ паттернов", "Формирование выводов"]}
+    ]
+  }'::jsonb,
 
-  -- interpretation_prompt
-  E'Ты — психолог, специализирующийся на [тема книги].\n\nТвоя задача — написать персонализированную интерпретацию результатов теста.\n\n...',
+  -- interpretation_prompt (AI-интерпретация результатов)
+  E'Ты — психолог, специализирующийся на [тема книги].\n\n...',
 
-  -- mini_analysis_prompt_template ({{questionText}} будет заменён)
-  E'Вопрос: «{{questionText}}»\nОцени ответ пользователя по шкале от 1 до 5.\n...'
+  -- mini_analysis_prompt_template ({{questionText}} заменяется автоматически)
+  E'Вопрос: «{{questionText}}»\n...'
 );
+
+-- 2. Feature flag (БЕЗ ЭТОГО тест не появится в UI)
+UPDATE programs
+SET features = features || '{"test": true}'::jsonb
+WHERE slug = 'BOOK_SLUG';
+
+-- 3. System prompt для тестового чата (БЕЗ ЭТОГО API вернёт 404!)
+-- ВАЖНО: используется programs.test_system_prompt, НЕ test_configs.system_prompt
+UPDATE programs
+SET test_system_prompt = E'Ты проводишь тест по книге [название].\n\n...'
+WHERE slug = 'BOOK_SLUG'
+  AND test_system_prompt IS NULL;
+
+-- 4. Landing секция теста
+UPDATE programs
+SET landing_data = jsonb_set(
+  landing_data,
+  '{test}',
+  '{
+    "emoji": "🎯",
+    "title": "Название теста",
+    "description": "Краткое описание (1-2 предложения)",
+    "time_label": "~M минут",
+    "questions_label": "N вопросов",
+    "cta_text": "Пройти тест бесплатно",
+    "cta_href": "/program/BOOK_SLUG/test"
+  }'::jsonb
+)
+WHERE slug = 'BOOK_SLUG';
+
+-- 5. mode_template + program_mode для теста (если ещё нет)
+-- Без этого тест не появится на хабе как карточка инструмента
+INSERT INTO mode_templates (key, name, description, icon, chat_type, route_suffix, is_chat_based)
+VALUES ('test_TEST_SLUG', 'Название теста', 'Описание для хаба', 'check', NULL, '/test/TEST_SLUG', false)
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO program_modes (program_id, mode_template_id, sort_order, enabled, access_type)
+SELECT
+  (SELECT id FROM programs WHERE slug = 'BOOK_SLUG'),
+  (SELECT id FROM mode_templates WHERE key = 'test_TEST_SLUG'),
+  1,    -- sort_order (тест обычно первый)
+  true,
+  'free'
+ON CONFLICT DO NOTHING;
+
+-- 6. Верификация (выполни и проверь результат)
+SELECT slug, title,
+  jsonb_array_length(questions) as q_count,
+  jsonb_array_length(scales) as scale_count
+FROM test_configs
+WHERE slug = 'TEST_SLUG';
 ```
 
 ### После создания теста — чеклист
 
-| # | Задача | Тип | Описание |
-|---|--------|-----|----------|
-| 1 | INSERT в `test_configs` | SQL | Основной INSERT (или ON CONFLICT DO UPDATE для идемпотентности) |
-| 2 | `programs.features` += `"test": true` | SQL | Feature flag, без него тест не появится в UI |
-| 3 | `landing_data.test` | SQL | Секция теста на лендинге (emoji, title, description, cta_href) |
-| 4 | `programs.test_system_prompt` | SQL | System prompt для AI в тесте. **Без него API вернёт 404** |
-| 5 | Проверить `test_results.test_slug` | DB | Колонка ОБЯЗАТЕЛЬНА. Если нет — INSERT результатов упадёт (баг GPP #1) |
-| 6 | Проверить middleware | Код | Route `/program/*/test/*` уже public (regex в middleware.ts). Новых роутов добавлять не нужно |
-| 7 | Роут `test/[testSlug]` | Код | Уже существует и работает для любого slug. Создавать не нужно |
-| 8 | WelcomeScreen | Код | Динамический, читает `ui_config.welcome_*`. Убедись что `welcome_title` с HTML-разметкой |
-| 9 | Маппинг шкалы → режим | SQL | В `interpretation_prompt`: связь шкал с режимами для `top_zones[].action_text` |
-| 10 | Пройти тест в браузере | Verify | Полный путь: welcome → 25 вопросов → auth wall → результаты → radar chart |
+**Все SQL-операции уже в шаблоне выше.** Этот чеклист — для верификации:
+
+| # | Что проверить | Как | Критично? |
+|---|--------------|-----|-----------|
+| 1 | `test_configs` содержит запись | `SELECT * FROM test_configs WHERE slug = 'TEST_SLUG'` | 🔴 Без этого тест не существует |
+| 2 | `programs.features.test = true` | `SELECT features->>'test' FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого тест скрыт в UI |
+| 3 | `programs.test_system_prompt` заполнен | `SELECT test_system_prompt IS NOT NULL FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого API вернёт 404 |
+| 4 | `landing_data.test` заполнен | `SELECT landing_data->'test' FROM programs WHERE slug = 'BOOK_SLUG'` | 🟡 Без этого нет секции теста на лендинге |
+| 5 | `mode_template` + `program_mode` созданы | `SELECT key FROM mode_templates WHERE key = 'test_TEST_SLUG'` | 🟡 Без этого нет карточки на хабе |
+| 6 | `auth_wall_question` рассчитан | `floor(total_questions * 0.7) - 1` (0-based) | 🟡 null = без auth wall |
+| 7 | Middleware пропускает | Route `/program/*/test/*` уже public | ✅ Не нужно менять |
+| 8 | Роут `test/[testSlug]` | Уже существует и работает для любого slug | ✅ Не нужно менять |
+| 9 | Пройти тест в браузере | Welcome → вопросы → auth wall → результаты → radar | 🔴 Обязательно! |
+
+### Важно: какой system_prompt используется
+
+- **`programs.test_system_prompt`** — используется API `/api/test` для генерации ответов во время теста. **Обязательно заполнить, иначе 404!**
+- **`test_configs.interpretation_prompt`** — используется при генерации финальной интерпретации результатов (Gemini Pro)
+- **`test_configs.mini_analysis_prompt_template`** — используется для мини-анализа текстовых ответов
+
+### Как работает localStorage (storageKey)
+
+Анонимная сессия сохраняется в `localStorage` / `sessionStorage` под ключом `test_session_{testConfig.slug}`. Например:
+- ISSP тест: `test_session_issp`
+- GPP тест: `test_session_gpp-test`
+
+Ключ формируется автоматически из slug теста. **Не нужно** ничего хардкодить.
+
+### Как работает статус «Пройден» на хабе
+
+Хаб определяет тест-режим generic-проверкой: `!mode.is_chat_based && mode.route_suffix?.startsWith("/test")`. Для корректной работы:
+- `mode_template.is_chat_based` = `false`
+- `mode_template.route_suffix` начинается с `/test/`
+
+Если оба условия выполнены, хаб автоматически показывает «Пройден · AI учитывает результаты» при наличии `hasTestResult`.
+
+### Как работает сортировка тем по тесту
+
+Таблица `program_themes` имеет колонку `test_scale_key` (бывш. `issp_scale_key`). Если заполнена — темы сортируются по баллам теста (высшие первые). Маппинг: `program_themes.test_scale_key` → `test_results.scores_by_scale[key]`.
 
 ### Известные баги и грабли (lessons learned)
 
@@ -548,7 +661,9 @@ INSERT INTO test_configs (
 | 2 | WelcomeScreen показывал ИССП для всех тестов | Компонент был захардкожен | Исправлено: WelcomeScreen теперь динамический (ui_config.welcome_*) |
 | 3 | `/test/issp` хардкод в HubScreen, SiteFooter | Ссылки вели на конкретный slug | Исправлено: используют `/program/{slug}/test` → redirect на правильный slug |
 | 4 | Build проходит, но данные не доходят | TypeScript не проверяет что DB-колонка существует | Правило: после SQL seed — обязательно пройти тест в браузере до результатов |
-| 5 | `/api/test/config` возвращает только DEFAULT_PROGRAM | GET-эндпоинт не принимает program_slug | Не критично: клиент использует `/api/test?program_slug=...`, не `/api/test/config` |
+| 5 | API тест вернул 404 | `programs.test_system_prompt` не заполнен | Чеклист п.3: **обязательно** заполнить |
+| 6 | localStorage чистился неправильно | Хардкод `issp_session_id` вместо динамического ключа | Исправлено: используется `test_session_{slug}` автоматически |
+| 7 | Хаб не показывал «Пройден» для нового теста | Хардкод `mode.key === "test_issp"` | Исправлено: generic проверка `route_suffix.startsWith("/test")` |
 
 ### Реестр тестов
 

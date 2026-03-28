@@ -156,28 +156,41 @@ INSERT INTO test_configs (
 6. **Язык движения** — "можно начать", не "нужно исправить"
 7. **Без патологизации** — никаких "проблема", "дефицит", "нарушение"
 
-### 7. Выполнить SQL
+### 7. Собрать seed SQL-файл
+
+Используй полный SQL-шаблон из `.claude/skills/book-to-modes/references/PLATFORM_MAP.md` → «SQL-шаблон создания теста». Шаблон содержит ВСЕ необходимые операции в правильном порядке:
+
+1. INSERT в `test_configs`
+2. Feature flag `programs.features.test = true`
+3. `programs.test_system_prompt` (**без него API вернёт 404!**)
+4. `landing_data.test` (секция теста на лендинге)
+5. `mode_template` + `program_mode` (карточка на хабе)
+6. Верификационный SELECT
+
+Сохрани как `scripts/seed-{book-slug}-test.sql`.
+
+### 8. Выполнить SQL
 
 ```bash
 # В Supabase SQL Editor:
-# 1. Выполни seed-{book-slug}-test.sql
+# 1. Выполни seed-{book-slug}-test.sql целиком
 ```
 
-**Ожидаемый результат:** Новая запись в `test_configs`:
+**Верификация:**
 ```sql
+-- Проверить что тест создан
 SELECT slug, title,
   jsonb_array_length(questions) as q_count,
   jsonb_array_length(scales) as scale_count
-FROM test_configs
-WHERE slug = '{test-slug}';
-```
+FROM test_configs WHERE slug = '{test-slug}';
 
-### 8. Включить тест в features программы
+-- Проверить что system_prompt заполнен (без него 404!)
+SELECT test_system_prompt IS NOT NULL as has_prompt
+FROM programs WHERE slug = '{program-slug}';
 
-```sql
-UPDATE programs
-SET features = features || '{"test": true}'::jsonb
-WHERE slug = '{program-slug}';
+-- Проверить feature flag
+SELECT features->>'test' as test_enabled
+FROM programs WHERE slug = '{program-slug}';
 ```
 
 ### 9. Проверить в приложении
@@ -185,6 +198,7 @@ WHERE slug = '{program-slug}';
 ```bash
 npm run dev
 # Тест: http://localhost:3000/program/{prog-slug}/test/{test-slug}
+# Debug: http://localhost:3000/program/{prog-slug}/test/{test-slug}?debug=true
 ```
 
 Пройди полный flow:
@@ -193,6 +207,7 @@ npm run dev
 3. Auth wall (если настроен) → авторизоваться
 4. Дойти до конца → "Анализируем..."
 5. Результаты → radar-диаграмма, интерпретация
+6. Хаб → карточка теста показывает «Пройден»
 
 ## Верификация
 
@@ -205,6 +220,8 @@ npm run dev
 7. ✅ Radar-диаграмма рендерится с правильными шкалами
 8. ✅ AI-интерпретация адекватная (проверь тон)
 9. ✅ Публичная ссылка на результаты работает
+10. ✅ Хаб показывает «Пройден · AI учитывает результаты»
+11. ✅ localStorage ключ = `test_session_{test-slug}` (не issp)
 
 ## Откат
 
@@ -222,10 +239,13 @@ WHERE slug = '{program-slug}';
 
 | Симптом | Причина | Решение |
 |---------|---------|---------|
+| API вернул 404 | `programs.test_system_prompt` не заполнен | Заполнить (шаг 3 в seed SQL) |
 | Тест не найден (404) | Slug не совпадает или `features.test = false` | Проверь slug в URL и features |
+| Тест не на хабе | Нет `mode_template` + `program_mode` | Выполнить шаг 5 из seed SQL |
+| Хаб не показывает «Пройден» | `route_suffix` не начинается с `/test/` | Проверь mode_template |
 | Вопрос без текста | `questions[].text` пуст | Проверь JSON |
 | Неправильные баллы | `type: "reverse"` на direct вопросе (или наоборот) | Перепроверь type каждого вопроса |
 | Radar-диаграмма кривая | `scales[].order` дублируется или пропущен | Убедись что order уникален и последователен |
 | AI-интерпретация пустая | `interpretation_prompt` не заполнен | Добавь промпт в test_configs |
-| Auth wall не появляется | `ui_config.auth_wall_question` = null | Установи 0-based индекс |
+| Auth wall не появляется | `ui_config.auth_wall_question` = null | Формула: `floor(total * 0.7) - 1` |
 | Labels кнопок не те | `quick_answer_labels` не совпадает с `answer_range` | 5 labels для range [1,5] |
