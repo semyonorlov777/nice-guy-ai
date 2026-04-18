@@ -90,3 +90,15 @@
 3. **`ta_diagnostic` отсутствовал в `toolKeyMap`** (компонент `components/hub/InstrumentList.tsx`) — chat-based режим с `route_suffix='/chat'` без записи в map → href fallback на `/chat` (свободный чат). Главная free-точка входа GPP вела в неправильный режим. После рефакторинга в auto-derivation проблема снята для всех будущих режимов.
 
 **Вывод:** все три шага PLATFORM_MAP блока «5. mode_template + program_mode для теста» — **не опциональны**. INSERT в `test_configs` сам по себе ничего не даёт. Перед закрытием задачи на тест нужно пройти UI-проверку: «вижу карточку на хабе → клик → welcome → вопрос → результат».
+
+## Уроки из второго UI-прогона 2026-04-18
+
+После первой итерации фиксов всплыли ещё 2 бага, которых первый аудит не ловил (UI рендерился, но контент был «чужой» или пустой):
+
+1. **`programs.hub_messages = {}`** — хаб GPP по всем трём состояниям (`?hub_state=first|returning-test|returning-notest`) показывал пустой золотой кружок вместо AI-приветствия. У nice-guy это поле было заполнено при seed-е, у GPP — просто забыли. Теперь шаг 7 «Hub welcome messages» — обязательный в SQL-шаблоне PLATFORM_MAP.
+
+2. **`HistoryScreen` хардкодил «Индекс Синдрома Славного Парня»** — пользователь, прошедший GPP-тест, при возврате на `/program/games-people-play/test/gpp-test` видел заголовок от ISSP. Фикс: `HistoryScreen` теперь читает `testConfig.ui_config.welcome_title/welcome_badge`. Для визуальной проверки добавлен debug-параметр `?test_state=welcome|history-single|history-multi` — позволяет пройти все 3 состояния welcome-экрана без данных в БД.
+
+3. **Создали 5 `program_themes` для GPP** с маппингом на шкалы теста (`ta_game_tendency → games`, `ta_ego_imbalance → ego-states`, `ta_script_power → life-script`, `ta_stroke_deficit → strokes`, `ta_drama_roles → karpman`). Это опциональная фича (без тем хаб работает, fallback-логика в `hub/page.tsx` стрипает неразрешённые плейсхолдеры), но персонализация `returning_test` через `{theme1}/{theme2}` стоит этих 5 записей. **Правило для следующих книг:** если шкалы теста семантически разные — делай темы; если шкалы = подвиды одного концепта — можно без тем.
+
+**Вывод итерации 2:** проверять UI надо не «прошёл ли тест работает», а **все состояния всех stateful-экранов** через debug-параметры (`?hub_state=...`, `?test_state=...`). Недостаточно прогнать happy path.

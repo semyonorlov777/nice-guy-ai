@@ -612,6 +612,18 @@ SELECT slug, title,
   jsonb_array_length(scales) as scale_count
 FROM test_configs
 WHERE slug = 'TEST_SLUG';
+
+-- 7. Hub welcome messages (БЕЗ ЭТОГО AI-приветствие на хабе пустой кружок)
+-- 3 ключа: first / returning_test / returning_notest.
+-- Плейсхолдеры {theme1}/{theme2} в returning_test резолвятся в топ-2 тем по баллам
+-- теста (см. hub/page.tsx). Если у программы нет program_themes — плейсхолдеры
+-- автоматически стрипаются и выводится returning_notest.
+UPDATE programs SET hub_messages = '{
+  "first": "Привет! [хук про книгу]. Начни с теста — <strong>N минут, K вопросов</strong>. [что даст тест].",
+  "returning_test": "По твоему профилю самые сильные темы — <strong>{theme1}</strong> и <strong>{theme2}</strong>. С чего начнём?",
+  "returning_notest": "Пройди тест — <strong>N минут</strong>, и я подскажу, с чего начать. А пока выбирай инструмент."
+}'::jsonb
+WHERE slug = 'BOOK_SLUG';
 ```
 
 ### После создания теста — чеклист
@@ -629,6 +641,8 @@ WHERE slug = 'TEST_SLUG';
 | 7 | Middleware пропускает | Route `/program/*/test/*` уже public | ✅ Не нужно менять |
 | 8 | Роут `test/[testSlug]` | Уже существует и работает для любого slug | ✅ Не нужно менять |
 | 9 | Пройти тест в браузере | Welcome → вопросы → auth wall → результаты → radar | 🔴 Обязательно! |
+| 9.5 | `programs.hub_messages` заполнены | `/program/<slug>/hub?hub_state=first` → AI-message не пустой; `?hub_state=returning-notest` → тот же тест | 🔴 Без этого на хабе пустой золотой кружок |
+| 9.6 | `HistoryScreen` теста — правильный заголовок | `/program/<slug>/test/<testSlug>?test_state=history-multi` → заголовок из `testConfig.ui_config.welcome_title`, не от другой книги | 🟡 Быстрый визуальный прогон через debug-параметр |
 
 ### Важно: какой system_prompt используется
 
@@ -667,6 +681,8 @@ WHERE slug = 'TEST_SLUG';
 | 5 | API тест вернул 404 | `programs.test_system_prompt` не заполнен | Чеклист п.3: **обязательно** заполнить |
 | 6 | localStorage чистился неправильно | Хардкод `issp_session_id` вместо динамического ключа | Исправлено: используется `test_session_{slug}` автоматически |
 | 7 | Хаб не показывал «Пройден» для нового теста | Хардкод `mode.key === "test_issp"` | Исправлено: generic проверка `route_suffix.startsWith("/test")` |
+| 8 | Пустой золотой кружок вместо AI-приветствия на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
+| 9 | HistoryScreen теста показывал «Индекс Синдрома Славного Парня» для других книг | Захардкожен h1 и badge | Исправлено: `HistoryScreen` берёт из `testConfig.ui_config.welcome_title/welcome_badge`. Проверка через `?test_state=history-multi` |
 
 ### Реестр тестов
 
