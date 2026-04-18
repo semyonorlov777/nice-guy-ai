@@ -333,7 +333,10 @@ export async function appendTestScores(
 
   if (!testResult?.scores_by_scale) return systemPrompt;
 
-  return systemPrompt + `\n\n---\nРЕЗУЛЬТАТЫ ТЕСТА:\n${JSON.stringify(testResult.scores_by_scale)}`;
+  return (
+    systemPrompt +
+    `\n\n---\nРЕЗУЛЬТАТЫ ТЕСТА (используй для навигации и персонализации; НЕ зачитывай числовые баллы пользователю — они только для тебя):\n${JSON.stringify(testResult.scores_by_scale)}`
+  );
 }
 
 // ---------------------------------------------------------------------------
