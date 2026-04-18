@@ -67,6 +67,7 @@
 - [ ] **E10:** `program_mode` создан и `enabled = true` (карточка на хабе)
 - [ ] **E13 (v1.5):** `programs.hub_messages` содержит ключи `first`, `returning_test`, `returning_notest` (без этого AI-приветствие на хабе рендерится пустым золотым кружком). Визуально проверить `/program/<slug>/hub?hub_state=first` и `?hub_state=returning-notest` — текст виден
 - [ ] **E14 (v1.5):** Визуальная проверка: `HistoryScreen` теста показывает заголовок из `testConfig.ui_config.welcome_title/welcome_badge`, а не захардкоженное название другой программы. Проверить на `?test_state=history-multi` (см. секцию I)
+- [ ] **E15 (v1.5):** Визуальная проверка: карточка теста в секции «Инструменты» хаба отображается зелёным цветом (forced в коде `InstrumentList.tsx` — `program_modes.color_class` для тестов игнорируется). Если карточка теста сливается с чат-режимами по цвету — значит либо `is_chat_based=true` выставлено ошибочно, либо `route_suffix` не начинается с `/test/`
 
 ### E.III — Темы и сортировка (если есть program_themes)
 - [ ] **E11:** `program_themes.test_scale_key` заполнен для тем, привязанных к шкалам теста

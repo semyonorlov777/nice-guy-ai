@@ -606,6 +606,11 @@ SELECT
   'free'
 ON CONFLICT DO NOTHING;
 
+-- Примечание: color_class для test-карточки в program_modes можно не указывать.
+-- InstrumentList (components/hub/InstrumentList.tsx) для всех test-режимов
+-- (is_chat_based=false AND route_suffix LIKE '/test/%') форсит зелёный цвет
+-- независимо от значения в БД — единообразие карточки теста на хабе.
+
 -- 6. Верификация (выполни и проверь результат)
 SELECT slug, title,
   jsonb_array_length(questions) as q_count,
