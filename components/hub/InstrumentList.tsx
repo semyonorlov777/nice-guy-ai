@@ -78,36 +78,19 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       description = "Пройден · AI учитывает результаты";
     }
 
-    // Determine href: chat-based modes go to /chat/new?tool=KEY, pages go to route_suffix
-    const toolKeyMap: Record<string, string> = {
-      free_chat: "free-chat",
+    // Determine href:
+    // - chat-based modes whose route_suffix is the generic "/chat" go to /chat/new?tool=KEY
+    //   (page-only routes like /syndrome, /author-chat use route_suffix directly)
+    // - non-chat-based (tests, etc) always use route_suffix
+    // tool key derivation mirrors lib/queries/welcome.ts toolAliases (in reverse)
+    const toolKeyAliases: Record<string, string> = {
       author_chat: "author",
       self_work: "selfcheck",
-      exercises: "exercises",
-      self_analysis: "self-analysis",
-      partner_analysis: "partner-analysis",
-      relationship_map: "relationship-map",
-      theory: "theory",
-      love_translator: "love-translator",
-      roleplay: "roleplay",
-      ta_diagnostic: "ta-diagnostic",
-      ta_game_quiz: "ta-game-quiz",
-      ta_game_analysis: "ta-game-analysis",
-      ta_ego_states: "ta-ego-states",
-      ta_life_script: "ta-life-script",
-      ta_script_matrix: "ta-script-matrix",
-      ta_game_exit: "ta-game-exit",
-      ta_permission: "ta-permission",
-      notes_fear_deconstruct: "notes-fear-deconstruct",
-      notes_scale_thinking: "notes-scale-thinking",
-      notes_energy_architect: "notes-energy-architect",
-      notes_pleasure_switch: "notes-pleasure-switch",
-      notes_environment_audit: "notes-environment-audit",
-      notes_business_lab: "notes-business-lab",
-      notes_self_journal: "notes-self-journal",
     };
-    const href = mode.is_chat_based && toolKeyMap[mode.key]
-      ? `${base}/chat/new?tool=${toolKeyMap[mode.key]}`
+    const toolKey = toolKeyAliases[mode.key] ?? mode.key.replace(/_/g, "-");
+    const useToolNewChat = mode.is_chat_based && mode.route_suffix === "/chat";
+    const href = useToolNewChat
+      ? `${base}/chat/new?tool=${toolKey}`
       : `${base}${mode.route_suffix}`;
 
     return {
