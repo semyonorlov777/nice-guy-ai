@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { TestConfig } from "@/lib/test-config";
 
 export interface TestResultSummary {
   id: string;
@@ -14,6 +15,7 @@ interface HistoryScreenProps {
   onRetake: () => void;
   isStarting: boolean;
   programSlug: string;
+  testConfig: TestConfig;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("ru", {
@@ -97,7 +99,7 @@ const LockIcon = () => (
   </svg>
 );
 
-export function HistoryScreen({ results, onRetake, isStarting, programSlug }: HistoryScreenProps) {
+export function HistoryScreen({ results, onRetake, isStarting, programSlug, testConfig }: HistoryScreenProps) {
   const router = useRouter();
   const latest = results[0];
   const first = results[results.length - 1];
@@ -106,19 +108,20 @@ export function HistoryScreen({ results, onRetake, isStarting, programSlug }: Hi
   // Дельта между последним и первым прохождением
   const overallDiff = hasMultiple ? latest.total_score - first.total_score : 0;
 
+  const ui = testConfig.ui_config;
+  const badgeLabel = ui.welcome_badge ?? "Диагностика";
+  const titleHtml = ui.welcome_title ?? testConfig.title;
+
   return (
     <div className="tc-screen tc-history-screen">
       {/* Badge */}
       <div className="tc-welcome-badge">
         <BadgeIcon />
-        Диагностика
+        {badgeLabel}
       </div>
 
       {/* Title */}
-      <h1>
-        Индекс Синдрома<br />
-        <span>Славного Парня</span>
-      </h1>
+      <h1 dangerouslySetInnerHTML={{ __html: titleHtml }} />
 
       {/* Latest result card */}
       <div

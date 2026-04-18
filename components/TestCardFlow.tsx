@@ -202,6 +202,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
             onRetake={handleRetake}
             isStarting={isStarting}
             programSlug={programSlug}
+            testConfig={testConfig}
           />
         )}
 
