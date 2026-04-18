@@ -90,6 +90,7 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       theory: "theory",
       love_translator: "love-translator",
       roleplay: "roleplay",
+      ta_diagnostic: "ta-diagnostic",
       ta_game_quiz: "ta-game-quiz",
       ta_game_analysis: "ta-game-analysis",
       ta_ego_states: "ta-ego-states",
