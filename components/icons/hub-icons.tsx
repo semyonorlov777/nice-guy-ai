@@ -483,4 +483,10 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   "life-script": BookOpenIcon,
   strokes: HeartLoveIcon,
   karpman: TargetIcon,
+  // razgovorny-gipnoz (Bakirov scales)
+  rapport: UsersLoveIcon,
+  suggestions: SparklesIcon,
+  strategy: CompassIcon,
+  awareness: ShieldIcon,
+  trance: LightbulbIcon,
 };
