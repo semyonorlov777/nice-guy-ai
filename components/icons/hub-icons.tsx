@@ -466,9 +466,10 @@ export function FlaskIcon({ size = 18, className }: IconProps) {
   );
 }
 
-// ═══ Theme Icon Map (for ISSP scales) ═══
+// ═══ Theme Icon Map (keys = program_themes.icon_key) ═══
 
 export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
+  // nice-guy (ISSP scales)
   approval: ApprovalIcon,
   contracts: ContractsIcon,
   suppression: SuppressionIcon,
@@ -476,4 +477,10 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   boundaries: BoundariesIcon,
   masculinity: MasculinityIcon,
   attachment: AttachmentIcon,
+  // games-people-play (TA scales)
+  games: DramaIcon,
+  "ego-states": CompassIcon,
+  "life-script": BookOpenIcon,
+  strokes: HeartLoveIcon,
+  karpman: TargetIcon,
 };
