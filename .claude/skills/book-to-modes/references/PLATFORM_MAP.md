@@ -688,14 +688,17 @@ WHERE slug = 'BOOK_SLUG';
 | 7 | Хаб не показывал «Пройден» для нового теста | Хардкод `mode.key === "test_issp"` | Исправлено: generic проверка `route_suffix.startsWith("/test")` |
 | 8 | Пустой золотой кружок вместо AI-приветствия на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
 | 9 | HistoryScreen теста показывал «Индекс Синдрома Славного Парня» для других книг | Захардкожен h1 и badge | Исправлено: `HistoryScreen` берёт из `testConfig.ui_config.welcome_title/welcome_badge`. Проверка через `?test_state=history-multi` |
+| 10 | RadarChart рендерил высокий навык красным (тревога) для навыкового теста | `dotColor` и текстовые лейблы зон были захардкожены под `lower_is_better` | Исправлено в Phase A теста Бакирова: `RadarChart` принимает prop `scoreDirection`, инвертирует пороги цвета и зоны лейблов для `higher_is_better`. `TestResultsPage` пробрасывает `testConfig.scoring.score_direction`. Регрессия: ISSP/GPP остались как раньше (default `lower_is_better`) |
+| 11 | `TestResultsPage` хардкодил `getLevelLabel(score)` русскими строками для ISSP | Fallback при отсутствии `interpretation.level_label` от AI всегда возвращал «Низкий/…/Высокий» | Исправлено вместе с #10: `TestResultsPage` принимает props `levelLabels` и `levelThresholds` из `testConfig.scoring`, использует их для fallback. Bakirov-уровни «Новичок/…/Мастер» работают сразу |
 
 ### Реестр тестов
 
-| Книга | test slug | Вопросов | Шкал | Auth wall | Статус |
-|-------|-----------|----------|------|-----------|--------|
-| Гловер «Славные парни» | issp | 35 | 7 | Q34 (idx 33) | ✅ Работает |
-| Берн «Игры» | gpp-test | 25 | 5 | Q20 (idx 19) | ✅ Работает |
-| Чепмен «5 языков» | — | — | — | — | ❌ Нет |
+| Книга | test slug | Вопросов | Шкал | Auth wall | Формат | Статус |
+|-------|-----------|----------|------|-----------|--------|--------|
+| Гловер «Славные парни» | issp | 35 | 7 | Q34 (idx 33) | Диагностический (`lower_is_better`) | ✅ Работает |
+| Берн «Игры» | gpp-test | 25 | 5 | Q20 (idx 19) | Диагностический (`lower_is_better`) | ✅ Работает |
+| Бакиров «Разговорный гипноз» | hypnosis-test | 25 | 5 | Q17 (idx 16) | Навыковый (`higher_is_better`) | ✅ Работает |
+| Чепмен «5 языков» | — | — | — | — | — | ❌ Нет |
 
 ---
 
