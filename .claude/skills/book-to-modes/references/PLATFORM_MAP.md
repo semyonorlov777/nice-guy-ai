@@ -564,8 +564,11 @@ UPDATE programs
 SET features = features || '{"test": true}'::jsonb
 WHERE slug = 'BOOK_SLUG';
 
--- 3. System prompt для тестового чата (БЕЗ ЭТОГО API вернёт 404!)
+-- 3. System prompt для тестового чата (БЕЗ ЭТОГО AI получит пустой контекст)
 -- ВАЖНО: используется programs.test_system_prompt, НЕ test_configs.system_prompt
+-- API не падает если NULL (есть `?? ""` fallback в app/api/test/route.ts), но
+-- AI streaming text-answers уйдёт без понимания контекста теста — качество
+-- интерпретации текстовых ответов резко упадёт.
 UPDATE programs
 SET test_system_prompt = E'Ты проводишь тест по книге [название].\n\n...'
 WHERE slug = 'BOOK_SLUG'
@@ -619,7 +622,7 @@ WHERE slug = 'TEST_SLUG';
 |---|--------------|-----|-----------|
 | 1 | `test_configs` содержит запись | `SELECT * FROM test_configs WHERE slug = 'TEST_SLUG'` | 🔴 Без этого тест не существует |
 | 2 | `programs.features.test = true` | `SELECT features->>'test' FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого тест скрыт в UI |
-| 3 | `programs.test_system_prompt` заполнен | `SELECT test_system_prompt IS NOT NULL FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого API вернёт 404 |
+| 3 | `programs.test_system_prompt` заполнен | `SELECT test_system_prompt IS NOT NULL FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого AI streaming text-answers идёт без контекста теста (API не падает — есть `?? ""` fallback, но качество интерпретации текстовых ответов резко падает) |
 | 4 | `landing_data.test` заполнен | `SELECT landing_data->'test' FROM programs WHERE slug = 'BOOK_SLUG'` | 🟡 Без этого нет секции теста на лендинге |
 | 5 | `mode_template` + `program_mode` созданы | `SELECT key FROM mode_templates WHERE key = 'test_TEST_SLUG'` | 🟡 Без этого нет карточки на хабе |
 | 6 | `auth_wall_question` рассчитан | `floor(total_questions * 0.7) - 1` (0-based) | 🟡 null = без auth wall |
