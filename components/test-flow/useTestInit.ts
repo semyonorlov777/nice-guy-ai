@@ -19,6 +19,7 @@ interface UseTestInitParams {
   setCurrentQuestionIndex: (idx: number) => void;
   setTestResults: (results: TestResultSummary[]) => void;
   setAuthSheetOpen: (open: boolean) => void;
+  debugSkipInit?: boolean;
 }
 
 export function useTestInit({
@@ -36,9 +37,14 @@ export function useTestInit({
   setCurrentQuestionIndex,
   setTestResults,
   setAuthSheetOpen,
+  debugSkipInit,
 }: UseTestInitParams) {
   useEffect(() => {
     if (initDone.current) return;
+    if (debugSkipInit) {
+      initDone.current = true;
+      return;
+    }
     initDone.current = true;
 
     async function init() {

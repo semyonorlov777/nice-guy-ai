@@ -19,6 +19,24 @@ import { useAuthFlow } from "@/components/test-flow/useAuthFlow";
 import { useTestAnswers } from "@/components/test-flow/useTestAnswers";
 import { useResultPolling } from "@/components/test-flow/useResultPolling";
 
+type DebugTestState = "welcome" | "history-single" | "history-multi";
+
+function isDebugTestState(v: string | null): v is DebugTestState {
+  return v === "welcome" || v === "history-single" || v === "history-multi";
+}
+
+function mockDebugResult(n: number): TestResultSummary {
+  const scores = [78, 62, 48]; // latest first — прогресс: балл падает
+  const daysAgo = [0, 14, 45];
+  const levels = ["Умеренный", "Выраженный", "Высокий"];
+  return {
+    id: `debug-${n}`,
+    total_score: scores[n] ?? 50,
+    created_at: new Date(Date.now() - (daysAgo[n] ?? 0) * 86400_000).toISOString(),
+    interpretation: { level_label: levels[n] ?? "Умеренный" },
+  };
+}
+
 export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
   // Derived from config
   const TOTAL_QUESTIONS = testConfig.total_questions;
@@ -33,8 +51,16 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
   const searchParams = useSearchParams();
   const isDebug = searchParams.get("debug") === "true";
 
-  // Core state
-  const [phase, setPhase] = useState<CardPhase>("loading");
+  // Debug override: ?test_state=welcome|history-single|history-multi
+  const rawDebugState = searchParams.get("test_state");
+  const debugState: DebugTestState | null = isDebugTestState(rawDebugState) ? rawDebugState : null;
+
+  // Core state (lazy init для debug override)
+  const [phase, setPhase] = useState<CardPhase>(() => {
+    if (debugState === "welcome") return "welcome";
+    if (debugState === "history-single" || debugState === "history-multi") return "history";
+    return "loading";
+  });
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [sessionId, setSessionId] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
@@ -49,7 +75,11 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
   const [statusMessage, setStatusMessage] = useState<StatusMessage>(null);
   const [fallbackActive, setFallbackActive] = useState(false);
   const [completedBlockIndex, setCompletedBlockIndex] = useState(0);
-  const [testResults, setTestResults] = useState<TestResultSummary[]>([]);
+  const [testResults, setTestResults] = useState<TestResultSummary[]>(() => {
+    if (debugState === "history-single") return [mockDebugResult(0)];
+    if (debugState === "history-multi") return [mockDebugResult(0), mockDebugResult(1), mockDebugResult(2)];
+    return [];
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Refs
@@ -79,6 +109,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
     setCurrentQuestionIndex,
     setTestResults,
     setAuthSheetOpen,
+    debugSkipInit: debugState !== null,
   });
 
   const { isStarting, handleStart, handleRetake } = useTestSession({
