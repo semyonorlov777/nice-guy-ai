@@ -43,3 +43,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Obsidian — UI-состояние vault игнорируем, общие настройки коммитим
+docs/.obsidian/workspace.json
+docs/.obsidian/workspace-mobile.json
+docs/.obsidian/workspace.json.bak
+
+# Obsidian — личные заметки не коммитим
+docs/personal/
