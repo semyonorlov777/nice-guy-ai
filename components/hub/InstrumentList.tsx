@@ -95,7 +95,7 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
 
     return {
       icon: IconComponent ? <IconComponent size={16} /> : null,
-      colorClass: (mode.color_class ?? "accent") as "accent" | "green",
+      colorClass: (isTestMode ? "green" : (mode.color_class ?? "accent")) as "accent" | "green",
       name: mode.name,
       description,
       badge: mode.badge ?? undefined,
