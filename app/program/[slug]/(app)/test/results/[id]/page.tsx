@@ -131,6 +131,9 @@ export default async function TestResultPage({
       : undefined,
     ctaText: undefined,
     testSlug: testConfig?.slug,
+    scoreDirection: testConfig?.scoring.score_direction,
+    levelLabels: testConfig?.scoring.level_labels,
+    levelThresholds: testConfig?.scoring.level_thresholds,
   };
 
   return <TestResultsPage {...props} />;

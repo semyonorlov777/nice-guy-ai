@@ -12,6 +12,8 @@ import { THEME_ICON_MAP } from "@/components/icons/hub-icons";
 
 // ── Types ──
 
+type ScoreDirection = "higher_is_better" | "lower_is_better";
+
 export interface TestResultsProps {
   id: string;
   totalScore: number;
@@ -30,28 +32,39 @@ export interface TestResultsProps {
   heroSubtitle?: string;
   ctaText?: string;
   testSlug?: string;
+  scoreDirection?: ScoreDirection;
+  levelLabels?: string[];
+  levelThresholds?: number[];
 }
 
 // ── Constants ──
 
+const DEFAULT_LEVEL_LABELS = ["Низкий уровень", "Умеренный уровень", "Выраженный уровень", "Высокий уровень"];
+const DEFAULT_LEVEL_THRESHOLDS = [25, 50, 75];
 
-function getLevelClass(score: number): string {
-  if (score <= 30) return "low";
+function getLevelClass(score: number, direction: ScoreDirection): string {
+  // Visual semantics: "low" = green pill, "high" = red pill, "moderate" = accent pill.
+  // For higher_is_better invert: high score = "low" CSS class (green good), low score = "high" (red alarm).
+  const isLowerBetter = direction === "lower_is_better";
+  if (score <= 30) return isLowerBetter ? "low" : "high";
   if (score <= 60) return "moderate";
-  return "high";
+  return isLowerBetter ? "high" : "low";
 }
 
-function getLevelLabel(score: number): string {
-  if (score <= 25) return "Низкий уровень";
-  if (score <= 50) return "Умеренный уровень";
-  if (score <= 75) return "Выраженный уровень";
-  return "Высокий уровень";
+function getLevelLabel(score: number, levelLabels: string[], levelThresholds: number[]): string {
+  for (let i = 0; i < levelThresholds.length; i++) {
+    if (score <= levelThresholds[i]) return levelLabels[i] ?? `level_${i}`;
+  }
+  return levelLabels[levelThresholds.length] ?? "high";
 }
 
-function colorClass(pct: number): string {
-  if (pct >= 60) return "red";
+function colorClass(pct: number, direction: ScoreDirection): string {
+  const isLowerBetter = direction === "lower_is_better";
+  const high = isLowerBetter ? "red" : "green";
+  const low = isLowerBetter ? "green" : "red";
+  if (pct >= 60) return high;
   if (pct >= 40) return "yellow";
-  return "green";
+  return low;
 }
 
 // ── Sub-components ──
@@ -66,15 +79,17 @@ function HeroScore({
   resultId,
   testTitle,
   heroSubtitle,
+  scoreDirection,
 }: {
   totalScore: number;
   levelLabel: string;
   resultId: string;
   testTitle?: string;
   heroSubtitle?: string;
+  scoreDirection: ScoreDirection;
 }) {
   const displayScore = useCountUp(totalScore);
-  const levelClass = getLevelClass(totalScore);
+  const levelClass = getLevelClass(totalScore, scoreDirection);
 
   return (
     <div className="tr-hero">
@@ -114,12 +129,14 @@ function ScaleCards({
   interpretation,
   scaleOrder,
   scaleNames,
+  scoreDirection,
 }: {
   scoresByScale: Record<string, ScaleResult>;
   topScales: string[];
   interpretation: TestInterpretation | null;
   scaleOrder: string[];
   scaleNames: Record<string, string>;
+  scoreDirection: ScoreDirection;
 }) {
   const { ref, isVisible } = useScrollReveal();
   const [animated, setAnimated] = useState(false);
@@ -156,8 +173,11 @@ function ScaleCards({
         {sorted.map((key, i) => {
           const s = scoresByScale[key];
           if (!s) return null;
-          const color = colorClass(s.pct);
-          const isTop = i < 3 && s.pct >= 50;
+          const color = colorClass(s.pct, scoreDirection);
+          // "top zone" = что показывать особо: для lower_is_better это высокий %, для higher_is_better — низкий (зона роста).
+          const isTop =
+            i < 3 &&
+            (scoreDirection === "lower_is_better" ? s.pct >= 50 : s.pct <= 50);
           const name = scaleNames[key] ?? key;
           const ThemeIcon = THEME_ICON_MAP[key];
 
@@ -320,6 +340,9 @@ export function TestResultsPage(props: TestResultsProps) {
     heroSubtitle,
     ctaText,
     testSlug,
+    scoreDirection = "lower_is_better",
+    levelLabels = DEFAULT_LEVEL_LABELS,
+    levelThresholds = DEFAULT_LEVEL_THRESHOLDS,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -362,7 +385,8 @@ export function TestResultsPage(props: TestResultsProps) {
     };
   }, [id, interpretation]);
 
-  const levelLabel = interpretation?.level_label || getLevelLabel(totalScore);
+  const levelLabel =
+    interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
 
   return (
     <div className="test-results-page">
@@ -373,6 +397,7 @@ export function TestResultsPage(props: TestResultsProps) {
           resultId={id}
           testTitle={testTitle}
           heroSubtitle={heroSubtitle}
+          scoreDirection={scoreDirection}
         />
 
         <Divider />
@@ -393,7 +418,12 @@ export function TestResultsPage(props: TestResultsProps) {
           </>
         )}
 
-        <RadarChart scoresByScale={scoresByScale} scaleOrder={scaleOrder} radarLabels={radarLabels} />
+        <RadarChart
+          scoresByScale={scoresByScale}
+          scaleOrder={scaleOrder}
+          radarLabels={radarLabels}
+          scoreDirection={scoreDirection}
+        />
 
         <Divider />
 
@@ -403,6 +433,7 @@ export function TestResultsPage(props: TestResultsProps) {
           interpretation={interpretation}
           scaleOrder={scaleOrder}
           scaleNames={scaleNames}
+          scoreDirection={scoreDirection}
         />
         <Divider />
 

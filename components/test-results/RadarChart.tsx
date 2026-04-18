@@ -36,19 +36,29 @@ function makePolygonPoints(radius: number, n: number): string {
   }).join(" ");
 }
 
-function dotColor(pct: number): string {
-  if (pct >= 60) return "var(--danger)";
+type ScoreDirection = "higher_is_better" | "lower_is_better";
+
+function dotColor(pct: number, direction: ScoreDirection): string {
+  const high = direction === "lower_is_better" ? "var(--danger)" : "var(--green)";
+  const low = direction === "lower_is_better" ? "var(--green)" : "var(--danger)";
+  if (pct >= 60) return high;
   if (pct >= 40) return "var(--accent)";
-  return "var(--green)";
+  return low;
 }
 
 interface RadarChartProps {
   scoresByScale: Record<string, ScaleResult>;
   scaleOrder: string[];
   radarLabels: Record<string, string[]>;
+  scoreDirection?: ScoreDirection;
 }
 
-export function RadarChart({ scoresByScale, scaleOrder, radarLabels }: RadarChartProps) {
+export function RadarChart({
+  scoresByScale,
+  scaleOrder,
+  radarLabels,
+  scoreDirection = "lower_is_better",
+}: RadarChartProps) {
   const { ref, isVisible } = useScrollReveal(0.1);
   const N = scaleOrder.length;
 
@@ -93,10 +103,19 @@ export function RadarChart({ scoresByScale, scaleOrder, radarLabels }: RadarChar
           <polygon className="tr-radar-grid-line-accent" points={makePolygonPoints(MAX_R * 0.5, N)} />
           <polygon className="tr-radar-grid-line" points={makePolygonPoints(MAX_R * 0.25, N)} />
 
-          {/* Zone labels */}
-          <text x={CX} y={108} textAnchor="middle" fill="var(--danger)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
-          <text x={CX} y={155} textAnchor="middle" fill="var(--accent)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
-          <text x={CX} y={202} textAnchor="middle" fill="var(--green)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
+          {/* Zone labels: цвет зон зависит от score_direction */}
+          {(() => {
+            const isLowerBetter = scoreDirection === "lower_is_better";
+            const highColor = isLowerBetter ? "var(--danger)" : "var(--green)";
+            const lowColor = isLowerBetter ? "var(--green)" : "var(--danger)";
+            return (
+              <>
+                <text x={CX} y={108} textAnchor="middle" fill={highColor} fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.5}>ВЫСОКИЙ</text>
+                <text x={CX} y={155} textAnchor="middle" fill="var(--accent)" fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>СРЕДНИЙ</text>
+                <text x={CX} y={202} textAnchor="middle" fill={lowColor} fontFamily="var(--font-body)" fontSize={9} fontWeight={600} opacity={0.4}>НИЗКИЙ</text>
+              </>
+            );
+          })()}
 
           {/* Axis lines */}
           {scaleOrder.map((_, i) => {
@@ -133,7 +152,7 @@ export function RadarChart({ scoresByScale, scaleOrder, radarLabels }: RadarChar
                 cx={dataPoints[i].x}
                 cy={dataPoints[i].y}
                 r={5}
-                fill={dotColor(pct)}
+                fill={dotColor(pct, scoreDirection)}
                 stroke="var(--bg-main)"
                 strokeWidth={2}
               />
@@ -165,7 +184,7 @@ export function RadarChart({ scoresByScale, scaleOrder, radarLabels }: RadarChar
                   x={lp.x}
                   y={lp.y + lines.length * 7 + 6}
                   textAnchor="middle"
-                  fill={dotColor(pct)}
+                  fill={dotColor(pct, scoreDirection)}
                 >
                   {pct}%
                 </text>
