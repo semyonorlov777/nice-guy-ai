@@ -7,6 +7,7 @@
 - [[adr/README|ADR — Architecture Decisions]] — почему сделано именно так
 - [[runbooks/README|Runbooks — Operations]] — как выполнить типовую операцию
 - [[env-vars|Environment Variables]] — справочник всех переменных окружения
+- [[debug-urls|Debug URLs]] — ссылки на все состояния UI через query-параметры (hub_state, test_state)
 
 ## Книги и контент
 
