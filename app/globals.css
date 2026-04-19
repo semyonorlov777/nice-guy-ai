@@ -2515,6 +2515,7 @@
 .tc-history-screen {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   text-align: center;
   padding: 20px 24px 40px;

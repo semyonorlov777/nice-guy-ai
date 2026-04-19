@@ -32,6 +32,7 @@
 - **`RadarChart` и `TestResultsPage` стали data-driven по `score_direction`** — раньше цвета (`dotColor`, лейблы зон ВЫСОКИЙ/СРЕДНИЙ/НИЗКИЙ) и fallback-уровни (`getLevelLabel`) были захардкожены под `lower_is_better`. Для навыкового теста (Бакиров) высокий балл (мастерство) корректно отображается зелёным, низкий (зона роста) — красным. ISSP/GPP остались как раньше (default `lower_is_better`)
 - Экран истории теста больше не показывает «Индекс Синдрома Славного Парня» для программ, отличных от nice-guy — заголовок и бейдж берутся из `testConfig.ui_config.welcome_title/welcome_badge`
 - Карточка теста в секции «Инструменты» хаба теперь **всегда зелёная** — ранее цвет зависел от `program_modes.color_class` в БД (у nice-guy был green, у GPP — accent/золотой), из-за чего тест GPP визуально сливался с чат-режимами. Правило применяется автоматически для любого test-режима (`is_chat_based=false` + `route_suffix` начинается с `/test/`)
+- `HistoryScreen` теста больше не прижат к верху у авторизованных пользователей с предыдущими результатами — добавлен `justify-content: center` в `.tc-history-screen`, контент отцентрован по вертикали как в `WelcomeScreen`/`BlockTransition`/`CompletionScreen`
 
 ---
 
