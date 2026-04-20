@@ -489,4 +489,10 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   strategy: CompassIcon,
   awareness: ShieldIcon,
   trance: LightbulbIcon,
+  // 100-notes (Osipov scales)
+  fear_mastery: ShieldIcon,
+  scale_thinking: RocketIcon,
+  energy_agency: InstrumentLightningIcon,
+  environment_hygiene: UsersLoveIcon,
+  self_reflection: BookOpenIcon,
 };
