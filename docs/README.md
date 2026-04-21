@@ -8,6 +8,7 @@
 - [[runbooks/README|Runbooks — Operations]] — как выполнить типовую операцию
 - [[env-vars|Environment Variables]] — справочник всех переменных окружения
 - [[debug-urls|Debug URLs]] — ссылки на все состояния UI через query-параметры (hub_state, test_state)
+- [[runbooks/chat-message-formatting|Форматирование сообщений чата]] — правила welcome_ai_message, welcome_replies и «ёлочек» для quick replies
 
 ## Книги и контент
 

@@ -9,6 +9,7 @@
 | [add-new-book](add-new-book.md) | Добавление новой книги/программы | При каждой новой книге |
 | [create-test](create-test.md) | Создание теста для программы | При каждом новом тесте |
 | [prompt-tuning](prompt-tuning.md) | Тюнинг системных промптов | Регулярно |
+| [chat-message-formatting](chat-message-formatting.md) | Правила welcome-сообщений и quick replies | При каждом seed SQL, при аудите книг |
 
 ## Как создать новый runbook
 
