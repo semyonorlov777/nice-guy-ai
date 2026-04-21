@@ -25,7 +25,7 @@ export default async function ExistingChatPage({
 
   const { data: program } = await supabase
     .from("programs")
-    .select("id, title, config, free_chat_welcome, landing_data")
+    .select("id, title, config, free_chat_welcome, author_chat_welcome, landing_data")
     .eq("slug", slug)
     .single();
   if (!program) redirect("/");
@@ -56,8 +56,16 @@ export default async function ExistingChatPage({
   // Сообщения чата
   const initialMessages = await getChatMessages(supabase, chat.id);
 
-  // Если это exercise-чат, подгружаем welcome
-  let welcomeMessage = program.free_chat_welcome || config.welcome_message;
+  // Резолв welcome-сообщения по типу чата:
+  //   exercise → exercises.welcome_message
+  //   author   → programs.author_chat_welcome
+  //   tool-mode (notes_*, ng_*, ta_*, ll_*, hypno_* и т.п.) →
+  //              program_modes.welcome_message || welcome_ai_message
+  //   free / test / unknown → programs.free_chat_welcome
+  // Tool-mode lookup — через JOIN program_modes ↔ mode_templates по key.
+  let welcomeMessage: string | undefined;
+  const chatType = chat.chat_type;
+
   if (chat.exercise_id) {
     const { data: exercise } = await supabase
       .from("exercises")
@@ -68,6 +76,23 @@ export default async function ExistingChatPage({
       const exConfig = (exercise.config || {}) as ProgramConfig;
       welcomeMessage = exercise.welcome_message || exConfig.welcome_message;
     }
+  } else if (chatType === "author") {
+    welcomeMessage = program.author_chat_welcome || program.free_chat_welcome || config.welcome_message;
+  } else if (chatType && chatType !== "free" && chatType !== "test") {
+    // Tool-mode — ищем mode-specific welcome через mode_templates.key
+    const { data: mode } = await supabase
+      .from("program_modes")
+      .select("welcome_message, welcome_ai_message, mode_templates!inner(key)")
+      .eq("program_id", program.id)
+      .eq("mode_templates.key", chatType)
+      .maybeSingle();
+    welcomeMessage =
+      mode?.welcome_message ||
+      mode?.welcome_ai_message ||
+      program.free_chat_welcome ||
+      config.welcome_message;
+  } else {
+    welcomeMessage = program.free_chat_welcome || config.welcome_message;
   }
 
   return (
@@ -77,7 +102,7 @@ export default async function ExistingChatPage({
       chatId={chat.id}
       programId={program.id}
       exerciseId={chat.exercise_id || undefined}
-      chatType={chat.chat_type === "test" ? "free" : (chat.chat_type as "free" | "exercise")}
+      chatType={chat.chat_type === "test" ? "free" : (chat.chat_type ?? "free")}
       userInitial={userInitial}
       avatarUrl={avatarUrl}
       welcomeMessage={welcomeMessage}
@@ -85,7 +110,15 @@ export default async function ExistingChatPage({
       coverUrl={coverUrl}
       balance={balanceTokens}
       slug={slug}
-      currentModeKey={chat.chat_type === "author" ? "author_chat" : chat.exercise_id ? "exercises" : "free_chat"}
+      currentModeKey={
+        chat.chat_type === "author"
+          ? "author_chat"
+          : chat.exercise_id
+            ? "exercises"
+            : chat.chat_type && chat.chat_type !== "free" && chat.chat_type !== "test"
+              ? chat.chat_type
+              : "free_chat"
+      }
     >
       <div className="welcome-card">
         <div className="welcome-book">
