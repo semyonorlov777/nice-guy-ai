@@ -37,8 +37,8 @@ CREATE TABLE program_modes (
   welcome_mode_label text,           -- Лейбл типа режима ('Анализ', 'Воркшоп', 'Свободный чат')
   welcome_title text,                -- Заголовок ('Деконструктор страхов', 'Спросить Гловера')
   welcome_subtitle text,             -- Подзаголовок (описание 1 строка)
-  welcome_ai_message text,           -- AI-сообщение на welcome-экране (markdown)
-  welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}] — СТРОГО объекты, НЕ строки!
+  welcome_ai_message text,           -- AI-сообщение на welcome-экране (ПЛЕЙН-ТЕКСТ, без markdown — рендерится без ReactMarkdown в NewChatScreen)
+  welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}] — СТРОГО объекты, НЕ строки! Последний reply = {"type": "exit"} для safe-exit визуала
   welcome_system_context text,       -- Контекст для системного промпта (для тем)
   color_class text DEFAULT 'accent', -- CSS-класс цвета ('accent', 'green')
   badge text                         -- Бейдж на карточке ('Бесплатно', 'Новое')
@@ -46,6 +46,14 @@ CREATE TABLE program_modes (
 ```
 
 **КРИТИЧНО:** Без `welcome_mode_label`, `welcome_title`, `welcome_ai_message` и `welcome_replies` — welcome-экран режима будет пустым (нет AI-сообщения, нет кнопок suggested replies). Это касается **ВСЕХ** режимов, включая `free_chat` и `author_chat`.
+
+**welcome_ai_message антипаттерны (см. [chat-message-formatting runbook](../../../../docs/runbooks/chat-message-formatting.md)):**
+- НЕ начинай с `эмодзи **Название режима**\n\n` — `welcome_title` уже рендерится карточкой выше; получится дубликат.
+- НЕ используй markdown (`**bold**`, `#`, `- list`) — это поле рендерится plain-текстом, звёздочки будут видны буквально.
+- Для буллетов — символ `•`, не markdown `-`. Между абзацами — `\n\n`.
+- Формат `[welcome_message]`, идущий в ChatWindow для 100-notes / nice-guy legacy tool modes, — наоборот рендерится через ReactMarkdown, там markdown ок. Но **дубликат title в начале всё равно запрещён** (ChatHeader показывает mode name).
+
+**programs-level поля (`programs.system_prompt`, `author_chat_system_prompt`, `free_chat_welcome`, `author_chat_welcome`):** ОБЯЗАТЕЛЬНО содержат блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 + стартовые «ёлочки» в конце welcome. Иначе темы и свободный чат идут без кнопок.
 
 **Ключевой момент:** `system_prompt` в `program_modes` переопределяет program-level промпт. Это позволяет каждому режиму иметь свой промпт.
 
