@@ -22,7 +22,7 @@ interface ChatWindowProps {
   userInitial: string;
   avatarUrl?: string | null;
   welcomeMessage?: string;
-  quickReplies?: string[];
+  quickReplies?: Array<string | { text: string; type?: "normal" | "exit" }>;
   children?: React.ReactNode;
   programTitle?: string;
   coverUrl?: string;
@@ -256,9 +256,14 @@ export function ChatWindow({
   // Parse quick replies from welcome message (if not provided via props)
   const parsedWelcome = welcomeMessage ? parseQuickReplies(welcomeMessage) : null;
   const effectiveWelcomeMessage = parsedWelcome?.cleanText || welcomeMessage;
-  const effectiveQuickReplies = quickReplies && quickReplies.length > 0
-    ? quickReplies
-    : parsedWelcome?.replies || [];
+  const effectiveQuickReplies: Array<{ text: string; type: "normal" | "exit" }> =
+    quickReplies && quickReplies.length > 0
+      ? quickReplies.map((r) =>
+          typeof r === "string"
+            ? { text: r, type: "normal" }
+            : { text: r.text, type: r.type ?? "normal" },
+        )
+      : (parsedWelcome?.replies || []).map((text) => ({ text, type: "normal" }));
 
   // Parse quick replies from last AI message (inline «кавычки»)
   const lastMsg = messages[messages.length - 1];
@@ -353,16 +358,17 @@ export function ChatWindow({
               {initialMessages.length === 0 && (
                 <div className="quick-reply-label">Выбери вариант или напиши своё</div>
               )}
-              {effectiveQuickReplies.map((text, i) => {
+              {effectiveQuickReplies.map((reply, i) => {
                 if (animActive && i >= quickReplyStaggerIndex) return null;
+                const exitClass = reply.type === "exit" ? " quick-reply-btn-exit" : "";
                 return (
                   <button
                     key={i}
-                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}`}
-                    onClick={() => handleSend(text)}
+                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}${exitClass}`}
+                    onClick={() => handleSend(reply.text)}
                     disabled={isStreaming}
                   >
-                    {text}
+                    {reply.text}
                   </button>
                 );
               })}

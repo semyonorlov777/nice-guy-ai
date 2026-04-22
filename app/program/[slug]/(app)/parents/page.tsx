@@ -35,9 +35,9 @@ export default async function ParentsPage({
 
   const modeConfig = (modeData?.config || {}) as { quick_replies?: string[] };
   const welcomeMsg = modeData?.welcome_ai_message || modeData?.welcome_message || undefined;
-  const welcomeReplies = Array.isArray(modeData?.welcome_replies) ? modeData.welcome_replies as { text: string }[] : [];
+  const welcomeReplies = Array.isArray(modeData?.welcome_replies) ? modeData.welcome_replies as { text: string; type?: "normal" | "exit" }[] : [];
   const quickRepliesArr = welcomeReplies.length > 0
-    ? welcomeReplies.map((r) => r.text)
+    ? welcomeReplies
     : modeConfig.quick_replies;
   const { userInitial, avatarUrl, balanceTokens } = await getUserProfileForChat(supabase, user);
 

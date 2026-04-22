@@ -454,6 +454,9 @@
   .quick-reply-btn:hover { background: var(--accent-medium); border-color: var(--accent); }
   .quick-reply-btn:active { background: var(--accent); color: #fff; transform: scale(0.97); }
   .quick-reply-btn:disabled { opacity: 0.5; cursor: default; }
+  .quick-reply-btn-exit { background: transparent; border-color: var(--border); color: var(--text-muted); font-weight: 400; box-shadow: none; }
+  .quick-reply-btn-exit:hover { background: var(--bg-card); border-color: var(--accent-border); color: var(--accent); }
+  .quick-reply-btn-exit:active { background: var(--bg-card); color: var(--accent); }
 
   /* ── WELCOME ONBOARDING ANIMATIONS ── */
   .msg-welcome-enter { animation: welcomeMsgIn 300ms ease-out both; }
