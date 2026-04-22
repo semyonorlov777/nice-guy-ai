@@ -1,8 +1,9 @@
 # Эталонный чеклист аудита программы
 
-**Версия:** 1.5
-**Последнее обновление:** 2026-04-18
+**Версия:** 1.6
+**Последнее обновление:** 2026-04-22
 **Эталон:** nice-guy v2 (полная переработка по скиллу book-to-modes v2)
+**Source of truth по форматированию:** [`docs/runbooks/chat-message-formatting.md`](../../../docs/runbooks/chat-message-formatting.md) — чеклист проверяет соответствие правилам оттуда
 
 ---
 
@@ -15,6 +16,9 @@
 - [ ] **A5:** Секция АНТИПАТТЕРНЫ перечислена явно: стены текста, похвала личности, overdiagnosis, несколько вопросов за раз
 - [ ] **A6:** Промпт содержит конкретные концепции из книги (не общие фразы, а термины автора)
 - [ ] **A7:** Промпт содержит suggested replies с типами (голос пользователя, сопротивление, навигация)
+- [ ] **A8 (v1.6):** Каждый `program_modes.system_prompt` содержит блок `### Quick replies — ФОРМАТ` с буквальным примером «ёлочек», контрпримером склеивания через пробел, Scaffolding fading, и ЗАПРЕЩЕНО-списком. SQL-проверка: `system_prompt LIKE '%### Quick replies%'` → true для всех tool-режимов
+- [ ] **A9 (v1.6):** `programs.system_prompt` и `programs.author_chat_system_prompt` тоже содержат тот же блок. **Критично для свободного чата и тем** — они наследуют programs.system_prompt (через prepare-context.ts), без блока кнопок не будет
+- [ ] **A10 (v1.6):** `programs.free_chat_welcome` и `programs.author_chat_welcome` заканчиваются 3–4 «ёлочками» на отдельных строках (starter replies в ChatWindow). SQL-проверка: `welcome LIKE '%«%»'` в последних ~300 символах
 
 ## B. Welcome-сообщения
 
@@ -30,6 +34,10 @@
 - [ ] **B4:** Suggested replies — от первого лица, голос пользователя (не вопросы к AI)
 - [ ] **B5:** Есть безопасный exit-reply («Мне сложно сформулировать» или аналог)
 - [ ] **B6:** Welcome не длиннее ~300 слов (не стена текста)
+- [ ] **B7 (v1.6):** `welcome_ai_message` не содержит markdown-синтаксиса (`**bold**`, `*italic*`, `#` заголовков, `-` в начале строки). Рендерится **plain-text** в NewChatScreen — markdown виден буквально. Буллеты через `•` допустимы
+- [ ] **B8 (v1.6):** `welcome_ai_message` не начинается с эмодзи + **Title** (дубль `welcome_title` который уже показан в шапке карточки)
+- [ ] **B9 (v1.6):** `welcome_replies` — массив **объектов** `[{text, type}]`, не массив строк. Последний элемент имеет `type: "exit"` (safe exit-кнопка, визуально мягче)
+- [ ] **B10 (v1.6):** В `welcome_replies` нет вложенных «ёлочек» (`«...«...»...»`) и пунктуации снаружи (`«Текст».`) — то и другое ломает parseQuickReplies regex
 
 ## C. Техническая реализация
 
@@ -121,3 +129,4 @@
 | 1.3 | 2026-03-29 | E: расширение секции «Интеграция с тестом» — 4→12 пунктов. Добавлены подсекции E.II (конфигурация: test_system_prompt, feature flag, mode_template, landing_data) и E.III (темы: test_scale_key, сортировка). E3: убрана ссылка на ISSP → generic «данные теста». SQL сбора данных: добавлены запросы test_configs, mode_template для теста, program_themes.test_scale_key |
 | 1.4 | 2026-04-18 | По итогам первого UI-прогона обоих тестов: F-секция переписана (колонка `recommended_route` была удалена, темы реально роутятся через `welcome_*` поля и `/chat/new?topic=`). E4: правило «не зачитывай числа» теперь хардкодится в `appendTestScores()`, требование иметь его в каждом промпте снято. Найдено 2 runtime-бага которых чеклист не ловил: (a) хардкод-карта tool keys в hub/InstrumentList.tsx делала новые режимы «невидимыми» с хаба (отрефакторено в derivation), (b) страницы quiz/theory в nice-guy читали несуществующее поле `config.quick_replies` и не показывали suggested replies (исправлено: читать `welcome_replies` с fallback). |
 | 1.5 | 2026-04-18 | Второй UI-прогон preview нашёл ещё 2 невидимых чеклисту бага: (a) `programs.hub_messages = {}` у GPP → пустой золотой кружок на месте AI-приветствия хаба (добавлен E13), (b) HistoryScreen теста хардкодил «Индекс Синдрома Славного Парня» и «Диагностика» — для любой второй программы с тестом заголовок был чужой (добавлен E14, код фиксит через `testConfig.ui_config`). Новая секция I: паттерн `?<screen>_state=` для визуальной проверки stateful-экранов (hub_state, test_state). |
+| 1.6 | 2026-04-22 | После двух итераций ретро-фикса 100-notes и nice-guy: баги форматирования сообщений и quick replies были невидимы чеклисту. Добавлены: **A8** (блок «ФОРМАТ QUICK REPLIES» в каждом `program_modes.system_prompt`), **A9** (тот же блок в `programs.system_prompt` + `author_chat_system_prompt` — критично для free_chat и тем, т.к. они наследуют programs.system_prompt), **A10** («ёлочки» в конце `free_chat_welcome`/`author_chat_welcome`), **B7** (нет markdown в `welcome_ai_message` — он plain-text), **B8** (нет дублирующего эмодзи+Title в начале `welcome_ai_message`), **B9** (`welcome_replies` как объекты `{text, type}`, последний — `type: "exit"`), **B10** (нет вложенных «ёлочек» и пунктуации снаружи — ломают parseQuickReplies regex). Добавлена ссылка на [`docs/runbooks/chat-message-formatting.md`](../../../docs/runbooks/chat-message-formatting.md) как source of truth. |

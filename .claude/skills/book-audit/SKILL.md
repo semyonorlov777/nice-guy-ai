@@ -14,10 +14,11 @@ description: "Аудит книги-программы на соответств
 
 ## Перед началом работы
 
-1. Прочитай `references/CHECKLIST.md` — эталонный чеклист (обновляемая база знаний)
-2. Прочитай `.claude/skills/book-to-modes/references/PLATFORM_MAP.md` — техническая карта платформы
-3. Просмотри `.claude/skills/book-to-modes/examples/` — что известно о книге из ретроспектив
-4. Если есть `findings/{slug}-audit.md` от прошлого аудита — прочитай для сравнения
+1. Прочитай `docs/runbooks/chat-message-formatting.md` — **source of truth** по форматированию сообщений и quick replies. Все проверки секций A8–A10 и B7–B10 в чеклисте идут оттуда: parseQuickReplies regex, три уровня контента (программный/режим/тема), антипаттерны (plain-text рендер, дубль title, вложенные «ёлочки» и т.д.)
+2. Прочитай `references/CHECKLIST.md` — эталонный чеклист (обновляемая база знаний)
+3. Прочитай `.claude/skills/book-to-modes/references/PLATFORM_MAP.md` — техническая карта платформы
+4. Просмотри `.claude/skills/book-to-modes/examples/` — что известно о книге из ретроспектив
+5. Если есть `findings/{slug}-audit.md` от прошлого аудита — прочитай для сравнения
 
 ## Процесс (3 этапа)
 
