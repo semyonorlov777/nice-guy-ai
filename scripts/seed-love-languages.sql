@@ -95,7 +95,7 @@ INSERT INTO programs (
       ]
     },
     "author": {
-      "photo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Gary_D._Chapman.jpg/960px-Gary_D._Chapman.jpg",
+      "photo_url": "/authors/chapman.jpg",
       "name": "Гэри Чепмен",
       "credentials": "Пастор, консультант по отношениям. Автор книги «5 языков любви», проданной тиражом более 20 миллионов экземпляров.",
       "quote": "Большинство проблем в отношениях возникают не потому, что люди не любят друг друга. А потому, что они говорят на разных языках."

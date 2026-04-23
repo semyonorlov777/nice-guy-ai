@@ -5,7 +5,9 @@ const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' oauth.telegram.org",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: *.yandex.ru *.yandex.net cdn.litres.ru drglover.com upload.wikimedia.org lh3.googleusercontent.com *.googleusercontent.com *.cdn-telegram.org imo10.labirint.ru dg.cyclowiki.org",
+  // Author photos are hosted locally in /public/authors/ (see book-to-modes skill); external photo-hosts removed.
+  // Remaining: 'self' + data/blob (local); cdn.litres.ru (main book covers); imo10.labirint.ru (100-notes cover only — TODO mirror to cdn.litres.ru); OAuth avatar CDNs (Yandex/Google/Telegram).
+  "img-src 'self' data: blob: *.yandex.ru *.yandex.net cdn.litres.ru imo10.labirint.ru lh3.googleusercontent.com *.googleusercontent.com *.cdn-telegram.org",
   "font-src 'self'",
   "worker-src 'self' blob:",
   "connect-src 'self' *.supabase.co generativelanguage.googleapis.com oauth.telegram.org *.sentry.io",
