@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseAIResponse, extractScoreFromUserMessage } from "@/lib/test-parser";
@@ -246,7 +246,8 @@ export async function handleTypedAnswer({
 
     return createSSEResponse(async (send) => {
       const result = streamText({
-        model: google("gemini-2.5-flash"),
+        model: chatModel(),
+        providerOptions: CHAT_PROVIDER_OPTIONS,
         system: miniPrompt,
         messages: [{ role: "user" as const, content: answerText }],
       });

@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig } from "@/lib/test-config";
@@ -104,7 +104,8 @@ export async function handleAnonymous({
   // Stream response
   return createSSEResponse(async (send) => {
     const result = streamText({
-      model: google("gemini-2.5-flash"),
+      model: chatModel(),
+      providerOptions: CHAT_PROVIDER_OPTIONS,
       system: systemPrompt,
       messages: aiMessages,
     });

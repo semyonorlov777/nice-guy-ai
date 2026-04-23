@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateTestScore } from "@/lib/test-scoring";
 import { generateTestInterpretation } from "@/lib/test-interpretation";
@@ -49,7 +49,8 @@ export async function handleFinalTestAnswer({
       "\n\nПодтверди получение ответа ОДНИМ коротким предложением. НЕ считай баллы. НЕ пиши интерпретацию.";
 
     const result1 = streamText({
-      model: google("gemini-2.5-flash"),
+      model: chatModel(),
+      providerOptions: CHAT_PROVIDER_OPTIONS,
       system: phase1SystemPrompt,
       messages: aiMessages,
     });
@@ -207,7 +208,8 @@ export async function handleFinalTestAnswer({
     ];
 
     const result2 = streamText({
-      model: google("gemini-2.5-flash"),
+      model: chatModel(),
+      providerOptions: CHAT_PROVIDER_OPTIONS,
       system: systemPrompt || undefined,
       messages: phase2Messages,
     });

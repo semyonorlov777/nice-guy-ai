@@ -27,6 +27,7 @@
 | Переменная | Описание | Обязательная |
 |-----------|----------|:---:|
 | `GOOGLE_GEMINI_API_KEY` | Google Gemini API key | ✅ |
+| `GEMINI_CHAT_MODEL` | Модель для чата и обработки тестов (default: `gemini-2.5-flash`, рекомендуется: `gemini-3-flash-preview`) | ❌ |
 | `GEMINI_PORTRAIT_MODEL` | Модель для портрета (default: `gemini-2.5-pro`) | ❌ |
 
 > ⚠️ Vercel AI SDK по умолчанию ищет `GOOGLE_GENERATIVE_AI_API_KEY`. У нас кастомное имя `GOOGLE_GEMINI_API_KEY` — настроено в `lib/ai.ts`. См. [ADR-001](adr/001-dual-ai-sdk.md).

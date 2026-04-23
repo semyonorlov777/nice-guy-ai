@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
 import { updatePortrait } from "@/app/api/portrait/update/route";
@@ -68,7 +68,8 @@ export async function POST(request: Request) {
 
     // 9. Stream with Vercel AI SDK
     const result = streamText({
-      model: google("gemini-2.5-flash"),
+      model: chatModel(),
+      providerOptions: CHAT_PROVIDER_OPTIONS,
       system: systemPrompt || undefined,
       messages: aiMessages,
       onFinish: async ({ text, usage }) => {

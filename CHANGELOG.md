@@ -27,6 +27,7 @@
 - Дебаг-параметр `?test_state=welcome|history-single|history-multi` для визуального тестирования welcome-экрана теста без данных в БД
 
 ### Изменено
+- **Модель Gemini для чата и тестов вынесена в env-переменную `GEMINI_CHAT_MODEL`** (default `gemini-2.5-flash`, рекомендуется `gemini-3-flash-preview`). Хелпер `chatModel()` + `CHAT_PROVIDER_OPTIONS` в `lib/ai.ts`, `thinkingConfig.thinkingBudget: 0` для экономии output-токенов. Переключение — через Vercel env без деплоя; откат = удалить переменную
 - `appendTestScores()` теперь сам инжектит правило «не зачитывай числовые баллы вслух» — раньше дублировалось в каждом промпте
 - ta_diagnostic в Games People Play теперь корректно открывается с хаба (раньше вёл в свободный чат)
 - Хаб больше не использует хардкод-таблицу tool keys — derive из mode.key, новый chat-based режим автоматически роутится без правок UI
