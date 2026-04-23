@@ -50,8 +50,10 @@ CREATE TABLE program_modes (
 **welcome_ai_message антипаттерны (см. [chat-message-formatting runbook](../../../../docs/runbooks/chat-message-formatting.md)):**
 - НЕ начинай с `эмодзи **Название режима**\n\n` — `welcome_title` уже рендерится карточкой выше; получится дубликат.
 - НЕ используй markdown (`**bold**`, `#`, `- list`) — это поле рендерится plain-текстом, звёздочки будут видны буквально.
-- Для буллетов — символ `•`, не markdown `-`. Между абзацами — `\n\n`.
+- Для буллетов — символ `•`, не markdown `-`. Между абзацами — ОБЯЗАТЕЛЬНО `\n\n` (одиночный `\n` = одна строка, абзацы склеются; `.nc-ai-text` имеет `white-space: pre-line`, но split по параграфам требует именно `\n\n`).
 - Формат `[welcome_message]`, идущий в ChatWindow для 100-notes / nice-guy legacy tool modes, — наоборот рендерится через ReactMarkdown, там markdown ок. Но **дубликат title в начале всё равно запрещён** (ChatHeader показывает mode name).
+
+**system_prompt каждого режима** содержит блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 — **при вставке в конкретный режим замени 3 плейсхолдера `«Вариант 1»/«Вариант 2»/«Мне сложно сформулировать»` на тематически-конкретные reply** под домен режима от первого лица пользователя. Literal `«Вариант 1»` Gemini копирует дословно → парсер получает plain-текст без «ёлочек» → кнопок нет. Детали и примеры замен — REFERENCE.md §5.
 
 **programs-level поля (`programs.system_prompt`, `author_chat_system_prompt`, `free_chat_welcome`, `author_chat_welcome`):** ОБЯЗАТЕЛЬНО содержат блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 + стартовые «ёлочки» в конце welcome. Иначе темы и свободный чат идут без кнопок.
 
@@ -197,16 +199,34 @@ WHERE slug = 'BOOK_SLUG';
 
 ### Верификация welcome-данных после INSERT
 
-После выполнения SQL проверь что ВСЕ режимы имеют welcome-данные:
+После выполнения SQL проверь что ВСЕ режимы имеют welcome-данные + корректный формат QUICK REPLIES в system_prompt:
 
 ```sql
--- Проверка: все режимы должны вернуть has_msg=true и has_replies=true
-SELECT mt.key, pm.welcome_title, pm.welcome_ai_message IS NOT NULL as has_msg,
-  pm.welcome_replies::text != '[]' as has_replies
+-- Все колонки должны быть TRUE для каждого режима
+SELECT mt.key, pm.welcome_title,
+  pm.welcome_ai_message IS NOT NULL                                        AS has_msg,
+  pm.welcome_replies::text != '[]'                                          AS has_replies,
+  -- Welcome_ai_message: если есть ≥2 строки, должны быть \n\n между ними
+  (pm.welcome_ai_message !~ '\n[^\n]' OR pm.welcome_ai_message ~ '\n\n')    AS has_paragraph_breaks,
+  -- system_prompt содержит усиленный Quick replies блок
+  pm.system_prompt LIKE '%НИКОГДА не склеивай%'                             AS has_niggda_rule,
+  pm.system_prompt LIKE '%НЕПРАВИЛЬНО (все на одной строке)%'               AS has_counter_example,
+  -- system_prompt НЕ содержит абстрактный placeholder «Вариант 1» как позитивный пример
+  -- (допустим только внутри контрпримера НЕПРАВИЛЬНО)
+  (pm.system_prompt NOT LIKE E'%\n«Вариант 1»\n«Вариант 2»%')               AS placeholders_replaced
 FROM program_modes pm
 JOIN mode_templates mt ON mt.id = pm.mode_template_id
 WHERE pm.program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG');
+
+-- Проверка landing_data: photo_url — ЛОКАЛЬНЫЙ путь
+SELECT slug,
+  landing_data->'author'->>'photo_url' AS photo_url,
+  (landing_data->'author'->>'photo_url') LIKE '/authors/%' AS is_local_photo
+FROM programs
+WHERE slug = 'BOOK_SLUG';
 ```
+
+Если `is_local_photo = false` — перед деплоем скачай фото в `public/authors/{slug}.jpg` и обнови `landing_data.author.photo_url` через `jsonb_set`, иначе фото может не загрузиться из-за CSP.
 
 ## program_themes → режимы
 
@@ -286,7 +306,16 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 }
 ```
 
-> **photo_url**: Найти фото автора в интернете. Приоритет источников: (1) Wikipedia Commons — лицензионно чисто, (2) официальный сайт автора, (3) издательство. Формат: прямая ссылка на изображение, не на страницу. Проверить что ссылка работает.
+> **photo_url** — **ВСЕГДА локальный путь** `/authors/{slug}.jpg`, где `{slug}` = lowercased фамилия автора (напр. `bradberry`, `glover`, `chapman`, `bern`, `bakirov`).
+>
+> Шаги перед seed:
+> 1. Найти исходник в интернете: приоритет Wikipedia Commons → офф. сайт автора → издательство.
+> 2. Скачать в `public/authors/{slug}.jpg` (или `.webp` — родной формат).
+> 3. В `landing_data.author.photo_url` прописать `/authors/{slug}.jpg`.
+>
+> **Внешние URL запрещены.** Каждый новый домен требует правки `img-src` в [next.config.ts](../../../../next.config.ts) (иначе фото не грузится на проде из-за CSP). Локальный путь не ломается при смене издательского URL и не зависит от внешнего CDN.
+>
+> Прецедент: eq-2-0 Бредберри с `mann-ivanov-ferber.ru` не грузился из-за CSP (`mann-ivanov-ferber.ru` отсутствовал в allowlist). Решение — скачать локально.
 
 **problem:**
 ```json
@@ -357,12 +386,19 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 
 ### Реестр обложек и фото авторов
 
+Обложки — `cdn.litres.ru` (разрешён в CSP, см. next.config.ts).
+Фото авторов — **ВСЕГДА локально** в `/public/authors/{slug}.jpg` (см. правило photo_url выше).
+
 | Книга | cover_url | author photo_url |
 |-------|-----------|-----------------|
-| Гловер «Славные парни» | (в seed-landing-data.sql, без cover_url) | — |
-| Берн «Игры» | `cdn.litres.ru/pub/c/cover_415/73470133.webp` | `upload.wikimedia.org/wikipedia/ru/6/67/Erik_Bern.jpg` |
-| Чепмен «5 языков» | `cdn.litres.ru/pub/c/cover_415/161177.jpg` | `upload.wikimedia.org/.../Gary_D._Chapman.jpg` |
-| Бакиров «Разговорный гипноз» | `cdn.litres.ru/pub/c/cover_415/70789098.webp` | (найти) |
+| Гловер «Славные парни» | (в seed-landing-data.sql) | `/authors/glover.jpg` |
+| Берн «Игры» | `cdn.litres.ru/pub/c/cover_415/73470133.webp` | `/authors/bern.jpg` |
+| Чепмен «5 языков» | `cdn.litres.ru/pub/c/cover_415/161177.jpg` | `/authors/chapman.jpg` |
+| Бакиров «Разговорный гипноз» | `cdn.litres.ru/pub/c/cover_415/70789098.webp` | `/authors/bakirov.jpg` |
+| 100 заметок о себе | (в seed-landing-data.sql) | `/authors/100-notes.jpg` |
+| Бредберри «Эмоц. интеллект 2.0» | `cdn.litres.ru/pub/c/cover_415/…` | `/authors/bradberry.jpg` |
+
+Если новая книга — перед seed: скачать фото в `public/authors/{slug}.jpg`, прописать `/authors/{slug}.jpg` в landing_data, добавить строку в эту таблицу.
 
 ---
 
