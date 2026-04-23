@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
 import { createRateLimit } from "@/lib/rate-limit";
@@ -120,7 +120,8 @@ export async function POST(request: Request) {
 
   // 9. Stream
   const result = streamText({
-    model: google("gemini-2.5-flash"),
+    model: chatModel(),
+    providerOptions: CHAT_PROVIDER_OPTIONS,
     system: systemPrompt,
     messages: filteredMessages,
   });

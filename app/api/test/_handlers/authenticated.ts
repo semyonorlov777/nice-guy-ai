@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { google } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TestConfig } from "@/lib/test-config";
 import { apiError } from "@/lib/api-helpers";
@@ -114,7 +114,8 @@ export async function handleAuthenticated({
     send({ type: "chat_id", chat_id: chatId });
 
     const result = streamText({
-      model: google("gemini-2.5-flash"),
+      model: chatModel(),
+      providerOptions: CHAT_PROVIDER_OPTIONS,
       system: systemPrompt,
       messages: aiMessages,
     });
