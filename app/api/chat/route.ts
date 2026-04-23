@@ -1,5 +1,5 @@
 import { streamText } from "ai";
-import { chatModel, CHAT_PROVIDER_OPTIONS, CHAT_MODEL_ID } from "@/lib/ai";
+import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
 import { updatePortrait } from "@/app/api/portrait/update/route";
@@ -15,7 +15,6 @@ import {
 } from "@/lib/chat/prepare-context";
 
 export async function POST(request: Request) {
-  console.log("[chat] model:", CHAT_MODEL_ID);
   const supabase = await createClient();
 
   // 1. Auth
