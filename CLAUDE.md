@@ -264,6 +264,19 @@ sentry.edge.config.ts                     # Sentry конфиг (edge)
 ### Конфигурация из БД
 `lib/config.ts` — `getConfig<T>(key, default)` и `getConfigs(keys[])` читают из таблицы `app_config` с кешем 60с.
 
+## Правила системы чатов (обязательно при правках чата)
+
+**Если задача касается чата — welcome-экранов, quick-replies («ёлочки»), system_prompt, welcome_ai_message, welcome_replies, free_chat_welcome, author_chat_welcome, промптов для Gemini, ChatWindow / NewChatScreen / AnonymousChat — ОБЯЗАТЕЛЬНО:**
+
+1. **Прочитать полностью** `docs/runbooks/chat-message-formatting.md` ПЕРЕД началом работы (не по диагонали).
+2. **Сверяться с ним на каждом шаге** — структура welcome, формат quick-replies, где markdown работает а где нет, типичные антипаттерны, диагностика багов.
+3. **После правок** — проверить свою работу по чеклисту из runbook («Чеклист для ревью нового seed-SQL»).
+4. **Если нашёл правило которого в runbook ещё нет** — не молчать: обновить runbook + скиллы `book-to-modes` / `chat-rules`.
+
+Если задача **не касается** чата (например, правка лендинга без чата, оплата, профиль) — runbook читать не нужно.
+
+Скилл `chat-rules` подтягивается автоматически по триггерам (`welcome`, `ёлочки`, `quick reply`, `system_prompt`, и т.д.) — но CLAUDE.md важнее: это правило работает ВСЕГДА, даже если скилл не сработал.
+
 ## Дизайн-система
 
 Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-изменениях он подключается автоматически. Содержит:
