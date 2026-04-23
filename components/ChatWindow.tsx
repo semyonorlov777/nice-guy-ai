@@ -46,8 +46,16 @@ const MODE_NAMES: Record<string, string> = {
 /**
  * Извлекает «кавычки-ёлочки» из конца текста как быстрые ответы.
  * Паттерн: строки вида «Текст» в конце сообщения (каждая на отдельной строке).
+ *
+ * Во время стриминга (isStreaming=true) дополнительно скрывает из cleanText
+ * частично-выведенную «ёлочку» (открывающая кавычка без закрывающей) —
+ * чтобы пользователь не видел мерцающий токен `«Вари` перед тем, как он
+ * дотокенится и станет кнопкой.
  */
-function parseQuickReplies(text: string): { cleanText: string; replies: string[] } {
+function parseQuickReplies(
+  text: string,
+  isStreaming: boolean,
+): { cleanText: string; replies: string[] } {
   // Ищем блок строк «...» в конце текста
   const lines = text.trimEnd().split("\n");
   const replies: string[] = [];
@@ -66,9 +74,28 @@ function parseQuickReplies(text: string): { cleanText: string; replies: string[]
     }
   }
 
-  if (replies.length === 0) return { cleanText: text, replies: [] };
+  const cleanText = replies.length === 0
+    ? text
+    : lines.slice(0, i + 1).join("\n").trimEnd();
 
-  const cleanText = lines.slice(0, i + 1).join("\n").trimEnd();
+  // Во время стрима: если последняя непустая строка cleanText начинается
+  // с открывающей «ёлочки», но ещё не закрыта — значит модель сейчас пишет
+  // следующую опцию. Скрываем её, чтобы не светить пользователю сырой токен.
+  if (isStreaming) {
+    const remainingLines = cleanText.split("\n");
+    for (let j = remainingLines.length - 1; j >= 0; j--) {
+      const line = remainingLines[j].trim();
+      if (!line) continue;
+      if (line.startsWith("«") && !line.endsWith("»")) {
+        return {
+          cleanText: remainingLines.slice(0, j).join("\n").trimEnd(),
+          replies,
+        };
+      }
+      break; // проверяем только ПОСЛЕДНЮЮ непустую строку
+    }
+  }
+
   return { cleanText, replies };
 }
 
@@ -253,8 +280,9 @@ export function ChatWindow({
   // Show welcome AI message when no history exists
   const showWelcome = welcomeMessage && initialMessages.length === 0;
 
-  // Parse quick replies from welcome message (if not provided via props)
-  const parsedWelcome = welcomeMessage ? parseQuickReplies(welcomeMessage) : null;
+  // Parse quick replies from welcome message (if not provided via props).
+  // Welcome-текст статический (из БД), не стримится — isStreaming=false.
+  const parsedWelcome = welcomeMessage ? parseQuickReplies(welcomeMessage, false) : null;
   const effectiveWelcomeMessage = parsedWelcome?.cleanText || welcomeMessage;
   const effectiveQuickReplies: Array<{ text: string; type: "normal" | "exit" }> =
     quickReplies && quickReplies.length > 0
@@ -268,9 +296,9 @@ export function ChatWindow({
   // Parse quick replies from last AI message (inline «кавычки»)
   const lastMsg = messages[messages.length - 1];
   const lastAiText = lastMsg?.role === "assistant" ? getMessageText(lastMsg) : "";
-  const parsedLastAi = lastAiText ? parseQuickReplies(lastAiText) : null;
+  const parsedLastAi = lastAiText ? parseQuickReplies(lastAiText, isStreaming) : null;
   const inlineReplies = parsedLastAi?.replies || [];
-  const showInlineReplies = !isStreaming && inlineReplies.length > 0 && messages.length > 0;
+  const showInlineReplies = inlineReplies.length > 0 && messages.length > 0;
 
   // Welcome animation (first visit only)
   const shouldAnimate = Boolean(showWelcome) &&
@@ -392,8 +420,9 @@ export function ChatWindow({
               );
             }
 
-            // Для последнего AI-сообщения: убираем «кавычки» из текста, показываем как кнопки ниже
-            const displayText = (isAi && isLast && !isStreaming && parsedLastAi?.cleanText)
+            // Для последнего AI-сообщения: убираем «кавычки» из текста, показываем как кнопки ниже.
+            // Теперь работает и во время стрима — parseQuickReplies сам прячет частично-выведенные «ёлочки».
+            const displayText = (isAi && isLast && parsedLastAi?.cleanText)
               ? parsedLastAi.cleanText
               : text;
 
