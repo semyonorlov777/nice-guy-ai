@@ -5,12 +5,23 @@
  * каждая на отдельной строке. Парсер читает с конца, пропускает пустые строки,
  * собирает матчи, останавливается на первой не-матчащей строке.
  *
+ * Толерантность к markdown-маркерам: если модель ошибочно оборачивает «ёлочки»
+ * в списковые префиксы (`* «...»`, `- «...»`, `• «...»`, `1. «...»`), парсер
+ * срежет префикс ДО проверки regex. Это ловит частый формат сбоя Gemini, где
+ * промпт слабее.
+ *
  * Source of truth формата — docs/runbooks/chat-message-formatting.md.
  *
  * ВАЖНО: эту функцию используют ВСЕ компоненты-чаты (ChatWindow, NewChatScreen,
  * AnonymousChat) через единый components/chat/ChatMessage.tsx. Не дублируй
  * логику парсинга в самих компонентах — вызывай только через ChatMessage.
  */
+const LIST_MARKER_RE = /^(?:[*\-•·]|\d+\.)\s+/;
+
+function stripListMarker(line: string): string {
+  return line.replace(LIST_MARKER_RE, "");
+}
+
 export function parseQuickReplies(
   text: string,
   isStreaming: boolean,
@@ -20,7 +31,7 @@ export function parseQuickReplies(
   let i = lines.length - 1;
 
   while (i >= 0) {
-    const line = lines[i].trim();
+    const line = stripListMarker(lines[i].trim());
     if (!line) {
       i--;
       continue;
@@ -45,7 +56,7 @@ export function parseQuickReplies(
   if (isStreaming) {
     const remainingLines = cleanText.split("\n");
     for (let j = remainingLines.length - 1; j >= 0; j--) {
-      const line = remainingLines[j].trim();
+      const line = stripListMarker(remainingLines[j].trim());
       if (!line) continue;
       if (line.startsWith("«") && !line.endsWith("»")) {
         return {

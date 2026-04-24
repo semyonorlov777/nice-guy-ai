@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
-import { ChatMessage } from "@/components/chat/ChatMessage";
+import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
+import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
@@ -338,41 +339,51 @@ export function AnonymousChat({
               status === "submitted" && isLast && isAi && !text;
             if (isThinking) return null;
 
+            const parsed = isAi
+              ? parseQuickReplies(text, status === "streaming" && isLast)
+              : null;
+            const showReplies =
+              isAi &&
+              isLast &&
+              status !== "streaming" &&
+              status !== "submitted" &&
+              !requiresAuth &&
+              (parsed?.replies.length ?? 0) > 0;
+
             return (
-              <div
-                key={msg.id}
-                className={`msg ${isAi ? "msg-ai" : "msg-user"}`}
-              >
-                <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
-                  {isAi ? "НС" : "?"}
+              <Fragment key={msg.id}>
+                <div className={`msg ${isAi ? "msg-ai" : "msg-user"}`}>
+                  <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
+                    {isAi ? "НС" : "?"}
+                  </div>
+                  {isAi ? (
+                    <AIBubble
+                      text={parsed?.cleanText ?? text}
+                      className="msg-bubble"
+                      bubbleSuffix={
+                        status === "streaming" && isLast ? (
+                          <span className="streaming-cursor">{"▊"}</span>
+                        ) : undefined
+                      }
+                    />
+                  ) : (
+                    <div className="msg-bubble">{renderUserContent(text)}</div>
+                  )}
                 </div>
-                {isAi ? (
-                  <ChatMessage
-                    text={text}
-                    isStreaming={status === "streaming" && isLast}
-                    onReplyClick={
-                      isLast && status !== "streaming" && status !== "submitted" && !requiresAuth
-                        ? handleSend
-                        : undefined
-                    }
+                {showReplies && parsed && (
+                  <QuickReplyBar
+                    replies={parsed.replies}
+                    onClick={handleSend}
                     disabled={isStreaming || requiresAuth}
-                    showReplyLabel={false}
+                    showLabel={false}
                     classNames={{
-                      bubble: "msg-bubble",
-                      repliesContainer: "quick-replies",
-                      replyButton: "quick-reply-btn",
-                      replyButtonExit: "quick-reply-btn quick-reply-btn-exit",
+                      container: "quick-replies",
+                      button: "quick-reply-btn",
+                      label: "quick-reply-label",
                     }}
-                    bubbleSuffix={
-                      status === "streaming" && isLast ? (
-                        <span className="streaming-cursor">{"▊"}</span>
-                      ) : undefined
-                    }
                   />
-                ) : (
-                  <div className="msg-bubble">{renderUserContent(text)}</div>
                 )}
-              </div>
+              </Fragment>
             );
           })}
 

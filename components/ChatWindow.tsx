@@ -14,6 +14,7 @@ import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 import { isTelegramWebView } from "@/lib/detect-browser";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
+import { QuickReplyBar } from "@/components/chat/ChatMessage";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -389,19 +390,16 @@ export function ChatWindow({
 
           {/* Inline quick replies parsed from last AI message */}
           {showInlineReplies && (
-            <div className="quick-replies">
-              <div className="quick-reply-label">Выбери вариант или напиши своё</div>
-              {inlineReplies.map((text, i) => (
-                <button
-                  key={i}
-                  className="quick-reply-btn"
-                  onClick={() => handleSend(text)}
-                  disabled={isStreaming}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
+            <QuickReplyBar
+              replies={inlineReplies}
+              onClick={handleSend}
+              disabled={isStreaming}
+              classNames={{
+                container: "quick-replies",
+                button: "quick-reply-btn",
+                label: "quick-reply-label",
+              }}
+            />
           )}
 
           {status === "submitted" && messages.length > 0 && (
