@@ -72,29 +72,42 @@ description: "Правила системы чатов Nice Guy AI. Обязат
 
 Этот скилл **обязателен**, не рекомендация. Если пропустить — 99% что появится баг из списка выше. Пользователь прямо сказал: «после твоих правок чатом невозможно пользоваться». Всегда читать runbook, всегда проверять в браузере.
 
-## 🚨 Архитектурный инвариант (единый рендерер)
+## 🚨 Архитектурный инвариант (единый рендерер + правильный layout)
 
-С 2026-04-23 ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) ОБЯЗАНЫ использовать единый компонент [`components/chat/ChatMessage.tsx`](../../../components/chat/ChatMessage.tsx).
+С 2026-04-23 ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) ОБЯЗАНЫ использовать два компонента из [`components/chat/ChatMessage.tsx`](../../../components/chat/ChatMessage.tsx):
 
-- Парсер «ёлочек» живёт в [`lib/chat/parse-quick-replies.ts`](../../../lib/chat/parse-quick-replies.ts). **НЕ дублировать локально.**
-- ReactMarkdown применяется с `remark-breaks` (одиночный `\n` = `<br>`). **НЕ вызывать ReactMarkdown напрямую для AI-ответов.**
+- **`<AIBubble>`** — пузырь AI с ReactMarkdown + `remark-breaks`
+- **`<QuickReplyBar>`** — блок кнопок-«ёлочек»
 
-**Если добавляешь новый чат-экран:**
+Парсер «ёлочек» — единый: [`lib/chat/parse-quick-replies.ts`](../../../lib/chat/parse-quick-replies.ts). **НЕ дублировать локально.**
+
+**🔥 КРИТИЧНОЕ ПРАВИЛО LAYOUT:** `<QuickReplyBar>` размещается как **SIBLING** (рядом, через `<Fragment>`), а не ВНУТРИ контейнера `.nc-msg`/`.msg`. Иначе кнопки попадут в узкую правую колонку flex-row (баг 2026-04-24, обнаружен после первой итерации единого рендера).
+
+**Шаблон:**
 ```tsx
-import { ChatMessage } from "@/components/chat/ChatMessage";
+import { Fragment } from "react";
+import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
+import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
-<ChatMessage
-  text={aiMessageText}
-  isStreaming={isLast && streaming}
-  onReplyClick={isLast && !streaming ? handleSend : undefined}
-  classNames={{
-    bubble: "your-bubble-class",
-    replyButton: "your-reply-btn-class",
-    replyButtonExit: "your-reply-btn-exit-class",
-  }}
-/>
+const { cleanText, replies } = parseQuickReplies(text, isLast && isStreaming);
+
+return (
+  <Fragment key={msg.id}>
+    <div className="msg msg-ai">            {/* flex-row */}
+      <div className="msg-avatar ai" />
+      <AIBubble text={cleanText} className="msg-bubble" />
+    </div>
+    {isLast && !isStreaming && (          {/* SIBLING, НЕ внутри .msg-ai */}
+      <QuickReplyBar
+        replies={replies}
+        onClick={handleSend}
+        classNames={{ container: "quick-replies", button: "quick-reply-btn" }}
+      />
+    )}
+  </Fragment>
+);
 ```
 
-**Причина инварианта:** до этой даты `parseQuickReplies` был локально в ChatWindow; NewChatScreen и AnonymousChat рендерили AI-ответы через голый ReactMarkdown. Пользователь видел «ёлочки» plain-текстом на welcome-экранах — класс багов повторялся рецидивами. Подробный кейс: [`docs/chat-audit-eq-2-0.md`](../../../docs/chat-audit-eq-2-0.md).
+**Причина инварианта:** до 2026-04-23 `parseQuickReplies` был локально в ChatWindow; NewChatScreen и AnonymousChat рендерили AI-ответы через голый ReactMarkdown. Пользователь видел «ёлочки» plain-текстом. После первой попытки фикса (монолитный `<ChatMessage>`) кнопки уехали в узкую колонку справа — потребовалась вторая итерация с разделением и правильным layout. Подробный кейс: [`docs/chat-audit-eq-2-0.md`](../../../docs/chat-audit-eq-2-0.md).
 
-**Нарушение = возврат к классу багов.** Если расширяешь API ChatMessage — не создавай обход.
+**Нарушение = возврат к классу багов.** Если расширяешь API — не создавай обход.

@@ -17,40 +17,56 @@
 
 ## Архитектурный инвариант (🚨 ЧИТАТЬ ДО ЛЮБОЙ ПРАВКИ ЧАТОВ)
 
-**Правило:** ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) рендерят AI-сообщения через единый компонент [components/chat/ChatMessage.tsx](../../components/chat/ChatMessage.tsx). Внутри него — единый парсер [lib/chat/parse-quick-replies.ts](../../lib/chat/parse-quick-replies.ts) и единый ReactMarkdown с `remark-breaks`.
+**Правило:** ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) рендерят AI-сообщения через два компонента из [components/chat/ChatMessage.tsx](../../components/chat/ChatMessage.tsx):
+- `<AIBubble>` — пузырь AI с ReactMarkdown + `remark-breaks`.
+- `<QuickReplyBar>` — блок кнопок-«ёлочек».
 
-**Почему это правило критично:**
-- До 2026-04-23 парсер «ёлочек» был локальным в ChatWindow. NewChatScreen и AnonymousChat рендерили AI-ответы через голый `<ReactMarkdown>` — кнопки-«ёлочки» НЕ появлялись до ручного reload (класс багов описан в [docs/chat-audit-eq-2-0.md](../chat-audit-eq-2-0.md)).
+Парсер «ёлочек» — единый: [lib/chat/parse-quick-replies.ts](../../lib/chat/parse-quick-replies.ts). Вызывающий код парсит один раз и передаёт `cleanText` → `<AIBubble>`, `replies` → `<QuickReplyBar>`.
+
+**🔥 КРИТИЧНОЕ ПРАВИЛО LAYOUT:** `<QuickReplyBar>` обязательно рендерится как **SIBLING** контейнера сообщения (`.nc-msg` / `.msg`), а **НЕ ВНУТРИ** него. Контейнеры сообщений — flex-row (аватар слева, bubble справа); если положить кнопки внутрь, они станут третьим flex-элементом и уедут в узкую колонку справа. Используй `<Fragment>` чтобы вынести QuickReplyBar за пределы `.nc-msg` / `.msg`.
+
+**Почему эти правила критичны:**
+- До 2026-04-23 парсер «ёлочек» был локальным в ChatWindow. NewChatScreen и AnonymousChat рендерили AI-ответы через голый `<ReactMarkdown>` — кнопки-«ёлочки» НЕ появлялись до ручного reload (см. [docs/chat-audit-eq-2-0.md](../chat-audit-eq-2-0.md)).
 - Промпты учат AI ставить «ёлочки» через одиночный `\n`. CommonMark трактует одиночный `\n` как пробел — «ёлочки» склеивались в одну строку. `remark-breaks` превращает одиночный `\n` в `<br>`.
+- 2026-04-24: первая итерация единого компонента (`<ChatMessage>` монолит) рендерила bubble и кнопки в одном Fragment — кнопки ушли в узкую колонку сбоку. Разделение на `<AIBubble>` + `<QuickReplyBar>` с размещением как sibling — фикс этого.
 
 **Запрещено:**
-- ❌ Рендерить AI-ответ через `<ReactMarkdown>` напрямую в любом чат-компоненте. Всегда через `<ChatMessage>`.
+- ❌ Рендерить AI-ответ через `<ReactMarkdown>` напрямую в чат-компоненте. Всегда через `<AIBubble>`.
 - ❌ Копировать логику `parseQuickReplies` в компонент. Импорт из `@/lib/chat/parse-quick-replies`.
-- ❌ Создавать новый компонент-чат без переиспользования `<ChatMessage>`.
+- ❌ Ставить `<QuickReplyBar>` ВНУТРЬ `.nc-msg` / `.msg`. Только как sibling после закрывающего `</div>` контейнера сообщения.
+- ❌ Создавать новый чат-экран без `<AIBubble>` + `<QuickReplyBar>`.
 
-**Если добавляешь новый чат-экран:**
+**Шаблон для нового чат-экрана:**
 ```tsx
-import { ChatMessage } from "@/components/chat/ChatMessage";
+import { Fragment } from "react";
+import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
+import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
-<ChatMessage
-  text={aiMessageText}
-  isStreaming={isLast && streaming}
-  onReplyClick={isLast && !streaming ? handleSend : undefined}
-  disabled={streaming}
-  classNames={{
-    bubble: "your-bubble-class",
-    repliesContainer: "your-replies-container-class",
-    replyButton: "your-reply-btn-class",
-    replyButtonExit: "your-reply-btn-exit-class",
-  }}
-/>
+{messages.map((msg, idx) => {
+  if (msg.role === "user") { /* обычный user bubble */ }
+
+  const isLast = idx === messages.length - 1;
+  const { cleanText, replies } = parseQuickReplies(msg.text, isLast && isStreaming);
+
+  return (
+    <Fragment key={msg.id}>
+      <div className="msg msg-ai">          {/* flex-row: аватар + bubble */}
+        <div className="msg-avatar ai" />
+        <AIBubble text={cleanText} className="msg-bubble" />
+      </div>
+      {isLast && !isStreaming && (         {/* SIBLING, не внутри .msg-ai */}
+        <QuickReplyBar
+          replies={replies}
+          onClick={handleSend}
+          classNames={{ container: "quick-replies", button: "quick-reply-btn" }}
+        />
+      )}
+    </Fragment>
+  );
+})}
 ```
-Это гарантирует что:
-- «Ёлочки» в конце AI-текста → становятся кнопками.
-- Частично-стримящиеся «ёлочки» прячутся до момента когда дотокенятся.
-- `\n` между буллетами и «ёлочками» корректно переносит их на отдельные строки.
 
-**Нужна кастомизация которой нет в API?** Расширь ChatMessage, не создавай обход. Любой обход = возврат к классу багов 2026-04-23.
+**Нужна кастомизация которой нет в API?** Расширь API этих двух компонентов, не создавай обход. Любой обход = возврат к классу багов 2026-04-23.
 
 ## Три уровня контента
 
@@ -327,6 +343,9 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 
 **«AI использует дефис-список `- "текст"` вместо «ёлочек»»**
 → Аналогично: слабый QR-блок без запрета на дефис-списки и прямые кавычки. ReactMarkdown видит `-` в начале строки и рендерит как `<ul><li>`. Фикс: добавить `НЕПРАВИЛЬНО: - "текст"` и `НЕПРАВИЛЬНО: "текст"` (прямые кавычки) в секцию ЗАПРЕЩЕНО.
+
+**«AI оборачивает «ёлочки» в буллет-список `* «текст»`»**
+→ Парсер с 2026-04-24 **толерантен**: срезает ведущие `* `, `- `, `• `, `1. ` перед match-ом regex. Кнопки появятся, даже если AI добавил buллет. НО: markdown-обёртка — признак слабого QR-блока в system_prompt. Всё равно усилить промпт (явный пример ПРАВИЛЬНО без маркеров + запрет `* «...»` в НЕПРАВИЛЬНО), чтобы модель не плодила мусор. Толерантность парсера — защита от случайных сбоев, не оправдание слабого промпта.
 
 **«AI буквально пишет «Вариант 1»/«Вариант 2» в ответах»**
 → В примере QR-блока остались literal-плейсхолдеры. По правилу из скилла `book-to-modes` §5, плейсхолдеры `«Вариант 1»`, `«Вариант 2»` в ПРАВИЛЬНО-примере должны быть заменены тематически-конкретными reply для режима. Они могут остаться ТОЛЬКО в контрпримере `НЕПРАВИЛЬНО` (там наоборот — пусть модель видит их как «плохой формат»).
