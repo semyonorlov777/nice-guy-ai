@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import { ChatMessage } from "@/components/chat/ChatMessage";
 import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
@@ -230,9 +232,8 @@ export function AnonymousChat({
       .join("");
   }
 
-  function renderContent(content: string, isAi: boolean) {
+  function renderUserContent(content: string) {
     if (!content) return null;
-    if (isAi) return <ReactMarkdown>{content}</ReactMarkdown>;
     return content.split("\n\n").map((paragraph, i) => <p key={i}>{paragraph}</p>);
   }
 
@@ -303,7 +304,7 @@ export function AnonymousChat({
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`}>
               <div className="msg-avatar ai">НС</div>
               <div className="msg-bubble">
-                <ReactMarkdown>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
                 {showCursor && <span className="streaming-cursor">{"▊"}</span>}
               </div>
             </div>
@@ -345,12 +346,32 @@ export function AnonymousChat({
                 <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
                   {isAi ? "НС" : "?"}
                 </div>
-                <div className="msg-bubble">
-                  {renderContent(text, isAi)}
-                  {status === "streaming" && isLast && isAi && (
-                    <span className="streaming-cursor">{"▊"}</span>
-                  )}
-                </div>
+                {isAi ? (
+                  <ChatMessage
+                    text={text}
+                    isStreaming={status === "streaming" && isLast}
+                    onReplyClick={
+                      isLast && status !== "streaming" && status !== "submitted" && !requiresAuth
+                        ? handleSend
+                        : undefined
+                    }
+                    disabled={isStreaming || requiresAuth}
+                    showReplyLabel={false}
+                    classNames={{
+                      bubble: "msg-bubble",
+                      repliesContainer: "quick-replies",
+                      replyButton: "quick-reply-btn",
+                      replyButtonExit: "quick-reply-btn quick-reply-btn-exit",
+                    }}
+                    bubbleSuffix={
+                      status === "streaming" && isLast ? (
+                        <span className="streaming-cursor">{"▊"}</span>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <div className="msg-bubble">{renderUserContent(text)}</div>
+                )}
               </div>
             );
           })}

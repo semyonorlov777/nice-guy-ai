@@ -4,12 +4,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
 import type { WelcomeConfig } from "@/types/welcome";
 import { ArrowRightIcon } from "@/components/icons/hub-icons";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import InputBar from "@/components/InputBar/InputBar";
+import { ChatMessage } from "@/components/chat/ChatMessage";
 
 interface NewChatScreenProps {
   slug: string;
@@ -203,7 +203,7 @@ export function NewChatScreen({
         )}
 
         {/* Chat messages */}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const text = getMessageText(msg);
           if (!text) return null;
 
@@ -215,12 +215,24 @@ export function NewChatScreen({
             );
           }
 
+          const isLast = idx === messages.length - 1;
+
           return (
             <div key={msg.id} className="nc-msg nc-msg-ai">
               <div className="nc-ai-avatar" />
-              <div className="nc-bubble nc-bubble-ai">
-                <ReactMarkdown>{text}</ReactMarkdown>
-              </div>
+              <ChatMessage
+                text={text}
+                isStreaming={isLast && isStreaming}
+                onReplyClick={isLast && !isStreaming ? handleSend : undefined}
+                disabled={isStreaming}
+                showReplyLabel={false}
+                classNames={{
+                  bubble: "nc-bubble nc-bubble-ai",
+                  repliesContainer: "nc-replies nc-replies-inline",
+                  replyButton: "nc-reply",
+                  replyButtonExit: "nc-reply nc-reply-exit",
+                }}
+              />
             </div>
           );
         })}

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import type { UIMessage } from "ai";
 import { useRouter } from "next/navigation";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
@@ -12,6 +13,7 @@ import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 import { isTelegramWebView } from "@/lib/detect-browser";
+import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -42,62 +44,6 @@ const MODE_NAMES: Record<string, string> = {
   ng_quiz: "Славный парень или нет?",
   ng_theory: "Теория книги",
 };
-
-/**
- * Извлекает «кавычки-ёлочки» из конца текста как быстрые ответы.
- * Паттерн: строки вида «Текст» в конце сообщения (каждая на отдельной строке).
- *
- * Во время стриминга (isStreaming=true) дополнительно скрывает из cleanText
- * частично-выведенную «ёлочку» (открывающая кавычка без закрывающей) —
- * чтобы пользователь не видел мерцающий токен `«Вари` перед тем, как он
- * дотокенится и станет кнопкой.
- */
-function parseQuickReplies(
-  text: string,
-  isStreaming: boolean,
-): { cleanText: string; replies: string[] } {
-  // Ищем блок строк «...» в конце текста
-  const lines = text.trimEnd().split("\n");
-  const replies: string[] = [];
-  let i = lines.length - 1;
-
-  // Собираем строки с «кавычками» с конца
-  while (i >= 0) {
-    const line = lines[i].trim();
-    if (!line) { i--; continue; } // пропускаем пустые строки
-    const match = line.match(/^[«""](.+?)[»""]$/);
-    if (match) {
-      replies.unshift(match[1]);
-      i--;
-    } else {
-      break;
-    }
-  }
-
-  const cleanText = replies.length === 0
-    ? text
-    : lines.slice(0, i + 1).join("\n").trimEnd();
-
-  // Во время стрима: если последняя непустая строка cleanText начинается
-  // с открывающей «ёлочки», но ещё не закрыта — значит модель сейчас пишет
-  // следующую опцию. Скрываем её, чтобы не светить пользователю сырой токен.
-  if (isStreaming) {
-    const remainingLines = cleanText.split("\n");
-    for (let j = remainingLines.length - 1; j >= 0; j--) {
-      const line = remainingLines[j].trim();
-      if (!line) continue;
-      if (line.startsWith("«") && !line.endsWith("»")) {
-        return {
-          cleanText: remainingLines.slice(0, j).join("\n").trimEnd(),
-          replies,
-        };
-      }
-      break; // проверяем только ПОСЛЕДНЮЮ непустую строку
-    }
-  }
-
-  return { cleanText, replies };
-}
 
 function classifyError(content: string): "limit" | "ai" {
   if (/Недостаточно|лимит|закончились/i.test(content)) return "limit";
@@ -235,7 +181,7 @@ export function ChatWindow({
   function renderContent(content: string, isAi: boolean) {
     if (!content) return null;
     if (isAi) {
-      return <ReactMarkdown>{content}</ReactMarkdown>;
+      return <ReactMarkdown remarkPlugins={[remarkBreaks]}>{content}</ReactMarkdown>;
     }
     return content.split("\n\n").map((paragraph, i) => (
       <p key={i}>{paragraph}</p>
@@ -373,7 +319,7 @@ export function ChatWindow({
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`} role="article">
               <div className="msg-avatar ai" />
               <div className="msg-bubble">
-                <ReactMarkdown>{animActive ? streamedText : effectiveWelcomeMessage}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{animActive ? streamedText : effectiveWelcomeMessage}</ReactMarkdown>
                 {showCursor && <span className="streaming-cursor">{"▊"}</span>}
               </div>
             </div>

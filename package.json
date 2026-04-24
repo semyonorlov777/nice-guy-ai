@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "bash scripts/check-hardcodes.sh"
+    "check": "bash scripts/check-hardcodes.sh && npm run check:chats",
+    "check:chats": "tsx scripts/check-chat-seed.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",
@@ -23,6 +24,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
     "yookassa": "^0.1.1"
   },
   "devDependencies": {
