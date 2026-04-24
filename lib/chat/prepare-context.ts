@@ -101,6 +101,27 @@ export async function getOrCreateProfile(
 }
 
 // ---------------------------------------------------------------------------
+// serializeWelcomeWithReplies — клеит welcome_ai_message + welcome_replies
+// в единый текст с «ёлочками» в конце. Нужно чтобы первое AI-сообщение
+// в messages.content сохранялось с кнопками, и после F5 парсер их восстановил.
+// ---------------------------------------------------------------------------
+
+function serializeWelcomeWithReplies(
+  aiMessage: string,
+  replies: unknown,
+): string {
+  if (!Array.isArray(replies) || replies.length === 0) return aiMessage;
+  const lines = (replies as Array<{ text?: string } | string>)
+    .map((r) => {
+      const text = typeof r === "string" ? r : r?.text;
+      return text ? `«${text}»` : null;
+    })
+    .filter((line): line is string => Boolean(line));
+  if (lines.length === 0) return aiMessage;
+  return aiMessage + "\n\n" + lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
 // loadProgramContext — программа + упражнение + system prompt
 // ---------------------------------------------------------------------------
 
@@ -152,13 +173,19 @@ export async function loadProgramContext(
   }
 
   // Build system prompt: mode-level → program-level fallback
-  // 1. Check program_modes for a custom system_prompt and welcome_message
+  // 1. Check program_modes for a custom system_prompt and welcome_message.
+  //    Для tool-режимов welcome обычно хранится как `welcome_ai_message` (plain-text)
+  //    + `welcome_replies` (jsonb array {text, type}) — их нужно СЕРИАЛИЗОВАТЬ
+  //    в единый текст с «ёлочками», чтобы после reload `parseQuickReplies`
+  //    восстановил кнопки из сохранённого messages.content.
   let systemPrompt = "";
   let modeWelcome: string | null = null;
   if (chatType) {
     const { data: modeRow } = await supabase
       .from("program_modes")
-      .select("system_prompt, welcome_message, mode_templates!inner(chat_type)")
+      .select(
+        "system_prompt, welcome_message, welcome_ai_message, welcome_replies, mode_templates!inner(chat_type)",
+      )
       .eq("program_id", programId)
       .eq("mode_templates.chat_type", chatType)
       .maybeSingle();
@@ -167,7 +194,14 @@ export async function loadProgramContext(
       systemPrompt = modeRow.system_prompt;
     }
     if (modeRow?.welcome_message) {
+      // Legacy: welcome_message уже содержит ёлочки в тексте
       modeWelcome = modeRow.welcome_message;
+    } else if (modeRow?.welcome_ai_message) {
+      // Новый формат: ai-message + отдельные replies → склеиваем в текст
+      modeWelcome = serializeWelcomeWithReplies(
+        modeRow.welcome_ai_message,
+        modeRow.welcome_replies,
+      );
     }
   }
 
