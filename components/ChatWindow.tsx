@@ -238,7 +238,7 @@ export function ChatWindow({
             ? { text: r, type: "normal" }
             : { text: r.text, type: r.type ?? "normal" },
         )
-      : (parsedWelcome?.replies || []).map((text) => ({ text, type: "normal" }));
+      : parsedWelcome?.replies || [];
 
   // Parse quick replies from last AI message (inline «кавычки»)
   const lastMsg = messages[messages.length - 1];
@@ -367,11 +367,20 @@ export function ChatWindow({
               );
             }
 
-            // Для последнего AI-сообщения: убираем «кавычки» из текста, показываем как кнопки ниже.
-            // Теперь работает и во время стрима — parseQuickReplies сам прячет частично-выведенные «ёлочки».
-            const displayText = (isAi && isLast && parsedLastAi?.cleanText)
-              ? parsedLastAi.cleanText
-              : text;
+            // У ВСЕХ AI-сообщений вырезаем «ёлочки» из текста (они отдельный UI-элемент,
+            // а не часть сообщения). Кнопки рендерятся ниже — только для последнего.
+            // Для не-последних AI-сообщений мы просто прячем их «ёлочки» как текст
+            // (иначе после F5 welcome-сообщение с «ёлочками» показало бы их plain-текстом
+            // как только пользователь написал следующее сообщение).
+            let displayText = text;
+            if (isAi) {
+              if (isLast && parsedLastAi?.cleanText !== undefined) {
+                displayText = parsedLastAi.cleanText;
+              } else if (!isLast) {
+                const parsedThis = parseQuickReplies(text, false);
+                displayText = parsedThis.cleanText;
+              }
+            }
 
             return (
               <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article" aria-busy={isAi && isLast && isStreaming ? true : undefined}>

@@ -240,6 +240,7 @@ export function NewChatScreen({
                   classNames={{
                     container: "nc-replies nc-replies-inline",
                     button: "nc-reply",
+                    buttonExit: "nc-reply-exit",
                     label: "nc-reply-label",
                   }}
                 />

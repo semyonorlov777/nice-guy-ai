@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
+import type { QuickReply } from "@/lib/chat/parse-quick-replies";
 
 /**
  * Единый рендер-слой AI-сообщений для ВСЕХ чат-поверхностей
@@ -60,14 +61,31 @@ export interface QuickReplyBarClassNames {
 }
 
 export interface QuickReplyBarProps {
-  /** Массив replies из parseQuickReplies */
-  replies: string[];
+  /**
+   * Массив replies — либо из parseQuickReplies (with types), либо из БД
+   * welcome_replies (тот же формат). Legacy: string[] тоже поддерживается
+   * и трактуется как всё normal (с последним exit если их ≥3).
+   */
+  replies: QuickReply[] | string[];
   /** Вызывается при клике на кнопку — обычно тот же handleSend */
   onClick: (text: string) => void;
   disabled?: boolean;
   classNames?: QuickReplyBarClassNames;
   /** Показать ли "Выбери вариант или напиши своё" над кнопками. По умолчанию — да */
   showLabel?: boolean;
+}
+
+function normalizeReplies(replies: QuickReply[] | string[]): QuickReply[] {
+  if (replies.length === 0) return [];
+  // Если массив строк — последний автоматически exit (если их ≥3 или ровно 1).
+  if (typeof replies[0] === "string") {
+    return (replies as string[]).map((text, idx, arr) => {
+      const isLast = idx === arr.length - 1;
+      const shouldBeExit = isLast && (arr.length >= 3 || arr.length === 1);
+      return { text, type: shouldBeExit ? "exit" : "normal" };
+    });
+  }
+  return replies as QuickReply[];
 }
 
 export function QuickReplyBar({
@@ -77,25 +95,33 @@ export function QuickReplyBar({
   classNames = {},
   showLabel = true,
 }: QuickReplyBarProps) {
-  if (replies.length === 0) return null;
+  const normalized = normalizeReplies(replies);
+  if (normalized.length === 0) return null;
 
   const containerClass = classNames.container ?? "quick-replies";
   const buttonClass = classNames.button ?? "quick-reply-btn";
+  const buttonExitClass = classNames.buttonExit ?? "quick-reply-btn-exit";
   const labelClass = classNames.label ?? "quick-reply-label";
 
   return (
     <div className={containerClass}>
       {showLabel && <div className={labelClass}>{DEFAULT_LABEL}</div>}
-      {replies.map((reply, i) => (
-        <button
-          key={i}
-          className={buttonClass}
-          onClick={() => onClick(reply)}
-          disabled={disabled}
-        >
-          {reply}
-        </button>
-      ))}
+      {normalized.map((reply, i) => {
+        const classes =
+          reply.type === "exit"
+            ? `${buttonClass} ${buttonExitClass}`
+            : buttonClass;
+        return (
+          <button
+            key={i}
+            className={classes}
+            onClick={() => onClick(reply.text)}
+            disabled={disabled}
+          >
+            {reply.text}
+          </button>
+        );
+      })}
     </div>
   );
 }
