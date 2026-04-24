@@ -71,3 +71,30 @@ description: "Правила системы чатов Nice Guy AI. Обязат
 ## Правило жёсткости
 
 Этот скилл **обязателен**, не рекомендация. Если пропустить — 99% что появится баг из списка выше. Пользователь прямо сказал: «после твоих правок чатом невозможно пользоваться». Всегда читать runbook, всегда проверять в браузере.
+
+## 🚨 Архитектурный инвариант (единый рендерер)
+
+С 2026-04-23 ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) ОБЯЗАНЫ использовать единый компонент [`components/chat/ChatMessage.tsx`](../../../components/chat/ChatMessage.tsx).
+
+- Парсер «ёлочек» живёт в [`lib/chat/parse-quick-replies.ts`](../../../lib/chat/parse-quick-replies.ts). **НЕ дублировать локально.**
+- ReactMarkdown применяется с `remark-breaks` (одиночный `\n` = `<br>`). **НЕ вызывать ReactMarkdown напрямую для AI-ответов.**
+
+**Если добавляешь новый чат-экран:**
+```tsx
+import { ChatMessage } from "@/components/chat/ChatMessage";
+
+<ChatMessage
+  text={aiMessageText}
+  isStreaming={isLast && streaming}
+  onReplyClick={isLast && !streaming ? handleSend : undefined}
+  classNames={{
+    bubble: "your-bubble-class",
+    replyButton: "your-reply-btn-class",
+    replyButtonExit: "your-reply-btn-exit-class",
+  }}
+/>
+```
+
+**Причина инварианта:** до этой даты `parseQuickReplies` был локально в ChatWindow; NewChatScreen и AnonymousChat рендерили AI-ответы через голый ReactMarkdown. Пользователь видел «ёлочки» plain-текстом на welcome-экранах — класс багов повторялся рецидивами. Подробный кейс: [`docs/chat-audit-eq-2-0.md`](../../../docs/chat-audit-eq-2-0.md).
+
+**Нарушение = возврат к классу багов.** Если расширяешь API ChatMessage — не создавай обход.
