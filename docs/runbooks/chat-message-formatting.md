@@ -135,7 +135,8 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
 ### `welcome_mode_label` — плашка над заголовком
 
-- Одно слово UPPERCASE: `АНАЛИЗ`, `ЛЕКЦИЯ`, `ВОРКШОП`, `РОЛЕВАЯ`, `ЭКЗАМЕН`, `СВОБОДНЫЙ ЧАТ`, `РАБОТА С ТЕМОЙ`.
+- Title Case или UPPERCASE, начинать с заглавной буквы: `Анализ`, `Лекция`, `Воркшоп`, `Ролевая`, `Экзамен`, `Свободный чат`, `Работа с темой`.
+- CSS `.wc-mode { text-transform: uppercase }` визуально превращает в UPPERCASE в карточке режима — в БД пиши Title Case, оно само отрендерится «АНАЛИЗ».
 - Соответствует архетипу из `book-to-modes` → REFERENCE.md §1.
 
 ### `welcome_title` — заголовок карточки
@@ -276,7 +277,7 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
 ### На уровне `program_modes` (каждый INSERT)
 
-- [ ] `welcome_mode_label` — UPPERCASE, одно слово-архетип
+- [ ] `welcome_mode_label` — Title Case или UPPERCASE, начинается с заглавной (CSS делает uppercase визуально)
 - [ ] `welcome_title` — без эмодзи
 - [ ] `welcome_subtitle` — одна строка, обещание результата
 - [ ] `welcome_ai_message` — **нет `**bold**`**, нет markdown-заголовков, не начинается с `🔒 **Title**`, есть `\n\n` между абзацами

@@ -55,7 +55,13 @@ CREATE TABLE program_modes (
 
 **system_prompt каждого режима** содержит блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 — **при вставке в конкретный режим замени 3 плейсхолдера `«Вариант 1»/«Вариант 2»/«Мне сложно сформулировать»` на тематически-конкретные reply** под домен режима от первого лица пользователя. Literal `«Вариант 1»` Gemini копирует дословно → парсер получает plain-текст без «ёлочек» → кнопок нет. Детали и примеры замен — REFERENCE.md §5.
 
-**programs-level поля (`programs.system_prompt`, `author_chat_system_prompt`, `free_chat_welcome`, `author_chat_welcome`):** ОБЯЗАТЕЛЬНО содержат блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 + стартовые «ёлочки» в конце welcome. Иначе темы и свободный чат идут без кнопок.
+Также блок Quick replies обязан содержать **оба counterexample**:
+- `НЕПРАВИЛЬНО (все на одной строке): «В1» «В2» «В3»` — против склейки через пробел
+- `НЕПРАВИЛЬНО: <текст>` — против угловых скобок (Gemini временами выдаёт `<вариант>` если нет явного запрета; см. коммит `d2067ba` `fix-all-books-angle-bracket-counterexample-2026-04-25.sql` — пришлось патчить все 6 книг разом)
+
+Линтер `npm run check:chats` ловит оба case-а.
+
+**programs-level поля (`programs.system_prompt`, `author_chat_system_prompt`, `anonymous_system_prompt`, `free_chat_welcome`, `author_chat_welcome`):** ОБЯЗАТЕЛЬНО содержат блок `### Quick replies — ФОРМАТ` из REFERENCE.md §5 + стартовые «ёлочки» в конце welcome. Правила НЕ наследуются между уровнями — если только в `programs.system_prompt`, то author_chat и anonymous идут без кнопок.
 
 **Ключевой момент:** `system_prompt` в `program_modes` переопределяет program-level промпт. Это позволяет каждому режиму иметь свой промпт.
 
@@ -681,6 +687,7 @@ WHERE slug = 'BOOK_SLUG';
 
 | # | Что проверить | Как | Критично? |
 |---|--------------|-----|-----------|
+| 0 | Линтер чат-полей не выдаёт ошибок | `npm run check:chats -- --book=BOOK_SLUG` → 0 errors | 🔴 Ловит косяки до того как они пойдут в UI |
 | 1 | `test_configs` содержит запись | `SELECT * FROM test_configs WHERE slug = 'TEST_SLUG'` | 🔴 Без этого тест не существует |
 | 2 | `programs.features.test = true` | `SELECT features->>'test' FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого тест скрыт в UI |
 | 3 | `programs.test_system_prompt` заполнен | `SELECT test_system_prompt IS NOT NULL FROM programs WHERE slug = 'BOOK_SLUG'` | 🔴 Без этого AI streaming text-answers идёт без контекста теста (API не падает — есть `?? ""` fallback, но качество интерпретации текстовых ответов резко падает) |
@@ -774,6 +781,98 @@ WHERE slug = 'BOOK_SLUG';
 pen, clock, check, book, chat, target, search, message-circle, book-open, map, drama, sparkles, heart, users, shield, compass, lightbulb, translate, unlock, rocket, lightning, flask
 
 Если нужной иконки нет — добавь во **все три файла** (шаги 1-3).
+
+---
+
+## Runtime: что код делает поверх seed
+
+Эти три механизма автоматически работают после INSERT'а — автор seed должен про них **знать** (чтобы не дублировать и не путаться), но **руками настраивать не нужно**.
+
+### 1. QR-reminder auto-inject в `/api/chat/route.ts`
+
+[app/api/chat/route.ts](../../../../app/api/chat/route.ts) при сборке system_prompt для Gemini добавляет в **самый конец** короткое напоминание про формат «ёлочек» — recency effect, последнее видит модель. Это страховка от мелких сбоев Gemini.
+
+**Где работает:**
+- `/api/chat` (free chat, темы, tool-режимы, author chat — все авторизованные чаты программы)
+
+**Где НЕ работает:**
+- `/api/chat/anonymous` (демо-чат на лендинге) — там свой укороченный reminder
+- `/api/test` (тестовые text-answers) — там идёт `programs.test_system_prompt` без модификаций
+
+**Импликация для seed:** auto-inject **не повод опускать** блок `### Quick replies — ФОРМАТ` в seed-промптах. Каждый из 4 system_prompt уровней (programs + 3 program_modes уровня) должен быть самодостаточным. Reminder — backup, не source of truth.
+
+### 2. Welcome serialization для F5 (`serializeWelcomeWithReplies`)
+
+В seed мы пишем `welcome_ai_message` и `welcome_replies` в **разные поля** БД. Когда пользователь открывает чат через NewChatScreen, runtime-функция [lib/chat/prepare-context.ts](../../../../lib/chat/prepare-context.ts) → `serializeWelcomeWithReplies` склеивает их в один text с «ёлочками» в конце:
+
+```
+{welcome_ai_message}
+
+«{reply 1.text}»
+«{reply 2.text}»
+«{reply 3.text}»
+```
+
+Этот склеенный text сохраняется в `messages.content` как первое сообщение AI. После F5 (или загрузки истории) `parseQuickReplies` извлекает кнопки из конца текста — UX сохраняется.
+
+**Импликация для seed:**
+- **НЕ заполняй `welcome_message` (legacy) и `welcome_ai_message` одновременно** — `prepare-context.ts` отдаёт приоритет legacy, новые поля просто теряются. Линтер `npm run check:chats` ловит это (`welcome-message-exclusive`).
+- Для **новых режимов** используй ТОЛЬКО `welcome_ai_message` + `welcome_replies`. `welcome_message` — только если режим существует с legacy-времён.
+
+### 3. AIBubble + QuickReplyBar split (рендер AI-сообщений)
+
+Все чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat) рендерят AI-сообщения через ДВА компонента из [components/chat/ChatMessage.tsx](../../../../components/chat/ChatMessage.tsx):
+- `<AIBubble>` — пузырь с ReactMarkdown + `remark-breaks`
+- `<QuickReplyBar>` — блок кнопок, **SIBLING** контейнера `.msg`/`.nc-msg`, не внутри
+
+Парсер «ёлочек» — единый: [lib/chat/parse-quick-replies.ts](../../../../lib/chat/parse-quick-replies.ts). Срезает leading `* `, `- `, `• `, `1. ` перед matchhing — толерантен к буллет-обёртке.
+
+**Импликация для seed:** ничего не делать — это runtime. Но если делаешь новый чат-экран — следуй шаблону из runbook §"Шаблон для нового чат-экрана", иначе кнопки уедут в узкую колонку справа.
+
+---
+
+## Линтер `npm run check:chats`
+
+Автоматическая проверка seed-полей. Файл: [scripts/check-chat-seed.ts](../../../../scripts/check-chat-seed.ts). Запуск:
+
+```bash
+npm run check:chats                       # все книги в БД
+npx tsx scripts/check-chat-seed.ts --book=<slug>   # одна книга (быстрее)
+```
+
+**Exit code:** 0 (или только warnings) / 1 (errors) / 2 (нет .env / SUPABASE_SERVICE_ROLE_KEY).
+
+### Что проверяет
+
+На уровне **program_modes** (для каждого режима):
+- `welcome_mode_label` — UPPERCASE (`АНАЛИЗ`, `ВОРКШОП`...)
+- `welcome_title` — без эмодзи в начале
+- `welcome_subtitle` — ≤80 символов
+- `welcome_ai_message` — нет `**bold**`, `# headings`, `- lists`, нумерации; нет дубликата `эмодзи **Title**` в начале; абзацы через `\n\n`
+- `welcome_replies` — массив **объектов** `{text, type}` (не строки); последний `type: "exit"`; каждый `text` ≤60 символов, без вложенных «ёлочек», без markdown
+- `welcome_message` + `welcome_ai_message` — взаимоисключающие
+- `system_prompt` — содержит блок `QUICK REPLIES`, буквальный пример «ёлочек», counterexample `НЕПРАВИЛЬНО`, фразу `НИКОГДА не склеивай`, counterexample про `<угловые скобки>`. Плейсхолдеры `«Вариант 1»` не должны оставаться в **позитивном** примере (допустимы только в `НЕПРАВИЛЬНО` блоке).
+
+На уровне **programs**:
+- `system_prompt` / `author_chat_system_prompt` / `anonymous_system_prompt` — содержат QR-блок (правила не наследуются)
+- `free_chat_welcome` / `author_chat_welcome` — содержат ≥3 «ёлочки» в конце на отдельных строках
+- `landing_data.author.photo_url` — локальный путь `/authors/*`
+
+На уровне **program_themes**:
+- те же правила welcome_ai_message + welcome_replies
+- `welcome_system_context` — НЕ дублирует QR-блок (наследуется из `programs.system_prompt`)
+
+### Когда запускать
+
+- **После seed новой книги** — обязательно. Не должно быть ни одной error. Warnings — обсудить, фиксать в seed.
+- **После любого fix-*.sql** — убедиться что фикс не сломал что-то ещё.
+- **В CI** (опционально) — `npm run check` в `package.json` уже делает `check-hardcodes + check:chats`.
+
+### Что НЕ проверяется
+
+- Содержание промптов (тон, fidelity к книге, авторская терминология) — это смысловая работа.
+- Корректность тестовых вопросов, шкал — отдельный домен.
+- UI-рендеринг — нужна ручная UI-верификация на dev-сервере (SKILL.md Этап 4.8).
 
 ---
 

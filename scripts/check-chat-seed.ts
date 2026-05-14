@@ -7,16 +7,25 @@
  * (docs/runbooks/chat-message-formatting.md).
  *
  * Запуск:
- *   npx tsx scripts/check-chat-seed.ts
- *   npm run check:chats
+ *   npx tsx scripts/check-chat-seed.ts             # все книги
+ *   npm run check:chats                            # то же
+ *   npx tsx scripts/check-chat-seed.ts --book=eq-2-0  # одна книга
  *
  * Exit code:
- *   0 — всё ok
- *   1 — найдены нарушения (печатаются в stderr)
+ *   0 — всё ok (или только warnings)
+ *   1 — найдены errors (печатаются в stderr)
  *   2 — ошибка конфигурации (нет .env, нет SUPABASE_SERVICE_ROLE_KEY)
  *
- * Правила — в секции RULES внизу файла. Каждое правило — функция
- * `(ctx) => Violation[]`. Легко расширяется.
+ * Правила (по runbook chat-message-formatting + lessons learned 6 книг):
+ *   welcome_ai_message — plain text, без markdown, без дубликата title, абзацы через \n\n
+ *   welcome_replies    — JSONB [{text, type}], не строки; reply ≤60 символов, без вложенных «ёлочек»
+ *   welcome_mode_label — Title Case или UPPERCASE (начинается с заглавной); CSS делает uppercase визуально
+ *   welcome_title      — без эмодзи в начале
+ *   welcome_subtitle   — ≤80 символов
+ *   system_prompt      — содержит блок Quick replies + counterexample про склейку + про <angle-bracket>
+ *   programs.*_welcome — содержит ≥3 «ёлочки» в конце для стартовых кнопок
+ *   landing_data.author.photo_url — локальный путь /authors/*
+ *   welcome_message + welcome_ai_message — взаимоисключающие
  */
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
@@ -97,6 +106,7 @@ interface ModeRow {
   welcome_title: string | null;
   welcome_subtitle: string | null;
   welcome_ai_message: string | null;
+  welcome_message: string | null;
   welcome_replies: unknown;
   system_prompt: string | null;
 }
@@ -172,6 +182,35 @@ function checkWelcomeAiMessage(
       ),
     );
   }
+  // Дубликат welcome_title: текст начинается с `эмодзи + **Title**`
+  // (welcome_title уже рендерится карточкой выше — см. NewChatScreen).
+  if (
+    /^\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*\*\*[^*]+\*\*/u.test(text)
+  ) {
+    out.push(
+      violation(
+        program,
+        location,
+        "welcome-no-title-duplicate",
+        "welcome_ai_message начинается с `эмодзи **Название**` — это дубликат welcome_title, удали этот префикс",
+      ),
+    );
+  }
+  // Эвристика разрывов абзацев: если есть `\n[^\n]` без `\n\n` где-то — абзацы склеятся.
+  // Проверяем что для текстов в >1 абзац обязательно есть хотя бы один `\n\n`.
+  const hasSingleNewlines = /[^\n]\n[^\n]/.test(text);
+  const hasDoubleNewlines = /\n\n/.test(text);
+  if (hasSingleNewlines && !hasDoubleNewlines && text.length > 120) {
+    out.push(
+      violation(
+        program,
+        location,
+        "welcome-paragraph-breaks",
+        "welcome_ai_message: одиночные `\\n` без `\\n\\n` — абзацы склеятся в стену. Ставь двойной перенос между абзацами.",
+        "warn",
+      ),
+    );
+  }
   return out;
 }
 
@@ -224,6 +263,43 @@ function checkWelcomeReplies(
           "replies-need-exit",
           `welcome_replies: нет ни одного reply с type:"exit" (runbook: "последний reply в начале диалога — безопасный exit")`,
           "warn",
+        ),
+      );
+    }
+  }
+  // Проверки текста каждого reply (длина, вложенные ёлочки, пунктуация)
+  for (let i = 0; i < replies.length; i++) {
+    const r = replies[i] as { text?: string };
+    const text = typeof r.text === "string" ? r.text : "";
+    if (!text) continue;
+    if (text.length > 60) {
+      out.push(
+        violation(
+          program,
+          `${location}[${i}]`,
+          "reply-text-too-long",
+          `reply.text > 60 символов (${text.length}): «${text.slice(0, 40)}…» — не влезет на мобильную кнопку`,
+          "warn",
+        ),
+      );
+    }
+    if (text.includes("«") || text.includes("»")) {
+      out.push(
+        violation(
+          program,
+          `${location}[${i}]`,
+          "reply-nested-quotes",
+          `reply.text содержит вложенные «ёлочки»: «${text}» — non-greedy regex парсера обрежет до первого »`,
+        ),
+      );
+    }
+    if (/\*\*[^*]+\*\*/.test(text)) {
+      out.push(
+        violation(
+          program,
+          `${location}[${i}]`,
+          "reply-no-markdown",
+          `reply.text содержит markdown \`**bold**\` — звёздочки видны буквально в кнопке`,
         ),
       );
     }
@@ -306,6 +382,23 @@ function checkSystemPromptQrBlock(
         ),
       );
     }
+    // Counterexample про <угловые скобки> — введён коммитом d2067ba для всех книг.
+    // Без него Gemini временами выдаёт <текст> вместо «ёлочек», парсер их не видит.
+    const hasAngleBracketCounter =
+      /<\s*текст\s*>/i.test(prompt) ||
+      /<\s*вариант\s*>/i.test(prompt) ||
+      /угловы[еx]\s+скобки/i.test(prompt);
+    if (!hasAngleBracketCounter) {
+      out.push(
+        violation(
+          program,
+          location,
+          "sp-has-angle-bracket-counterexample",
+          "system_prompt не содержит контрпример с угловыми скобками (`<текст>` или `НЕПРАВИЛЬНО: <вариант>`) — Gemini может выдать <текст> вместо «ёлочек», парсер их не увидит. Прецедент: коммит d2067ba для всех 6 книг.",
+          "warn",
+        ),
+      );
+    }
   }
 
   return out;
@@ -346,6 +439,98 @@ function checkProgramWelcomeTrailingReplies(
   return [];
 }
 
+/**
+ * Базовые welcome-поля карточки режима: label / title / subtitle.
+ * Правила — runbook §"Правила по полям":
+ *  - welcome_mode_label: UPPERCASE одно-два слова-архетип
+ *  - welcome_title: без эмодзи в начале (эмодзи уже на иконке инструмента)
+ *  - welcome_subtitle: одна строка ≤80 символов, обещание результата
+ */
+function checkBasicWelcomeFields(
+  program: string,
+  location: string,
+  mode: {
+    welcome_mode_label: string | null;
+    welcome_title: string | null;
+    welcome_subtitle: string | null;
+  },
+): Violation[] {
+  const out: Violation[] = [];
+  if (mode.welcome_mode_label) {
+    const label = mode.welcome_mode_label.trim();
+    // welcome_mode_label рендерится в двух местах:
+    //   1) .wc-mode  — CSS `text-transform: uppercase` визуально превращает в UPPERCASE
+    //   2) .nc-header-sub — без uppercase CSS, рендерится как есть
+    // Поэтому в БД допустим Title Case (первая буква большая, остальные любые) —
+    // выглядит читаемо в SQL и автоматически UPPERCASES в карточке режима.
+    // Проверяем только: не all-lowercase и не пустое. Длина — runbook допускает 1-3 слова.
+    // Разрешены: буквы (рус+лат), пробелы, цифры (например, «Теория 5 языков»).
+    if (!/^[А-ЯЁA-Z][А-ЯЁA-Zа-яёa-z0-9\s]*$/u.test(label)) {
+      out.push(
+        violation(
+          program,
+          `${location}.welcome_mode_label`,
+          "label-format",
+          `welcome_mode_label "${label}" — должен начинаться с заглавной буквы и содержать только буквы/пробелы (Title Case или UPPERCASE). CSS .wc-mode сам делает text-transform: uppercase.`,
+        ),
+      );
+    }
+  }
+  if (mode.welcome_title) {
+    const title = mode.welcome_title.trim();
+    // Эмодзи в начале title — антипаттерн (эмодзи уже на иконке)
+    if (/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(title)) {
+      out.push(
+        violation(
+          program,
+          `${location}.welcome_title`,
+          "title-no-emoji",
+          `welcome_title начинается с эмодзи: "${title}". Убери эмодзи — он уже на иконке инструмента/в карточке выше.`,
+        ),
+      );
+    }
+  }
+  if (mode.welcome_subtitle) {
+    const subtitle = mode.welcome_subtitle.trim();
+    if (subtitle.length > 80) {
+      out.push(
+        violation(
+          program,
+          `${location}.welcome_subtitle`,
+          "subtitle-too-long",
+          `welcome_subtitle ${subtitle.length} символов (>80): "${subtitle.slice(0, 60)}…". Сократи до одной строки-обещания.`,
+          "warn",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * welcome_message (legacy) и welcome_ai_message взаимоисключающие.
+ * lib/chat/prepare-context.ts отдаёт приоритет legacy — если есть оба, ai_message теряется.
+ */
+function checkWelcomeMessageExclusivity(
+  program: string,
+  location: string,
+  welcomeMessage: string | null,
+  welcomeAiMessage: string | null,
+): Violation[] {
+  if (welcomeMessage && welcomeAiMessage) {
+    return [
+      violation(
+        program,
+        location,
+        "welcome-message-exclusive",
+        "У режима заполнены ОБА: welcome_message (legacy) и welcome_ai_message. Приоритет идёт legacy → welcome_ai_message+welcome_replies теряются. Оставь только один.",
+        "warn",
+      ),
+    ];
+  }
+  return [];
+}
+
 /** landing_data.author.photo_url должен быть локальным путём `/authors/*`. */
 function checkAuthorPhotoLocal(
   program: string,
@@ -373,13 +558,25 @@ function checkAuthorPhotoLocal(
 async function main() {
   const violations: Violation[] = [];
 
-  const { data: programs, error: pErr } = await supabase
+  // CLI: --book=<slug> — фильтр на одну книгу
+  const bookArg = process.argv.find((a) => a.startsWith("--book="));
+  const bookFilter = bookArg ? bookArg.slice("--book=".length) : null;
+
+  let programsQuery = supabase
     .from("programs")
     .select(
       "id, slug, title, system_prompt, anonymous_system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome, anonymous_quick_replies, landing_data, features",
     );
+  if (bookFilter) {
+    programsQuery = programsQuery.eq("slug", bookFilter);
+  }
+  const { data: programs, error: pErr } = await programsQuery;
   if (pErr) {
     console.error("❌ failed to fetch programs:", pErr.message);
+    process.exit(2);
+  }
+  if (bookFilter && (!programs || programs.length === 0)) {
+    console.error(`❌ book not found: ${bookFilter}`);
     process.exit(2);
   }
 
@@ -420,12 +617,18 @@ async function main() {
     violations.push(...checkAuthorPhotoLocal(p.slug, p.landing_data));
   }
 
+  const programIds = ((programs ?? []) as ProgramRow[]).map((p) => p.id);
+
   // program_modes уровень
-  const { data: modes, error: mErr } = await supabase
+  let modesQuery = supabase
     .from("program_modes")
     .select(
-      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key)",
+      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key)",
     );
+  if (bookFilter && programIds.length) {
+    modesQuery = modesQuery.in("program_id", programIds);
+  }
+  const { data: modes, error: mErr } = await modesQuery;
   if (mErr) {
     console.error("❌ failed to fetch program_modes:", mErr.message);
     process.exit(2);
@@ -443,6 +646,21 @@ async function main() {
     const modeKey = m.mode_templates?.key ?? "unknown";
     const loc = `program_modes[${modeKey}]`;
 
+    violations.push(
+      ...checkBasicWelcomeFields(slug, loc, {
+        welcome_mode_label: m.welcome_mode_label,
+        welcome_title: m.welcome_title,
+        welcome_subtitle: m.welcome_subtitle,
+      }),
+    );
+    violations.push(
+      ...checkWelcomeMessageExclusivity(
+        slug,
+        loc,
+        m.welcome_message,
+        m.welcome_ai_message,
+      ),
+    );
     violations.push(
       ...checkWelcomeAiMessage(slug, `${loc}.welcome_ai_message`, m.welcome_ai_message),
     );
@@ -462,11 +680,15 @@ async function main() {
   }
 
   // program_themes уровень
-  const { data: themes, error: tErr } = await supabase
+  let themesQuery = supabase
     .from("program_themes")
     .select(
       "program_id, key, welcome_ai_message, welcome_replies, welcome_system_context",
     );
+  if (bookFilter && programIds.length) {
+    themesQuery = themesQuery.in("program_id", programIds);
+  }
+  const { data: themes, error: tErr } = await themesQuery;
   if (tErr) {
     console.error("❌ failed to fetch program_themes:", tErr.message);
     process.exit(2);
