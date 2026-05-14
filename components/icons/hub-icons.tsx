@@ -495,4 +495,10 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   energy_agency: InstrumentLightningIcon,
   environment_hygiene: UsersLoveIcon,
   self_reflection: BookOpenIcon,
+  // redecision-therapy (Goulding injunctions)
+  intimacy: HeartLoveIcon,
+  feelings: SuppressionIcon,
+  success: RocketIcon,
+  authenticity: MasculinityIcon,
+  drivers: InstrumentLightningIcon,
 };
