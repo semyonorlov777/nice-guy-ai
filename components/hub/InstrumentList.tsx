@@ -22,6 +22,9 @@ import {
   RocketIcon,
   InstrumentLightningIcon,
   FlaskIcon,
+  BrainIcon,
+  LayoutIcon,
+  EraserIcon,
 } from "@/components/icons/hub-icons";
 import type { ProgramModeWithTemplate } from "@/types/modes";
 import type { ComponentType } from "react";
@@ -53,6 +56,9 @@ const INSTRUMENT_ICON_MAP: Record<string, ComponentType<IconProps>> = {
   rocket: RocketIcon,
   lightning: InstrumentLightningIcon,
   flask: FlaskIcon,
+  brain: BrainIcon,
+  layout: LayoutIcon,
+  eraser: EraserIcon,
 };
 
 interface InstrumentListProps {

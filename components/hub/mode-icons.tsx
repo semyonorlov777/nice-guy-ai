@@ -255,6 +255,34 @@ export function FlaskIcon() {
   );
 }
 
+export function BrainIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 011.32-4.24 2.5 2.5 0 014.44-1.04A2.5 2.5 0 019.5 2z" />
+      <path d="M14.5 2A2.5 2.5 0 0012 4.5v15a2.5 2.5 0 004.96.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-1.32-4.24 2.5 2.5 0 00-4.44-1.04A2.5 2.5 0 0014.5 2z" />
+    </svg>
+  );
+}
+
+export function LayoutIcon() {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="9" y1="21" x2="9" y2="9" />
+    </svg>
+  );
+}
+
+export function EraserIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M20 20H7L3 16c-1.1-1.1-1.1-2.9 0-4l10-10c1.1-1.1 2.9-1.1 4 0l5 5c1.1 1.1 1.1 2.9 0 4L11 21" />
+      <path d="M5 11l8 8" />
+    </svg>
+  );
+}
+
 /** Маппинг icon key → компонент */
 const iconMap: Record<string, () => React.JSX.Element> = {
   pen: PenIcon,
@@ -279,6 +307,9 @@ const iconMap: Record<string, () => React.JSX.Element> = {
   rocket: RocketIcon,
   lightning: LightningIcon,
   flask: FlaskIcon,
+  brain: BrainIcon,
+  layout: LayoutIcon,
+  eraser: EraserIcon,
 };
 
 export function getModeIcon(iconKey: string): React.JSX.Element {
