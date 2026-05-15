@@ -1,87 +1,96 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createServiceClient } from "@/lib/supabase-server";
-import { PublicHeader } from "@/components/PublicHeader";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { PlatformHero } from "@/components/landing/PlatformHero";
+import { SocialProof } from "@/components/landing/SocialProof";
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
+import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
+import { ProgramCatalogGrid } from "@/components/landing/ProgramCatalogGrid";
+import { PersonasSection } from "@/components/landing/PersonasSection";
+import { FaqAccordion } from "@/components/landing/FaqAccordion";
 import { SiteFooter } from "@/components/SiteFooter";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { platformLanding } from "@/lib/platform-landing";
 
 export const metadata: Metadata = {
-  title: "AI-тренажёры по книгам",
-  description: "Платформа AI-тренажёров для работы над собой",
+  title: "Книжный Спарринг — AI-тренажёры по книгам по психологии",
+  description:
+    "От прочитал до применил. Каждая книга — тренажёр с упражнениями, чатом с AI-автором и портретом ваших паттернов.",
 };
 
-interface LandingData {
-  book?: { cover_url?: string; author_top?: string };
-}
-
-export default async function CatalogPage() {
-  const serviceClient = createServiceClient();
-
-  const { data: programs } = await serviceClient
-    .from("programs")
-    .select("id, slug, title, description, landing_data, features")
-    .order("created_at");
-
-  // Count exercises per program
-  const exerciseCounts = new Map<string, number>();
-  if (programs?.length) {
-    for (const p of programs) {
-      const { count } = await serviceClient
-        .from("exercises")
-        .select("id", { count: "exact", head: true })
-        .eq("program_id", p.id);
-      exerciseCounts.set(p.id, count || 0);
-    }
-  }
-
+export default function HomePage() {
   return (
-    <div className="catalog-page">
-      <PublicHeader />
-      <div className="catalog-container">
-        <h1 className="catalog-title">Программы</h1>
-        <p className="catalog-subtitle">
-          Выбери книгу и начни работу над собой с AI-ассистентом
-        </p>
+    <div className="landing-v3">
+      <LandingHeader
+        ctaText="Пройти бесплатный тест"
+        ctaHref={`/program/${DEFAULT_PROGRAM_SLUG}/test`}
+      />
 
-        <div className="catalog-grid">
-          {(programs || []).map((program) => {
-            const landing = program.landing_data as LandingData | null;
-            const coverUrl = landing?.book?.cover_url;
-            const author = landing?.book?.author_top;
-            const exerciseCount = exerciseCounts.get(program.id) || 0;
+      <PlatformHero
+        tag={platformLanding.hero.tag}
+        title={platformLanding.hero.title}
+        subtitle={platformLanding.hero.subtitle}
+        primaryCta={platformLanding.hero.primary_cta}
+        secondaryCta={platformLanding.hero.secondary_cta}
+        hint={platformLanding.hero.hint}
+      />
 
-            return (
+      <SocialProof items={platformLanding.social_proof} />
+
+      <ComparisonSection
+        label={platformLanding.comparison.label}
+        title={platformLanding.comparison.title}
+        subtitle={platformLanding.comparison.subtitle}
+        columns={platformLanding.comparison.columns}
+        rows={platformLanding.comparison.rows}
+        conclusion={platformLanding.comparison.conclusion}
+      />
+
+      <HowItWorksSection
+        label={platformLanding.how_it_works.label}
+        title={platformLanding.how_it_works.title}
+        steps={platformLanding.how_it_works.steps}
+        summary_text={platformLanding.how_it_works.summary_text}
+      />
+
+      <ProgramCatalogGrid />
+
+      <PersonasSection
+        label={platformLanding.personas.label}
+        title={platformLanding.personas.title}
+        lead={platformLanding.personas.lead}
+        items={platformLanding.personas.items}
+      />
+
+      <FaqAccordion
+        label="Частые вопросы"
+        title="<em>Что обычно</em> спрашивают"
+        items={platformLanding.faq}
+      />
+
+      <section className="final-cta">
+        <div className="content-w">
+          <div className="final-cta-card">
+            <h2 className="final-cta-title">{platformLanding.final_cta.title}</h2>
+            <p className="final-cta-subtitle">{platformLanding.final_cta.subtitle}</p>
+            <div className="final-cta-buttons">
               <Link
-                key={program.id}
-                href={`/program/${program.slug}`}
-                className="catalog-card"
+                href={platformLanding.final_cta.primary.href}
+                className="hero-cta"
               >
-                {coverUrl && (
-                  <div className="catalog-card-cover">
-                    <img src={coverUrl} alt="" />
-                  </div>
-                )}
-                <div className="catalog-card-body">
-                  <h2 className="catalog-card-title">{program.title}</h2>
-                  {author && (
-                    <div className="catalog-card-author">{author}</div>
-                  )}
-                  {program.description && (
-                    <p className="catalog-card-desc">{program.description}</p>
-                  )}
-                </div>
-                <div className="catalog-card-footer">
-                  <span className="catalog-card-badge">
-                    {exerciseCount > 0
-                      ? `${exerciseCount} упражнений`
-                      : "Свободный чат"}
-                  </span>
-                  <span className="catalog-card-btn">Открыть</span>
-                </div>
+                {platformLanding.final_cta.primary.text}
               </Link>
-            );
-          })}
+              <Link
+                href={platformLanding.final_cta.secondary.href}
+                className="platform-hero-secondary"
+              >
+                {platformLanding.final_cta.secondary.text}
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
       <SiteFooter />
     </div>
   );
