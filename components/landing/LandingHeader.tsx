@@ -3,9 +3,13 @@ import Link from "next/link";
 interface LandingHeaderProps {
   ctaText: string;
   ctaHref: string;
+  isLoggedIn: boolean;
+  programSlug: string;
 }
 
-export function LandingHeader({ ctaText, ctaHref }: LandingHeaderProps) {
+export function LandingHeader({ ctaText, ctaHref, isLoggedIn, programSlug }: LandingHeaderProps) {
+  const loginHref = `/auth?redirect=${encodeURIComponent(`/program/${programSlug}/hub`)}`;
+
   return (
     <div className="landing-header">
       <Link href="/" className="header-logo">
@@ -15,7 +19,9 @@ export function LandingHeader({ ctaText, ctaHref }: LandingHeaderProps) {
         </div>
       </Link>
       <div className="header-right">
-        <Link href="/auth" className="header-login">Войти</Link>
+        {!isLoggedIn && (
+          <Link href={loginHref} className="header-login">Войти</Link>
+        )}
         <Link href={ctaHref} className="header-cta">
           {ctaText}
         </Link>

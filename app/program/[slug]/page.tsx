@@ -123,7 +123,8 @@ export default async function ProgramLanding({
   const welcomeMessage = program?.free_chat_welcome || "";
   const anonymousQuickReplies = (program?.anonymous_quick_replies as string[]) || [];
 
-  const chatHref = isLoggedIn ? `/program/${slug}/chat` : "#chat-block";
+  const chatHref = isLoggedIn ? `/program/${slug}/hub` : "#chat-block";
+  const ctaText = isLoggedIn ? "В кабинет" : "Начать бесплатно";
 
   // If no landing_data, fall back to a minimal layout
   if (!landingData) {
@@ -145,8 +146,10 @@ export default async function ProgramLanding({
   return (
     <div className="landing-v3">
       <LandingHeader
-        ctaText={isLoggedIn ? "В чат" : "Начать бесплатно"}
+        ctaText={ctaText}
         ctaHref={chatHref}
+        isLoggedIn={isLoggedIn}
+        programSlug={slug}
       />
 
       <HeroSection
@@ -157,6 +160,7 @@ export default async function ProgramLanding({
         hint={landingData.hero_hint}
         ctaHref={chatHref}
         book={landingData.book}
+        loggedInHubHref={isLoggedIn ? `/program/${slug}/hub` : undefined}
       />
 
       <SocialProof items={landingData.social_proof} />
