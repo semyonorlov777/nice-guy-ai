@@ -501,9 +501,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
         )}
         <div className="auth-sheet-fullscreen-wrap">
           <div className="auth-sheet-logo">
-            <div className="auth-sheet-logo-icon">Н</div>
+            <div className="auth-sheet-logo-icon">К</div>
             <div className="auth-sheet-logo-text">
-              НеСлавный <span>AI</span>
+              Книжный <span>Спарринг</span>
             </div>
           </div>
           <div className="auth-sheet mode-full">

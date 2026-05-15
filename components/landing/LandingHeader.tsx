@@ -9,9 +9,9 @@ export function LandingHeader({ ctaText, ctaHref }: LandingHeaderProps) {
   return (
     <div className="landing-header">
       <Link href="/" className="header-logo">
-        <div className="header-logo-icon">Н</div>
+        <div className="header-logo-icon">К</div>
         <div className="header-logo-text">
-          НеСлавный <span>AI</span>
+          Книжный <span>Спарринг</span>
         </div>
       </Link>
       <div className="header-right">

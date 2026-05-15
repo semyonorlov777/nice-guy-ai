@@ -115,7 +115,7 @@ export function Sidebar({
         <div className="sidebar-brand">
           <div className="sidebar-logo" />
           <div className="sidebar-brand-wrap">
-            <div className="sidebar-brand-text">НеСлавный</div>
+            <div className="sidebar-brand-text">Книжный Спарринг</div>
             <div className="sidebar-brand-sub">AI-тренажёр</div>
           </div>
         </div>

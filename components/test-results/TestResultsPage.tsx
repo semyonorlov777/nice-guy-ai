@@ -312,7 +312,7 @@ function ResultsFooter() {
         направления для роста.
       </div>
       <div className="tr-footer-brand">
-        <Link href="/">Nice Guy AI</Link>
+        <Link href="/">Книжный Спарринг</Link>
       </div>
     </div>
   );
