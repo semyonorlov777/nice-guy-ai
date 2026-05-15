@@ -9,6 +9,7 @@ import { ProgramCatalogGrid } from "@/components/landing/ProgramCatalogGrid";
 import { PersonasSection } from "@/components/landing/PersonasSection";
 import { FaqAccordion } from "@/components/landing/FaqAccordion";
 import { SiteFooter } from "@/components/SiteFooter";
+import { createClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { platformLanding } from "@/lib/platform-landing";
 
@@ -18,12 +19,24 @@ export const metadata: Metadata = {
     "От прочитал до применил. Каждая книга — тренажёр с упражнениями, чатом с AI-автором и портретом ваших паттернов.",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
+
   return (
     <div className="landing-v3">
       <LandingHeader
-        ctaText="Пройти бесплатный тест"
-        ctaHref={`/program/${DEFAULT_PROGRAM_SLUG}/test`}
+        ctaText={isLoggedIn ? "В кабинет" : "Пройти бесплатный тест"}
+        ctaHref={
+          isLoggedIn
+            ? `/program/${DEFAULT_PROGRAM_SLUG}/hub`
+            : `/program/${DEFAULT_PROGRAM_SLUG}/test`
+        }
+        isLoggedIn={isLoggedIn}
+        programSlug={DEFAULT_PROGRAM_SLUG}
       />
 
       <PlatformHero
