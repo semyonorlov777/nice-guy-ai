@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import type { TestQuestion } from "@/lib/test-config";
 import InputBar from "@/components/InputBar/InputBar";
 
-const QUICK_LABELS = ["Не про меня", "Скорее нет", "Иногда", "Часто", "Полностью"];
+const DEFAULT_QUICK_LABELS = [
+  "Совсем нет",
+  "Скорее нет",
+  "Иногда",
+  "Скорее да",
+  "Полностью",
+];
 
 type StatusMessage = "analyzing" | "recorded" | "slow" | "fallback" | "fallback_timeout" | null;
 
@@ -19,6 +25,7 @@ interface QuestionScreenProps {
   transitioning: boolean;
   statusMessage: StatusMessage;
   fallbackActive: boolean;
+  quickAnswerLabels?: string[];
   onQuickAnswer: (score: number) => void;
   onTextAnswer: (text: string) => void;
 }
@@ -34,16 +41,20 @@ export function QuestionScreen({
   transitioning,
   statusMessage,
   fallbackActive,
+  quickAnswerLabels,
   onQuickAnswer,
   onTextAnswer,
 }: QuestionScreenProps) {
   const [flashBtn, setFlashBtn] = useState<number | null>(null);
   const [sentTrigger, setSentTrigger] = useState(0);
 
+  const labels = quickAnswerLabels && quickAnswerLabels.length === 5
+    ? quickAnswerLabels
+    : DEFAULT_QUICK_LABELS;
+
   const currentBlock = Math.floor(questionIndex / 5);
   const questionInBlock = (questionIndex % 5) + 1;
 
-  // Reset when question changes
   useEffect(() => {
     setFlashBtn(null);
     setSentTrigger(0);
@@ -52,7 +63,6 @@ export function QuestionScreen({
   const handleQuickClick = useCallback((score: number) => {
     if (isLocked || transitioning) return;
 
-    // Flash animation
     setFlashBtn(score);
     setTimeout(() => {
       setFlashBtn(null);
@@ -63,10 +73,9 @@ export function QuestionScreen({
 
   return (
     <div className="tc-screen tc-test-screen">
-      {/* Header with progress */}
       <div className="tc-header">
         <div className="tc-progress-info">
-          <strong>{questionIndex + 1}</strong> из {totalQuestions}
+          Вопрос <strong>{questionIndex + 1}</strong> из {totalQuestions}
         </div>
         <div className="tc-progress-segments">
           {Array.from({ length: 7 }, (_, i) => (
@@ -87,41 +96,18 @@ export function QuestionScreen({
         </div>
       </div>
 
-      {/* Question area */}
       <div className="tc-question-area">
         <div className="tc-scale-label">{scaleName}</div>
-        <div className={`tc-question-text${animationClass ? ` ${animationClass}` : ""}`}>
+        <div className="tc-ask-pill">Насколько это про вас?</div>
+        <div className={`tc-question-text tc-question-quoted${animationClass ? ` ${animationClass}` : ""}`}>
           {question.text}
         </div>
         <div className="tc-question-timeframe">Вспомните последние 2–4 недели</div>
       </div>
 
-      {/* Input area */}
       <div className={`tc-input-area${isLocked ? " locked" : ""}`}>
-        <InputBar
-          key={questionIndex}
-          mode="test"
-          placeholder="Расскажите своими словами…"
-          disabled={isLocked || fallbackActive}
-          onSend={(text: string) => onTextAnswer(text)}
-          externalSentTrigger={sentTrigger}
-        />
-
-        {/* Status line */}
-        <div className="tc-status-line">
-          {statusMessage === "analyzing" && (
-            <span className="tc-status-text visible">Анализирую ответ...</span>
-          )}
-          {statusMessage === "recorded" && (
-            <span className="tc-status-text visible success">Ответ записан ✓</span>
-          )}
-          {statusMessage === "slow" && (
-            <span className="tc-status-text visible">Долгая обработка...</span>
-          )}
-        </div>
-
-        <div className="tc-divider-or"><span>или быстрый ответ</span></div>
-        <div className="tc-quick-buttons">
+        <div className="tc-pick-label">Выберите вариант</div>
+        <div className="tc-quick-buttons tc-quick-buttons-large">
           {[1, 2, 3, 4, 5].map((score) => (
             <button
               key={score}
@@ -129,12 +115,12 @@ export function QuestionScreen({
               onClick={() => handleQuickClick(score)}
               disabled={isLocked && !fallbackActive}
             >
-              <span className="tc-qb-label">{QUICK_LABELS[score - 1]}</span>
+              <span className="tc-qb-num">{score}</span>
+              <span className="tc-qb-label">{labels[score - 1]}</span>
             </button>
           ))}
         </div>
 
-        {/* Fallback hint */}
         {(statusMessage === "fallback" || statusMessage === "fallback_timeout") && (
           <div className="tc-fallback-hint visible">
             {statusMessage === "fallback_timeout"
@@ -142,6 +128,30 @@ export function QuestionScreen({
               : "Ближе к какому из вариантов?"}
           </div>
         )}
+
+        <div className="tc-secondary-input-wrap">
+          <div className="tc-secondary-hint">при желании добавьте словами</div>
+          <InputBar
+            key={questionIndex}
+            mode="test"
+            placeholder="опишите подробнее…"
+            disabled={isLocked || fallbackActive}
+            onSend={(text: string) => onTextAnswer(text)}
+            externalSentTrigger={sentTrigger}
+          />
+
+          <div className="tc-status-line">
+            {statusMessage === "analyzing" && (
+              <span className="tc-status-text visible">Анализирую ответ...</span>
+            )}
+            {statusMessage === "recorded" && (
+              <span className="tc-status-text visible success">Ответ записан ✓</span>
+            )}
+            {statusMessage === "slow" && (
+              <span className="tc-status-text visible">Долгая обработка...</span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

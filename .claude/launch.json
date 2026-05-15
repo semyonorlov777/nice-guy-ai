@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3001,
       "autoPort": true
+    },
+    {
+      "name": "demo-static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", ".", "-p", "4477", "-c-1", "--silent"],
+      "port": 4477,
+      "autoPort": true
     }
   ]
 }
