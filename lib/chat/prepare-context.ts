@@ -346,6 +346,75 @@ export function appendPortraitContext(
 }
 
 // ---------------------------------------------------------------------------
+// appendCalibrationContext — добавляет ответы пользователя из режима
+// калибровки (chat_type=pishi_calibration или аналогичных) к system prompt.
+// Используется для книг, где нет ликерт-теста, но есть короткий
+// 3-вопросный onboarding в формате чат-режима.
+//
+// Логика: ищем последний завершённый чат типа калибровки для этой программы,
+// берём первые 6 сообщений (3 пары вопрос-ответ) и подмешиваем как контекст.
+//
+// НЕ вызывать для самого режима калибровки — иначе self-reference.
+// ---------------------------------------------------------------------------
+
+const CALIBRATION_CHAT_TYPES = ["pishi_calibration"];
+
+export async function appendCalibrationContext(
+  supabase: SupabaseClient,
+  systemPrompt: string,
+  userId: string,
+  programId: string,
+  currentChatType: string | undefined,
+): Promise<string> {
+  // Не подмешиваем в самом режиме калибровки
+  if (currentChatType && CALIBRATION_CHAT_TYPES.includes(currentChatType)) {
+    return systemPrompt;
+  }
+
+  // Ищем последний чат калибровки для этой программы
+  const { data: calibrationChat } = await supabase
+    .from("chats")
+    .select("id, chat_type")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .in("chat_type", CALIBRATION_CHAT_TYPES)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!calibrationChat) return systemPrompt;
+
+  // Берём первые 6 сообщений калибровочного чата (3 пары вопрос-ответ)
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("chat_id", calibrationChat.id)
+    .in("role", ["user", "assistant"])
+    .order("created_at", { ascending: true })
+    .limit(8);
+
+  if (!messages || messages.length < 2) return systemPrompt;
+
+  // Собираем текст калибровки
+  const lines: string[] = [];
+  for (const msg of messages) {
+    const prefix = msg.role === "assistant" ? "AI" : "Пользователь";
+    const content = (msg.content as string).trim();
+    if (!content) continue;
+    // Обрезаем длинные сообщения чтобы не раздувать промпт
+    const truncated = content.length > 500 ? content.slice(0, 500) + "…" : content;
+    lines.push(`${prefix}: ${truncated}`);
+  }
+
+  if (lines.length === 0) return systemPrompt;
+
+  return (
+    systemPrompt +
+    `\n\n---\nКАЛИБРОВКА ПОЛЬЗОВАТЕЛЯ (из режима «Настройка тренажёра»):\n${lines.join("\n\n")}\n\nИспользуй этот контекст: подбирай примеры под профессию пользователя, фокусируй разборы на его сложностях, веди к его цели. Не переспрашивай то, что уже знаешь.`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // appendTestScores — добавляет результаты теста к system prompt
 // ---------------------------------------------------------------------------
 
