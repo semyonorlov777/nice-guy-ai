@@ -11,6 +11,7 @@ import {
   loadChatContext,
   appendPortraitContext,
   appendTestScores,
+  appendCalibrationContext,
   buildGeminiHistory,
 } from "@/lib/chat/prepare-context";
 
@@ -43,9 +44,12 @@ export async function POST(request: Request) {
       supabase, user.id, chatId, programId, currentChatType, exerciseId, ctx.welcomeMessage,
     );
 
-    // 6. Final system prompt (base + portrait + test scores + topic context)
+    // 6. Final system prompt (base + portrait + test scores + calibration + topic context)
     let systemPrompt = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
     systemPrompt = await appendTestScores(supabase, systemPrompt, user.id, programId);
+    systemPrompt = await appendCalibrationContext(
+      supabase, systemPrompt, user.id, programId, currentChatType,
+    );
     if (topicContext) {
       systemPrompt += `\n\n---\nКОНТЕКСТ ТЕМЫ:\n${topicContext}`;
     }
