@@ -1929,9 +1929,11 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 32px 28px 20px;
-  gap: 12px;
+  padding: 28px 28px 16px;
+  gap: 10px;
   position: relative;
+  align-items: center;
+  text-align: center;
 }
 
 .tc-scale-label {
@@ -1942,13 +1944,40 @@
   font-weight: 500;
 }
 
+.tc-ask-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  margin: 2px auto 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-pill);
+  width: fit-content;
+}
+
 .tc-question-text {
   font-family: var(--font-display);
-  font-size: clamp(21px, 3.5vw, 26px);
+  font-size: clamp(22px, 3.6vw, 28px);
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.32;
   color: var(--text-primary);
   transition: opacity 0.25s, transform 0.25s;
+}
+
+.tc-question-quoted::before {
+  content: "«";
+  color: var(--accent);
+  margin-right: 2px;
+}
+.tc-question-quoted::after {
+  content: "»";
+  color: var(--accent);
+  margin-left: 2px;
 }
 
 .tc-question-text.exit {
@@ -1973,7 +2002,7 @@
 
 /* ── Input area ── */
 .tc-input-area {
-  padding: 0 24px 32px;
+  padding: 0 24px 28px;
 }
 
 .tc-input-area.locked {
@@ -1981,62 +2010,74 @@
   pointer-events: none;
 }
 
-/* ── Divider ── */
-.tc-divider-or {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.tc-divider-or::before,
-.tc-divider-or::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-light);
-}
-
-.tc-divider-or span {
+/* ── Micro-label above quick buttons ── */
+.tc-pick-label {
   font-size: 11px;
-  color: var(--text-hint);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0 0 10px;
   font-weight: 500;
 }
 
-/* ── Quick buttons ── */
+/* ── Quick buttons (large variant — main action) ── */
 .tc-quick-buttons {
   display: flex;
-  gap: 5px;
+  gap: 6px;
+}
+
+.tc-quick-buttons-large {
+  gap: 8px;
 }
 
 .tc-quick-btn {
   flex: 1;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 8px 2px;
+  gap: 4px;
+  padding: 12px 4px;
+  min-height: 66px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-body);
+}
+
+.tc-quick-btn .tc-qb-num {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+  transition: color 0.15s;
 }
 
 .tc-quick-btn .tc-qb-label {
   font-size: 12px;
-  color: var(--text-hint);
+  color: var(--text-primary);
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.2;
+  font-weight: 500;
   transition: color 0.15s;
 }
 
-.tc-quick-btn:active { transform: scale(0.94); }
+.tc-quick-btn:hover {
+  border-color: var(--accent-border);
+  background: rgba(212, 165, 69, 0.04);
+}
+
+.tc-quick-btn:active { transform: scale(0.96); }
 
 .tc-quick-btn.selected {
   border-color: var(--accent);
   background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .tc-quick-btn.selected .tc-qb-label { color: var(--accent-hover); }
@@ -2046,7 +2087,70 @@
   background: var(--accent);
 }
 
-.tc-quick-btn.flash .tc-qb-label { color: rgba(255,255,255,0.8); }
+.tc-quick-btn.flash .tc-qb-num { color: rgba(255,255,255,0.95); }
+.tc-quick-btn.flash .tc-qb-label { color: rgba(255,255,255,0.9); }
+
+/* On very narrow screens — hide the big numeral to keep the label on one line */
+@media (max-width: 380px) {
+  .tc-quick-btn {
+    min-height: 56px;
+    padding: 10px 2px;
+  }
+  .tc-quick-btn .tc-qb-num {
+    display: none;
+  }
+  .tc-quick-btn .tc-qb-label {
+    font-size: 11px;
+  }
+}
+
+/* ── Secondary "quiet" input — visible but not competing with buttons ── */
+.tc-secondary-input-wrap {
+  margin-top: 18px;
+}
+
+.tc-secondary-hint {
+  font-size: 11px;
+  color: var(--text-hint);
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.tc-secondary-input-wrap .input-bar {
+  padding: 0;
+}
+
+.tc-secondary-input-wrap .input-container {
+  min-height: 40px;
+  padding: 4px 4px 4px 12px;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+
+.tc-secondary-input-wrap .input-container:focus-within {
+  border-color: var(--accent-border);
+  background: rgba(212, 165, 69, 0.03);
+  box-shadow: none;
+}
+
+.tc-secondary-input-wrap .input-textarea {
+  font-size: 13px;
+  min-height: 32px;
+  padding: 6px 0;
+}
+
+.tc-secondary-input-wrap .input-textarea::placeholder {
+  font-size: 12px;
+  color: var(--text-hint);
+}
+
+.tc-secondary-input-wrap .ib-action-btn {
+  width: 32px;
+  height: 32px;
+  border-width: 1px;
+}
 
 /* ── Highlight (fallback pulse) ── */
 .tc-quick-btn.highlight {

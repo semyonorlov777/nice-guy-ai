@@ -249,6 +249,7 @@ export function TestCardFlow({ testConfig }: { testConfig: TestConfig }) {
             transitioning={phase === "question" ? transitioning.current : false}
             statusMessage={phase === "question" ? statusMessage : null}
             fallbackActive={phase === "question" ? fallbackActive : false}
+            quickAnswerLabels={testConfig.ui_config.quick_answer_labels}
             onQuickAnswer={phase === "question" ? handleQuickAnswer : () => {}}
             onTextAnswer={phase === "question" ? handleTextAnswer : async () => {}}
           />
