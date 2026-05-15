@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { DEFAULT_REDIRECT } from "@/lib/constants";
+import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,10 +22,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Validate redirect target for safety
-  const isValidRedirect =
-    redirect &&
-    (redirect.startsWith("/program/") || redirect.startsWith("/balance"));
+  const isValidRedirect = isAllowedRedirect(redirect);
 
   // If redirect points to a test page, send user to link-success instead
   // (the original tab will detect auth via onAuthStateChange)

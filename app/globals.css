@@ -773,6 +773,18 @@
   .landing-v3 .hero h1 { font-family: var(--font-display); font-size: clamp(32px, 4.5vw, 46px); font-weight: 600; line-height: 1.1; margin-bottom: 16px; color: var(--text); }
   .landing-v3 .hero h1 em { font-style: italic; color: var(--accent); }
   .landing-v3 .hero-sub { font-size: 16px; line-height: 1.65; color: var(--text-secondary); max-width: 460px; margin-bottom: 28px; }
+  .landing-v3 .hero-logged-banner {
+    display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 12px 18px; margin-bottom: 24px; max-width: 460px;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: 10px;
+  }
+  .landing-v3 .hero-logged-text { font-size: 14px; color: var(--text-secondary); }
+  .landing-v3 .hero-logged-link {
+    font-size: 14px; font-weight: 600; color: var(--accent);
+    text-decoration: none; transition: opacity 0.2s;
+  }
+  .landing-v3 .hero-logged-link:hover { opacity: 0.8; }
   .landing-v3 .hero-cta-row { display: flex; align-items: center; gap: 16px; }
   .landing-v3 .hero-cta {
     display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px;

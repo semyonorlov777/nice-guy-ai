@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const clientId = process.env.YANDEX_CLIENT_ID!;
@@ -15,8 +16,7 @@ export async function GET(request: NextRequest) {
   // Encode popup flag and redirect URL in OAuth state
   const state: Record<string, string> = {};
   if (isPopup) state.popup = "true";
-  // Validate redirect URL — only allow known safe paths (same check as in callback)
-  if (redirect && (redirect.startsWith("/program/") || redirect.startsWith("/balance"))) {
+  if (isAllowedRedirect(redirect)) {
     state.redirect = redirect;
   }
   if (Object.keys(state).length > 0) {

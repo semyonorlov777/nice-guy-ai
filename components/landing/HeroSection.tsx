@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 interface HeroSectionProps {
   tag: string;
   title: string;
@@ -11,9 +13,10 @@ interface HeroSectionProps {
     cover_url: string;
     alt: string;
   };
+  loggedInHubHref?: string;
 }
 
-export function HeroSection({ tag, title, subtitle, cta, hint, ctaHref, book }: HeroSectionProps) {
+export function HeroSection({ tag, title, subtitle, cta, hint, ctaHref, book, loggedInHubHref }: HeroSectionProps) {
   return (
     <section className="hero">
       <div className="hero-grid">
@@ -21,6 +24,16 @@ export function HeroSection({ tag, title, subtitle, cta, hint, ctaHref, book }: 
           <div className="hero-tag">{tag}</div>
           <h1 dangerouslySetInnerHTML={{ __html: title }} />
           <p className="hero-sub">{subtitle}</p>
+          {loggedInHubHref ? (
+            <div className="hero-logged-banner">
+              <span className="hero-logged-text">
+                Вы уже занимаетесь по этой программе
+              </span>
+              <Link href={loggedInHubHref} className="hero-logged-link">
+                Продолжить в кабинете →
+              </Link>
+            </div>
+          ) : null}
           <div className="hero-cta-row">
             <a href={ctaHref} className="hero-cta">
               {cta}

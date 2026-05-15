@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { DEFAULT_REDIRECT } from "@/lib/constants";
+import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 function isProtected(pathname: string): boolean {
   // Test pages are public (anonymous start)
@@ -56,8 +56,9 @@ export async function middleware(request: NextRequest) {
 
   // Logged-in user on /auth → redirect to app (except popup flow)
   if (pathname === "/auth" && user && request.nextUrl.searchParams.get("popup") !== "true") {
+    const redirectParam = request.nextUrl.searchParams.get("redirect");
     const url = request.nextUrl.clone();
-    url.pathname = DEFAULT_REDIRECT;
+    url.pathname = isAllowedRedirect(redirectParam) ? redirectParam : DEFAULT_REDIRECT;
     url.search = "";
     return NextResponse.redirect(url);
   }

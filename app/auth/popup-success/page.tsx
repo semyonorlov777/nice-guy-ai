@@ -8,8 +8,9 @@ export default function PopupSuccessPage() {
   useEffect(() => {
     // Send success message to opener (parent tab)
     try {
+      const redirect = new URLSearchParams(window.location.search).get("redirect");
       window.opener?.postMessage(
-        { type: "auth-success" },
+        { type: "auth-success", redirect: redirect || null },
         window.location.origin,
       );
     } catch {

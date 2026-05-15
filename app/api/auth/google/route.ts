@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID!;
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   // Encode popup flag and redirect URL in OAuth state
   const state: Record<string, string> = {};
   if (isPopup) state.popup = "true";
-  if (redirect && (redirect.startsWith("/program/") || redirect.startsWith("/balance"))) {
+  if (isAllowedRedirect(redirect)) {
     state.redirect = redirect;
   }
   if (Object.keys(state).length > 0) {

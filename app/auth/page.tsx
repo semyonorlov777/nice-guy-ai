@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { AuthSheet } from "@/components/AuthSheet";
-import { DEFAULT_REDIRECT } from "@/lib/constants";
+import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "Сессия авторизации истекла. Попробуй ещё раз.",
@@ -27,7 +27,8 @@ export default function AuthPage() {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const redirectTo = searchParams.get("redirect") || DEFAULT_REDIRECT;
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo = isAllowedRedirect(rawRedirect) ? rawRedirect : DEFAULT_REDIRECT;
   const isPopup = searchParams.get("popup") === "true";
   const provider = searchParams.get("provider");
   const urlError = searchParams.get("error");
@@ -40,7 +41,10 @@ function AuthPageContent() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         if (isPopup) {
-          window.location.href = "/auth/popup-success";
+          const popupUrl = redirectTo && redirectTo !== DEFAULT_REDIRECT
+            ? `/auth/popup-success?redirect=${encodeURIComponent(redirectTo)}`
+            : "/auth/popup-success";
+          window.location.href = popupUrl;
         } else {
           router.replace(redirectTo);
         }

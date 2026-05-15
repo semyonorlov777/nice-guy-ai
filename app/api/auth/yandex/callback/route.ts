@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { exchangeCodeAndGetUser, findOrCreateYandexUser } from "@/lib/yandex-auth";
-import { DEFAULT_REDIRECT } from "@/lib/constants";
+import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -71,8 +71,12 @@ export async function GET(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     if (isPopup) {
       redirectUrl.pathname = "/auth";
-      redirectUrl.search = "?popup=true";
-    } else if (stateRedirect && (stateRedirect.startsWith("/program/") || stateRedirect.startsWith("/balance"))) {
+      const popupParams = new URLSearchParams({ popup: "true" });
+      if (isAllowedRedirect(stateRedirect)) {
+        popupParams.set("redirect", stateRedirect);
+      }
+      redirectUrl.search = `?${popupParams.toString()}`;
+    } else if (isAllowedRedirect(stateRedirect)) {
       redirectUrl.pathname = stateRedirect;
       redirectUrl.search = "";
     } else {

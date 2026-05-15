@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Script from "next/script";
 import { createClient } from "@/lib/supabase";
+import { isAllowedRedirect } from "@/lib/constants";
 
 const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 
@@ -132,7 +133,7 @@ function TrustLine() {
   );
 }
 
-export function AuthSheet({ mode, open, onSuccess, onClose, context = "default", initialError }: AuthSheetProps) {
+export function AuthSheet({ mode, open, onSuccess, onClose, context = "default", initialError, redirectTo }: AuthSheetProps) {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -178,6 +179,16 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     function handler(e: MessageEvent) {
       if (e.origin !== window.location.origin) return;
       if (e.data?.type === "auth-success") {
+        const popupRedirect = typeof e.data?.redirect === "string" ? e.data.redirect : null;
+        if (isAllowedRedirect(popupRedirect)) {
+          calledRef.current = true;
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+          window.location.href = popupRedirect;
+          return;
+        }
         handleSuccess();
       }
     }
@@ -271,10 +282,12 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
   // Open OAuth popup (shared logic for Yandex and Google)
   const openOAuthPopup = useCallback((providerPath: string) => {
-    const currentPath = window.location.pathname;
+    const target = redirectTo && isAllowedRedirect(redirectTo)
+      ? redirectTo
+      : window.location.pathname;
     const params = new URLSearchParams({
       popup: "true",
-      redirect: currentPath,
+      redirect: target,
     });
 
     const w = 500;
@@ -287,7 +300,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       "auth-popup",
       `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`,
     );
-  }, []);
+  }, [redirectTo]);
 
   // Yandex auth (popup)
   const handleYandex = useCallback(() => {
@@ -311,8 +324,10 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setLoading(true);
 
       const supabase = createClient();
-      const currentPath = window.location.pathname;
-      const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(currentPath)}`;
+      const target = redirectTo && isAllowedRedirect(redirectTo)
+        ? redirectTo
+        : window.location.pathname;
+      const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(target)}`;
 
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email,
@@ -328,7 +343,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
       setEmailSent(true);
     },
-    [email],
+    [email, redirectTo],
   );
 
   // Close on Escape (sheet mode only)
