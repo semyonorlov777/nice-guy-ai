@@ -27,8 +27,8 @@ export async function generateMetadata({
     .single();
 
   return {
-    title: program?.meta_title || "AI-тренажёры по книгам",
-    description: program?.meta_description || "Платформа AI-тренажёров для работы над собой",
+    title: program?.meta_title || "Книжный Спарринг — AI-тренажёр по книгам",
+    description: program?.meta_description || "Разбор книг через AI: упражнения, тесты, разговор с автором",
   };
 }
 

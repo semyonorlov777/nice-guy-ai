@@ -10,9 +10,9 @@ export async function PublicHeader() {
   return (
     <header className="public-header">
       <Link href="/" className="logo">
-        <div className="logo-icon">HC</div>
+        <div className="logo-icon">К</div>
         <div className="logo-text">
-          <span>He</span>Cлавный
+          Книжный <span>Спарринг</span>
         </div>
       </Link>
       {user ? (

@@ -10,7 +10,7 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
       <div className="footer-inner">
         <div className="footer-grid">
           <div>
-            <div className="footer-brand-logo">НеСлавный <span>AI</span></div>
+            <div className="footer-brand-logo">Книжный <span>Спарринг</span></div>
             <div className="footer-brand-desc">Практика, которая меняет поведение.</div>
           </div>
           <div className="footer-col">
@@ -54,7 +54,7 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
             <span>Visa</span>
             <span>Mastercard</span>
           </div>
-          <div className="footer-copy">&copy; 2026 НеСлавный AI</div>
+          <div className="footer-copy">&copy; 2026 Книжный Спарринг</div>
         </div>
       </div>
     </footer>

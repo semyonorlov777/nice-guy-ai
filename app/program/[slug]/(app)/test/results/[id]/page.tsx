@@ -35,7 +35,7 @@ export async function generateMetadata({
     "Результаты теста";
 
   return {
-    title: `Тест ${score}/100 — ${levelLabel} | Nice Guy AI`,
+    title: `Тест ${score}/100 — ${levelLabel} | Книжный Спарринг`,
     description: `Индекс синдрома славного парня: ${score}/100. Узнай свои паттерны и начни путь к изменениям.`,
     openGraph: {
       title: `Мой Индекс синдрома славного парня — ${score}/100`,
