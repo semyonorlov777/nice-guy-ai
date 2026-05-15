@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 function isProtected(pathname: string): boolean {
+  // Public test catalog
+  if (pathname === "/tests" || pathname.startsWith("/tests/")) return false;
   // Test pages are public (anonymous start)
   if (/^\/program\/[^/]+\/test\//.test(pathname)) return false;
   // Profile page is public (anon sees State C)
