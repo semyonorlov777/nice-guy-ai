@@ -51,3 +51,6 @@ docs/.obsidian/workspace.json.bak
 
 # Obsidian — личные заметки не коммитим
 docs/personal/
+
+# Funnel — сырые материалы канона (большой объём, не для репо)
+.tmp/
