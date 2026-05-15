@@ -18,6 +18,9 @@ export function LandingHeader({ ctaText, ctaHref, isLoggedIn, programSlug }: Lan
           Книжный <span>Спарринг</span>
         </div>
       </Link>
+      <nav className="header-nav">
+        <Link href="/tests" className="header-nav-link">Тесты</Link>
+      </nav>
       <div className="header-right">
         {!isLoggedIn && (
           <Link href={loginHref} className="header-login">Войти</Link>

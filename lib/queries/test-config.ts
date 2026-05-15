@@ -99,3 +99,82 @@ export async function getTestConfigByProgram(
   toCache(`test_config:${config.slug}`, config);
   return config;
 }
+
+export interface TestCatalogEntry {
+  slug: string;
+  title: string;
+  description: string | null;
+  total_questions: number;
+  is_active: boolean;
+  program: {
+    slug: string;
+    book_title: string | null;
+    author_top: string | null;
+    test_emoji: string | null;
+    time_label: string | null;
+    questions_label: string | null;
+  };
+}
+
+interface TestCatalogCacheEntry {
+  value: TestCatalogEntry[];
+  expiresAt: number;
+}
+
+let catalogCache: TestCatalogCacheEntry | null = null;
+const CATALOG_TTL = 60_000;
+
+interface LandingDataMin {
+  book?: { title?: string; author_top?: string };
+  test?: { emoji?: string; time_label?: string; questions_label?: string };
+}
+
+/** Load all tests with their program info for the public catalog view at /tests */
+export async function getAllTestConfigsWithProgram(): Promise<TestCatalogEntry[]> {
+  if (catalogCache && catalogCache.expiresAt > Date.now()) {
+    return catalogCache.value;
+  }
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("test_configs")
+    .select(
+      "slug, title, description, total_questions, is_active, programs!inner(slug, landing_data)"
+    )
+    .order("is_active", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[test-config] Failed to fetch catalog:", error);
+    return [];
+  }
+
+  const entries: TestCatalogEntry[] = (data || [])
+    .map((row) => {
+      const rawPrograms = (row as unknown as {
+        programs: { slug: string; landing_data: LandingDataMin | null } | { slug: string; landing_data: LandingDataMin | null }[];
+      }).programs;
+      const program = Array.isArray(rawPrograms) ? rawPrograms[0] : rawPrograms;
+      if (!program) return null;
+      const landing = program.landing_data;
+      return {
+        slug: row.slug as string,
+        title: row.title as string,
+        description: (row.description as string | null) ?? null,
+        total_questions: (row.total_questions as number) ?? 0,
+        is_active: (row.is_active as boolean) ?? false,
+        program: {
+          slug: program.slug,
+          book_title: landing?.book?.title ?? null,
+          author_top: landing?.book?.author_top ?? null,
+          test_emoji: landing?.test?.emoji ?? null,
+          time_label: landing?.test?.time_label ?? null,
+          questions_label: landing?.test?.questions_label ?? null,
+        },
+      } satisfies TestCatalogEntry;
+    })
+    .filter((e): e is TestCatalogEntry => e !== null);
+
+  catalogCache = { value: entries, expiresAt: Date.now() + CATALOG_TTL };
+  return entries;
+}

@@ -4286,4 +4286,50 @@ html:not(.no-transition) .app-main {
 .profile-debug-btn { padding: 5px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-body); font-size: 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .profile-debug-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* ── /tests page — test catalog grid ── */
+.landing-v3 .header-nav { display: flex; align-items: center; gap: 24px; }
+.landing-v3 .header-nav-link {
+  font-size: 14px; font-weight: 500; color: var(--text-secondary);
+  text-decoration: none; transition: color 0.2s;
+}
+.landing-v3 .header-nav-link:hover { color: var(--accent); }
+@media (max-width: 640px) {
+  .landing-v3 .header-nav { display: none; }
+}
+
+.landing-v3 .tests-page-main { min-height: 60vh; }
+
+.landing-v3 .test-catalog-card {
+  cursor: pointer;
+}
+.landing-v3 .test-catalog-card .test-card-emoji {
+  font-size: 64px;
+  line-height: 1;
+  padding: 32px 24px 8px;
+  text-align: left;
+}
+.landing-v3 .test-catalog-card .test-card-book {
+  font-style: italic;
+}
+.landing-v3 .test-catalog-card.is-coming-soon {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+.landing-v3 .test-catalog-card.is-coming-soon .catalog-card-btn {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.landing-v3 .test-catalog-card.is-coming-soon:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-light);
+}
+@media (max-width: 640px) {
+  .landing-v3 .test-catalog-card .test-card-emoji {
+    font-size: 52px;
+    padding: 24px 18px 4px;
+  }
+}
+
 } /* end @layer components (part 2) */
