@@ -3,8 +3,16 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HomeIcon, ChatIcon, UserIcon } from "@/components/icons/hub-icons";
+import { BookSwitcher } from "@/components/BookSwitcher";
+import type { ProgramSwitcherItem } from "@/lib/queries/all-programs";
 
-export function MobileTabs({ slug }: { slug: string }) {
+interface MobileTabsProps {
+  slug: string;
+  programs: ProgramSwitcherItem[];
+  currentProgram: ProgramSwitcherItem;
+}
+
+export function MobileTabs({ slug, programs }: MobileTabsProps) {
   const pathname = usePathname();
   const base = `/program/${slug}`;
 
@@ -23,6 +31,7 @@ export function MobileTabs({ slug }: { slug: string }) {
   }
 
   const activeKey = getActiveKey();
+  const showSwitcher = programs.length > 1;
 
   return (
     <div className="mobile-tabs">
@@ -41,6 +50,13 @@ export function MobileTabs({ slug }: { slug: string }) {
           </Link>
         );
       })}
+      {showSwitcher && (
+        <BookSwitcher
+          variant="mobile"
+          currentSlug={slug}
+          programs={programs}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { BookSwitcher } from "@/components/BookSwitcher";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import {
   HomeIcon,
@@ -14,6 +15,7 @@ import {
   CollapseBackIcon,
 } from "@/components/icons/hub-icons";
 import type { ChatItemData } from "@/components/ChatListItem";
+import type { ProgramSwitcherItem } from "@/lib/queries/all-programs";
 import { formatChatTime } from "@/lib/time";
 
 interface UserInfo {
@@ -30,6 +32,8 @@ interface SidebarProps {
   initialChats: ChatItemData[];
   exerciseCount: number;
   balance?: number;
+  programs: ProgramSwitcherItem[];
+  currentProgram: ProgramSwitcherItem;
 }
 
 export function Sidebar({
@@ -38,6 +42,8 @@ export function Sidebar({
   user,
   initialChats,
   balance,
+  programs,
+  currentProgram,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -112,13 +118,24 @@ export function Sidebar({
         >
           {collapsed ? <CollapseIcon size={18} /> : <CollapseBackIcon size={18} />}
         </button>
-        <div className="sidebar-brand">
-          <div className="sidebar-logo" />
-          <div className="sidebar-brand-wrap">
-            <div className="sidebar-brand-text">Книжный Спарринг</div>
-            <div className="sidebar-brand-sub">AI-тренажёр</div>
+        {programs.length > 1 ? (
+          <BookSwitcher
+            variant="desktop"
+            currentSlug={slug}
+            programs={programs}
+            collapsed={collapsed}
+          />
+        ) : (
+          <div className="sidebar-brand">
+            <div className="sidebar-logo" />
+            <div className="sidebar-brand-wrap">
+              <div className="sidebar-brand-text">{currentProgram.title}</div>
+              {currentProgram.author && (
+                <div className="sidebar-brand-sub">{currentProgram.author}</div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Navigation */}
