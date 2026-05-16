@@ -481,6 +481,12 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - Use conventional commit format: refactor:, fix:, feat:, chore:
 - Each commit should be independently revertable without breaking other changes
 - If a task involves multiple logical steps (e.g. extract util + update imports + remove dead code), make separate commits for each
+- **Отчёт после слияния в main — строго три строки:**
+  1. Что закоммитил (одной фразой).
+  2. Суть изменения — что увидит на сайте (одной фразой).
+  3. Ссылка на конкретную страницу боевого сайта где это видно.
+
+  Никаких списков, перечней файлов, абзацев «что НЕ делал», чек-листов. Если деплой не нужен — одно-двухстрочное подтверждение.
 - **Перед коммитом — проверь документацию.** Пройдись по чеклисту:
   - [ ] Новая env-переменная? → `docs/env-vars.md`
   - [ ] Новое архитектурное решение (выбор технологии, паттерн, trade-off)? → `docs/adr/`
