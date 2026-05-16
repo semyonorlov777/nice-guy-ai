@@ -7,6 +7,7 @@ import { ModesProvider } from "@/contexts/ModesContext";
 import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
 import { getProgramModes } from "@/lib/queries/modes";
+import { getAllPrograms, type ProgramSwitcherItem } from "@/lib/queries/all-programs";
 import type { ProgramFeatures } from "@/types/program";
 
 export default async function ProgramLayout({
@@ -34,18 +35,19 @@ export default async function ProgramLayout({
     initialChats: { id: string; title: string; chatType: string; exerciseNumber: number | null; preview: string; lastMessageAt: string }[];
     exerciseCount: number;
     balance: number;
+    programs: ProgramSwitcherItem[];
+    currentProgram: ProgramSwitcherItem;
   } | null = null;
   let mobileTabsProps: {
     slug: string;
+    programs: ProgramSwitcherItem[];
+    currentProgram: ProgramSwitcherItem;
   } | null = null;
   let loadedModes: import("@/types/modes").ProgramModeWithTemplate[] = [];
 
   if (isAuthed) {
-    const { data: program } = await supabase
-      .from("programs")
-      .select("id, slug, title, features")
-      .eq("slug", slug)
-      .single();
+    const programs = await getAllPrograms(supabase);
+    const program = programs.find((p) => p.slug === slug);
 
     if (!program) redirect("/");
 
@@ -108,13 +110,17 @@ export default async function ProgramLayout({
       slug,
       programId: program.id,
       user: userInfo,
-      features: program.features as ProgramFeatures | null,
+      features: program.features,
       initialChats,
       exerciseCount: exerciseCount || 0,
       balance: profile?.balance_tokens ?? 0,
+      programs,
+      currentProgram: program,
     };
     mobileTabsProps = {
       slug,
+      programs,
+      currentProgram: program,
     };
 
     loadedModes = await getProgramModes(supabase, program.id);
@@ -135,13 +141,19 @@ export default async function ProgramLayout({
               initialChats={sidebarProps.initialChats}
               exerciseCount={sidebarProps.exerciseCount}
               balance={sidebarProps.balance}
+              programs={sidebarProps.programs}
+              currentProgram={sidebarProps.currentProgram}
             />
           )}
           <main className="app-main">
             {children}
           </main>
           {mobileTabsProps && (
-            <MobileTabs slug={mobileTabsProps.slug} />
+            <MobileTabs
+              slug={mobileTabsProps.slug}
+              programs={mobileTabsProps.programs}
+              currentProgram={mobileTabsProps.currentProgram}
+            />
           )}
         </div>
       </ModesProvider>
