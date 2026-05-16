@@ -47,6 +47,55 @@ else
 fi
 
 echo ""
+echo "=== Checking for stale brand strings in landing/seed (see docs/brand-glossary.md) ==="
+
+# Ярлык бренда «AI-тренажёр» / «AI-ассистент» в карточке сравнения landing_data.
+# Ловим оба формата: JSON ("name": "...") и JS/TS (name: "...").
+BRAND_NAME_HITS=$(grep -rnE '"?name"?\s*:\s*"(AI-тренажёр|AI-ассистент)"' \
+  scripts/seed-*.sql \
+  lib/platform-landing.ts \
+  components/landing/ 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/')
+
+if [ -n "$BRAND_NAME_HITS" ]; then
+  echo "$BRAND_NAME_HITS"
+  echo "  ↳ Замени \"name\": \"AI-тренажёр|AI-ассистент\" на \"name\": \"Книжный Спарринг\""
+  FOUND=1
+fi
+
+# Роль «Ежедневная практика» — устарела. Ловим JSON и JS/TS форматы.
+BRAND_ROLE_HITS=$(grep -rnE '"?role"?\s*:\s*"Ежедневная практика"' \
+  scripts/seed-*.sql \
+  lib/platform-landing.ts \
+  components/landing/ 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/')
+
+if [ -n "$BRAND_ROLE_HITS" ]; then
+  echo "$BRAND_ROLE_HITS"
+  echo "  ↳ Замени \"role\": \"Ежедневная практика\" на \"role\": \"Практика\""
+  FOUND=1
+fi
+
+# hero_tag — устаревшая фраза. Ловим JSON и JS/TS форматы.
+HERO_TAG_HITS=$(grep -rnE '"?hero_tag"?\s*:\s*"AI-тренажёр' \
+  scripts/seed-*.sql \
+  lib/platform-landing.ts 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/')
+
+if [ -n "$HERO_TAG_HITS" ]; then
+  echo "$HERO_TAG_HITS"
+  echo "  ↳ Замени \"hero_tag\": \"AI-тренажёр по книге\" на \"hero_tag\": \"Книжный Спарринг\""
+  FOUND=1
+fi
+
+if [ -z "$BRAND_NAME_HITS" ] && [ -z "$BRAND_ROLE_HITS" ] && [ -z "$HERO_TAG_HITS" ]; then
+  echo "  No stale brand strings found"
+fi
+
+echo ""
 if [ "$FOUND" -eq 0 ]; then
   echo "Clean ✅"
 else
