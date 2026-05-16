@@ -42,6 +42,13 @@ export interface TestResultsProps {
 const DEFAULT_LEVEL_LABELS = ["Низкий уровень", "Умеренный уровень", "Выраженный уровень", "Высокий уровень"];
 const DEFAULT_LEVEL_THRESHOLDS = [25, 50, 75];
 
+// Программы где упражнения проходятся строго последовательно
+// (по требованию автора: без фундамента старшие упражнения не работают).
+// Для них на странице результатов теста добавляется блок «Что делать с этим»
+// с призывом начать/продолжить программу по порядку. Зоны фокуса при этом
+// сохраняют свой обычный вид с кликабельными ссылками на упражнения.
+const SEQUENTIAL_METHODOLOGY_PROGRAMS = new Set(["nice-guy"]);
+
 function getLevelClass(score: number, direction: ScoreDirection): string {
   // Visual semantics: "low" = green pill, "high" = red pill, "moderate" = accent pill.
   // For higher_is_better invert: high score = "low" CSS class (green good), low score = "high" (red alarm).
@@ -264,6 +271,27 @@ function TopZones({
   );
 }
 
+function WhatToDoBlock({ programSlug }: { programSlug: string }) {
+  const { ref, isVisible } = useScrollReveal();
+
+  return (
+    <div
+      ref={ref}
+      className={`tr-todo-section tr-section-anim${isVisible ? " visible" : ""}`}
+    >
+      <div className="tr-todo-card">
+        <div className="tr-todo-eyebrow">Что делать с этим</div>
+        <p className="tr-todo-body">
+          46 упражнений Гловера работают только последовательно — каждое опирается на предыдущее. Иди по порядку, не перепрыгивай.
+        </p>
+        <Link href={`/program/${programSlug}/exercises`} className="tr-cta-primary tr-todo-cta">
+          К упражнениям программы
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function CTASection({
   isOwner,
   programSlug,
@@ -388,6 +416,9 @@ export function TestResultsPage(props: TestResultsProps) {
   const levelLabel =
     interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
 
+  const showWhatToDo =
+    isOwner && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
+
   return (
     <div className="test-results-page">
       <div className="tr-container">
@@ -450,6 +481,13 @@ export function TestResultsPage(props: TestResultsProps) {
               <Divider />
             </>
           )}
+
+        {showWhatToDo && (
+          <>
+            <WhatToDoBlock programSlug={programSlug} />
+            <Divider />
+          </>
+        )}
 
         <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} ctaText={ctaText} testSlug={testSlug} />
 
