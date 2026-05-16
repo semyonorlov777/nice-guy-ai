@@ -8,8 +8,9 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "check": "bash scripts/check-hardcodes.sh && npm run check:chats",
-    "check:chats": "tsx scripts/check-chat-seed.ts"
+    "check": "bash scripts/check-hardcodes.sh && tsx scripts/check-chat-seed.ts --legacy-relaxed && tsx scripts/check-author-photos.ts",
+    "check:chats": "tsx scripts/check-chat-seed.ts",
+    "check:author-photos": "tsx scripts/check-author-photos.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",

@@ -390,6 +390,34 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 | `meta_title` | SEO title | `"Книжный Спарринг: Название — Автор"` |
 | `meta_description` | SEO description | 1-2 предложения |
 
+### landing_data.main_concepts — обязательный список концептов книги (≥5)
+
+Используется в шаблоне `anonymous_system_prompt` (блок Д «СТРУКТУРА ПЕРВОГО ОТВЕТА») для требования «назови концепт по имени». Без него демо-чат отвечает общими словами.
+
+```json
+{
+  "main_concepts": [
+    "Карта любви",
+    "Нежность и восхищение",
+    "Поворот к партнёру",
+    "Принятие влияния",
+    "Мягкий старт",
+    "Скрытая мечта",
+    "Общий смысл"
+  ]
+}
+```
+
+**Правила:**
+- 5-7 элементов (меньше — концепт-словарь слабый, больше — Gemini забывает).
+- Каждый — имя собственное концепта (как в книге автора), не общее слово («любовь», «общение» не подходят).
+- Имя на русском, как пользователь увидит в чате.
+- При seed подставляются в `anonymous_system_prompt` как `«{name1} / {name2} / {name3} / ...»` явным списком.
+
+**Линтер `npm run check:chats`** проверяет: `landing_data.main_concepts` существует, это массив из ≥5 строк, и для каждого концепта проверяет что он встречается в `anonymous_system_prompt` (по подстроке). Отсутствие — warning.
+
+**Прецедент:** seven-principles — без явного списка концептов AI на демо-чате отвечал «бывает, многие пары через это проходят...» вместо «Мягкий старт у Готтмана говорит, что...».
+
 ### Реестр обложек и фото авторов
 
 Обложки — `cdn.litres.ru` (разрешён в CSP, см. next.config.ts).
@@ -847,20 +875,34 @@ npx tsx scripts/check-chat-seed.ts --book=<slug>   # одна книга (быс
 На уровне **program_modes** (для каждого режима):
 - `welcome_mode_label` — UPPERCASE (`АНАЛИЗ`, `ВОРКШОП`...)
 - `welcome_title` — без эмодзи в начале
+- `welcome_title` ≠ `mode_templates.name` (фраза-действие, не дубль ярлыка) — error
 - `welcome_subtitle` — ≤80 символов
 - `welcome_ai_message` — нет `**bold**`, `# headings`, `- lists`, нумерации; нет дубликата `эмодзи **Title**` в начале; абзацы через `\n\n`
 - `welcome_replies` — массив **объектов** `{text, type}` (не строки); последний `type: "exit"`; каждый `text` ≤60 символов, без вложенных «ёлочек», без markdown
 - `welcome_message` + `welcome_ai_message` — взаимоисключающие
 - `system_prompt` — содержит блок `QUICK REPLIES`, буквальный пример «ёлочек», counterexample `НЕПРАВИЛЬНО`, фразу `НИКОГДА не склеивай`, counterexample про `<угловые скобки>`. Плейсхолдеры `«Вариант 1»` не должны оставаться в **позитивном** примере (допустимы только в `НЕПРАВИЛЬНО` блоке).
+- `system_prompt` — содержит блок «Запрет приветствий» (кирпич Б из REFERENCE.md §5.0) — warning
+- `system_prompt` — содержит блок «ОБРАЩЕНИЕ» с правилом «ты» (кирпич А) — warning
 
 На уровне **programs**:
 - `system_prompt` / `author_chat_system_prompt` / `anonymous_system_prompt` — содержат QR-блок (правила не наследуются)
+- `system_prompt` / `author_chat_system_prompt` / `anonymous_system_prompt` — содержат «Запрет приветствий» (кирпич Б) — error для `anonymous_system_prompt`, warning для остальных
+- `system_prompt` / `anonymous_system_prompt` — содержат «ОБРАЩЕНИЕ» с правилом «ты» (кирпич А) — error для `anonymous_system_prompt`, warning для `system_prompt`. `author_chat_system_prompt` исключение (автор сам формулирует обращение)
+- `anonymous_system_prompt` — содержит «СТРУКТУРА ПЕРВОГО ОТВЕТА» с **ОБЯЗАТЕЛЬНО назови ... по имени** (блок Д) — error
+- `anonymous_system_prompt` — содержит «Quick replies — КРИТИЧЕСКОЕ ПРАВИЛО» **и** контр-пример «без кавычек» (блок Е) — error
+- `landing_data.main_concepts` — массив из ≥5 строк, каждая встречается в `anonymous_system_prompt` — warning
+- `landing_data.chat_header` / `book` / `personas.items[].body` / `social_proof[].sub` — без HTML-тегов `<em>`/`<strong>`/`<br>` (поля не поддерживают разметку) — warning
 - `free_chat_welcome` / `author_chat_welcome` — содержат ≥3 «ёлочки» в конце на отдельных строках
 - `landing_data.author.photo_url` — локальный путь `/authors/*`
 
 На уровне **program_themes**:
 - те же правила welcome_ai_message + welcome_replies
 - `welcome_system_context` — НЕ дублирует QR-блок (наследуется из `programs.system_prompt`)
+
+На уровне **test_configs** (если есть):
+- `questions[]` группируется по блокам `ui_config.questions_per_block` — все вопросы внутри блока должны иметь одну `scale` — error
+
+Дополнительно: отдельный скрипт `npm run check:author-photos` проверяет `public/authors/*.jpg` на размер ≥100 КБ (фото мутное при меньшем размере — Wikipedia thumbnails запрещены).
 
 ### Когда запускать
 

@@ -10,21 +10,37 @@
  *   npx tsx scripts/check-chat-seed.ts             # все книги
  *   npm run check:chats                            # то же
  *   npx tsx scripts/check-chat-seed.ts --book=eq-2-0  # одна книга
+ *   npx tsx scripts/check-chat-seed.ts --legacy-relaxed  # пропустить новые правила (5,6,7,8) для книг которые сделаны до этих правил
  *
  * Exit code:
  *   0 — всё ok (или только warnings)
  *   1 — найдены errors (печатаются в stderr)
  *   2 — ошибка конфигурации (нет .env, нет SUPABASE_SERVICE_ROLE_KEY)
  *
- * Правила (по runbook chat-message-formatting + lessons learned 6 книг):
+ * Правила (по runbook chat-message-formatting + lessons learned после аудита 8 книг):
+ *   ── Базовые (welcome-карточка) ──
  *   welcome_ai_message — plain text, без markdown, без дубликата title, абзацы через \n\n
  *   welcome_replies    — JSONB [{text, type}], не строки; reply ≤60 символов, без вложенных «ёлочек»
  *   welcome_mode_label — Title Case или UPPERCASE (начинается с заглавной); CSS делает uppercase визуально
  *   welcome_title      — без эмодзи в начале
  *   welcome_subtitle   — ≤80 символов
+ *   welcome_title      — НЕ дублирует mode_templates.name (case-insensitive) — урок Готтмана 2026-05
+ *   ── system_prompt (на всех уровнях) ──
  *   system_prompt      — содержит блок Quick replies + counterexample про склейку + про <angle-bracket>
+ *   system_prompt      — содержит блок «Запрет приветствий» (фразу про «Здравствуй»/«Отличный вопрос»)
+ *   system_prompt      — содержит блок «ОБРАЩЕНИЕ» с правилом «ты» и явным НЕПРАВИЛЬНО про «вы»
+ *   ── programs welcome ──
  *   programs.*_welcome — содержит ≥3 «ёлочки» в конце для стартовых кнопок
+ *   ── landing ──
  *   landing_data.author.photo_url — локальный путь /authors/*
+ *   landing_data.main_concepts    — массив 5+ строк, каждая встречается в anonymous_system_prompt
+ *   landing_data поля без разметки — без HTML-тегов (<em>, <strong>, <br>, <b>, <i>)
+ *   ── anonymous_system_prompt (демо-чат на лендинге) ──
+ *   anonymous_system_prompt — блок Д «ОБЯЗАТЕЛЬНО назови ... по имени» (концепт книги)
+ *   anonymous_system_prompt — блок Е «КРИТИЧЕСКОЕ ПРАВИЛО» + контр-пример «без кавычек»
+ *   ── test_configs (если есть) ──
+ *   test_configs.questions[] — внутри блока questions_per_block одна scale на все вопросы
+ *   ── exclusivity ──
  *   welcome_message + welcome_ai_message — взаимоисключающие
  */
 import { createClient } from "@supabase/supabase-js";
@@ -117,6 +133,13 @@ interface ThemeRow {
   welcome_ai_message: string | null;
   welcome_replies: unknown;
   welcome_system_context: string | null;
+}
+
+interface TestConfigRow {
+  program_id: string;
+  slug: string;
+  questions: unknown;
+  ui_config: unknown;
 }
 
 type Severity = "error" | "warn";
@@ -553,6 +576,407 @@ function checkAuthorPhotoLocal(
   return [];
 }
 
+/**
+ * Правило #1 (урок Готтмана): welcome_title не дублирует mode_templates.name.
+ * Если совпадают — на карточке режима получается тройной заголовок
+ * (боковое меню + шапка чата + welcome-карточка).
+ */
+function checkTitleVsModeName(
+  program: string,
+  location: string,
+  welcomeTitle: string | null,
+  modeName: string | null,
+): Violation[] {
+  if (!welcomeTitle || !modeName) return [];
+  if (welcomeTitle.trim().toLowerCase() === modeName.trim().toLowerCase()) {
+    return [
+      violation(
+        program,
+        `${location}.welcome_title`,
+        "title-duplicates-mode-name",
+        `welcome_title "${welcomeTitle}" дублирует mode_templates.name "${modeName}" — на карточке режима пользователь увидит тройной заголовок (меню + шапка + карточка). Используй фразу-действие, например «Что ты знаешь о партнёре» вместо «Карта любви». См. REFERENCE.md §8 «Welcome_title vs mode_templates.name».`,
+      ),
+    ];
+  }
+  return [];
+}
+
+/**
+ * Правило #2 (урок Готтмана): вопросы теста группируются по шкалам блоками.
+ * Внутри одного блока `questions_per_block` все вопросы должны иметь одну `scale`.
+ * Иначе пользователь видит ложный заголовок перехода между блоками.
+ */
+function checkTestQuestionsGrouping(
+  program: string,
+  testSlug: string,
+  questions: unknown,
+  uiConfig: unknown,
+): Violation[] {
+  if (!Array.isArray(questions) || questions.length === 0) return [];
+  const config = (uiConfig ?? {}) as { questions_per_block?: number };
+  const blockSize = Number(config.questions_per_block) || 5;
+  if (blockSize <= 0) return [];
+
+  const out: Violation[] = [];
+  for (let blockStart = 0; blockStart < questions.length; blockStart += blockSize) {
+    const block = questions.slice(blockStart, blockStart + blockSize);
+    if (block.length === 0) continue;
+    const firstScale = (block[0] as { scale?: string }).scale ?? "?";
+    for (let i = 1; i < block.length; i++) {
+      const q = block[i] as { scale?: string; q?: number };
+      if (q.scale !== firstScale) {
+        out.push(
+          violation(
+            program,
+            `test_configs[${testSlug}].questions[Q${q.q ?? blockStart + i + 1}]`,
+            "test-questions-mixed-scales",
+            `Вопрос Q${q.q ?? blockStart + i + 1} (scale="${q.scale}") выпадает из блока: первые ${i} вопросов блока шли по scale="${firstScale}", но Q${q.q} уже другая шкала. Группируй вопросы по шкалам блоками ${blockSize} (questions_per_block). См. REFERENCE.md §12 «Порядок вопросов».`,
+          ),
+        );
+        break; // одна ошибка на блок достаточно
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Правило #3 (урок Готтмана): HTML-теги в полях landing_data без поддержки разметки.
+ * Список полей без разметки — см. chat-message-formatting.md «Где разметка работает».
+ */
+function checkLandingHtmlInPlainFields(
+  program: string,
+  landing: Record<string, unknown> | null,
+): Violation[] {
+  if (!landing) return [];
+  const out: Violation[] = [];
+  const TAG_RE = /<(em|strong|b|i|br|small|span)\b[^>]*>/i;
+
+  // path → значение для полей без поддержки разметки
+  const plainTextFields: Array<[string, unknown]> = [];
+
+  const push = (path: string, val: unknown) => plainTextFields.push([path, val]);
+
+  push("hero_subtitle", landing.hero_subtitle);
+  push("hero_cta", landing.hero_cta);
+  push("hero_hint", landing.hero_hint);
+  push("hero_tag", landing.hero_tag);
+
+  const book = landing.book as Record<string, unknown> | undefined;
+  if (book) {
+    push("book.alt", book.alt);
+    push("book.author_top", book.author_top);
+    push("book.title", book.title);
+    push("book.subtitle", book.subtitle);
+    push("book.author_bottom", book.author_bottom);
+  }
+
+  const chatHeader = landing.chat_header as Record<string, unknown> | undefined;
+  if (chatHeader) {
+    push("chat_header.title", chatHeader.title);
+    push("chat_header.subtitle", chatHeader.subtitle);
+  }
+
+  const problem = landing.problem as Record<string, unknown> | undefined;
+  if (problem) {
+    push("problem.label", problem.label);
+    push("problem.lead", problem.lead);
+    if (Array.isArray(problem.pain_cards)) {
+      for (let i = 0; i < problem.pain_cards.length; i++) {
+        const card = problem.pain_cards[i] as Record<string, unknown>;
+        push(`problem.pain_cards[${i}].title`, card.title);
+        push(`problem.pain_cards[${i}].text`, card.text);
+      }
+    }
+  }
+
+  const personas = landing.personas as Record<string, unknown> | undefined;
+  if (personas) {
+    push("personas.label", personas.label);
+    push("personas.title", personas.title);
+    if (Array.isArray(personas.items)) {
+      for (let i = 0; i < personas.items.length; i++) {
+        const item = personas.items[i] as Record<string, unknown>;
+        push(`personas.items[${i}].headline`, item.headline);
+        push(`personas.items[${i}].body`, item.body);
+      }
+    }
+  }
+
+  const outcomes = landing.outcomes as Record<string, unknown> | undefined;
+  if (outcomes) {
+    push("outcomes.label", outcomes.label);
+    push("outcomes.subtitle", outcomes.subtitle);
+    if (Array.isArray(outcomes.items)) {
+      for (let i = 0; i < outcomes.items.length; i++) {
+        const item = outcomes.items[i] as Record<string, unknown>;
+        push(`outcomes.items[${i}].title`, item.title);
+        push(`outcomes.items[${i}].description`, item.description);
+      }
+    }
+  }
+
+  const comparison = landing.comparison as Record<string, unknown> | undefined;
+  if (comparison) {
+    push("comparison.label", comparison.label);
+    push("comparison.subtitle", comparison.subtitle);
+    if (Array.isArray(comparison.columns)) {
+      for (let i = 0; i < comparison.columns.length; i++) {
+        const col = comparison.columns[i] as Record<string, unknown>;
+        push(`comparison.columns[${i}].name`, col.name);
+        push(`comparison.columns[${i}].role`, col.role);
+      }
+    }
+  }
+
+  const howItWorks = landing.how_it_works as Record<string, unknown> | undefined;
+  if (howItWorks) {
+    push("how_it_works.label", howItWorks.label);
+    push("how_it_works.summary_text", howItWorks.summary_text);
+    if (Array.isArray(howItWorks.steps)) {
+      for (let i = 0; i < howItWorks.steps.length; i++) {
+        const step = howItWorks.steps[i] as Record<string, unknown>;
+        push(`how_it_works.steps[${i}].title`, step.title);
+      }
+    }
+  }
+
+  if (Array.isArray(landing.social_proof)) {
+    for (let i = 0; i < landing.social_proof.length; i++) {
+      const sp = landing.social_proof[i] as Record<string, unknown>;
+      push(`social_proof[${i}].main`, sp.main);
+      push(`social_proof[${i}].sub`, sp.sub);
+    }
+  }
+
+  const author = landing.author as Record<string, unknown> | undefined;
+  if (author) {
+    push("author.name", author.name);
+    push("author.credentials", author.credentials);
+    push("author.quote", author.quote);
+  }
+
+  const test = landing.test as Record<string, unknown> | undefined;
+  if (test) {
+    push("test.title", test.title);
+    push("test.description", test.description);
+    push("test.time_label", test.time_label);
+    push("test.questions_label", test.questions_label);
+    push("test.cta_text", test.cta_text);
+  }
+
+  for (const [path, value] of plainTextFields) {
+    if (typeof value !== "string") continue;
+    const match = value.match(TAG_RE);
+    if (match) {
+      out.push(
+        violation(
+          program,
+          `programs.landing_data.${path}`,
+          "landing-html-in-plain-field",
+          `Тег "${match[0]}" в поле без поддержки разметки. Поле отображается как plain-text — тег будет виден буквально. См. chat-message-formatting.md «Где разметка работает».`,
+          "warn",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * Правило #4 (урок Готтмана): блок «Запрет приветствий» (кирпич Б REFERENCE.md §5.0).
+ * Без него AI начинает каждый второй ответ со «Здравствуй»/«Отличный вопрос».
+ */
+function checkNoGreetingsBlock(
+  program: string,
+  location: string,
+  prompt: string | null,
+  severity: Severity,
+): Violation[] {
+  if (!prompt) return [];
+  // Признак блока: упоминание запрета + один из вариантов приветствия или похвалы вопроса
+  const hasBan = /не начинай ответ с|не начинай со?/i.test(prompt);
+  const hasExample =
+    /здравствуй|приветствую|отличный вопрос|хороший вопрос|это интересно|замечательный вопрос/i.test(
+      prompt,
+    );
+  if (!hasBan || !hasExample) {
+    return [
+      violation(
+        program,
+        location,
+        "no-greetings-block",
+        `Промпт не содержит блок «Запрет приветствий и похвалы вопроса» (кирпич Б REFERENCE.md §5.0). Без него AI начинает каждый второй ответ со «Здравствуй» / «Отличный вопрос». Добавь блок с явным запретом и примерами фраз.`,
+        severity,
+      ),
+    ];
+  }
+  return [];
+}
+
+/**
+ * Правило #5 (урок Готтмана): блок «ОБРАЩЕНИЕ — КРИТИЧЕСКОЕ ПРАВИЛО» (кирпич А).
+ * Без явного контр-примера «вы» Gemini срывается на «вы» в 1 ответе из 3-4.
+ */
+function checkAddressYouBlock(
+  program: string,
+  location: string,
+  prompt: string | null,
+  severity: Severity,
+): Violation[] {
+  if (!prompt) return [];
+  // Признак блока: явное правило про «ты» + явное «не вы» как контр-пример.
+  // \b в JS не работает с русскими буквами, поэтому ловим явные фразы из
+  // шаблона REFERENCE.md §5.0 (кирпич А).
+  const explicit =
+    /никогда на «?вы»?/i.test(prompt) ||
+    /всегда на «?ты»?/i.test(prompt) ||
+    /## ОБРАЩЕНИЕ/i.test(prompt) ||
+    /ОБРАЩЕНИЕ — КРИТИЧЕСКОЕ/i.test(prompt) ||
+    // Любой явный list ПРАВИЛЬНО/НЕПРАВИЛЬНО где упоминается «Вас», «Вы»,
+    // «вам» именно как примеры запрещённой формы. Условие — должны быть
+    // оба маркера рядом.
+    (/неправильно/i.test(prompt) &&
+      /(вам не хватает|вы можете|вы заметили|вы испытываете|вы столкнулись|расскажите|вас задело)/i.test(
+        prompt,
+      ));
+
+  if (!explicit) {
+    return [
+      violation(
+        program,
+        location,
+        "no-address-you-block",
+        `Промпт не содержит блок «ОБРАЩЕНИЕ» с явным правилом «ты»+контр-примером «вы» (кирпич А REFERENCE.md §5.0). Без него Gemini срывается на «вы» в 1 ответе из 3-4. Добавь явное «ВСЕГДА на «ты». НИКОГДА на «вы»» + списки ПРАВИЛЬНО/НЕПРАВИЛЬНО.`,
+        severity,
+      ),
+    ];
+  }
+  return [];
+}
+
+/**
+ * Правило #6 (урок Готтмана): в anonymous_system_prompt блок Д «СТРУКТУРА
+ * ПЕРВОГО ОТВЕТА» требует **ОБЯЗАТЕЛЬНО назови концепт ... по имени**.
+ */
+function checkConceptByNameBlock(
+  program: string,
+  prompt: string | null,
+): Violation[] {
+  if (!prompt) return [];
+  // Признак: слово «ОБЯЗАТЕЛЬНО» и в окрестности 200 символов — «по имени»
+  const obligatoryIdx = prompt.search(/ОБЯЗАТЕЛЬНО/);
+  if (obligatoryIdx === -1) {
+    return [
+      violation(
+        program,
+        "programs.anonymous_system_prompt",
+        "anonymous-no-concept-by-name",
+        "anonymous_system_prompt не содержит блок «СТРУКТУРА ПЕРВОГО ОТВЕТА» со словом «ОБЯЗАТЕЛЬНО» (кирпич Д REFERENCE.md §11.1). Без него AI на демо-чате отвечает общими словами без названия концепта книги. Добавь блок с явным требованием «ОБЯЗАТЕЛЬНО назови один из ключевых концептов книги по имени».",
+      ),
+    ];
+  }
+  const window = prompt.slice(obligatoryIdx, Math.min(obligatoryIdx + 300, prompt.length));
+  if (!/по имени|концепт|принцип|по названию/i.test(window)) {
+    return [
+      violation(
+        program,
+        "programs.anonymous_system_prompt",
+        "anonymous-concept-name-context",
+        "anonymous_system_prompt содержит «ОБЯЗАТЕЛЬНО», но не в контексте «назови ... по имени» (кирпич Д). Привяжи требование к названию конкретного концепта/принципа книги.",
+      ),
+    ];
+  }
+  return [];
+}
+
+/**
+ * Правило #7 (урок Готтмана): в anonymous_system_prompt блок Е «Quick replies —
+ * КРИТИЧЕСКОЕ ПРАВИЛО» с контр-примером «без кавычек».
+ */
+function checkCriticalRuleBlock(
+  program: string,
+  prompt: string | null,
+): Violation[] {
+  if (!prompt) return [];
+  const out: Violation[] = [];
+  if (!/КРИТИЧЕСКОЕ ПРАВИЛО/.test(prompt)) {
+    out.push(
+      violation(
+        program,
+        "programs.anonymous_system_prompt",
+        "anonymous-no-critical-rule",
+        "anonymous_system_prompt не содержит подстроку «КРИТИЧЕСКОЕ ПРАВИЛО» — это признак блока Е (REFERENCE.md §11.1). Без блока AI выводит варианты простым текстом без кавычек, кнопок нет. Добавь блок «Quick replies — КРИТИЧЕСКОЕ ПРАВИЛО».",
+      ),
+    );
+  }
+  // Контр-пример «без кавычек — это НЕ кнопки» (или эквивалент)
+  if (!/без кавычек|не \«ёлочк/i.test(prompt)) {
+    out.push(
+      violation(
+        program,
+        "programs.anonymous_system_prompt",
+        "anonymous-no-without-quotes-counter",
+        "anonymous_system_prompt не содержит контр-пример «без кавычек — это НЕ кнопки» (кирпич Е). Покажи Gemini что варианты без «ёлочек» — это plain-текст в сообщении, а не кликабельные кнопки.",
+      ),
+    );
+  }
+  return out;
+}
+
+/**
+ * Правило #8 (урок Готтмана): landing_data.main_concepts — массив 5+ концептов
+ * книги по имени. Используется в блоке Д anonymous_system_prompt.
+ */
+function checkMainConcepts(
+  program: string,
+  landing: Record<string, unknown> | null,
+  anonymousPrompt: string | null,
+): Violation[] {
+  if (!landing) return [];
+  const concepts = landing.main_concepts;
+  if (!Array.isArray(concepts) || concepts.length === 0) {
+    return [
+      violation(
+        program,
+        "programs.landing_data.main_concepts",
+        "landing-no-main-concepts",
+        "landing_data.main_concepts отсутствует или пустой. Заполни массивом из 5-7 имён ключевых концептов книги — они используются в блоке Д anonymous_system_prompt. См. PLATFORM_MAP.md «main_concepts».",
+        "warn",
+      ),
+    ];
+  }
+  if (concepts.length < 5) {
+    return [
+      violation(
+        program,
+        "programs.landing_data.main_concepts",
+        "landing-main-concepts-too-few",
+        `landing_data.main_concepts содержит ${concepts.length} концептов. Должно быть 5-7 (меньше — словарь концептов слабый, AI забывает).`,
+        "warn",
+      ),
+    ];
+  }
+  // Каждый концепт должен встречаться в anonymous_system_prompt
+  if (!anonymousPrompt) return [];
+  const out: Violation[] = [];
+  for (const concept of concepts) {
+    if (typeof concept !== "string") continue;
+    if (!anonymousPrompt.includes(concept)) {
+      out.push(
+        violation(
+          program,
+          "programs.anonymous_system_prompt",
+          "anonymous-missing-main-concept",
+          `Концепт "${concept}" из landing_data.main_concepts не встречается в anonymous_system_prompt. Перечисли все концепты явно в блоке Д «СТРУКТУРА ПЕРВОГО ОТВЕТА».`,
+          "warn",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
 // --- Исполнитель ---
 
 async function main() {
@@ -561,6 +985,10 @@ async function main() {
   // CLI: --book=<slug> — фильтр на одну книгу
   const bookArg = process.argv.find((a) => a.startsWith("--book="));
   const bookFilter = bookArg ? bookArg.slice("--book=".length) : null;
+  // CLI: --legacy-relaxed — пропустить новые правила (4, 5, 6, 7, 8) для старых книг.
+  // Новые правила добавлены после аудита seven-principles 2026-05.
+  // Старые промпты могут срабатывать на эти правила — отдельный фикс по каждой книге.
+  const legacyRelaxed = process.argv.includes("--legacy-relaxed");
 
   let programsQuery = supabase
     .from("programs")
@@ -581,7 +1009,7 @@ async function main() {
   }
 
   for (const p of (programs ?? []) as ProgramRow[]) {
-    // programs уровень
+    // programs уровень — базовые QR-блоки (правило #10 — кирпич В)
     violations.push(
       ...checkSystemPromptQrBlock(p.slug, "programs.system_prompt", p.system_prompt),
     );
@@ -615,6 +1043,72 @@ async function main() {
       ),
     );
     violations.push(...checkAuthorPhotoLocal(p.slug, p.landing_data));
+
+    // Новые правила (после аудита seven-principles 2026-05).
+    // Под --legacy-relaxed — пропускаем для старых книг, потому что они
+    // могут срабатывать на старые промпты которые мы не правим.
+    if (!legacyRelaxed) {
+      // Правило #3 — HTML-теги в полях лендинга без поддержки разметки (warning)
+      violations.push(...checkLandingHtmlInPlainFields(p.slug, p.landing_data));
+
+      // Правило #4 — «Запрет приветствий» (кирпич Б).
+      // anonymous_system_prompt — error (демо-чат — единственная точка касания до регистрации).
+      // Остальные — warning.
+      violations.push(
+        ...checkNoGreetingsBlock(
+          p.slug,
+          "programs.anonymous_system_prompt",
+          p.anonymous_system_prompt,
+          "error",
+        ),
+      );
+      violations.push(
+        ...checkNoGreetingsBlock(
+          p.slug,
+          "programs.system_prompt",
+          p.system_prompt,
+          "warn",
+        ),
+      );
+      violations.push(
+        ...checkNoGreetingsBlock(
+          p.slug,
+          "programs.author_chat_system_prompt",
+          p.author_chat_system_prompt,
+          "warn",
+        ),
+      );
+
+      // Правило #7 — «ОБРАЩЕНИЕ» с правилом «ты» (кирпич А).
+      // anonymous — error, system — warning. author_chat исключение (автор сам формулирует).
+      violations.push(
+        ...checkAddressYouBlock(
+          p.slug,
+          "programs.anonymous_system_prompt",
+          p.anonymous_system_prompt,
+          "error",
+        ),
+      );
+      violations.push(
+        ...checkAddressYouBlock(
+          p.slug,
+          "programs.system_prompt",
+          p.system_prompt,
+          "warn",
+        ),
+      );
+
+      // Правило #5 — «СТРУКТУРА ПЕРВОГО ОТВЕТА» с ОБЯЗАТЕЛЬНО+по имени (блок Д)
+      violations.push(...checkConceptByNameBlock(p.slug, p.anonymous_system_prompt));
+
+      // Правило #6 — «КРИТИЧЕСКОЕ ПРАВИЛО» + контр-пример «без кавычек» (блок Е)
+      violations.push(...checkCriticalRuleBlock(p.slug, p.anonymous_system_prompt));
+
+      // Правило #8 — main_concepts (warning)
+      violations.push(
+        ...checkMainConcepts(p.slug, p.landing_data, p.anonymous_system_prompt),
+      );
+    }
   }
 
   const programIds = ((programs ?? []) as ProgramRow[]).map((p) => p.id);
@@ -623,7 +1117,7 @@ async function main() {
   let modesQuery = supabase
     .from("program_modes")
     .select(
-      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key)",
+      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key, name)",
     );
   if (bookFilter && programIds.length) {
     modesQuery = modesQuery.in("program_id", programIds);
@@ -640,10 +1134,11 @@ async function main() {
   }
 
   for (const m of (modes ?? []) as unknown as Array<
-    ModeRow & { mode_templates: { key: string } }
+    ModeRow & { mode_templates: { key: string; name: string } }
   >) {
     const slug = slugByProgramId.get(m.program_id) ?? "unknown";
     const modeKey = m.mode_templates?.key ?? "unknown";
+    const modeName = m.mode_templates?.name ?? null;
     const loc = `program_modes[${modeKey}]`;
 
     violations.push(
@@ -676,6 +1171,34 @@ async function main() {
       violations.push(
         ...checkSystemPromptQrBlock(slug, `${loc}.system_prompt`, m.system_prompt),
       );
+    }
+
+    // Новые правила (после аудита seven-principles 2026-05)
+    if (!legacyRelaxed) {
+      // Правило #1 — welcome_title не дублирует mode_templates.name (error)
+      violations.push(
+        ...checkTitleVsModeName(slug, loc, m.welcome_title, modeName),
+      );
+
+      // Правило #4 и #7 на уровне режима — warning (программные уровень важнее)
+      if (m.system_prompt) {
+        violations.push(
+          ...checkNoGreetingsBlock(
+            slug,
+            `${loc}.system_prompt`,
+            m.system_prompt,
+            "warn",
+          ),
+        );
+        violations.push(
+          ...checkAddressYouBlock(
+            slug,
+            `${loc}.system_prompt`,
+            m.system_prompt,
+            "warn",
+          ),
+        );
+      }
     }
   }
 
@@ -715,6 +1238,28 @@ async function main() {
           "warn",
         ),
       );
+    }
+  }
+
+  // test_configs уровень (правило #2 — группировка вопросов по шкалам)
+  if (!legacyRelaxed) {
+    let testsQuery = supabase
+      .from("test_configs")
+      .select("program_id, slug, questions, ui_config");
+    if (bookFilter && programIds.length) {
+      testsQuery = testsQuery.in("program_id", programIds);
+    }
+    const { data: tests, error: testErr } = await testsQuery;
+    if (testErr) {
+      // test_configs может отсутствовать в схеме — не критично, продолжаем
+      console.warn("⚠️ check-chat-seed: cannot read test_configs (skipping):", testErr.message);
+    } else {
+      for (const tc of (tests ?? []) as TestConfigRow[]) {
+        const slug = slugByProgramId.get(tc.program_id) ?? "unknown";
+        violations.push(
+          ...checkTestQuestionsGrouping(slug, tc.slug, tc.questions, tc.ui_config),
+        );
+      }
     }
   }
 
