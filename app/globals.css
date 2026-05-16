@@ -1875,6 +1875,46 @@
   background: var(--accent-border);
 }
 
+/* What to do — методологический призыв (только для owner программ с последовательной методологией) */
+.tr-todo-section {
+  padding: 48px 0 16px;
+}
+
+.tr-todo-card {
+  background: linear-gradient(135deg, var(--accent-glow) 0%, var(--bg-card) 55%, var(--green-soft) 100%);
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 36px 32px;
+  text-align: center;
+  box-shadow: 0 0 80px var(--accent-soft);
+}
+
+.tr-todo-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.tr-todo-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  max-width: 520px;
+  margin: 0 auto 24px;
+}
+
+.tr-todo-cta {
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  .tr-todo-card { padding: 28px 20px; border-radius: 16px; }
+  .tr-todo-cta { width: 100%; }
+}
+
 /* CTA */
 .tr-cta-section {
   padding: 48px 0 40px;
