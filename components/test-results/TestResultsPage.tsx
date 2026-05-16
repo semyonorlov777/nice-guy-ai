@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ScaleResult } from "@/lib/test-scoring";
 import type { TestInterpretation } from "@/lib/test-interpretation";
+import type { ExerciseProgress } from "@/lib/queries/exercise-progress";
 import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
@@ -35,12 +36,20 @@ export interface TestResultsProps {
   scoreDirection?: ScoreDirection;
   levelLabels?: string[];
   levelThresholds?: number[];
+  exerciseProgress: ExerciseProgress;
 }
 
 // ── Constants ──
 
 const DEFAULT_LEVEL_LABELS = ["Низкий уровень", "Умеренный уровень", "Выраженный уровень", "Высокий уровень"];
 const DEFAULT_LEVEL_THRESHOLDS = [25, 50, 75];
+
+// Программы где упражнения проходятся строго последовательно
+// (по требованию автора: без фундамента старшие упражнения не работают).
+// Для них на странице результатов теста добавляется блок «Что делать с этим»
+// с призывом начать/продолжить программу по порядку. Зоны фокуса при этом
+// сохраняют свой обычный вид с кликабельными ссылками на упражнения.
+const SEQUENTIAL_METHODOLOGY_PROGRAMS = new Set(["nice-guy"]);
 
 function getLevelClass(score: number, direction: ScoreDirection): string {
   // Visual semantics: "low" = green pill, "high" = red pill, "moderate" = accent pill.
@@ -264,6 +273,54 @@ function TopZones({
   );
 }
 
+function WhatToDoBlock({
+  programSlug,
+  exerciseProgress,
+}: {
+  programSlug: string;
+  exerciseProgress: ExerciseProgress;
+}) {
+  const { ref, isVisible } = useScrollReveal();
+  const { nextNumber, totalCompleted, totalExercises, hasStarted } = exerciseProgress;
+
+  let body: string;
+  let buttonLabel: string;
+  let buttonHref: string;
+
+  if (nextNumber === null) {
+    body = `${totalExercises} из ${totalExercises} пройдены. Можешь пройти ещё раз — на втором круге увидишь нюансы.`;
+    buttonLabel = "Начать ещё раз с упражнения 1";
+    buttonHref = `/program/${programSlug}/exercise/1`;
+  } else if (totalCompleted === 0 && !hasStarted) {
+    body = `${totalExercises} упражнений Гловера работают только последовательно. Каждое опирается на предыдущее — перепрыгивать бесполезно. Начни с первого.`;
+    buttonLabel = `Начать с упражнения ${nextNumber}`;
+    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
+  } else if (hasStarted) {
+    body = `Ты на упражнении ${nextNumber} из ${totalExercises}. Идёшь по порядку — это правильно: каждое упражнение опирается на предыдущее.`;
+    buttonLabel = `Продолжить с упражнения ${nextNumber}`;
+    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
+  } else {
+    body = `Ты завершил ${totalCompleted} из ${totalExercises} упражнений. Следующее — упражнение ${nextNumber}. Идти стоит по порядку.`;
+    buttonLabel = `Перейти к упражнению ${nextNumber}`;
+    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={`tr-todo-section tr-section-anim${isVisible ? " visible" : ""}`}
+    >
+      <div className="tr-todo-card">
+        <div className="tr-todo-eyebrow">Что делать с этим</div>
+        <p className="tr-todo-body">{body}</p>
+        <Link href={buttonHref} className="tr-cta-primary tr-todo-cta">
+          {buttonLabel}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function CTASection({
   isOwner,
   programSlug,
@@ -343,6 +400,7 @@ export function TestResultsPage(props: TestResultsProps) {
     scoreDirection = "lower_is_better",
     levelLabels = DEFAULT_LEVEL_LABELS,
     levelThresholds = DEFAULT_LEVEL_THRESHOLDS,
+    exerciseProgress,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -387,6 +445,9 @@ export function TestResultsPage(props: TestResultsProps) {
 
   const levelLabel =
     interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
+
+  const showWhatToDo =
+    isOwner && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
 
   return (
     <div className="test-results-page">
@@ -450,6 +511,13 @@ export function TestResultsPage(props: TestResultsProps) {
               <Divider />
             </>
           )}
+
+        {showWhatToDo && (
+          <>
+            <WhatToDoBlock programSlug={programSlug} exerciseProgress={exerciseProgress} />
+            <Divider />
+          </>
+        )}
 
         <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} ctaText={ctaText} testSlug={testSlug} />
 
