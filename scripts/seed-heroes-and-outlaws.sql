@@ -96,7 +96,7 @@ INSERT INTO programs (
       ]
     },
     "author": {
-      "photo_url": "/authors/pearson.jpg",
+      "photo_url": "/authors/pearson.webp",
       "name": "Кэрол С. Пирсон",
       "credentials": "Доктор философии, президент CASA (Center for Archetypal Studies and Applications), создательница системы 12 архетипов в её современной форме. Автор книг «The Hero Within», «Awakening the Heroes Within», соавтор (с Маргарет Марк) «Героя и Бунтаря». Создатель психометрического инструмента Pearson-Marr Archetype Indicator.",
       "quote": "12 архетипов живут в каждом из нас. Разница только в выраженности. Бренд цепляет нас, потому что резонирует с архетипом, который сейчас активен в нашей жизни."
