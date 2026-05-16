@@ -32,7 +32,7 @@ ON CONFLICT (key) DO NOTHING;
 
 -- 3. free_chat и author_chat (shared mode_templates) для программы
 -- sort_order 7: free_chat (СВОБОДНЫЙ ЧАТ, free)
--- sort_order 8: author_chat (РАЗГОВОР С АВТОРАМИ, paid) — AI-симуляция пары Гулдингов
+-- sort_order 8: author_chat (РАЗГОВОР С АВТОРАМИ, paid) — ИИ-симуляция пары Гулдингов
 
 -- Верификация
 SELECT pm.sort_order, mt.key, mt.icon, pm.welcome_title, pm.welcome_mode_label,

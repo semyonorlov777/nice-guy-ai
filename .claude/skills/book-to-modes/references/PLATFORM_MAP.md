@@ -1,6 +1,6 @@
 # Platform Map: Как режимы ложатся на код
 
-Этот файл описывает техническую сторону — как спроектированные режимы реализуются в базе данных и коде платформы Nice Guy AI.
+Этот файл описывает техническую сторону — как спроектированные режимы реализуются в базе данных и коде платформы Книжный Спарринг.
 
 ## Таблицы БД
 
@@ -37,7 +37,7 @@ CREATE TABLE program_modes (
   welcome_mode_label text,           -- Лейбл типа режима ('Анализ', 'Воркшоп', 'Свободный чат')
   welcome_title text,                -- Заголовок ('Деконструктор страхов', 'Спросить Гловера')
   welcome_subtitle text,             -- Подзаголовок (описание 1 строка)
-  welcome_ai_message text,           -- AI-сообщение на welcome-экране (ПЛЕЙН-ТЕКСТ, без markdown — рендерится без ReactMarkdown в NewChatScreen)
+  welcome_ai_message text,           -- ИИ-сообщение на welcome-экране (ПЛЕЙН-ТЕКСТ, без markdown — рендерится без ReactMarkdown в NewChatScreen)
   welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}] — СТРОГО объекты, НЕ строки! Последний reply = {"type": "exit"} для safe-exit визуала
   welcome_system_context text,       -- Контекст для системного промпта (для тем)
   color_class text DEFAULT 'accent', -- CSS-класс цвета ('accent', 'green')
@@ -45,7 +45,7 @@ CREATE TABLE program_modes (
 );
 ```
 
-**КРИТИЧНО:** Без `welcome_mode_label`, `welcome_title`, `welcome_ai_message` и `welcome_replies` — welcome-экран режима будет пустым (нет AI-сообщения, нет кнопок suggested replies). Это касается **ВСЕХ** режимов, включая `free_chat` и `author_chat`.
+**КРИТИЧНО:** Без `welcome_mode_label`, `welcome_title`, `welcome_ai_message` и `welcome_replies` — welcome-экран режима будет пустым (нет ИИ-сообщения, нет кнопок suggested replies). Это касается **ВСЕХ** режимов, включая `free_chat` и `author_chat`.
 
 **welcome_ai_message антипаттерны (см. [chat-message-formatting runbook](../../../../docs/runbooks/chat-message-formatting.md)):**
 - НЕ начинай с `эмодзи **Название режима**\n\n` — `welcome_title` уже рендерится карточкой выше; получится дубликат.
@@ -106,7 +106,7 @@ SELECT
   'Анализ',                       -- welcome_mode_label (из этапа 3)
   'Название режима',              -- welcome_title (из этапа 3)
   'Описание в 1 строку',          -- welcome_subtitle
-  E'AI-сообщение на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
+  E'ИИ-сообщение на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
   '[{"text": "Кнопка 1", "type": "normal"}, {"text": "Кнопка 2", "type": "normal"}]'::jsonb,  -- ⚠️ ОБЯЗАТЕЛЬНО объекты {text, type}, НЕ строки ["текст"] — иначе кнопки будут пустыми!
   'accent',                       -- color_class ('accent' | 'green')
   NULL                            -- badge ('Бесплатно', 'Новое', или NULL)
@@ -269,7 +269,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 
 | Секция | Тип | Обязательна? | Компонент | Описание |
 |--------|-----|-------------|-----------|----------|
-| `hero_tag` | string | ✅ | HeroSection | Мини-тег над заголовком, обычно «AI-тренажёр по книге» |
+| `hero_tag` | string | ✅ | HeroSection | Мини-тег над заголовком, всегда «Книжный Спарринг» (бренд платформы — см. [brand-glossary.md](../../../../docs/brand-glossary.md)) |
 | `hero_title` | string | ✅ | HeroSection | H1, поддерживает `<em>` для акцента |
 | `hero_subtitle` | string | ✅ | HeroSection | 1-2 предложения, value proposition |
 | `hero_cta` | string | ✅ | HeroSection | Текст кнопки CTA |
@@ -356,7 +356,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
   "columns": [
     { "icon": "📕", "name": "Книга", "role": "Теория" },
     { "icon": "🧠", "name": "Профессионал", "role": "Очный специалист" },
-    { "icon": "🤖", "name": "AI-тренажёр", "role": "Ежедневная практика", "highlight": true }
+    { "icon": "🤖", "name": "Книжный Спарринг", "role": "Практика", "highlight": true }
   ],
   "rows": [
     { "param": "Критерий", "values": ["Книга", "Проф", "AI"], "dim": [0] }
@@ -387,7 +387,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 | `anonymous_system_prompt` | Промпт для демо-чата на лендинге | Короткий, зацепить интерес |
 | `anonymous_quick_replies` | Стартовые кнопки демо-чата | `["Вопрос 1?", "Вопрос 2?"]` |
 | `free_chat_welcome` | Welcome-сообщение свободного чата | Используется как fallback на ленде |
-| `meta_title` | SEO title | `"AI-тренажёр: Название — Автор"` |
+| `meta_title` | SEO title | `"Книжный Спарринг: Название — Автор"` |
 | `meta_description` | SEO description | 1-2 предложения |
 
 ### Реестр обложек и фото авторов
@@ -437,7 +437,7 @@ CREATE TABLE test_configs (
   ui_config jsonb NOT NULL DEFAULT '{}',
 
   -- Промпты
-  interpretation_prompt text,             -- Промпт для AI-интерпретации (Gemini Pro)
+  interpretation_prompt text,             -- Промпт для ИИ-интерпретации (Gemini Pro)
   mini_analysis_prompt_template text,     -- Шаблон мини-анализа ({{questionText}})
 
   is_active boolean NOT NULL DEFAULT true,
@@ -602,7 +602,7 @@ INSERT INTO test_configs (
     ]
   }'::jsonb,
 
-  -- interpretation_prompt (AI-интерпретация результатов)
+  -- interpretation_prompt (ИИ-интерпретация результатов)
   E'Ты — психолог, специализирующийся на [тема книги].\n\n...',
 
   -- mini_analysis_prompt_template ({{questionText}} заменяется автоматически)
@@ -668,7 +668,7 @@ SELECT slug, title,
 FROM test_configs
 WHERE slug = 'TEST_SLUG';
 
--- 7. Hub welcome messages (БЕЗ ЭТОГО AI-приветствие на хабе пустой кружок)
+-- 7. Hub welcome messages (БЕЗ ЭТОГО ИИ-приветствие на хабе пустой кружок)
 -- 3 ключа: first / returning_test / returning_notest.
 -- Плейсхолдеры {theme1}/{theme2} в returning_test резолвятся в топ-2 тем по баллам
 -- теста (см. hub/page.tsx). Если у программы нет program_themes — плейсхолдеры
@@ -697,7 +697,7 @@ WHERE slug = 'BOOK_SLUG';
 | 7 | Middleware пропускает | Route `/program/*/test/*` уже public | ✅ Не нужно менять |
 | 8 | Роут `test/[testSlug]` | Уже существует и работает для любого slug | ✅ Не нужно менять |
 | 9 | Пройти тест в браузере | Welcome → вопросы → auth wall → результаты → radar | 🔴 Обязательно! |
-| 9.5 | `programs.hub_messages` заполнены | `/program/<slug>/hub?hub_state=first` → AI-message не пустой; `?hub_state=returning-notest` → тот же тест | 🔴 Без этого на хабе пустой золотой кружок |
+| 9.5 | `programs.hub_messages` заполнены | `/program/<slug>/hub?hub_state=first` → ИИ-message не пустой; `?hub_state=returning-notest` → тот же тест | 🔴 Без этого на хабе пустой золотой кружок |
 | 9.6 | `HistoryScreen` теста — правильный заголовок | `/program/<slug>/test/<testSlug>?test_state=history-multi` → заголовок из `testConfig.ui_config.welcome_title`, не от другой книги | 🟡 Быстрый визуальный прогон через debug-параметр |
 
 ### Важно: какой system_prompt используется
@@ -737,7 +737,7 @@ WHERE slug = 'BOOK_SLUG';
 | 5 | API тест вернул 404 | `programs.test_system_prompt` не заполнен | Чеклист п.3: **обязательно** заполнить |
 | 6 | localStorage чистился неправильно | Хардкод `issp_session_id` вместо динамического ключа | Исправлено: используется `test_session_{slug}` автоматически |
 | 7 | Хаб не показывал «Пройден» для нового теста | Хардкод `mode.key === "test_issp"` | Исправлено: generic проверка `route_suffix.startsWith("/test")` |
-| 8 | Пустой золотой кружок вместо AI-приветствия на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
+| 8 | Пустой золотой кружок вместо ИИ-приветствия на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
 | 9 | HistoryScreen теста показывал «Индекс Синдрома Славного Парня» для других книг | Захардкожен h1 и badge | Исправлено: `HistoryScreen` берёт из `testConfig.ui_config.welcome_title/welcome_badge`. Проверка через `?test_state=history-multi` |
 | 10 | RadarChart рендерил высокий навык красным (тревога) для навыкового теста | `dotColor` и текстовые лейблы зон были захардкожены под `lower_is_better` | Исправлено в Phase A теста Бакирова: `RadarChart` принимает prop `scoreDirection`, инвертирует пороги цвета и зоны лейблов для `higher_is_better`. `TestResultsPage` пробрасывает `testConfig.scoring.score_direction`. Регрессия: ISSP/GPP остались как раньше (default `lower_is_better`) |
 | 11 | `TestResultsPage` хардкодил `getLevelLabel(score)` русскими строками для ISSP | Fallback при отсутствии `interpretation.level_label` от AI всегда возвращал «Низкий/…/Высокий» | Исправлено вместе с #10: `TestResultsPage` принимает props `levelLabels` и `levelThresholds` из `testConfig.scoring`, использует их для fallback. Bakirov-уровни «Новичок/…/Мастер» работают сразу |
@@ -819,9 +819,9 @@ pen, clock, check, book, chat, target, search, message-circle, book-open, map, d
 - **НЕ заполняй `welcome_message` (legacy) и `welcome_ai_message` одновременно** — `prepare-context.ts` отдаёт приоритет legacy, новые поля просто теряются. Линтер `npm run check:chats` ловит это (`welcome-message-exclusive`).
 - Для **новых режимов** используй ТОЛЬКО `welcome_ai_message` + `welcome_replies`. `welcome_message` — только если режим существует с legacy-времён.
 
-### 3. AIBubble + QuickReplyBar split (рендер AI-сообщений)
+### 3. AIBubble + QuickReplyBar split (рендер ИИ-сообщений)
 
-Все чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat) рендерят AI-сообщения через ДВА компонента из [components/chat/ChatMessage.tsx](../../../../components/chat/ChatMessage.tsx):
+Все чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat) рендерят ИИ-сообщения через ДВА компонента из [components/chat/ChatMessage.tsx](../../../../components/chat/ChatMessage.tsx):
 - `<AIBubble>` — пузырь с ReactMarkdown + `remark-breaks`
 - `<QuickReplyBar>` — блок кнопок, **SIBLING** контейнера `.msg`/`.nc-msg`, не внутри
 
