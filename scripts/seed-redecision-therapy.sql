@@ -70,7 +70,7 @@ INSERT INTO programs (
     "hero_cta": "Найти своё предписание ↓",
     "hero_hint": "Бесплатно, без регистрации",
     "book": {
-      "cover_url": "/books/redecision-therapy.png",
+      "cover_url": "/books/redecision-therapy.jpg",
       "alt": "Психотерапия нового решения — Мэри и Роберт Гулдинги",
       "author_top": "Мэри Гулдинг, Роберт Гулдинг",
       "title": "Психотерапия нового решения",
