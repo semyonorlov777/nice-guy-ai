@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Script from "next/script";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
 
@@ -143,6 +144,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
   const calledRef = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const { title, subtitle } = CONTEXT_TITLES[context] || CONTEXT_TITLES.default;
 
@@ -282,6 +284,8 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
   // Open OAuth popup (shared logic for Yandex and Google)
   const openOAuthPopup = useCallback((providerPath: string) => {
+    setError("");
+
     const target = redirectTo && isAllowedRedirect(redirectTo)
       ? redirectTo
       : window.location.pathname;
@@ -290,16 +294,25 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       redirect: target,
     });
 
-    const w = 500;
-    const h = 600;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
 
-    window.open(
+    const popup = window.open(
       `/api/auth/${providerPath}?${params}`,
       "auth-popup",
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`,
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
     );
+
+    // Popup blocked by browser, extension, or corporate policy.
+    // Without this, the button appears completely dead — no feedback at all.
+    if (!popup || popup.closed || typeof popup.closed === "undefined") {
+      setError(
+        "Браузер заблокировал всплывающее окно. Разреши их для этого сайта или войди по email ниже.",
+      );
+      emailInputRef.current?.focus();
+    }
   }, [redirectTo]);
 
   // Yandex auth (popup)
@@ -337,6 +350,15 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setLoading(false);
 
       if (otpError) {
+        console.error("[AuthSheet] signInWithOtp failed", {
+          email,
+          message: otpError.message,
+          status: otpError.status,
+        });
+        Sentry.captureException(otpError, {
+          tags: { provider: "email", step: "send_magic_link" },
+          extra: { email },
+        });
         setError(otpError.message);
         return;
       }
@@ -418,6 +440,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
           <form className="auth-sheet-email-form" onSubmit={handleEmailSubmit}>
             <input
+              ref={emailInputRef}
               type="email"
               placeholder="Email"
               value={email}
