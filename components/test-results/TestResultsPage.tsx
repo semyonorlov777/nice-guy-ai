@@ -289,19 +289,19 @@ function WhatToDoBlock({
   let buttonHref: string;
 
   if (nextNumber === null) {
-    body = `${totalExercises} из ${totalExercises} пройдены. Можешь пройти ещё раз — на втором круге увидишь нюансы.`;
+    body = `Ты прошёл все ${totalExercises} упражнений Гловера. Можешь начать второй круг — заметишь нюансы, которые в первый раз прошли мимо.`;
     buttonLabel = "Начать ещё раз с упражнения 1";
     buttonHref = `/program/${programSlug}/exercise/1`;
   } else if (totalCompleted === 0 && !hasStarted) {
-    body = `${totalExercises} упражнений Гловера работают только последовательно. Каждое опирается на предыдущее — перепрыгивать бесполезно. Начни с первого.`;
+    body = `${totalExercises} упражнений Гловера работают только последовательно — каждое опирается на предыдущее. Перепрыгивать бесполезно: начни с первого.`;
     buttonLabel = `Начать с упражнения ${nextNumber}`;
     buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
   } else if (hasStarted) {
-    body = `Ты на упражнении ${nextNumber} из ${totalExercises}. Идёшь по порядку — это правильно: каждое упражнение опирается на предыдущее.`;
+    body = `${totalExercises} упражнений Гловера работают только последовательно. Ты сейчас на упражнении ${nextNumber} из ${totalExercises} — продолжай по порядку, нет смысла прыгать вперёд.`;
     buttonLabel = `Продолжить с упражнения ${nextNumber}`;
     buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
   } else {
-    body = `Ты завершил ${totalCompleted} из ${totalExercises} упражнений. Следующее — упражнение ${nextNumber}. Идти стоит по порядку.`;
+    body = `${totalExercises} упражнений Гловера работают только последовательно. Ты завершил ${totalCompleted} из ${totalExercises}, следующее — упражнение ${nextNumber}. Открой его и продолжай.`;
     buttonLabel = `Перейти к упражнению ${nextNumber}`;
     buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
   }
@@ -449,9 +449,21 @@ export function TestResultsPage(props: TestResultsProps) {
 
   const searchParams = useSearchParams();
   const demoMode = searchParams?.get("demo") === "todo";
+  const demoState = demoMode ? searchParams?.get("state") : null;
 
   const showWhatToDo =
     (isOwner || demoMode) && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
+
+  // Демо-режим: подменить прогресс пользователя на один из 4 сценариев,
+  // чтобы заказчик мог посмотреть как смотрится каждый текст. Только превью.
+  const effectiveProgress: ExerciseProgress = (() => {
+    if (!demoState) return exerciseProgress;
+    if (demoState === "completed") return { nextNumber: null, totalCompleted: 46, totalExercises: 46, hasStarted: false };
+    if (demoState === "stopped") return { nextNumber: 12, totalCompleted: 11, totalExercises: 46, hasStarted: false };
+    if (demoState === "active") return { nextNumber: 7, totalCompleted: 6, totalExercises: 46, hasStarted: true };
+    if (demoState === "newcomer") return { nextNumber: 1, totalCompleted: 0, totalExercises: 46, hasStarted: false };
+    return exerciseProgress;
+  })();
 
   return (
     <div className="test-results-page">
@@ -518,7 +530,7 @@ export function TestResultsPage(props: TestResultsProps) {
 
         {showWhatToDo && (
           <>
-            <WhatToDoBlock programSlug={programSlug} exerciseProgress={exerciseProgress} />
+            <WhatToDoBlock programSlug={programSlug} exerciseProgress={effectiveProgress} />
             <Divider />
           </>
         )}
