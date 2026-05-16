@@ -74,7 +74,7 @@ export default async function PortraitPage({
             <div className="portrait-empty-icon">&#x25CE;</div>
             <div className="portrait-empty-text">
               Портрет пока пуст. Пройди несколько упражнений,
-              и ИИ начнёт собирать твой психологический профиль.
+              и Система начнёт собирать твой психологический профиль.
             </div>
             <Link href={`/program/${slug}/exercises`} className="portrait-empty-btn">
               Перейти к упражнениям
@@ -88,7 +88,7 @@ export default async function PortraitPage({
 
             {content!.sections.length < 5 && (
               <div className="portrait-hint">
-                Остальные секции появятся по мере общения с ИИ
+                Остальные секции появятся по мере общения с Системой
               </div>
             )}
           </>

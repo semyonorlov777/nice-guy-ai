@@ -14,9 +14,9 @@ import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { platformLanding } from "@/lib/platform-landing";
 
 export const metadata: Metadata = {
-  title: "Книжный Спарринг — тренажёры по книгам по психологии",
+  title: "Онлайн-тренажёры по книгам по психологии",
   description:
-    "От прочитал до применил. Каждая книга — тренажёр с упражнениями, чатом с автором (ИИ) и портретом ваших паттернов.",
+    "От прочитал до применил. Каждая книга — тренажёр с упражнениями, чатом с автором и портретом ваших паттернов.",
 };
 
 export default async function HomePage() {

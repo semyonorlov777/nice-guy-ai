@@ -37,7 +37,7 @@ CREATE TABLE program_modes (
   welcome_mode_label text,           -- Лейбл типа режима ('Анализ', 'Воркшоп', 'Свободный чат')
   welcome_title text,                -- Заголовок ('Деконструктор страхов', 'Спросить Гловера')
   welcome_subtitle text,             -- Подзаголовок (описание 1 строка)
-  welcome_ai_message text,           -- ИИ-сообщение на welcome-экране (ПЛЕЙН-ТЕКСТ, без markdown — рендерится без ReactMarkdown в NewChatScreen)
+  welcome_ai_message text,           -- Система на welcome-экране (ПЛЕЙН-ТЕКСТ, без markdown — рендерится без ReactMarkdown в NewChatScreen)
   welcome_replies jsonb DEFAULT '[]',-- Suggested replies: [{"text": "...", "type": "normal"}] — СТРОГО объекты, НЕ строки! Последний reply = {"type": "exit"} для safe-exit визуала
   welcome_system_context text,       -- Контекст для системного промпта (для тем)
   color_class text DEFAULT 'accent', -- CSS-класс цвета ('accent', 'green')
@@ -106,7 +106,7 @@ SELECT
   'Анализ',                       -- welcome_mode_label (из этапа 3)
   'Название режима',              -- welcome_title (из этапа 3)
   'Описание в 1 строку',          -- welcome_subtitle
-  E'ИИ-сообщение на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
+  E'Система на welcome-экране...', -- welcome_ai_message (markdown, из этапа 3)
   '[{"text": "Кнопка 1", "type": "normal"}, {"text": "Кнопка 2", "type": "normal"}]'::jsonb,  -- ⚠️ ОБЯЗАТЕЛЬНО объекты {text, type}, НЕ строки ["текст"] — иначе кнопки будут пустыми!
   'accent',                       -- color_class ('accent' | 'green')
   NULL                            -- badge ('Бесплатно', 'Новое', или NULL)
@@ -668,7 +668,7 @@ SELECT slug, title,
 FROM test_configs
 WHERE slug = 'TEST_SLUG';
 
--- 7. Hub welcome messages (БЕЗ ЭТОГО ИИ-приветствие на хабе пустой кружок)
+-- 7. Hub welcome messages (БЕЗ ЭТОГО Система на хабе пустой кружок)
 -- 3 ключа: first / returning_test / returning_notest.
 -- Плейсхолдеры {theme1}/{theme2} в returning_test резолвятся в топ-2 тем по баллам
 -- теста (см. hub/page.tsx). Если у программы нет program_themes — плейсхолдеры
@@ -737,7 +737,7 @@ WHERE slug = 'BOOK_SLUG';
 | 5 | API тест вернул 404 | `programs.test_system_prompt` не заполнен | Чеклист п.3: **обязательно** заполнить |
 | 6 | localStorage чистился неправильно | Хардкод `issp_session_id` вместо динамического ключа | Исправлено: используется `test_session_{slug}` автоматически |
 | 7 | Хаб не показывал «Пройден» для нового теста | Хардкод `mode.key === "test_issp"` | Исправлено: generic проверка `route_suffix.startsWith("/test")` |
-| 8 | Пустой золотой кружок вместо ИИ-приветствия на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
+| 8 | Пустой золотой кружок вместо Система на хабе GPP | `programs.hub_messages = {}` для новой книги | Шаг 7 в SQL-шаблоне теперь обязательный; визуальная проверка `?hub_state=first` |
 | 9 | HistoryScreen теста показывал «Индекс Синдрома Славного Парня» для других книг | Захардкожен h1 и badge | Исправлено: `HistoryScreen` берёт из `testConfig.ui_config.welcome_title/welcome_badge`. Проверка через `?test_state=history-multi` |
 | 10 | RadarChart рендерил высокий навык красным (тревога) для навыкового теста | `dotColor` и текстовые лейблы зон были захардкожены под `lower_is_better` | Исправлено в Phase A теста Бакирова: `RadarChart` принимает prop `scoreDirection`, инвертирует пороги цвета и зоны лейблов для `higher_is_better`. `TestResultsPage` пробрасывает `testConfig.scoring.score_direction`. Регрессия: ISSP/GPP остались как раньше (default `lower_is_better`) |
 | 11 | `TestResultsPage` хардкодил `getLevelLabel(score)` русскими строками для ISSP | Fallback при отсутствии `interpretation.level_label` от AI всегда возвращал «Низкий/…/Высокий» | Исправлено вместе с #10: `TestResultsPage` принимает props `levelLabels` и `levelThresholds` из `testConfig.scoring`, использует их для fallback. Bakirov-уровни «Новичок/…/Мастер» работают сразу |

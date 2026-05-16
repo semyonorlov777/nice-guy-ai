@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase-server";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Тесты по книгам психологии — Книжный Спарринг",
+  title: "Тесты по книгам по психологии",
   description:
     "Бесплатные тесты по книгам Берна, Бредберри, Бакирова, Гулдингов и других. Узнай свои паттерны за 5 минут — без регистрации.",
 };

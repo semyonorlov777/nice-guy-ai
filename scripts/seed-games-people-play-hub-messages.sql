@@ -1,6 +1,6 @@
 -- Seed: hub_messages для программы "Игры, в которые играют люди" (GPP)
 -- Заполняет programs.hub_messages — 3 ключа (first / returning_test / returning_notest).
--- Без этого на /program/games-people-play/hub ИИ-приветствие рендерится пустым золотым кружком.
+-- Без этого на /program/games-people-play/hub Система рендерится пустым золотым кружком.
 -- Применять через `mcp__supabase__apply_migration` или Supabase SQL Editor.
 
 UPDATE programs SET hub_messages = '{
