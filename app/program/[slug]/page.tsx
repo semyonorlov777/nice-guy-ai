@@ -27,8 +27,8 @@ export async function generateMetadata({
     .single();
 
   return {
-    title: program?.meta_title || "Тренажёры по книгам",
-    description: program?.meta_description || "Платформа тренажёров по книгам для работы над собой",
+    title: program?.meta_title || "AI-тренажёры по книгам",
+    description: program?.meta_description || "Платформа AI-тренажёров для работы над собой",
   };
 }
 
