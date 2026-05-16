@@ -488,6 +488,7 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - Это создаст тестовую сессию (dev_test@niceguy.local) и перенаправит в приложение
 - Работает ТОЛЬКО в dev-окружении, в production возвращает 404
 - После этого можно тестировать любые защищённые страницы
+- В рабочих копиях (`.claude/worktrees/*`) `.env.local` подтягивается автоматически через SessionStart-хук — см. [worktree-env-sync](docs/runbooks/worktree-env-sync.md). Если что-то не сработало — запустить скрипт руками.
 
 ## Правило интеграционной проверки (Data Flow Verification)
 

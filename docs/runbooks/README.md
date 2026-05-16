@@ -10,6 +10,7 @@
 | [create-test](create-test.md) | Создание теста для программы | При каждом новом тесте |
 | [prompt-tuning](prompt-tuning.md) | Тюнинг системных промптов | Регулярно |
 | [chat-message-formatting](chat-message-formatting.md) | Правила welcome-сообщений и quick replies | При каждом seed SQL, при аудите книг |
+| [worktree-env-sync](worktree-env-sync.md) | Автоподтяг `.env.local` в рабочие копии | Автоматически при старте Claude Code в worktree |
 
 ## Как создать новый runbook
 
