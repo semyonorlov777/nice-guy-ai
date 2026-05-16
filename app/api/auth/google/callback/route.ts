@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createServerClient } from "@supabase/ssr";
-import { exchangeCodeAndGetUser, findOrCreateGoogleUser } from "@/lib/google-auth";
+import { exchangeCodeAndGetUser, findOrCreateGoogleUser, type GoogleUser } from "@/lib/google-auth";
 import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -21,22 +22,34 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
+    console.error("[auth/google/callback] missing code", { isPopup, stateRedirect });
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.search = "?error=google_missing_code";
     return NextResponse.redirect(url);
   }
 
+  let googleUser: GoogleUser | null = null;
+
   try {
     const redirectUri = `${request.nextUrl.origin}/api/auth/google/callback`;
 
     // Exchange code for token + fetch Google profile
-    const googleUser = await exchangeCodeAndGetUser(code, redirectUri);
+    googleUser = await exchangeCodeAndGetUser(code, redirectUri);
 
     // Find or create Supabase user, get session
     const session = await findOrCreateGoogleUser(googleUser);
 
     if (!session) {
+      console.error("[auth/google/callback] session_failed", {
+        email: googleUser.email,
+        googleId: googleUser.id,
+      });
+      Sentry.captureMessage("Google session_failed", {
+        level: "error",
+        tags: { provider: "google", step: "session" },
+        extra: { email: googleUser.email, googleId: googleUser.id },
+      });
       const url = request.nextUrl.clone();
       url.pathname = "/auth";
       url.search = "?error=google_session_failed";
@@ -89,7 +102,19 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("Google auth error:", err);
+    console.error("[auth/google/callback] auth_failed", {
+      email: googleUser?.email ?? null,
+      googleId: googleUser?.id ?? null,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    Sentry.captureException(err, {
+      tags: { provider: "google", step: "auth" },
+      extra: {
+        email: googleUser?.email ?? null,
+        googleId: googleUser?.id ?? null,
+        stateRedirect,
+      },
+    });
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.search = "?error=google_auth_failed";

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
-import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
+// Magic Link landing: do NOT exchange the code here.
+// Email scanners (Gmail web preview, Outlook Safe Links, antivirus, etc.) issue
+// a GET to every link in incoming mail and would burn the one-time code before
+// the human ever clicks. We just hand off to /auth/confirm, which requires a
+// real click to POST the exchange.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -13,23 +16,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const confirmUrl = new URL("/auth/confirm", request.url);
+  confirmUrl.searchParams.set("code", code);
+  if (redirect) confirmUrl.searchParams.set("redirect", redirect);
 
-  if (error) {
-    return NextResponse.redirect(
-      new URL("/auth?error=callback_failed", request.url),
-    );
-  }
-
-  const isValidRedirect = isAllowedRedirect(redirect);
-
-  // If redirect points to a test page, send user to link-success instead
-  // (the original tab will detect auth via onAuthStateChange)
-  if (isValidRedirect && /^\/program\/[^/]+\/test\//.test(redirect)) {
-    return NextResponse.redirect(new URL("/auth/link-success", request.url));
-  }
-
-  const target = isValidRedirect ? redirect : DEFAULT_REDIRECT;
-  return NextResponse.redirect(new URL(target, request.url));
+  return NextResponse.redirect(confirmUrl);
 }
