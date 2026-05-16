@@ -19,7 +19,7 @@ export function LandingHeader({ ctaText, ctaHref, isLoggedIn, programSlug }: Lan
         </div>
       </Link>
       <nav className="header-nav">
-        <Link href="/#catalog" className="header-nav-link">Все книги</Link>
+        <Link href="/#catalog" className="header-nav-link">Все программы</Link>
         <Link href="/tests" className="header-nav-link">Тесты</Link>
       </nav>
       <div className="header-right">
