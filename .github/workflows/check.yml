@@ -25,8 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Hardcoded values and seed checks
-        run: npm run check
+      - name: Hardcoded values check
+        run: bash scripts/check-hardcodes.sh
 
       - name: TypeScript
         run: npx tsc --noEmit

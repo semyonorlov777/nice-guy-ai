@@ -1,5 +1,3 @@
 public/*.html
 docs/
-*.md
-!CHANGELOG.md
-!README.md
+.claude/
