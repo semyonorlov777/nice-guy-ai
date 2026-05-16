@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createServerClient } from "@supabase/ssr";
-import { exchangeCodeAndGetUser, findOrCreateYandexUser } from "@/lib/yandex-auth";
+import { exchangeCodeAndGetUser, findOrCreateYandexUser, type YandexUser } from "@/lib/yandex-auth";
 import { DEFAULT_REDIRECT, isAllowedRedirect } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
@@ -25,20 +26,32 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
+    console.error("[auth/yandex/callback] missing code", { isPopup, stateRedirect });
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.search = "?error=yandex_missing_code";
     return NextResponse.redirect(url);
   }
 
+  let yaUser: YandexUser | null = null;
+
   try {
     // Exchange code for token + fetch Yandex profile
-    const yaUser = await exchangeCodeAndGetUser(code);
+    yaUser = await exchangeCodeAndGetUser(code);
 
     // Find or create Supabase user, get session
     const session = await findOrCreateYandexUser(yaUser);
 
     if (!session) {
+      console.error("[auth/yandex/callback] session_failed", {
+        email: yaUser.email,
+        yandexId: yaUser.id,
+      });
+      Sentry.captureMessage("Yandex session_failed", {
+        level: "error",
+        tags: { provider: "yandex", step: "session" },
+        extra: { email: yaUser.email, yandexId: yaUser.id },
+      });
       const url = request.nextUrl.clone();
       url.pathname = "/auth";
       url.search = "?error=yandex_session_failed";
@@ -91,7 +104,19 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error("Yandex auth error:", err);
+    console.error("[auth/yandex/callback] auth_failed", {
+      email: yaUser?.email ?? null,
+      yandexId: yaUser?.id ?? null,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    Sentry.captureException(err, {
+      tags: { provider: "yandex", step: "auth" },
+      extra: {
+        email: yaUser?.email ?? null,
+        yandexId: yaUser?.id ?? null,
+        stateRedirect,
+      },
+    });
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.search = "?error=yandex_auth_failed";
