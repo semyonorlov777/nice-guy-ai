@@ -10,19 +10,8 @@ export async function ProgramCatalogGrid() {
 
   const { data: programs } = await serviceClient
     .from("programs")
-    .select("id, slug, title, description, landing_data, features")
+    .select("id, slug, title, landing_data")
     .order("created_at");
-
-  const exerciseCounts = new Map<string, number>();
-  if (programs?.length) {
-    for (const p of programs) {
-      const { count } = await serviceClient
-        .from("exercises")
-        .select("id", { count: "exact", head: true })
-        .eq("program_id", p.id);
-      exerciseCounts.set(p.id, count || 0);
-    }
-  }
 
   return (
     <section className="platform-catalog" id="catalog">
@@ -38,7 +27,6 @@ export async function ProgramCatalogGrid() {
             const landing = program.landing_data as LandingDataMin | null;
             const coverUrl = landing?.book?.cover_url;
             const author = landing?.book?.author_top;
-            const exerciseCount = exerciseCounts.get(program.id) || 0;
 
             return (
               <Link
@@ -56,17 +44,6 @@ export async function ProgramCatalogGrid() {
                   {author && (
                     <div className="catalog-card-author">{author}</div>
                   )}
-                  {program.description && (
-                    <p className="catalog-card-desc">{program.description}</p>
-                  )}
-                </div>
-                <div className="catalog-card-footer">
-                  <span className="catalog-card-badge">
-                    {exerciseCount > 0
-                      ? `${exerciseCount} упражнений`
-                      : "Свободный чат"}
-                  </span>
-                  <span className="catalog-card-btn">Открыть →</span>
                 </div>
               </Link>
             );
