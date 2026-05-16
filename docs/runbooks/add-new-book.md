@@ -49,7 +49,7 @@ INSERT INTO programs (
   free_chat_welcome,        -- Welcome message для free_chat
   author_chat_system_prompt,-- Промпт "от лица автора"
   author_chat_welcome,      -- Welcome message для author_chat
-  portrait_prompt,          -- Промпт для AI-анализа портрета
+  portrait_prompt,          -- Промпт для ИИ-анализа портрета
   config,                   -- '{}' если нет кастомной конфигурации
   features,                 -- JSON с флагами включённых режимов
   meta_title,               -- SEO title
@@ -139,7 +139,7 @@ JSONB-поле в `programs` с данными лендинга. Структу�
 
 ```json
 {
-  "hero_tag": "AI-тренажёр по книге",
+  "hero_tag": "Книжный Спарринг",
   "hero_title": "Заголовок с <em>акцентом</em>",
   "hero_subtitle": "Описание...",
   "hero_cta": "Начать бесплатно ↓",
