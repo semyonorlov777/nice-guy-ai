@@ -1,13 +1,13 @@
 ---
 name: book-to-modes
-description: "Проектирование режимов Книжный Спарринг по книге. Design AI trainer modes (system prompts) for psychology/self-help books on the Книжный Спарринг platform. ALWAYS use this skill when the user mentions any book by title and wants to create training modes, exercises, or system prompts — even if they don't explicitly say 'use skill'. Triggers on: 'новая книга', 'режимы для книги', 'промпты для книги', 'спроектируй режимы', 'сделай тренажёр', 'промпты для тренажёра', 'book to modes', 'архетипы для книги', 'системные промпты для книги', 'давай следующую книгу', 'добавляем книгу', 'обработай книгу', 'создай режимы', 'режимы по книге', 'тренажёр по книге', 'design modes', 'create prompts for book', any book title + 'режимы' or 'промпты' or 'тренажёр'. Also triggers when the user uploads a PDF of a book and asks to process it. Full pipeline: book analysis → archetype mapping → mode detailing → ready-to-use Gemini API system prompts."
+description: "Проектирование режимов онлайн-тренажёр по книге. Design AI trainer modes (system prompts) for psychology/self-help books on the онлайн-тренажёр platform. ALWAYS use this skill when the user mentions any book by title and wants to create training modes, exercises, or system prompts — even if they don't explicitly say 'use skill'. Triggers on: 'новая книга', 'режимы для книги', 'промпты для книги', 'спроектируй режимы', 'сделай тренажёр', 'промпты для тренажёра', 'book to modes', 'архетипы для книги', 'системные промпты для книги', 'давай следующую книгу', 'добавляем книгу', 'обработай книгу', 'создай режимы', 'режимы по книге', 'тренажёр по книге', 'design modes', 'create prompts for book', any book title + 'режимы' or 'промпты' or 'тренажёр'. Also triggers when the user uploads a PDF of a book and asks to process it. Full pipeline: book analysis → archetype mapping → mode detailing → ready-to-use Gemini API system prompts."
 ---
 
-# Book-to-Modes: Проектирование режимов Книжный Спарринг по книге
+# Book-to-Modes: Проектирование режимов онлайн-тренажёр по книге
 
 ## Обзор
 
-Этот скилл превращает книгу по психологии/саморазвитию в набор из 6-8 режимов Книжный Спарринг с готовыми системными промптами для Gemini API.
+Этот скилл превращает книгу по психологии/саморазвитию в набор из 6-8 режимов онлайн-тренажёра с готовыми системными промптами для Gemini API.
 
 **Вход:** Название книги (+ опционально PDF/текст книги). Если у автора несколько связанных книг — можно объединить.
 **Выход:** MD-файл с детализацией режимов + MD-файл с готовыми промптами + landing_data JSON + таблица технического маппинга
@@ -429,7 +429,7 @@ WHERE slug = 'BOOK_SLUG';
 - `hero_subtitle`: что конкретно делает тренажёр (1-2 предложения)
 - `hero_cta`: текст CTA-кнопки (обычно «Начать бесплатно ↓» или «Узнать свой X ↓»)
 - `hero_hint`: «Бесплатно, без регистрации» или «Без регистрации»
-- `hero_tag`: всегда «Книжный Спарринг» (бренд платформы). Не отступать — канон зафиксирован в [docs/brand-glossary.md](../../../docs/brand-glossary.md)
+- `hero_tag`: всегда «Онлайн-тренажёр по книге [Название]» (название книги из book.title). Не отступать — канон зафиксирован в [docs/brand-glossary.md](../../../docs/brand-glossary.md)
 
 **b) Book** — обложка и автор:
 - `cover_url`: найти книгу на **litres.ru** → ПКМ на обложку → «Копировать адрес изображения». Формат: `https://cdn.litres.ru/pub/c/cover_415/{id}.webp`

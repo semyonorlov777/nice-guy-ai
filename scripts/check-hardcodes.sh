@@ -47,40 +47,54 @@ else
 fi
 
 echo ""
-echo "=== Checking for stale brand strings in landing/seed (see docs/brand-glossary.md) ==="
+echo "=== Checking for stale brand strings (see docs/brand-glossary.md) ==="
 
-# Любое «AI-тренажёр» в любом падеже — в seed-SQL и компонентах фронтенда.
-AI_TRAINER_HITS=$(grep -rnE 'AI-тренажёр[аыуомеовамиях]*' \
-  scripts/seed-*.sql \
-  lib/platform-landing.ts \
-  components/landing/ \
-  app/ 2>/dev/null \
+# Папки и файлы, которые проверяем
+SCAN_PATHS="scripts/seed-*.sql lib/platform-landing.ts components/landing/ app/page.tsx app/layout.tsx app/legal/ app/tests/ app/program/"
+
+# Любое «AI-тренажёр» и «Книжный Спарринг по»/«Книжный Спарринг —» в видимых текстах.
+# Ярлык карточки сравнения (`"name": "Книжный Спарринг"`) НЕ ловится — там после слова кавычка.
+BRAND_AS_FORMAT_HITS=$(grep -rnE 'AI-тренажёр[аыуомеовамиях]*|Книжный Спарринг (по|—|,|\.|\()' \
+  $SCAN_PATHS 2>/dev/null \
   | grep -v 'node_modules' \
-  | grep -v '.next/')
+  | grep -v '.next/' \
+  | grep -v 'brand-glossary' \
+  | grep -v 'docs/runbooks' \
+  | grep -v 'docs/adr')
 
-if [ -n "$AI_TRAINER_HITS" ]; then
-  echo "$AI_TRAINER_HITS"
-  echo "  ↳ Замени AI-тренажёр (любые падежи) на «Книжный Спарринг»"
+if [ -n "$BRAND_AS_FORMAT_HITS" ]; then
+  echo "$BRAND_AS_FORMAT_HITS"
+  echo "  ↳ Замени на «Онлайн-тренажёр по книге [Название]»"
   FOUND=1
 fi
 
-# Любые AI-<существительное> кроме служебных комментариев и SDK-имён.
-AI_PREFIX_HITS=$(grep -rnE 'AI-[А-Яа-яё]+' \
-  scripts/seed-*.sql \
-  lib/platform-landing.ts \
-  components/landing/ \
-  app/legal/ \
-  app/program/ 2>/dev/null \
+# Любые «ИИ-<существительное>» и «AI-<существительное>» в видимых текстах.
+AI_PREFIX_HITS=$(grep -rnE '(AI|ИИ)-[А-Яа-яёЁ]+' \
+  $SCAN_PATHS 2>/dev/null \
   | grep -v 'node_modules' \
   | grep -v '.next/' \
-  | grep -v '^[^:]*:[^:]*://' \
   | grep -vE '^\s*//' \
   | grep -vE '^\s*/\*' \
   | grep -vE '^\s*\*')
 
 if [ -n "$AI_PREFIX_HITS" ]; then
   echo "$AI_PREFIX_HITS"
-  echo "  ↳ Замени AI- (с кириллическим существительным) на ИИ-"
+  echo "  ↳ Замени на «Система» (просто, без дефиса и дополнений)"
+  FOUND=1
+fi
+
+# Одиночное слово «ИИ» в видимых текстах для пользователя.
+# Не ловим в комментариях кода и в namespace-именах (AI SDK, AI Gateway).
+SOLO_AI_HITS=$(grep -rnE '(^|[^A-Za-zА-Яа-я])ИИ([^A-Za-zА-Яа-я]|$)' \
+  $SCAN_PATHS 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/' \
+  | grep -vE '^\s*//' \
+  | grep -vE '^\s*/\*')
+
+if [ -n "$SOLO_AI_HITS" ]; then
+  echo "$SOLO_AI_HITS"
+  echo "  ↳ Замени одиночное «ИИ» на «Система»"
   FOUND=1
 fi
 
@@ -100,20 +114,17 @@ fi
 
 # «Nice Guy AI» — старый бренд.
 OLD_BRAND_HITS=$(grep -rn 'Nice Guy AI' \
-  scripts/seed-*.sql \
-  lib/platform-landing.ts \
-  components/landing/ \
-  app/ 2>/dev/null \
+  $SCAN_PATHS 2>/dev/null \
   | grep -v 'node_modules' \
   | grep -v '.next/')
 
 if [ -n "$OLD_BRAND_HITS" ]; then
   echo "$OLD_BRAND_HITS"
-  echo "  ↳ Замени \"Nice Guy AI\" на \"Книжный Спарринг\""
+  echo "  ↳ Замени «Nice Guy AI» на «Книжный Спарринг» или на «Онлайн-тренажёр»"
   FOUND=1
 fi
 
-if [ -z "$AI_TRAINER_HITS" ] && [ -z "$AI_PREFIX_HITS" ] && [ -z "$BRAND_ROLE_HITS" ] && [ -z "$OLD_BRAND_HITS" ]; then
+if [ -z "$BRAND_AS_FORMAT_HITS" ] && [ -z "$AI_PREFIX_HITS" ] && [ -z "$SOLO_AI_HITS" ] && [ -z "$BRAND_ROLE_HITS" ] && [ -z "$OLD_BRAND_HITS" ]; then
   echo "  No stale brand strings found"
 fi
 
