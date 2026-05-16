@@ -269,7 +269,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 
 | Секция | Тип | Обязательна? | Компонент | Описание |
 |--------|-----|-------------|-----------|----------|
-| `hero_tag` | string | ✅ | HeroSection | Мини-тег над заголовком, обычно «AI-тренажёр по книге» |
+| `hero_tag` | string | ✅ | HeroSection | Мини-тег над заголовком, всегда «Книжный Спарринг» (бренд платформы — см. [brand-glossary.md](../../../../docs/brand-glossary.md)) |
 | `hero_title` | string | ✅ | HeroSection | H1, поддерживает `<em>` для акцента |
 | `hero_subtitle` | string | ✅ | HeroSection | 1-2 предложения, value proposition |
 | `hero_cta` | string | ✅ | HeroSection | Текст кнопки CTA |
@@ -356,7 +356,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
   "columns": [
     { "icon": "📕", "name": "Книга", "role": "Теория" },
     { "icon": "🧠", "name": "Профессионал", "role": "Очный специалист" },
-    { "icon": "🤖", "name": "AI-тренажёр", "role": "Ежедневная практика", "highlight": true }
+    { "icon": "🤖", "name": "Книжный Спарринг", "role": "Практика", "highlight": true }
   ],
   "rows": [
     { "param": "Критерий", "values": ["Книга", "Проф", "AI"], "dim": [0] }
