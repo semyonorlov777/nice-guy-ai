@@ -3,7 +3,8 @@ import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig } from "@/lib/test-config";
-import { buildAnswer, extractScores, type TestSession } from "@/lib/test-helpers";
+import { buildAnswer, extractScores } from "@/lib/test-helpers";
+import { getOrCreateAnonymousSession } from "@/lib/queries/test-session";
 import { createSSEResponse, streamToSSE } from "@/lib/test-sse";
 
 export async function handleAnonymous({
@@ -21,45 +22,29 @@ export async function handleAnonymous({
   systemPrompt: string;
   testConfig: TestConfig;
 }): Promise<Response> {
-  // Load or create session
-  let session: TestSession | null = null;
-  const { data: existingSession } = await serviceClient
-    .from("test_sessions")
-    .select("*")
-    .eq("session_id", sessionId)
-    .maybeSingle();
+  // Atomic get-or-create to avoid races when parallel requests arrive
+  // before the session row exists.
+  const sessionResult = await getOrCreateAnonymousSession(
+    serviceClient,
+    sessionId,
+    testConfig.slug,
+  );
 
-  if (existingSession) {
-    session = existingSession as TestSession;
-    if (session.status !== "in_progress") {
+  if (!sessionResult.ok) {
+    if (sessionResult.reason === "not_in_progress") {
       return Response.json(
         { error: "Сессия уже завершена или мигрирована" },
         { status: 400 },
       );
     }
-  } else {
-    const { data: newSession, error: insertError } = await serviceClient
-      .from("test_sessions")
-      .insert({
-        session_id: sessionId,
-        test_slug: testConfig.slug,
-        status: "in_progress",
-        current_question: 0,
-        answers: [],
-        messages: [],
-      })
-      .select("*")
-      .single();
-
-    if (insertError || !newSession) {
-      console.error("[test] Failed to create test_session:", insertError);
-      return Response.json(
-        { error: "Не удалось создать сессию теста" },
-        { status: 500 },
-      );
-    }
-    session = newSession as TestSession;
+    console.error("[test] Failed to create test_session:", sessionResult.error);
+    return Response.json(
+      { error: "Не удалось создать сессию теста" },
+      { status: 500 },
+    );
   }
+
+  const session = sessionResult.session;
 
   const currentQuestion = session.current_question;
   const existingAnswers = (session.answers || []) as TestAnswer[];

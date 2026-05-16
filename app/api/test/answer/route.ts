@@ -6,6 +6,7 @@ import { generateTestInterpretation } from "@/lib/test-interpretation";
 import type { TestAnswer } from "@/lib/test-scoring";
 import type { TestConfig } from "@/lib/test-config";
 import { getTestConfig, getTestConfigByProgram } from "@/lib/queries/test-config";
+import { getOrCreateAnonymousSession } from "@/lib/queries/test-session";
 import { createRateLimit } from "@/lib/rate-limit";
 import { apiError } from "@/lib/api-helpers";
 import { insertMessage } from "@/lib/queries/messages";
@@ -161,45 +162,29 @@ export async function POST(request: Request) {
       return apiError("rate_limited", 429);
     }
 
-    const { data: existingSession } = await serviceClient
-      .from("test_sessions")
-      .select("*")
-      .eq("session_id", sessionId)
-      .maybeSingle();
+    // Atomic get-or-create to avoid races when parallel answers arrive
+    // before the session row exists (used to surface as 500 session_create_failed)
+    const result = await getOrCreateAnonymousSession(
+      serviceClient,
+      sessionId,
+      testConfig.slug,
+    );
 
-    if (existingSession && existingSession.status !== "in_progress") {
-      return apiError("session_not_found", 404);
-    }
-
-    if (existingSession) {
-      session = existingSession;
-    } else {
-      // Auto-create session for typed-answer tests (session created lazily on first answer)
-      const { data: newSession, error: createErr } = await serviceClient
-        .from("test_sessions")
-        .insert({
-          session_id: sessionId,
-          test_slug: testConfig.slug,
-          status: "in_progress",
-          current_question: 0,
-          answers: [],
-          messages: [],
-        })
-        .select("*")
-        .single();
-
-      if (createErr || !newSession) {
-        console.error("[test:answer] Auto-create session failed:", createErr);
-        return apiError("session_create_failed", 500);
+    if (!result.ok) {
+      if (result.reason === "not_in_progress") {
+        return apiError("session_not_found", 404);
       }
-      session = newSession;
+      console.error("[test:answer] getOrCreateAnonymousSession failed:", result.error);
+      return apiError("session_create_failed", 500);
     }
+
+    session = result.session;
 
     testState = {
-      current_question: session!.current_question as number,
+      current_question: session.current_question as number,
       status: "in_progress",
-      started_at: session!.created_at as string,
-      answers: (session!.answers || []) as TestAnswer[],
+      started_at: session.created_at as string,
+      answers: (session.answers || []) as TestAnswer[],
     };
     programId = ""; // not needed for anonymous (no test_results insert)
   }
