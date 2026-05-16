@@ -44,8 +44,8 @@ export const platformLanding: PlatformLandingData = {
     subtitle:
       "От прочитал до применил. Каждая книга — не теория, а тренажёр: тест на ваши паттерны, чат с ИИ-автором и упражнения, которые приводят к изменениям.",
     primary_cta: { text: "Выбрать программу", href: "#catalog" },
-    secondary_cta: { text: "Пройти бесплатный тест", href: "/program/nice-guy/test" },
-    hint: "Без регистрации. Первое сообщение в чате — бесплатно.",
+    secondary_cta: { text: "Пройти бесплатный тест", href: "/tests" },
+    hint: "Без регистрации. Тесты и первое сообщение в чате — бесплатно.",
   },
 
   social_proof: [
@@ -178,8 +178,8 @@ export const platformLanding: PlatformLandingData = {
 
   final_cta: {
     title: "С чего начать?",
-    subtitle: "Выберите программу по книге или пройдите бесплатный тест на токсичные паттерны.",
+    subtitle: "Выберите программу по книге или пройдите один из бесплатных тестов — карту ваших паттернов или навыков.",
     primary: { text: "Выбрать программу", href: "#catalog" },
-    secondary: { text: "Пройти бесплатный тест", href: "/program/nice-guy/test" },
+    secondary: { text: "Выбрать тест", href: "/tests" },
   },
 };

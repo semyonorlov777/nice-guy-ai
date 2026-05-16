@@ -29,11 +29,9 @@ export default async function HomePage() {
   return (
     <div className="landing-v3">
       <LandingHeader
-        ctaText={isLoggedIn ? "В кабинет" : "Пройти бесплатный тест"}
+        ctaText={isLoggedIn ? "В кабинет" : "Пройти тест"}
         ctaHref={
-          isLoggedIn
-            ? `/program/${DEFAULT_PROGRAM_SLUG}/hub`
-            : `/program/${DEFAULT_PROGRAM_SLUG}/test`
+          isLoggedIn ? `/program/${DEFAULT_PROGRAM_SLUG}/hub` : "/tests"
         }
         isLoggedIn={isLoggedIn}
         programSlug={DEFAULT_PROGRAM_SLUG}
