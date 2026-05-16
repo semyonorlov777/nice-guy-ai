@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ScaleResult } from "@/lib/test-scoring";
 import type { TestInterpretation } from "@/lib/test-interpretation";
 import type { ExerciseProgress } from "@/lib/queries/exercise-progress";
@@ -446,8 +447,11 @@ export function TestResultsPage(props: TestResultsProps) {
   const levelLabel =
     interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
 
+  const searchParams = useSearchParams();
+  const demoMode = searchParams?.get("demo") === "todo";
+
   const showWhatToDo =
-    isOwner && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
+    (isOwner || demoMode) && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
 
   return (
     <div className="test-results-page">
