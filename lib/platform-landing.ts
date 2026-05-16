@@ -63,7 +63,7 @@ export const platformLanding: PlatformLandingData = {
       { icon: "📕", name: "Книга", role: "Теория" },
       { icon: "🧑‍⚕️", name: "Психолог", role: "Терапия" },
       { icon: "👥", name: "Группа", role: "Опыт других" },
-      { icon: "🤖", name: "AI-тренажёр", role: "Практика", highlight: true },
+      { icon: "🤖", name: "Книжный Спарринг", role: "Практика", highlight: true },
     ],
     rows: [
       {
