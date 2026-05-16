@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import type { ScaleResult } from "@/lib/test-scoring";
 import type { TestInterpretation } from "@/lib/test-interpretation";
 import { useCountUp } from "./useCountUp";
@@ -417,11 +416,8 @@ export function TestResultsPage(props: TestResultsProps) {
   const levelLabel =
     interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
 
-  const searchParams = useSearchParams();
-  const demoMode = searchParams?.get("demo") === "todo";
-
   const showWhatToDo =
-    (isOwner || demoMode) && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
+    isOwner && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
 
   return (
     <div className="test-results-page">
