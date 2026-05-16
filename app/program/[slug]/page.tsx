@@ -12,7 +12,6 @@ import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { ChatSection } from "@/components/landing/ChatSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { getAllPrograms } from "@/lib/queries/all-programs";
 
 export async function generateMetadata({
   params,
@@ -114,14 +113,11 @@ export default async function ProgramLanding({
   const isLoggedIn = !!user;
 
   const svc = createServiceClient();
-  const [{ data: program }, allPrograms] = await Promise.all([
-    svc
-      .from("programs")
-      .select("free_chat_welcome, anonymous_quick_replies, landing_data")
-      .eq("slug", slug)
-      .single(),
-    getAllPrograms(svc),
-  ]);
+  const { data: program } = await svc
+    .from("programs")
+    .select("free_chat_welcome, anonymous_quick_replies, landing_data")
+    .eq("slug", slug)
+    .single();
 
   const landingData = program?.landing_data as LandingData | null;
   const welcomeMessage = program?.free_chat_welcome || "";
@@ -154,7 +150,6 @@ export default async function ProgramLanding({
         ctaHref={chatHref}
         isLoggedIn={isLoggedIn}
         programSlug={slug}
-        programs={allPrograms}
       />
 
       <HeroSection

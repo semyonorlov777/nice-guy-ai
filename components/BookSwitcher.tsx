@@ -10,7 +10,6 @@ interface BookSwitcherProps {
   currentSlug: string;
   programs: ProgramSwitcherItem[];
   collapsed?: boolean;
-  destination?: "hub" | "landing";
 }
 
 export function BookSwitcher({
@@ -18,10 +17,7 @@ export function BookSwitcher({
   currentSlug,
   programs,
   collapsed,
-  destination = "hub",
 }: BookSwitcherProps) {
-  const buildHref = (slug: string) =>
-    destination === "landing" ? `/program/${slug}` : `/program/${slug}/hub`;
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +66,7 @@ export function BookSwitcher({
         return (
           <Link
             key={p.slug}
-            href={buildHref(p.slug)}
+            href={`/program/${p.slug}/hub`}
             className={`book-switcher-item${isCurrent ? " current" : ""}`}
             onClick={close}
             aria-current={isCurrent ? "page" : undefined}
