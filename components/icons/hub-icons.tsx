@@ -539,4 +539,9 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   success: RocketIcon,
   authenticity: MasculinityIcon,
   drivers: InstrumentLightningIcon,
+  // heroes-and-outlaws (Mark/Pearson archetype groups)
+  arch_paradise: CompassIcon,
+  arch_impact: RocketIcon,
+  arch_belonging: HeartLoveIcon,
+  arch_order: ShieldIcon,
 };
