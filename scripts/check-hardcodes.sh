@@ -49,22 +49,42 @@ fi
 echo ""
 echo "=== Checking for stale brand strings in landing/seed (see docs/brand-glossary.md) ==="
 
-# Ярлык бренда «AI-тренажёр» / «AI-ассистент» в карточке сравнения landing_data.
-# Ловим оба формата: JSON ("name": "...") и JS/TS (name: "...").
-BRAND_NAME_HITS=$(grep -rnE '"?name"?\s*:\s*"(AI-тренажёр|AI-ассистент)"' \
+# Любое «AI-тренажёр» в любом падеже — в seed-SQL и компонентах фронтенда.
+AI_TRAINER_HITS=$(grep -rnE 'AI-тренажёр[аыуомеовамиях]*' \
   scripts/seed-*.sql \
   lib/platform-landing.ts \
-  components/landing/ 2>/dev/null \
+  components/landing/ \
+  app/ 2>/dev/null \
   | grep -v 'node_modules' \
   | grep -v '.next/')
 
-if [ -n "$BRAND_NAME_HITS" ]; then
-  echo "$BRAND_NAME_HITS"
-  echo "  ↳ Замени \"name\": \"AI-тренажёр|AI-ассистент\" на \"name\": \"Книжный Спарринг\""
+if [ -n "$AI_TRAINER_HITS" ]; then
+  echo "$AI_TRAINER_HITS"
+  echo "  ↳ Замени AI-тренажёр (любые падежи) на «Книжный Спарринг»"
   FOUND=1
 fi
 
-# Роль «Ежедневная практика» — устарела. Ловим JSON и JS/TS форматы.
+# Любые AI-<существительное> кроме служебных комментариев и SDK-имён.
+AI_PREFIX_HITS=$(grep -rnE 'AI-[А-Яа-яё]+' \
+  scripts/seed-*.sql \
+  lib/platform-landing.ts \
+  components/landing/ \
+  app/legal/ \
+  app/program/ 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/' \
+  | grep -v '^[^:]*:[^:]*://' \
+  | grep -vE '^\s*//' \
+  | grep -vE '^\s*/\*' \
+  | grep -vE '^\s*\*')
+
+if [ -n "$AI_PREFIX_HITS" ]; then
+  echo "$AI_PREFIX_HITS"
+  echo "  ↳ Замени AI- (с кириллическим существительным) на ИИ-"
+  FOUND=1
+fi
+
+# Роль «Ежедневная практика» — устарела.
 BRAND_ROLE_HITS=$(grep -rnE '"?role"?\s*:\s*"Ежедневная практика"' \
   scripts/seed-*.sql \
   lib/platform-landing.ts \
@@ -78,20 +98,22 @@ if [ -n "$BRAND_ROLE_HITS" ]; then
   FOUND=1
 fi
 
-# hero_tag — устаревшая фраза. Ловим JSON и JS/TS форматы.
-HERO_TAG_HITS=$(grep -rnE '"?hero_tag"?\s*:\s*"AI-тренажёр' \
+# «Nice Guy AI» — старый бренд.
+OLD_BRAND_HITS=$(grep -rn 'Nice Guy AI' \
   scripts/seed-*.sql \
-  lib/platform-landing.ts 2>/dev/null \
+  lib/platform-landing.ts \
+  components/landing/ \
+  app/ 2>/dev/null \
   | grep -v 'node_modules' \
   | grep -v '.next/')
 
-if [ -n "$HERO_TAG_HITS" ]; then
-  echo "$HERO_TAG_HITS"
-  echo "  ↳ Замени \"hero_tag\": \"AI-тренажёр по книге\" на \"hero_tag\": \"Книжный Спарринг\""
+if [ -n "$OLD_BRAND_HITS" ]; then
+  echo "$OLD_BRAND_HITS"
+  echo "  ↳ Замени \"Nice Guy AI\" на \"Книжный Спарринг\""
   FOUND=1
 fi
 
-if [ -z "$BRAND_NAME_HITS" ] && [ -z "$BRAND_ROLE_HITS" ] && [ -z "$HERO_TAG_HITS" ]; then
+if [ -z "$AI_TRAINER_HITS" ] && [ -z "$AI_PREFIX_HITS" ] && [ -z "$BRAND_ROLE_HITS" ] && [ -z "$OLD_BRAND_HITS" ]; then
   echo "  No stale brand strings found"
 fi
 

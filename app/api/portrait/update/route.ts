@@ -111,7 +111,7 @@ ${chatTranscript}
     updatedPortrait = JSON.parse(cleanJson);
   } catch {
     console.error("[PORTRAIT] JSON parse error:", responseText.substring(0, 500));
-    return { success: false, error: "AI вернул невалидный JSON" };
+    return { success: false, error: "ИИ вернул невалидный JSON" };
   }
 
   // 9. Upsert to DB

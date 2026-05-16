@@ -30,7 +30,7 @@ export async function ProgramCatalogGrid() {
         <p className="section-label">Каталог</p>
         <h2 className="platform-catalog-title">Программы по книгам</h2>
         <p className="platform-catalog-sub">
-          Каждая программа — это книга, тест, чат с AI-автором и упражнения. Выберите ту, которая откликается.
+          Каждая программа — это книга, тест, чат с ИИ-автором и упражнения. Выберите ту, которая откликается.
         </p>
 
         <div className="catalog-grid">

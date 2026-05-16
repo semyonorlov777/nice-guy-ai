@@ -1,13 +1,13 @@
 ---
 name: book-to-modes
-description: "Проектирование режимов AI-тренажёра по книге. Design AI trainer modes (system prompts) for psychology/self-help books on the Nice Guy AI platform. ALWAYS use this skill when the user mentions any book by title and wants to create training modes, exercises, or system prompts — even if they don't explicitly say 'use skill'. Triggers on: 'новая книга', 'режимы для книги', 'промпты для книги', 'спроектируй режимы', 'сделай тренажёр', 'промпты для тренажёра', 'book to modes', 'архетипы для книги', 'системные промпты для книги', 'давай следующую книгу', 'добавляем книгу', 'обработай книгу', 'создай режимы', 'режимы по книге', 'тренажёр по книге', 'design modes', 'create prompts for book', any book title + 'режимы' or 'промпты' or 'тренажёр'. Also triggers when the user uploads a PDF of a book and asks to process it. Full pipeline: book analysis → archetype mapping → mode detailing → ready-to-use Gemini API system prompts."
+description: "Проектирование режимов Книжный Спарринг по книге. Design AI trainer modes (system prompts) for psychology/self-help books on the Книжный Спарринг platform. ALWAYS use this skill when the user mentions any book by title and wants to create training modes, exercises, or system prompts — even if they don't explicitly say 'use skill'. Triggers on: 'новая книга', 'режимы для книги', 'промпты для книги', 'спроектируй режимы', 'сделай тренажёр', 'промпты для тренажёра', 'book to modes', 'архетипы для книги', 'системные промпты для книги', 'давай следующую книгу', 'добавляем книгу', 'обработай книгу', 'создай режимы', 'режимы по книге', 'тренажёр по книге', 'design modes', 'create prompts for book', any book title + 'режимы' or 'промпты' or 'тренажёр'. Also triggers when the user uploads a PDF of a book and asks to process it. Full pipeline: book analysis → archetype mapping → mode detailing → ready-to-use Gemini API system prompts."
 ---
 
-# Book-to-Modes: Проектирование режимов AI-тренажёра по книге
+# Book-to-Modes: Проектирование режимов Книжный Спарринг по книге
 
 ## Обзор
 
-Этот скилл превращает книгу по психологии/саморазвитию в набор из 6-8 режимов AI-тренажёра с готовыми системными промптами для Gemini API.
+Этот скилл превращает книгу по психологии/саморазвитию в набор из 6-8 режимов Книжный Спарринг с готовыми системными промптами для Gemini API.
 
 **Вход:** Название книги (+ опционально PDF/текст книги). Если у автора несколько связанных книг — можно объединить.
 **Выход:** MD-файл с детализацией режимов + MD-файл с готовыми промптами + landing_data JSON + таблица технического маппинга
@@ -123,7 +123,7 @@ description: "Проектирование режимов AI-тренажёра 
 | `welcome_mode_label` | Одно слово-архетип | UPPERCASE: `АНАЛИЗ`, `ВОРКШОП`, `ЛЕКЦИЯ`, `РОЛЕВАЯ`, `ЭКЗАМЕН`, `СВОБОДНЫЙ ЧАТ` |
 | `welcome_title` | Название режима | Без эмодзи (эмодзи уже на иконке инструмента) |
 | `welcome_subtitle` | Подзаголовок-обещание | Одна строка ≤80 символов, результат-обещание |
-| `welcome_ai_message` | Основной AI-текст | **Plain text без markdown** (`**`, `#`, `-` не работают). Абзацы через `\n\n`, буллеты через `•`. Макс ~150 слов. Не дублировать title в начале. |
+| `welcome_ai_message` | Основной ИИ-текст | **Plain text без markdown** (`**`, `#`, `-` не работают). Абзацы через `\n\n`, буллеты через `•`. Макс ~150 слов. Не дублировать title в начале. |
 | `welcome_replies` | Кнопки-подсказки | JSONB **объекты** `[{text, type}]`. Не строки. Последний `type: "exit"`. Каждый text ≤60 символов, без вложенных «ёлочек». |
 
 **Контентный шаблон для `welcome_ai_message`** (рендерится в этом поле — без эмодзи+title в начале):
@@ -240,8 +240,8 @@ description: "Проектирование режимов AI-тренажёра 
 ## АНТИПАТТЕРНЫ (НИКОГДА)
 - Стены текста (макс 60-80 слов)
 - Похвала личности («молодец», «отлично»)
-- Replies = дубликат текста AI
-- Replies от третьего лица / вопросы AI
+- Replies = дубликат текста ИИ
+- Replies от третьего лица / вопросы ИИ
 - Overdiagnosis (презумпция нормы)
 - Геймификация (стрики, бейджи)
 - Давление («ты пропустил», «давай быстрее»)
@@ -300,7 +300,7 @@ WHERE slug = 'BOOK_SLUG';
 2. **Welcome serialization for F5.** В seed мы пишем `welcome_ai_message` и `welcome_replies` в **разные поля** БД. Runtime-функция `serializeWelcomeWithReplies` в [lib/chat/prepare-context.ts](../../../lib/chat/prepare-context.ts) склеивает их в один text с «ёлочками» в конце и сохраняет в `messages.content` — чтобы после F5 (или загрузки истории) `parseQuickReplies` восстановил кнопки из сохранённого текста.
    - **НЕ заполняй `welcome_message` (legacy) и `welcome_ai_message` одновременно** — приоритет идёт legacy → новые поля теряются. Линтер `npm run check:chats` это ловит (`welcome-message-exclusive`).
 
-3. **AIBubble + QuickReplyBar split.** Все чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat) рендерят AI-сообщения через ДВА компонента из [components/chat/ChatMessage.tsx](../../../components/chat/ChatMessage.tsx). `QuickReplyBar` — SIBLING контейнера `.msg`/`.nc-msg`, **НЕ внутри**. Эта деталь не должна волновать автора seed, но влияет на новые чат-экраны: если делаешь — следуй шаблону из runbook §"Шаблон для нового чат-экрана". Прецедент: первая итерация (2026-04-23) рендерила кнопки внутри flex-row — они уехали в узкую колонку справа.
+3. **AIBubble + QuickReplyBar split.** Все чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat) рендерят ИИ-сообщения через ДВА компонента из [components/chat/ChatMessage.tsx](../../../components/chat/ChatMessage.tsx). `QuickReplyBar` — SIBLING контейнера `.msg`/`.nc-msg`, **НЕ внутри**. Эта деталь не должна волновать автора seed, но влияет на новые чат-экраны: если делаешь — следуй шаблону из runbook §"Шаблон для нового чат-экрана". Прецедент: первая итерация (2026-04-23) рендерила кнопки внутри flex-row — они уехали в узкую колонку справа.
 
 4. **Иерархия system_prompt при выборе.** `lib/chat/prepare-context.ts::loadProgramContext` (строки 146+) выбирает по приоритету:
    1. `program_modes.system_prompt` (для tool-режимов — переопределяет программный, **правила не наследуются**)
@@ -420,7 +420,7 @@ WHERE slug = 'BOOK_SLUG';
 
 На основе анализа из этапа 1 (ЦА, боли, концепции) и режимов из этапов 2-4. Принципы — см. REFERENCE.md секция 11 (Л1-Л7). Схема JSON — см. PLATFORM_MAP.md секция «programs.landing_data».
 
-**Канонические фразы бренда — см. [docs/brand-glossary.md](../../../docs/brand-glossary.md).** Бренд платформы — «Книжный Спарринг» (а не «AI-тренажёр»). Ярлык в карточке сравнения и тег над заголовком — всегда «Книжный Спарринг / Практика». Слово «AI-тренажёр» допустимо только в SEO-полях (meta_title, meta_description) и в описательных текстах (FAQ, conclusion) как название категории продукта.
+**Канонические фразы бренда — см. [docs/brand-glossary.md](../../../docs/brand-glossary.md).** Бренд платформы — «Книжный Спарринг» (а не «Книжный Спарринг»). Ярлык в карточке сравнения и тег над заголовком — всегда «Книжный Спарринг / Практика». Слово «Книжный Спарринг» допустимо только в SEO-полях (meta_title, meta_description) и в описательных текстах (FAQ, conclusion) как название категории продукта.
 
 Для КАЖДОЙ секции:
 
@@ -473,7 +473,7 @@ WHERE slug = 'BOOK_SLUG';
 - `chat_header`: `{title, subtitle}` — CTA для секции чата
 
 **j) SEO и цены:
-- `meta_title`: «AI-тренажёр: Название — Автор | Nice Guy AI»
+- `meta_title`: «Книжный Спарринг: Название — Автор | Книжный Спарринг»
 - `meta_description`: 1-2 предложения
 - `price`: `{trial_text, price_text, anchor_text}`
 
@@ -520,7 +520,7 @@ npm run dev   # → http://localhost:3000
 
 - `/program/<slug>/chat` (free chat) → стартовые «ёлочки» видны + AI в первом ответе даёт «ёлочки».
 - Клик на тему на хабе → новый чат → AI в ответе даёт «ёлочки».
-- `/program/<slug>/author-chat` → стартовые «ёлочки» + AI отвечает «ёлочками».
+- `/program/<slug>/author-chat` → стартовые «ёлочки» + ИИ отвечает «ёлочками».
 
 Для каждого нового tool-режима — открыть `/program/<slug>/chat/new?tool=<mode-key>`:
 - welcome-экран **без артефактов markdown** (`**`, `#`, дубликата title в начале).
