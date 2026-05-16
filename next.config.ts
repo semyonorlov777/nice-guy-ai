@@ -39,9 +39,13 @@ const nextConfig: NextConfig = {
   ],
 };
 
+// Карты исходников Sentry выгружаются только на боевых сборках (ветка main).
+// На превью-сборках выгрузка пропускается — экономит 1–2 минуты на каждый деплой.
+const isProductionDeploy = process.env.VERCEL_ENV === "production";
+
 export default withSentryConfig(nextConfig, {
-  // Source maps для читаемых stack traces
   sourcemaps: {
+    disable: !isProductionDeploy,
     deleteSourcemapsAfterUpload: true,
   },
 
