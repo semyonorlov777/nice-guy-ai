@@ -51,14 +51,35 @@ export async function GET(request: NextRequest) {
     }
 
     // Sign in
-    const { data: signInData, error: signInError } =
+    let { data: signInData, error: signInError } =
       await serviceClient.auth.signInWithPassword({
         email: DEV_EMAIL,
         password,
       });
 
-    if (signInError) {
-      return apiError(`Ошибка входа: ${signInError.message}`, 500);
+    // Если SERVICE_ROLE_KEY поменялся между запусками — пароль протух.
+    // Чиним: находим юзера и обновляем пароль через admin API, потом логинимся снова.
+    if (signInError && existingProfile) {
+      const { error: updateError } = await serviceClient.auth.admin.updateUserById(
+        existingProfile.id,
+        { password },
+      );
+      if (updateError) {
+        return apiError(`Ошибка обновления пароля dev-юзера: ${updateError.message}`, 500);
+      }
+      const retry = await serviceClient.auth.signInWithPassword({
+        email: DEV_EMAIL,
+        password,
+      });
+      signInData = retry.data;
+      signInError = retry.error;
+    }
+
+    if (signInError || !signInData?.session) {
+      return apiError(
+        signInError ? `Ошибка входа: ${signInError.message}` : "Ошибка входа: нет сессии",
+        500,
+      );
     }
 
     const session = signInData.session;
