@@ -24,8 +24,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Книжный Спарринг — тренажёры по книгам",
-  description: "Платформа тренажёров по книгам для работы над собой",
+  title: "Книжный Спарринг — AI-тренажёры по книгам",
+  description: "Платформа AI-тренажёров для работы над собой",
 };
 
 export default function RootLayout({

@@ -4,7 +4,6 @@ import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ScaleResult } from "@/lib/test-scoring";
 import type { TestInterpretation } from "@/lib/test-interpretation";
-import type { ExerciseProgress } from "@/lib/queries/exercise-progress";
 import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
@@ -36,20 +35,12 @@ export interface TestResultsProps {
   scoreDirection?: ScoreDirection;
   levelLabels?: string[];
   levelThresholds?: number[];
-  exerciseProgress: ExerciseProgress;
 }
 
 // ── Constants ──
 
 const DEFAULT_LEVEL_LABELS = ["Низкий уровень", "Умеренный уровень", "Выраженный уровень", "Высокий уровень"];
 const DEFAULT_LEVEL_THRESHOLDS = [25, 50, 75];
-
-// Программы где упражнения проходятся строго последовательно
-// (по требованию автора: без фундамента старшие упражнения не работают).
-// Для них на странице результатов теста показывается блок "Что делать"
-// с призывом начать/продолжить программу по порядку, а зоны фокуса —
-// без прямых ссылок на конкретные упражнения.
-const SEQUENTIAL_METHODOLOGY_PROGRAMS = new Set(["nice-guy"]);
 
 function getLevelClass(score: number, direction: ScoreDirection): string {
   // Visual semantics: "low" = green pill, "high" = red pill, "moderate" = accent pill.
@@ -220,29 +211,22 @@ function TopZones({
   programSlug,
   scaleNames,
   scaleExercises,
-  sequentialMethodology,
 }: {
   topZones: Array<{ scale_key: string; action_text: string }>;
   scoresByScale: Record<string, ScaleResult>;
   programSlug: string;
   scaleNames: Record<string, string>;
   scaleExercises: Record<string, number[]>;
-  sequentialMethodology: boolean;
 }) {
   const { ref, isVisible } = useScrollReveal();
-
-  const sectionLabel = sequentialMethodology ? "Зоны роста" : "Приоритеты";
-  const sectionTitle = sequentialMethodology
-    ? "Где у тебя главные пробелы"
-    : "С чего начать";
 
   return (
     <div
       ref={ref}
       className={`tr-zones-section tr-section-anim${isVisible ? " visible" : ""}`}
     >
-      <div className="tr-section-label">{sectionLabel}</div>
-      <div className="tr-section-title">{sectionTitle}</div>
+      <div className="tr-section-label">Приоритеты</div>
+      <div className="tr-section-title">С чего начать</div>
 
       <div className="tr-zones-block">
         {topZones.map((zone, i) => {
@@ -259,85 +243,22 @@ function TopZones({
                 </h4>
                 <p>{zone.action_text}</p>
                 {exercises.length > 0 && (
-                  sequentialMethodology ? (
-                    <div className="tr-zone-meta">
-                      В программе разбирается в упр. {exercises.join(", ")} — дойдёшь до них по ходу.
-                    </div>
-                  ) : (
-                    <div className="tr-zone-exercises">
-                      {exercises.map((exId) => (
-                        <Link
-                          key={exId}
-                          href={`/program/${programSlug}/exercise/${exId}`}
-                          className="tr-zone-exercise-tag"
-                        >
-                          Упр. {exId}
-                        </Link>
-                      ))}
-                    </div>
-                  )
+                  <div className="tr-zone-exercises">
+                    {exercises.map((exId) => (
+                      <Link
+                        key={exId}
+                        href={`/program/${programSlug}/exercise/${exId}`}
+                        className="tr-zone-exercise-tag"
+                      >
+                        Упр. {exId}
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function WhatToDoBlock({
-  programSlug,
-  exerciseProgress,
-}: {
-  programSlug: string;
-  exerciseProgress: ExerciseProgress;
-}) {
-  const { ref, isVisible } = useScrollReveal();
-  const { nextNumber, totalCompleted, totalExercises, hasStarted } = exerciseProgress;
-
-  let title: string;
-  let body: string;
-  let buttonLabel: string;
-  let buttonHref: string;
-
-  if (nextNumber === null) {
-    title = "Ты прошёл всю программу";
-    body = `46 упражнений из 46 — путь пройден целиком. Можешь пройти ещё раз: на втором круге увидишь нюансы, которые в первый раз прошли мимо. Тест выше показывает зоны где у тебя по-прежнему есть над чем работать.`;
-    buttonLabel = "Начать ещё раз с упражнения 1";
-    buttonHref = `/program/${programSlug}/exercise/1`;
-  } else if (totalCompleted === 0 && !hasStarted) {
-    title = "С чего начать?";
-    body = `Программа Гловера — это 46 упражнений в 9 главах, выстроенных как лестница. Каждое следующее опирается на предыдущее: без главы 1 не сработает глава 5, без главы 3 — глава 7. Тест показал где у тебя зоны роста — встретишь их по ходу. Перепрыгивать в середину бесполезно: упражнения работают только в комплексе.`;
-    buttonLabel = `Начать с упражнения ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  } else if (hasStarted) {
-    title = "Продолжай свой путь";
-    body = `Ты сейчас на упражнении ${nextNumber} из ${totalExercises}. Тест показал твои главные зоны роста — в программе ты их прорабатываешь по очереди. Продолжай идти по порядку: так система Гловера и работает.`;
-    buttonLabel = `Продолжить с упражнения ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  } else {
-    title = "Продолжай свой путь";
-    body = `Ты завершил ${totalCompleted} из ${totalExercises} упражнений. Следующее по порядку — упражнение ${nextNumber}. Программа цельная: каждое упражнение опирается на то, что было раньше, поэтому идти лучше последовательно.`;
-    buttonLabel = `Перейти к упражнению ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  }
-
-  return (
-    <div
-      ref={ref}
-      className={`tr-todo-section tr-section-anim${isVisible ? " visible" : ""}`}
-    >
-      <div className="tr-todo-card">
-        <div className="tr-todo-eyebrow">Что делать с этим</div>
-        <h3 className="tr-todo-title">{title}</h3>
-        <p className="tr-todo-body">{body}</p>
-        <Link href={buttonHref} className="tr-cta-primary tr-todo-cta">
-          {buttonLabel}
-        </Link>
-        <div className="tr-todo-meta">
-          Все упражнения остаются открытыми — можешь зайти в любое. Но если хочешь чтобы программа сработала так, как задумал автор, — иди по порядку.
-        </div>
       </div>
     </div>
   );
@@ -422,7 +343,6 @@ export function TestResultsPage(props: TestResultsProps) {
     scoreDirection = "lower_is_better",
     levelLabels = DEFAULT_LEVEL_LABELS,
     levelThresholds = DEFAULT_LEVEL_THRESHOLDS,
-    exerciseProgress,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -467,8 +387,6 @@ export function TestResultsPage(props: TestResultsProps) {
 
   const levelLabel =
     interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
-
-  const sequentialMethodology = SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
 
   return (
     <div className="test-results-page">
@@ -528,26 +446,12 @@ export function TestResultsPage(props: TestResultsProps) {
                 programSlug={programSlug}
                 scaleNames={scaleNames}
                 scaleExercises={scaleExercises}
-                sequentialMethodology={sequentialMethodology}
               />
               <Divider />
             </>
           )}
 
-        {isOwner && sequentialMethodology ? (
-          <WhatToDoBlock
-            programSlug={programSlug}
-            exerciseProgress={exerciseProgress}
-          />
-        ) : (
-          <CTASection
-            isOwner={isOwner}
-            programSlug={programSlug}
-            testTitle={testTitle}
-            ctaText={ctaText}
-            testSlug={testSlug}
-          />
-        )}
+        <CTASection isOwner={isOwner} programSlug={programSlug} testTitle={testTitle} ctaText={ctaText} testSlug={testSlug} />
 
         <ResultsFooter />
       </div>

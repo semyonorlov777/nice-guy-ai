@@ -10,7 +10,7 @@ export async function TestCatalogGrid() {
         <p className="section-label">Тесты</p>
         <h2 className="platform-catalog-title">Бесплатные тесты по книгам психологии</h2>
         <p className="platform-catalog-sub">
-          Каждый тест ведёт к личному разбору и тренажёру по книге автора. Без регистрации — просто выбери тему и пройди.
+          Каждый тест ведёт к личному разбору и AI-тренажёру по книге автора. Без регистрации — просто выбери тему и пройди.
         </p>
 
         <div className="catalog-grid">

@@ -40,7 +40,7 @@ export interface PlatformLandingData {
 export const platformLanding: PlatformLandingData = {
   hero: {
     tag: "Книжный Спарринг",
-    title: "Тренажёры по книгам по <em>психологии</em>",
+    title: "AI-тренажёры по книгам по <em>психологии</em>",
     subtitle:
       "От прочитал до применил. Каждая книга — не теория, а тренажёр: тест на ваши паттерны, чат с AI-автором и упражнения, которые приводят к изменениям.",
     primary_cta: { text: "Выбрать программу", href: "#catalog" },
@@ -63,7 +63,7 @@ export const platformLanding: PlatformLandingData = {
       { icon: "📕", name: "Книга", role: "Теория" },
       { icon: "🧑‍⚕️", name: "Психолог", role: "Терапия" },
       { icon: "👥", name: "Группа", role: "Опыт других" },
-      { icon: "🤖", name: "Книжный Спарринг", role: "Практика", highlight: true },
+      { icon: "🤖", name: "AI-тренажёр", role: "Практика", highlight: true },
     ],
     rows: [
       {
@@ -145,7 +145,7 @@ export const platformLanding: PlatformLandingData = {
 
   faq: [
     {
-      question: "Что такое тренажёр по книге?",
+      question: "Что такое AI-тренажёр по книге?",
       answer:
         "Это структурированная программа на основе конкретной книги по психологии. Внутри — тест на вашу ситуацию, портрет ваших паттернов, чат с AI в роли автора книги и упражнения. AI ведёт вас по материалу книги, опираясь на ваш личный портрет, а не отвечает на любые вопросы подряд.",
     },
