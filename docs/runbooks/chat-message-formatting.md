@@ -15,6 +15,65 @@
 | **Диалог в чате** | [ChatWindow.tsx](../../components/ChatWindow.tsx) | ✅ ReactMarkdown | `/program/<slug>/chat/<id>` — все последующие сообщения |
 | **Первое сообщение в истории (legacy)** | ChatWindow через `welcomeMessage` prop | ✅ ReactMarkdown | Старые режимы, где welcome хранится в `welcome_message` |
 
+## Где разметка работает, где нет (полный список полей)
+
+Самый частый баг на лендингах — вставка `<em>` или `**bold**` в поле, которое рендерится plain-текстом. Теги отображаются буквально. Эту таблицу проверять при каждой правке seed-SQL.
+
+### Поля БД, которые поддерживают `<em>` (dangerouslySetInnerHTML)
+
+Используются в `landing_data` и рендерятся через `dangerouslySetInnerHTML` в `components/landing/`. Можно использовать `<em>`, `<strong>`, `<br />` для акцента.
+
+| Поле | Компонент | Допустимая разметка |
+|---|---|---|
+| `landing_data.hero_title` | HeroSection | `<em>`, `<strong>` |
+| `landing_data.problem.title` | PersonasSection | `<em>` |
+| `landing_data.outcomes.title` | OutcomesSection | `<em>` |
+| `landing_data.comparison.title` | ComparisonSection | `<em>` |
+| `landing_data.comparison.conclusion` | ComparisonSection | `<em>` |
+| `landing_data.how_it_works.title` | HowItWorksSection | `<em>` |
+| `test_configs.ui_config.welcome_title` | WelcomeScreen | `<br />`, `<span>` |
+
+### Поля БД, которые НЕ поддерживают разметку (рендерятся как plain text)
+
+Любая `<em>`, `<strong>`, `<br>` тут отобразится буквально. Никогда не вставляй HTML.
+
+| Поле | Поверхность | Что увидит пользователь если вставить `<em>` |
+|---|---|---|
+| `landing_data.chat_header.title` | ChatSection | `<em>текст</em>` буквально |
+| `landing_data.chat_header.subtitle` | ChatSection | `<em>текст</em>` буквально |
+| `landing_data.hero_subtitle` | HeroSection | `<em>текст</em>` буквально |
+| `landing_data.hero_cta` / `hero_hint` / `hero_tag` | HeroSection | литералы |
+| `landing_data.book.title` / `subtitle` / `author_top` / `author_bottom` / `alt` | HeroSection | литералы |
+| `landing_data.problem.label` / `lead` | PersonasSection | литералы |
+| `landing_data.problem.pain_cards[].title` / `text` | PersonasSection | литералы |
+| `landing_data.personas.label` / `title` | PersonasSection | литералы |
+| `landing_data.personas.items[].headline` / `body` | PersonasSection | литералы |
+| `landing_data.outcomes.label` / `subtitle` | OutcomesSection | литералы |
+| `landing_data.outcomes.items[].title` / `description` | OutcomesSection | литералы |
+| `landing_data.comparison.label` / `subtitle` | ComparisonSection | литералы |
+| `landing_data.comparison.columns[].name` / `role` | ComparisonSection | литералы |
+| `landing_data.comparison.rows[].param` / `values[]` | ComparisonSection | литералы |
+| `landing_data.how_it_works.label` / `summary_text` | HowItWorksSection | литералы |
+| `landing_data.how_it_works.steps[].title` | HowItWorksSection | литералы |
+| `landing_data.social_proof[].main` / `sub` | SocialProof | литералы |
+| `landing_data.author.name` / `credentials` / `quote` | AuthorSection | литералы |
+| `landing_data.test.title` / `description` / `time_label` / `questions_label` / `cta_text` | TestSection | литералы |
+| `landing_data.price.*` | — | литералы |
+| `programs.meta_title` / `meta_description` | SEO `<head>` | литералы (Next.js escape-ит) |
+| `program_modes.welcome_mode_label` / `welcome_title` / `welcome_subtitle` | NewChatScreen карточка | литералы |
+| `program_modes.welcome_ai_message` | NewChatScreen `.nc-ai-text` | литералы |
+| `program_modes.welcome_replies[].text` | NewChatScreen кнопки | литералы |
+
+### Markdown в `welcome_ai_message`
+
+`welcome_ai_message` рендерится в `<div className="nc-ai-text">` — **plain text** (см. [NewChatScreen.tsx:185](../../components/chat/NewChatScreen.tsx:185)). Любой markdown (`**bold**`, `*italic*`, `# heading`, `- list`) отображается со звёздочками/решётками. Буллеты — символ `•`, абзацы через `\n\n`.
+
+### Markdown в основном диалоге (ChatWindow)
+
+`ChatWindow` использует ReactMarkdown + `remark-breaks`. Markdown работает: `**bold**`, `*italic*`, `[link](url)`, `> quote`. Но «ёлочки» парсятся **до** ReactMarkdown — формат «ёлочек» одинаковый везде (см. ниже).
+
+**Прецедент:** seven-principles — в `landing_data.chat_header.title` стоял `<em>по науке</em>`, и теги отображались на лендинге как литералы. Линтер `npm run check:chats` теперь ловит HTML-теги в полях из второй таблицы.
+
 ## Архитектурный инвариант (🚨 ЧИТАТЬ ДО ЛЮБОЙ ПРАВКИ ЧАТОВ)
 
 **Правило:** ВСЕ чат-поверхности (ChatWindow, NewChatScreen, AnonymousChat + любые новые) рендерят AI-сообщения через два компонента из [components/chat/ChatMessage.tsx](../../components/chat/ChatMessage.tsx):
@@ -279,20 +338,29 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
 - [ ] `welcome_mode_label` — Title Case или UPPERCASE, начинается с заглавной (CSS делает uppercase визуально)
 - [ ] `welcome_title` — без эмодзи
+- [ ] **`welcome_title` — фраза-действие, не дублирует `mode_templates.name`** (case-insensitive). См. таблицу в [REFERENCE.md §8](../../.claude/skills/book-to-modes/references/REFERENCE.md). Прецедент: seven-principles тройной заголовок «Карта любви» — меню + шапка + карточка.
 - [ ] `welcome_subtitle` — одна строка, обещание результата
 - [ ] `welcome_ai_message` — **нет `**bold**`**, нет markdown-заголовков, не начинается с `🔒 **Title**`, есть `\n\n` между абзацами
 - [ ] `welcome_replies` — массив объектов `{text, type}`, последний `type: "exit"`
 - [ ] `system_prompt` — содержит блок `### Quick replies — ФОРМАТ` с буквальным примером «ёлочек»
 - [ ] `system_prompt` — содержит контрпример `НЕПРАВИЛЬНО` со склеенными через пробел «ёлочками»
+- [ ] `system_prompt` — содержит контрпример с угловыми скобками (`<вариант>`)
 - [ ] `system_prompt` — содержит секцию `### ЗАПРЕЩЕНО` с запретом на «Что дальше?», `—`-списки, нумерацию, склеивание «ёлочек»
+- [ ] **`system_prompt` — содержит блок «Запрет приветствий и похвалы вопроса»** (кирпич Б из REFERENCE.md §5.0)
+- [ ] **`system_prompt` — содержит блок «ОБРАЩЕНИЕ»** с правилом «ты» и контр-примерами «вы» (кирпич А)
 - [ ] Для legacy `welcome_message` (если используется) — есть `«ёлочки»` в конце, если нужны стартовые кнопки
 
 ### На уровне `programs` (один раз на книгу)
 
 - [ ] `system_prompt` — содержит блок «ФОРМАТ QUICK REPLIES» (те же правила что и в режимах). Используется для free_chat и всех тем.
-- [ ] `author_chat_system_prompt` — тот же блок.
+- [ ] `system_prompt` — содержит «Запрет приветствий» (кирпич Б) и «ОБРАЩЕНИЕ» (кирпич А)
+- [ ] `author_chat_system_prompt` — содержит QR-блок + «Запрет приветствий» (кирпич Б). Кирпич А «ОБРАЩЕНИЕ» — обязателен если автор не оговаривает «ты» сам по тексту роли.
+- [ ] `anonymous_system_prompt` — содержит **все шесть блоков**: А «ОБРАЩЕНИЕ», Б «ЗАПРЕТ ПРИВЕТСТВИЙ», В «Quick replies», **Д «СТРУКТУРА ПЕРВОГО ОТВЕТА с ОБЯЗАТЕЛЬНО назови ... по имени»**, **Е «Quick replies — КРИТИЧЕСКОЕ ПРАВИЛО с контр-примером "без кавычек"»**.
 - [ ] `free_chat_welcome` — в конце есть 3–4 «ёлочки» на отдельных строках.
 - [ ] `author_chat_welcome` — то же, без вложенных «ёлочек» в тексте reply.
+- [ ] `landing_data.main_concepts` — массив из 5-7 строк, каждая упомянута в `anonymous_system_prompt` (см. блок Д).
+- [ ] `landing_data.author.photo_url` — локальный путь `/authors/<slug>.jpg`, файл ≥100 КБ.
+- [ ] `landing_data.chat_header.title/subtitle`, `book.*`, `personas.items[].body`, `social_proof[].sub` — **без HTML-тегов** (`<em>`, `<strong>`, `<br>` отображаются буквально). См. таблицу «Где разметка работает».
 
 ### На уровне `program_themes` (каждая тема)
 
@@ -300,9 +368,19 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 - [ ] `welcome_replies` — массив объектов `{text, type}`, последний `type: "exit"`
 - [ ] `welcome_system_context` — не дублирует правила quick replies (они наследуются из `programs.system_prompt`)
 
+### На уровне `test_configs` (если есть тест)
+
+- [ ] Вопросы в `questions[]` сгруппированы по шкалам блоками `ui_config.questions_per_block` (внутри блока — одна `scale`)
+- [ ] Прецедент: seven-principles — перемешанный порядок ломал переходы между блоками
+
 ### На уровне кода
 
 - [ ] `app/program/[slug]/(app)/chat/[chatId]/page.tsx` — делает lookup mode-specific welcome для tool-чатов (не падает на `programs.free_chat_welcome` для всех)
+
+### Финальный шаг (без него книга не готова)
+
+- [ ] **`npm run check:chats -- --book=<slug>`** — **0 errors**. Если errors — починить и повторить. С errors книга **не готова к релизу**.
+- [ ] **`npm run check:author-photos`** — без жалоб на новый файл.
 
 ## Диагностика живых багов
 
