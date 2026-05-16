@@ -7,7 +7,6 @@ import {
   type TestResultsProps,
 } from "@/components/test-results/TestResultsPage";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
-import { getExerciseProgress } from "@/lib/queries/exercise-progress";
 import { getScaleOrder, getScaleNames } from "@/lib/test-config";
 
 // UUID v4 regex
@@ -98,9 +97,6 @@ export default async function TestResultPage({
     // Not authenticated — public view
   }
 
-  // Прогресс пользователя по упражнениям программы (для CTA "начать/продолжить")
-  const exerciseProgress = await getExerciseProgress(svc, result.user_id, result.program_id);
-
   // Derive scale metadata from testConfig (or use empty defaults)
   const scaleOrder = testConfig ? getScaleOrder(testConfig) : [];
   const scaleNameMap = testConfig ? getScaleNames(testConfig) : {};
@@ -138,7 +134,6 @@ export default async function TestResultPage({
     scoreDirection: testConfig?.scoring.score_direction,
     levelLabels: testConfig?.scoring.level_labels,
     levelThresholds: testConfig?.scoring.level_thresholds,
-    exerciseProgress,
   };
 
   return <TestResultsPage {...props} />;

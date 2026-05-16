@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ScaleResult } from "@/lib/test-scoring";
 import type { TestInterpretation } from "@/lib/test-interpretation";
-import type { ExerciseProgress } from "@/lib/queries/exercise-progress";
 import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
@@ -37,7 +36,6 @@ export interface TestResultsProps {
   scoreDirection?: ScoreDirection;
   levelLabels?: string[];
   levelThresholds?: number[];
-  exerciseProgress: ExerciseProgress;
 }
 
 // ── Constants ──
@@ -274,37 +272,8 @@ function TopZones({
   );
 }
 
-function WhatToDoBlock({
-  programSlug,
-  exerciseProgress,
-}: {
-  programSlug: string;
-  exerciseProgress: ExerciseProgress;
-}) {
+function WhatToDoBlock({ programSlug }: { programSlug: string }) {
   const { ref, isVisible } = useScrollReveal();
-  const { nextNumber, totalCompleted, totalExercises, hasStarted } = exerciseProgress;
-
-  let body: string;
-  let buttonLabel: string;
-  let buttonHref: string;
-
-  if (nextNumber === null) {
-    body = `Ты прошёл все ${totalExercises} упражнений Гловера. Можешь начать второй круг — заметишь нюансы, которые в первый раз прошли мимо.`;
-    buttonLabel = "Начать ещё раз с упражнения 1";
-    buttonHref = `/program/${programSlug}/exercise/1`;
-  } else if (totalCompleted === 0 && !hasStarted) {
-    body = `${totalExercises} упражнений Гловера работают только последовательно — каждое опирается на предыдущее. Перепрыгивать бесполезно: начни с первого.`;
-    buttonLabel = `Начать с упражнения ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  } else if (hasStarted) {
-    body = `${totalExercises} упражнений Гловера работают только последовательно. Ты сейчас на упражнении ${nextNumber} из ${totalExercises} — продолжай по порядку, нет смысла прыгать вперёд.`;
-    buttonLabel = `Продолжить с упражнения ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  } else {
-    body = `${totalExercises} упражнений Гловера работают только последовательно. Ты завершил ${totalCompleted} из ${totalExercises}, следующее — упражнение ${nextNumber}. Открой его и продолжай.`;
-    buttonLabel = `Перейти к упражнению ${nextNumber}`;
-    buttonHref = `/program/${programSlug}/exercise/${nextNumber}`;
-  }
 
   return (
     <div
@@ -313,9 +282,11 @@ function WhatToDoBlock({
     >
       <div className="tr-todo-card">
         <div className="tr-todo-eyebrow">Что делать с этим</div>
-        <p className="tr-todo-body">{body}</p>
-        <Link href={buttonHref} className="tr-cta-primary tr-todo-cta">
-          {buttonLabel}
+        <p className="tr-todo-body">
+          46 упражнений Гловера работают только последовательно — каждое опирается на предыдущее. Иди по порядку, не перепрыгивай.
+        </p>
+        <Link href={`/program/${programSlug}/exercises`} className="tr-cta-primary tr-todo-cta">
+          К упражнениям программы
         </Link>
       </div>
     </div>
@@ -401,7 +372,6 @@ export function TestResultsPage(props: TestResultsProps) {
     scoreDirection = "lower_is_better",
     levelLabels = DEFAULT_LEVEL_LABELS,
     levelThresholds = DEFAULT_LEVEL_THRESHOLDS,
-    exerciseProgress,
   } = props;
 
   const [interpretation, setInterpretation] = useState(initialInterpretation);
@@ -449,21 +419,9 @@ export function TestResultsPage(props: TestResultsProps) {
 
   const searchParams = useSearchParams();
   const demoMode = searchParams?.get("demo") === "todo";
-  const demoState = demoMode ? searchParams?.get("state") : null;
 
   const showWhatToDo =
     (isOwner || demoMode) && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
-
-  // Демо-режим: подменить прогресс пользователя на один из 4 сценариев,
-  // чтобы заказчик мог посмотреть как смотрится каждый текст. Только превью.
-  const effectiveProgress: ExerciseProgress = (() => {
-    if (!demoState) return exerciseProgress;
-    if (demoState === "completed") return { nextNumber: null, totalCompleted: 46, totalExercises: 46, hasStarted: false };
-    if (demoState === "stopped") return { nextNumber: 12, totalCompleted: 11, totalExercises: 46, hasStarted: false };
-    if (demoState === "active") return { nextNumber: 7, totalCompleted: 6, totalExercises: 46, hasStarted: true };
-    if (demoState === "newcomer") return { nextNumber: 1, totalCompleted: 0, totalExercises: 46, hasStarted: false };
-    return exerciseProgress;
-  })();
 
   return (
     <div className="test-results-page">
@@ -530,7 +488,7 @@ export function TestResultsPage(props: TestResultsProps) {
 
         {showWhatToDo && (
           <>
-            <WhatToDoBlock programSlug={programSlug} exerciseProgress={effectiveProgress} />
+            <WhatToDoBlock programSlug={programSlug} />
             <Divider />
           </>
         )}
