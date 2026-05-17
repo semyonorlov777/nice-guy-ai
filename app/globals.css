@@ -1006,10 +1006,156 @@
   .landing-v3 .quick-reply-btn { background: var(--bg-input, #FFFFFF); border-color: var(--border-light); color: var(--text-primary); }
   .landing-v3 .quick-reply-btn:hover, .landing-v3 .quick-reply-btn:active { border-color: var(--accent-border); background: var(--accent-soft); }
   .landing-v3 .input-privacy, .landing-v3 .ib-footer { color: var(--text-hint); }
-  .landing-v3 .send-btn, .landing-v3 .ib-action-btn { background: var(--accent); }
+  .landing-v3 .send-btn, .landing-v3 .ib-action-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
   .landing-v3 .chat-section-header { text-align: center; margin-bottom: 16px; }
   .landing-v3 .chat-section-header h2 { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
   .landing-v3 .chat-section-header p { font-size: 14px; color: var(--text-secondary); }
+
+  /* ── HERO v5 — название книги в H1 (nc-hero5-*) ── */
+  /* Используется на реальных лендингах через HeroChatSectionE
+     (см. components/landing-v2/HeroChatSectionE.tsx). На демо-страницах
+     эти же стили дублируются в app/demo/landing-options/demo.css, но
+     основной источник — здесь. */
+  .landing-v3 .nc-hero5 {
+    padding: 48px 0 56px;
+    max-width: var(--content-w, 1100px);
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .landing-v3 .nc-hero5__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 44px;
+    align-items: stretch;
+    min-height: clamp(620px, 78vh, 760px);
+  }
+  .landing-v3 .nc-hero5__intro {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 8px 4px; min-width: 0; gap: 14px;
+  }
+  .landing-v3 .nc-hero5__eyebrow {
+    display: inline-flex; align-items: center; padding: 5px 12px;
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    border-radius: 999px; font-family: var(--font-body); font-size: 10.5px;
+    font-weight: 700; color: var(--accent); letter-spacing: 0.6px;
+    text-transform: uppercase; align-self: flex-start; margin-bottom: 8px;
+  }
+  .landing-v3 .nc-hero5__title {
+    font-family: var(--font-display); font-size: clamp(34px, 4.4vw, 56px);
+    font-weight: 500; line-height: 1.05; letter-spacing: -0.015em;
+    margin: 0 0 12px; color: var(--text);
+  }
+  .landing-v3 .nc-hero5__book {
+    display: flex; align-items: center; gap: 18px; padding: 14px 16px;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: 14px;
+  }
+  .landing-v3 .nc-hero5__cover {
+    width: 72px; height: 108px; flex-shrink: 0;
+    border-radius: 2px 6px 6px 2px; overflow: hidden;
+    box-shadow: -2px 3px 14px rgba(0, 0, 0, 0.14), 0 0 24px var(--accent-glow, rgba(201, 150, 59, 0.1));
+  }
+  .landing-v3 .nc-hero5__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .landing-v3 .nc-hero5__book-meta { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .landing-v3 .nc-hero5__book-stat { font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+  .landing-v3 .nc-hero5__author {
+    display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+    background: var(--bg-elevated); border: 1px solid var(--border-light);
+    border-radius: 14px;
+  }
+  .landing-v3 .nc-hero5__author-photo {
+    width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%;
+    overflow: hidden; border: 1px solid var(--border-light);
+  }
+  .landing-v3 .nc-hero5__author-photo img {
+    width: 100%; height: 100%; object-fit: cover; object-position: center 15%; display: block;
+  }
+  .landing-v3 .nc-hero5__author-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .landing-v3 .nc-hero5__author-name {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600;
+    line-height: 1.2; color: var(--text);
+  }
+  .landing-v3 .nc-hero5__author-creds { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+  .landing-v3 .nc-hero5__social-proof {
+    padding: 14px 16px; background: var(--accent-soft);
+    border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0;
+  }
+  .landing-v3 .nc-hero5__social-main {
+    font-family: var(--font-display); font-size: 17px; font-weight: 600;
+    line-height: 1.25; color: var(--text); margin-bottom: 4px;
+  }
+  .landing-v3 .nc-hero5__social-sub { font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+  .landing-v3 .nc-hero5__chat-wrap {
+    display: flex; flex-direction: column; height: 100%;
+    min-height: clamp(620px, 78vh, 760px);
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 0 50px var(--accent-glow);
+  }
+  .landing-v3 .nc-hero5 .chat-messages { min-height: 0; }
+  .landing-v3 .nc-hero5 .chat-zone { height: 100%; }
+  .landing-v3 .nc-hero5__continue {
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: flex-start; height: 100%; padding: 48px 40px; gap: 14px;
+  }
+  .landing-v3 .nc-hero5__continue-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .landing-v3 .nc-hero5__continue-title {
+    font-family: var(--font-display); font-size: clamp(24px, 3vw, 30px);
+    font-weight: 600; line-height: 1.2; margin: 0; color: var(--text);
+  }
+  .landing-v3 .nc-hero5__continue-sub {
+    font-size: 15px; line-height: 1.55; color: var(--text-secondary); margin: 0 0 12px;
+  }
+  .landing-v3 .nc-hero5__continue-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .landing-v3 .nc-hero5__primary {
+    display: inline-flex; align-items: center; padding: 12px 26px;
+    background: var(--accent); color: #fff; border-radius: 10px;
+    font-size: 14.5px; font-weight: 600; text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .landing-v3 .nc-hero5__primary:hover { background: #b8862e; transform: translateY(-1px); }
+  .landing-v3 .nc-hero5__secondary {
+    display: inline-flex; align-items: center; padding: 12px 22px;
+    background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-weight: 500; text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .landing-v3 .nc-hero5__secondary:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+
+  /* «Ёлочки» внутри Hero v5 — стандартный (продовский) стиль:
+     золотой акцент-фон, золотая рамка, золотой текст. Перебивает
+     общий .landing-v3 .quick-reply-btn override, который делает их белыми. */
+  .landing-v3 .nc-hero5 .quick-reply-btn {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .landing-v3 .nc-hero5 .quick-reply-btn:hover,
+  .landing-v3 .nc-hero5 .quick-reply-btn:active {
+    background: var(--accent-medium, var(--accent-soft));
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Mobile Hero v5 */
+  @media (max-width: 900px) {
+    .landing-v3 .nc-hero5 { padding-top: 28px; padding-bottom: 36px; }
+    .landing-v3 .nc-hero5__grid {
+      grid-template-columns: 1fr; gap: 22px; min-height: 0;
+    }
+    .landing-v3 .nc-hero5__intro { padding: 0; }
+    .landing-v3 .nc-hero5__chat-wrap { height: 70dvh; min-height: 480px; }
+  }
+  @media (max-width: 540px) {
+    .landing-v3 .nc-hero5 { padding-left: 16px; padding-right: 16px; }
+    .landing-v3 .nc-hero5__cover { width: 60px; height: 90px; }
+    .landing-v3 .nc-hero5__title { font-size: 32px; }
+  }
 
   /* ── SITE FOOTER (shared across all public pages) ── */
   .site-footer { background: var(--bg-dark, var(--bg-main)); border-top: 1px solid var(--border); padding: 48px 24px 32px; font-family: var(--font-body); }
