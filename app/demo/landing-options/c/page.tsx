@@ -43,9 +43,9 @@ const HERO_WELCOME =
 // «Ёлочки» — конкретные ситуации из жизни мужчины, не философские темы.
 // Снижение порога входа до одного клика (Wroblewski: gradual engagement).
 const HERO_QUICK_REPLIES: QuickReplyInput[] = [
-  { text: "Жена не уважает, хотя я делаю всё", type: "default" },
-  { text: "Не могу отказать на работе", type: "default" },
-  { text: "Не понимаю, чего хочу сам", type: "default" },
+  { text: "Жена не уважает, хотя я делаю всё" },
+  { text: "Не могу отказать на работе" },
+  { text: "Не понимаю, чего хочу сам" },
 ];
 
 interface LandingData {
