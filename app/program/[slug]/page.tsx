@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { HeroChatSectionE } from "@/components/landing-v2/HeroChatSectionE";
 import { SocialProof } from "@/components/landing/SocialProof";
 import { OutcomesSection } from "@/components/landing/OutcomesSection";
 import { AuthorSection } from "@/components/landing/AuthorSection";
@@ -131,6 +132,13 @@ export default async function ProgramLanding({
   const chatHref = isLoggedIn ? `/program/${slug}/hub` : "#chat-block";
   const ctaText = isLoggedIn ? "В кабинет" : "Начать бесплатно";
 
+  // Новый Hero v5 «название книги в H1» — пока только для nice-guy,
+  // остальные программы оставляем на старом HeroSection до отдельной
+  // переработки текстов (другие книги, другие тексты и регалии).
+  const isHeroV5 = slug === "nice-guy";
+  const hubHref = `/program/${slug}/hub`;
+  const directChatHref = `/program/${slug}/chat`;
+
   // If no landing_data, fall back to a minimal layout
   if (!landingData) {
     return (
@@ -157,18 +165,45 @@ export default async function ProgramLanding({
         programSlug={slug}
       />
 
-      <HeroSection
-        tag={landingData.hero_tag}
-        title={landingData.hero_title}
-        subtitle={landingData.hero_subtitle}
-        cta={landingData.hero_cta}
-        hint={landingData.hero_hint}
-        ctaHref={chatHref}
-        book={landingData.book}
-        loggedInHubHref={isLoggedIn ? `/program/${slug}/hub` : undefined}
-      />
+      {isHeroV5 ? (
+        <HeroChatSectionE
+          programSlug={slug}
+          eyebrow="✦ Интерактивный тренажёр по бестселлеру"
+          title="Хватит быть<br>славным парнем"
+          bookCoverUrl={landingData.book.cover_url}
+          bookAlt={landingData.book.alt}
+          bookStat1="Тираж 2+ млн копий, переведена на 20+ языков"
+          bookStat2="Топ ЛитРес · 24 650 отзывов читателей"
+          authorPhotoUrl={landingData.author.photo_url}
+          authorName="Доктор Роберт Гловер"
+          authorCredentials="Клинический психотерапевт, США · 30 лет работает с мужчинами"
+          socialProofMain="2 700+ мужчин в русскоязычном сообществе"
+          socialProofSub="уже работают по методу Гловера"
+          welcomeMessage="Привет. Я тренажёр по методу Роберта Гловера. Помогу перестать жить ради чужого одобрения и начать жить по своим правилам.\n\nРасскажи одну ситуацию: где ты последний раз сказал «да», когда хотел сказать «нет»?"
+          quickReplies={[
+            { text: "Согласился, когда хотел отказаться" },
+            { text: "Промолчал, когда был не согласен" },
+            { text: "Сам не понимаю, чего хочу" },
+          ]}
+          quickReplyLabel="Можно начать с одного из этих:"
+          isLoggedIn={isLoggedIn}
+          hubHref={hubHref}
+          chatHref={directChatHref}
+        />
+      ) : (
+        <HeroSection
+          tag={landingData.hero_tag}
+          title={landingData.hero_title}
+          subtitle={landingData.hero_subtitle}
+          cta={landingData.hero_cta}
+          hint={landingData.hero_hint}
+          ctaHref={chatHref}
+          book={landingData.book}
+          loggedInHubHref={isLoggedIn ? `/program/${slug}/hub` : undefined}
+        />
+      )}
 
-      <SocialProof items={landingData.social_proof} />
+      {!isHeroV5 && <SocialProof items={landingData.social_proof} />}
 
       <OutcomesSection
         label={landingData.outcomes.label}
@@ -219,14 +254,16 @@ export default async function ProgramLanding({
         summary_text={landingData.how_it_works.summary_text}
       />
 
-      <ChatSection
-        isLoggedIn={isLoggedIn}
-        slug={slug}
-        chatHeader={landingData.chat_header}
-        price={landingData.price}
-        welcomeMessage={welcomeMessage}
-        quickReplies={anonymousQuickReplies}
-      />
+      {!isHeroV5 && (
+        <ChatSection
+          isLoggedIn={isLoggedIn}
+          slug={slug}
+          chatHeader={landingData.chat_header}
+          price={landingData.price}
+          welcomeMessage={welcomeMessage}
+          quickReplies={anonymousQuickReplies}
+        />
+      )}
 
       <SiteFooter variant="program" />
     </div>
