@@ -1,15 +1,32 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { ScaleResult } from "@/lib/test-scoring";
-import type { TestInterpretation } from "@/lib/test-interpretation";
+import {
+  isFallbackInterpretation,
+  type TestInterpretation,
+} from "@/lib/test-interpretation";
 import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
-import { RadarChart } from "./RadarChart";
 import { THEME_ICON_MAP } from "@/components/icons/theme-icon-map";
 import { AIBubble } from "@/components/chat/ChatMessage";
+
+// Radar — тяжёлый SVG + анимации, грузим только в браузере, чтобы не блокировать
+// первичный paint мобильного устройства.
+const RadarChart = dynamic(
+  () => import("./RadarChart").then((m) => m.RadarChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="tr-radar-section">
+        <div className="tr-radar-wrapper tr-radar-skeleton" aria-hidden="true" />
+      </div>
+    ),
+  }
+);
 
 // ── Types ──
 
@@ -345,6 +362,64 @@ function ResultsFooter() {
   );
 }
 
+function InterpretationStatus({
+  resultId,
+  isFallback,
+  pollTimedOut,
+  onRegenerated,
+}: {
+  resultId: string;
+  isFallback: boolean;
+  pollTimedOut: boolean;
+  onRegenerated: (interp: TestInterpretation) => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canRetry = isFallback || pollTimedOut;
+
+  async function handleRetry() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/test/results/${resultId}/regenerate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.interpretation) {
+        setError(data.error || "Не удалось сгенерировать. Попробуй ещё раз.");
+        return;
+      }
+      onRegenerated(data.interpretation);
+    } catch {
+      setError("Ошибка сети. Проверь подключение и попробуй ещё раз.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const message = canRetry
+    ? "Подробная интерпретация пока не готова."
+    : "Генерируем вашу интерпретацию…";
+
+  return (
+    <div className="tr-interpretation-unavailable">
+      <div className="tr-interp-status-text">{message}</div>
+      {canRetry && (
+        <button
+          type="button"
+          className="tr-cta-secondary tr-interp-retry"
+          onClick={handleRetry}
+          disabled={pending}
+        >
+          {pending ? "Генерируем…" : "Сгенерировать заново"}
+        </button>
+      )}
+      {error && <div className="tr-interp-retry-error">{error}</div>}
+    </div>
+  );
+}
+
 // ── Main component ──
 
 const POLL_INTERVAL = 5000;
@@ -375,7 +450,12 @@ export function TestResultsPage(props: TestResultsProps) {
   const [interpretation, setInterpretation] = useState(initialInterpretation);
   const [pollTimedOut, setPollTimedOut] = useState(false);
 
+  const isFallback = isFallbackInterpretation(interpretation);
+
   useEffect(() => {
+    // Poll while background generation is in progress (interpretation === null).
+    // For fallback interpretation, background job already failed — polling won't
+    // produce new data, user must trigger regeneration via the retry button.
     if (interpretation) return;
 
     let stopped = false;
@@ -387,7 +467,7 @@ export function TestResultsPage(props: TestResultsProps) {
         const res = await fetch(`/api/test/results/${id}`);
         if (!res.ok) return;
         const data = await res.json();
-        if (data.interpretation) {
+        if (data.interpretation && !isFallbackInterpretation(data.interpretation)) {
           setInterpretation(data.interpretation);
           stopped = true;
           return;
@@ -413,7 +493,8 @@ export function TestResultsPage(props: TestResultsProps) {
   }, [id, interpretation]);
 
   const levelLabel =
-    interpretation?.level_label || getLevelLabel(totalScore, levelLabels, levelThresholds);
+    (interpretation && !isFallback && interpretation.level_label) ||
+    getLevelLabel(totalScore, levelLabels, levelThresholds);
 
   const showWhatToDo =
     isOwner && SEQUENTIAL_METHODOLOGY_PROGRAMS.has(programSlug);
@@ -432,18 +513,19 @@ export function TestResultsPage(props: TestResultsProps) {
 
         <Divider />
 
-        {interpretation?.overall ? (
+        {interpretation && !isFallback ? (
           <>
             <AIInterpretation text={interpretation.overall} />
             <Divider />
           </>
         ) : (
           <>
-            <div className="tr-interpretation-unavailable">
-              {pollTimedOut
-                ? "Интерпретация пока не готова. Обновите страницу позже."
-                : "Генерируем вашу интерпретацию…"}
-            </div>
+            <InterpretationStatus
+              resultId={id}
+              isFallback={isFallback}
+              pollTimedOut={pollTimedOut}
+              onRegenerated={setInterpretation}
+            />
             <Divider />
           </>
         )}
