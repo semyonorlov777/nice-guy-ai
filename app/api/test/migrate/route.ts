@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import type { TestAnswer } from "@/lib/test-scoring";
@@ -7,11 +8,19 @@ import type { TestAnswer } from "@/lib/test-scoring";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Per-user rate limit: 5 миграций в минуту.
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 5 });
+
 export async function POST(request: Request) {
   // 1. Auth required
   const supabase = await createClient();
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
+
+  // 2. Rate limit (per user)
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
 
   // 2. Parse and validate body
   const body = await request.json();

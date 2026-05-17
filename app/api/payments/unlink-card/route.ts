@@ -1,5 +1,9 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { requireAuth } from "@/lib/api-helpers";
+import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
+
+// Per-user rate limit: 3 отвязки в минуту.
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 3 });
 
 // Body не используется — действие определяется только по auth (user.id)
 export async function POST() {
@@ -7,6 +11,10 @@ export async function POST() {
 
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
+
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
 
   const serviceClient = createServiceClient();
   await serviceClient
