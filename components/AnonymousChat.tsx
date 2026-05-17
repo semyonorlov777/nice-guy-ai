@@ -22,6 +22,7 @@ interface AnonymousChatProps {
   scrollToSectionId?: string;
   headerTitle?: string;
   headerSubtitle?: string;
+  quickReplyLabel?: string;
 }
 
 export function AnonymousChat({
@@ -31,6 +32,7 @@ export function AnonymousChat({
   scrollToSectionId,
   headerTitle,
   headerSubtitle,
+  quickReplyLabel,
 }: AnonymousChatProps) {
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [requiresAuth, setRequiresAuth] = useState(false);
@@ -334,6 +336,9 @@ export function AnonymousChat({
           {showQuickReplies && normalizedQuickReplies.length > 0 &&
             (!animActive || welcomePhase === "quick-replies" || welcomePhase === "input-pulse") && (
             <div className="quick-replies">
+              {quickReplyLabel && (
+                <div className="quick-reply-label">{quickReplyLabel}</div>
+              )}
               {normalizedQuickReplies.map((reply, i) => {
                 if (animActive && i >= quickReplyStaggerIndex) return null;
                 const exitClass = reply.type === "exit" ? " quick-reply-btn-exit" : "";
