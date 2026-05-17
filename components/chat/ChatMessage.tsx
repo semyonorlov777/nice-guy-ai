@@ -2,7 +2,10 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
-import type { QuickReply } from "@/lib/chat/parse-quick-replies";
+import {
+  normalizeQuickReplies,
+  type QuickReplyInput,
+} from "@/lib/chat/normalize-quick-replies";
 
 /**
  * Единый рендер-слой AI-сообщений для ВСЕХ чат-поверхностей
@@ -63,29 +66,17 @@ export interface QuickReplyBarClassNames {
 export interface QuickReplyBarProps {
   /**
    * Массив replies — либо из parseQuickReplies (with types), либо из БД
-   * welcome_replies (тот же формат). Legacy: string[] тоже поддерживается
-   * и трактуется как всё normal (с последним exit если их ≥3).
+   * welcome_replies / anonymous_quick_replies (тот же формат). Legacy: string[]
+   * тоже поддерживается и трактуется как всё normal (с последним exit если их
+   * ≥3 или ровно 1). Нормализация — в lib/chat/normalize-quick-replies.
    */
-  replies: QuickReply[] | string[];
+  replies: QuickReplyInput[];
   /** Вызывается при клике на кнопку — обычно тот же handleSend */
   onClick: (text: string) => void;
   disabled?: boolean;
   classNames?: QuickReplyBarClassNames;
   /** Показать ли "Выбери вариант или напиши своё" над кнопками. По умолчанию — да */
   showLabel?: boolean;
-}
-
-function normalizeReplies(replies: QuickReply[] | string[]): QuickReply[] {
-  if (replies.length === 0) return [];
-  // Если массив строк — последний автоматически exit (если их ≥3 или ровно 1).
-  if (typeof replies[0] === "string") {
-    return (replies as string[]).map((text, idx, arr) => {
-      const isLast = idx === arr.length - 1;
-      const shouldBeExit = isLast && (arr.length >= 3 || arr.length === 1);
-      return { text, type: shouldBeExit ? "exit" : "normal" };
-    });
-  }
-  return replies as QuickReply[];
 }
 
 export function QuickReplyBar({
@@ -95,7 +86,7 @@ export function QuickReplyBar({
   classNames = {},
   showLabel = true,
 }: QuickReplyBarProps) {
-  const normalized = normalizeReplies(replies);
+  const normalized = normalizeQuickReplies(replies);
   if (normalized.length === 0) return null;
 
   const containerClass = classNames.container ?? "quick-replies";

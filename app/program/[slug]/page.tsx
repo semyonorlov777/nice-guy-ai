@@ -12,6 +12,7 @@ import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { ChatSection } from "@/components/landing/ChatSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
+import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 
 export async function generateMetadata({
   params,
@@ -121,7 +122,11 @@ export default async function ProgramLanding({
 
   const landingData = program?.landing_data as LandingData | null;
   const welcomeMessage = program?.free_chat_welcome || "";
-  const anonymousQuickReplies = (program?.anonymous_quick_replies as string[]) || [];
+  // Поле приходит из БД в двух форматах: массив строк (legacy) или массив
+  // объектов {text, type} (новые программы). Нормализация — в AnonymousChat
+  // через normalizeQuickReplies. Здесь только корректная типизация.
+  const anonymousQuickReplies =
+    (program?.anonymous_quick_replies as QuickReplyInput[] | null) ?? [];
 
   const chatHref = isLoggedIn ? `/program/${slug}/hub` : "#chat-block";
   const ctaText = isLoggedIn ? "В кабинет" : "Начать бесплатно";
