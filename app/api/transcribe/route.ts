@@ -1,8 +1,20 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
 import OpenAI from "openai";
 
 const STT_TOKENS_PER_MINUTE = 50;
+
+// Per-user rate limit: 10 транскрипций в минуту.
+// Защита от abuse-вектора: загрузка валидных аудио чужими токенами через
+// компрометированную сессию.
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 10 });
+
+// Минимальный битрейт типичного клиентского записанного audio/webm;opus ≈ 16 kbps.
+// Делим на 8 чтобы получить байты/сек = 2048. Делим размер файла на это — нижняя
+// граница длительности. Защищает от cost-spoofing: клиент шлёт duration=1 для
+// 25MB файла → реально 100+ секунд → биллим как минимум по размеру.
+const MIN_AUDIO_BYTES_PER_SEC = 2048;
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -14,7 +26,12 @@ export async function POST(request: Request) {
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
 
-  // 2. Check balance
+  // 2. Rate limit (per user)
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
+
+  // 3. Check balance
   const { data: profile } = await supabase
     .from("profiles")
     .select("balance_tokens")
@@ -25,19 +42,26 @@ export async function POST(request: Request) {
     return apiError("Недостаточно токенов для голосового ввода", 403);
   }
 
-  // 3. Parse multipart form data
+  // 4. Parse multipart form data
   const formData = await request.formData();
   const audioFile = formData.get("audio") as File | null;
-  const durationSec = Number(formData.get("duration")) || 1;
+  const clientDurationSec = Number(formData.get("duration")) || 1;
 
   if (!audioFile) {
     return apiError("Аудио не найдено", 400);
+  }
+  if (!audioFile.type.startsWith("audio/")) {
+    return apiError("Файл должен быть аудио", 400);
   }
   if (audioFile.size > 25 * 1024 * 1024) {
     return apiError("Файл слишком большой (макс. 25 MB)", 400);
   }
 
-  // 4. Calculate cost BEFORE calling OpenAI
+  // 5. Calculate cost BEFORE calling OpenAI.
+  // Берём максимум из присланной клиентом длительности и нижней границы по
+  // размеру файла — клиент не может занизить (cost-spoofing fix).
+  const sizeBasedMinSec = Math.ceil(audioFile.size / MIN_AUDIO_BYTES_PER_SEC);
+  const durationSec = Math.max(clientDurationSec, sizeBasedMinSec);
   const durationMin = Math.ceil(durationSec / 60);
   const tokensToSpend = durationMin * STT_TOKENS_PER_MINUTE;
 
