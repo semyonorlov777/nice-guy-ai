@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { ProgramModeWithTemplate } from "@/types/modes";
 
 interface ModesContextType {
@@ -16,8 +16,11 @@ export function ModesProvider({
   modes: ProgramModeWithTemplate[];
   children: React.ReactNode;
 }) {
+  // Мемоизируем value, иначе все consumers перерендерятся на каждом render
+  // Provider'а — даже если modes не изменился.
+  const value = useMemo(() => ({ modes }), [modes]);
   return (
-    <ModesContext.Provider value={{ modes }}>{children}</ModesContext.Provider>
+    <ModesContext.Provider value={value}>{children}</ModesContext.Provider>
   );
 }
 
