@@ -2,6 +2,7 @@ import { streamText } from "ai";
 import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
 import { updatePortrait } from "@/app/api/portrait/update/route";
 import {
   ChatError,
@@ -15,6 +16,11 @@ import {
   buildGeminiHistory,
 } from "@/lib/chat/prepare-context";
 
+// Per-user rate limit: 20 запросов в минуту на user.id.
+// Защищает от opустошения чужого баланса при компрометации сессии и
+// от accidental loops в клиенте (useChat retry).
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 20 });
+
 export async function POST(request: Request) {
   const supabase = await createClient();
 
@@ -22,7 +28,12 @@ export async function POST(request: Request) {
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
 
-  // 2. Parse body + validate
+  // 2. Rate limit (per user)
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
+
+  // 3. Parse body + validate
   const body = await request.json();
 
   try {
