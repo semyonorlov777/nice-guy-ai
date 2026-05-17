@@ -120,6 +120,7 @@ export default async function DemoLandingA() {
       <div className="demo-bar">
         <Link href="/demo/landing-options" className="demo-bar__back">← Вернуться к вариантам</Link>
         <span className="demo-bar__tag">Вариант A · живой чат в Hero (v2 — после исследования)</span>
+        <Link href="/demo/landing-options#why" className="demo-bar__why">↗ Обоснования</Link>
       </div>
 
       <HeroChatSection
@@ -139,6 +140,20 @@ export default async function DemoLandingA() {
         hubHref={hubHref}
         chatHref={chatHref}
       />
+
+      <section className="demo-why-block">
+        <div className="demo-why-block__inner">
+          <div className="demo-why-block__eyebrow">Главное в этом варианте</div>
+          <ul className="demo-why-block__list">
+            <li>Двухколоночный Hero: видны и обложка/автор/цена, и активный чат — привычная структура лендинга.</li>
+            <li>Крупная кнопка-мост «Начать разбор» — клик фокусирует поле ввода в чате справа и подсвечивает его пульсацией.</li>
+            <li>Регалии автора («Доктор Гловер, 30+ лет практики») и цена 990 ₽/мес — для тех, кто привык к явным сигналам до клика.</li>
+          </ul>
+          <Link href="/demo/landing-options#why" className="demo-why-block__link">
+            Полное обоснование — на странице выбора ↗
+          </Link>
+        </div>
+      </section>
 
       <SocialProof items={landingData.social_proof} />
 
