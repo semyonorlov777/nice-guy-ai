@@ -18,15 +18,18 @@ export default async function AuthorChatPage({
 
   if (!user) return null;
 
-  // Проверяем что фича author_chat включена для этой программы
-  await requireProgramFeature(supabase, slug, "author_chat");
+  // Параллельно: feature check + программа + профиль (все независимы).
+  const [, programRes, userProfile] = await Promise.all([
+    requireProgramFeature(supabase, slug, "author_chat"),
+    supabase
+      .from("programs")
+      .select("id, title, author_chat_welcome, author_chat_system_prompt, landing_data")
+      .eq("slug", slug)
+      .single(),
+    getUserProfileForChat(supabase, user),
+  ]);
 
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id, title, author_chat_welcome, author_chat_system_prompt, landing_data")
-    .eq("slug", slug)
-    .single();
-
+  const program = programRes.data;
   if (!program) return null;
 
   const landingData = program.landing_data as {
@@ -37,8 +40,7 @@ export default async function AuthorChatPage({
   const authorName = landingData?.author?.name || program.title;
   const authorCredentials = landingData?.author?.credentials || "";
 
-  // User initial for avatar
-  const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
+  const { userInitial, avatarUrl } = userProfile;
 
   return (
     <ChatWindow

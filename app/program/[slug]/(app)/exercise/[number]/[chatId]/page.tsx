@@ -22,23 +22,34 @@ export default async function ExistingExerciseSessionPage({
 
   const program = await requireProgramFeature(supabase, slug, "exercises");
 
-  // Загружаем упражнение
-  const { data: exercise } = await supabase
-    .from("exercises")
-    .select("id, number, title, description, config, welcome_message")
-    .eq("program_id", program.id)
-    .eq("number", parseInt(number))
-    .single();
+  // Параллельно: exercise + chat + userProfile + exerciseCount + messages.
+  // messages берёт chat.id, но chatId известен из params — можем стартовать.
+  const [exerciseRes, chatRes, userProfile, exerciseCountRes, initialMessages] =
+    await Promise.all([
+      supabase
+        .from("exercises")
+        .select("id, number, title, description, config, welcome_message")
+        .eq("program_id", program.id)
+        .eq("number", parseInt(number))
+        .single(),
+      supabase
+        .from("chats")
+        .select("id, exercise_id, chat_type")
+        .eq("id", chatId)
+        .eq("user_id", user.id)
+        .single(),
+      getUserProfileForChat(supabase, user),
+      supabase
+        .from("exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("program_id", program.id),
+      getChatMessages(supabase, chatId),
+    ]);
+
+  const exercise = exerciseRes.data;
   if (!exercise) redirect(`/program/${slug}/exercises`);
 
-  // Загружаем чат (RLS проверяет ownership)
-  const { data: chat } = await supabase
-    .from("chats")
-    .select("id, exercise_id, chat_type")
-    .eq("id", chatId)
-    .eq("user_id", user.id)
-    .single();
-
+  const chat = chatRes.data;
   if (!chat) redirect(`/program/${slug}/exercise/${number}`);
 
   const config = (exercise.config || {}) as {
@@ -46,19 +57,10 @@ export default async function ExistingExerciseSessionPage({
     quick_replies?: string[];
   };
 
-  // User initial
-  const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
+  const { userInitial, avatarUrl } = userProfile;
+  const count = exerciseCountRes.count;
 
-  // Total exercises count
-  const { count } = await supabase
-    .from("exercises")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", program.id);
-
-  // Сообщения чата
-  const initialMessages = await getChatMessages(supabase, chat.id);
-
-  // Прошлые сессии для этого упражнения (кроме текущей)
+  // allSessions требует exercise.id.
   const { data: allSessions } = await supabase
     .from("chats")
     .select("id, title, last_message_at")

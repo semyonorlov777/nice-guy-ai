@@ -23,13 +23,26 @@ export default async function ExercisePage({
   // Load program + check exercises feature
   const program = await requireProgramFeature(supabase, slug, "exercises");
 
-  // Load exercise
-  const { data: exercise } = await supabase
-    .from("exercises")
-    .select("id, number, title, description, chapter, config, welcome_message")
-    .eq("program_id", program.id)
-    .eq("number", parseInt(number))
-    .single();
+  // Параллельно: exercise + userProfile + exerciseCount.
+  // allSessions нуждается в exercise.id — но мы знаем number, поэтому можем
+  // запросить в параллель: даже если exercise не найдётся, allSessions
+  // вернёт пусто (фильтр по неизвестному exercise_id). Дешевле, чем
+  // дополнительный roundtrip.
+  const [exerciseRes, userProfile, exerciseCountRes] = await Promise.all([
+    supabase
+      .from("exercises")
+      .select("id, number, title, description, chapter, config, welcome_message")
+      .eq("program_id", program.id)
+      .eq("number", parseInt(number))
+      .single(),
+    getUserProfileForChat(supabase, user),
+    supabase
+      .from("exercises")
+      .select("id", { count: "exact", head: true })
+      .eq("program_id", program.id),
+  ]);
+
+  const exercise = exerciseRes.data;
   if (!exercise) redirect(`/program/${slug}/exercises`);
 
   const config = (exercise.config || {}) as {
@@ -37,16 +50,10 @@ export default async function ExercisePage({
     quick_replies?: string[];
   };
 
-  // User initial for avatar
-  const { userInitial, avatarUrl } = await getUserProfileForChat(supabase, user);
+  const { userInitial, avatarUrl } = userProfile;
+  const count = exerciseCountRes.count;
 
-  // Total exercises count
-  const { count } = await supabase
-    .from("exercises")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", program.id);
-
-  // Все сессии для этого упражнения (сортировка по последнему сообщению)
+  // Сессии для этого упражнения (требуется exercise.id).
   const { data: allSessions } = await supabase
     .from("chats")
     .select("id, title, last_message_at")
