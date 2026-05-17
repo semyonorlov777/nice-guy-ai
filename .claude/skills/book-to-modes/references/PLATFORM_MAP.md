@@ -781,34 +781,44 @@ WHERE slug = 'BOOK_SLUG';
 
 ---
 
-## Иконки режимов — ДВЕ системы (обе обязательны)
+## Иконки — ТРИ системы, которые нужно синхронизировать
 
-В проекте **две независимые системы иконок**, обе нужны для корректного отображения:
+В проекте **три независимые карты иконок**, и каждая закрывает свой кусок UI. Когда добавляешь новый режим/тему — пройди по всем трём, иначе пользователь увидит пустой кружок там, где ты этого не ожидаешь.
 
-### 1. Лендинг: `components/hub/mode-icons.tsx` → `iconMap`
-Используется на публичном лендинге программы (секция "Решение").
-Формат: Feather/Lucide-style (24×24 viewBox, stroke, no fill).
+| # | Файл (source of truth) | Карта | Ключ из БД | Где рендерится | Симптом если ключа нет |
+|---|------------------------|-------|-----------|----------------|------------------------|
+| 1 | `components/hub/mode-icons.tsx` | `iconMap` | `mode_templates.icon` | Лендинг программы — секция "Решение" | Нет иконки в карточке выгод на ленде |
+| 2 | `components/hub/InstrumentList.tsx` | `INSTRUMENT_ICON_MAP` | `mode_templates.icon` | **Хаб → карточки инструментов** | Карточка инструмента без иконки |
+| 3 | `components/icons/theme-icon-map.tsx` | `THEME_ICON_MAP` | `program_themes.icon_key` **И** `test_configs.scales[].key` | **Хаб → карточки тем** + **страница результатов теста** | Пустой золотой кружок темы на хабе и в радаре теста |
 
-### 2. Хаб (кабинет): `components/icons/hub-icons.tsx` → `InstrumentList.tsx` → `INSTRUMENT_ICON_MAP`
-Используется на странице хаба (`/program/[slug]/hub`) — карточки инструментов.
-Формат: `IconProps { size?: number; className?: string }`, viewBox 0 0 24 24, stroke-based.
+Формат всех — Feather/Lucide-style SVG, 24×24 viewBox, stroke-based. №2 и №3 принимают `IconProps { size?: number; className?: string }`.
 
-**ВАЖНО:** Также нужно добавить `toolKeyMap` в `InstrumentList.tsx` для каждого нового chat-based режима (маппинг `mode_key` → `tool-slug` для URL `/chat/new?tool=...`).
+**Дополнительно: `toolKeyMap`** в `InstrumentList.tsx` — маппинг `mode_template.key` → `tool-slug` для URL `/chat/new?tool=...`. Нужно дополнить, если новый chat-based режим имеет нестандартный ключ (иначе будет дефолт `key.replace(/_/g, '-')`).
 
-### Чеклист при добавлении иконки (Этап 5)
+### Чеклист при добавлении НОВОЙ иконки
 
-| Шаг | Файл | Что сделать |
-|-----|------|-------------|
-| 1 | `components/hub/mode-icons.tsx` | Добавить SVG-компонент + запись в `iconMap` |
-| 2 | `components/icons/hub-icons.tsx` | Добавить SVG-компонент (с `size`/`className` props) |
-| 3 | `components/hub/InstrumentList.tsx` | Добавить import + запись в `INSTRUMENT_ICON_MAP` |
-| 4 | `components/hub/InstrumentList.tsx` | Добавить записи в `toolKeyMap` для chat-based режимов |
+| Шаг | Файл | Что сделать | Когда нужно |
+|-----|------|-------------|------------|
+| 1 | `components/icons/hub-icons.tsx` | Создать SVG-компонент (`function FooIcon({ size, className })`) — это базовый файл, из него реэкспортируют другие | Всегда |
+| 2 | `components/hub/InstrumentList.tsx` | Импорт `FooIcon` + запись в `INSTRUMENT_ICON_MAP` под ключом из `mode_templates.icon` | Если добавляешь новый режим с новой `icon` |
+| 3 | `components/icons/theme-icon-map.tsx` | Импорт `FooIcon` + запись в `THEME_ICON_MAP` под ключом из `program_themes.icon_key` | Если добавляешь новую тему с новым `icon_key` |
+| 4 | `components/hub/mode-icons.tsx` | Создать упрощённый SVG (без props) + запись в `iconMap` | Если иконка нужна и на лендинге |
+| 5 | `components/hub/InstrumentList.tsx` | Если ключ режима нестандартный — дополнить `toolKeyMap` | Только если `is_chat_based=true` и URL не стандартный |
 
-### Существующие ключи (hub-icons + INSTRUMENT_ICON_MAP)
+### Существующие ключи
 
-pen, clock, check, book, chat, target, search, message-circle, book-open, map, drama, sparkles, heart, users, shield, compass, lightbulb, translate, unlock, rocket, lightning, flask
+**`INSTRUMENT_ICON_MAP` (карточки инструментов на хабе):**
+pen, clock, check, book, chat, heart, users, compass, lightbulb, translate, drama, target, search, message-circle, book-open, map, sparkles, shield, unlock, rocket, lightning, flask, brain, layout, eraser.
 
-Если нужной иконки нет — добавь во **все три файла** (шаги 1-3).
+**`THEME_ICON_MAP` (темы программ + шкалы тестов):**
+- nice-guy: approval, contracts, suppression, control, boundaries, masculinity, attachment
+- games-people-play: games, ego-states, life-script, strokes, karpman
+- razgovorny-gipnoz: rapport, suggestions, strategy, awareness, trance
+- 100-notes: fear_mastery, scale_thinking, energy_agency, environment_hygiene, self_reflection
+- redecision-therapy: intimacy, feelings, success, authenticity, drivers
+- heroes-and-outlaws: arch_paradise, arch_impact, arch_belonging, arch_order
+
+Если нужного ключа нет — добавь во все нужные файлы (см. таблицу). Линтер `npm run check:chats` ловит отсутствие через правила `theme-icon-missing` (error) и `mode-icon-missing` (warn) — прогоняй перед коммитом.
 
 ---
 
@@ -898,9 +908,19 @@ npx tsx scripts/check-chat-seed.ts --book=<slug>   # одна книга (быс
 На уровне **program_themes**:
 - те же правила welcome_ai_message + welcome_replies
 - `welcome_system_context` — НЕ дублирует QR-блок (наследуется из `programs.system_prompt`)
+- `icon_key` — есть в `THEME_ICON_MAP` (components/icons/theme-icon-map.tsx) — error, иначе пустой кружок на хабе
+
+На уровне **mode_templates** (через JOIN с program_modes):
+- `icon` — есть в `INSTRUMENT_ICON_MAP` (components/hub/InstrumentList.tsx) — warn
 
 На уровне **test_configs** (если есть):
 - `questions[]` группируется по блокам `ui_config.questions_per_block` — все вопросы внутри блока должны иметь одну `scale` — error
+
+**Новые правила (после ретро 9 книг 2026-05):**
+- `programs.hub_messages` — 3 обязательных ключа (`first`, `returning_test`, `returning_notest`); если у программы есть тест и hub_messages пуст — error, иначе warn
+- `programs.test_system_prompt` — заполнен если `features.test=true` (error, иначе AI streaming text-answers идёт без контекста)
+- `landing_data.author.photo_url` — файл реально существует в `public/` (warn, иначе broken image)
+- Запрещённые фразы из `docs/brand-glossary.md` (`AI-тренажёр`, `Nice Guy AI`, `ИИ-/AI-<существительное>`) в любых seed-полях программы, режимов и тем — warn. Исключения зашиты для допустимых локаций (`meta_title`, `meta_description`, `landing_data.comparison.columns[*].name`).
 
 Дополнительно: отдельный скрипт `npm run check:author-photos` проверяет `public/authors/*.jpg` на размер ≥100 КБ (фото мутное при меньшем размере — Wikipedia thumbnails запрещены).
 

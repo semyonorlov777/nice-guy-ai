@@ -20,6 +20,7 @@ description: "Проектирование режимов онлайн-трен�
 1. Прочитай `references/REFERENCE.md` — 53 принципа, 5 архетипов, промпт-шаблон, типология replies, антипаттерны, принципы лендинга (Л1-Л7).
 2. Прочитай `references/PLATFORM_MAP.md` — как режимы ложатся на код платформы (таблицы БД, chat_type, SQL, landing_data JSON-схема, **линтер `npm run check:chats`**).
 3. Просмотри `examples/` — конспекты решений по прошлым книгам (что сработало, что нет).
+3.5. **Прочитай эталонный seed-файл** одной из свежих книг (`scripts/seed-heroes-and-outlaws.sql` или `scripts/seed-pishi-sokraschay.sql`) — это живой пример полного набора полей и их структуры. Не копируй из него — копируй понимание: какие колонки заполнены, как структурирован landing_data, какие ключи `main_concepts`, `hub_messages`, `features`. Так быстрее научишься чем по схеме, и не пропустишь поле, которое в шаблоне ниже не выделено.
 4. Если пользователь приложил PDF/текст книги — прочитай его.
 5. Если книга не приложена — используй свои знания. Для малоизвестных книг предупреди, что нужен текст.
 
@@ -507,6 +508,28 @@ WHERE slug = 'BOOK_SLUG';
 **k) Test** (только если `features.test=true`):
 - `test`: `{emoji, title, description, time_label, questions_label, cta_text, cta_href}`
 
+**l) `programs.hub_messages` — приветствие Системы на хабе (ОБЯЗАТЕЛЬНО)**
+
+Это **не landing_data**, а отдельная колонка таблицы `programs`. Если оставить пустой — на хабе у залогиненного пользователя будет пустой золотой кружок вместо текста Системы. Три обязательных ключа:
+
+| Ключ | Когда показывается | Что писать |
+|---|---|---|
+| `first` | Первое посещение хаба | Приветствие + хук про книгу + предложение пройти тест («N минут, K вопросов») |
+| `returning_test` | Возврат на хаб после прохождения теста | Персонализация по топ-2 темам через плейсхолдеры `{theme1}` / `{theme2}` (резолвятся в названия тем) |
+| `returning_notest` | Возврат на хаб без прохождения теста | Напоминание про тест + предложение выбрать инструмент |
+
+```sql
+UPDATE programs SET hub_messages = jsonb_build_object(
+  'first',            '[приветственное сообщение для первого визита, хук про книгу, предложение теста]',
+  'returning_test',   'По твоему профилю самые сильные темы — <strong>{theme1}</strong> и <strong>{theme2}</strong>. С чего начнём?',
+  'returning_notest', '[напоминание про тест + предложение выбрать инструмент]'
+) WHERE slug = 'BOOK_SLUG';
+```
+
+Поддерживается ограниченный HTML: `<strong>` для акцента. Плейсхолдеры `{theme1}/{theme2}` в `returning_test` резолвятся в топ-2 тем по баллам теста (см. `app/program/[slug]/(app)/hub/page.tsx`); если у программы нет `program_themes` — стрипаются и выводится `returning_notest`.
+
+**Проверка:** линтер `npm run check:chats` ловит отсутствие любого из 3 ключей (правило `hub-messages-missing` / `hub-messages-key-missing`). Дополнительно — открыть `/program/<slug>/hub?hub_state=first` в браузере и убедиться что Система выводит ожидаемое.
+
 ⏸ СТОП не нужен — ленд создаётся на основе утверждённых этапов 1-4.
 
 ### Этап 4.8: Линтер + UI-верификация (ОБЯЗАТЕЛЬНО — до объявления книги готовой)
@@ -550,6 +573,18 @@ npm run check:chats                    # все книги
 - `landing_data.main_concepts` отсутствует или пустой/<5 элементов
 - HTML-теги (`<em>`, `<strong>`, `<br>`) в полях лендинга без поддержки разметки (`landing_data.chat_header.*`, `book.*`, `personas.items[].body`)
 - В `test_configs.questions[]` шкалы перемешаны внутри блока `ui_config.questions_per_block`
+
+**Иконки и фото (новые правила, после ретро 9 книг 2026-05):**
+- `program_themes.icon_key` ссылается на несуществующую запись в `THEME_ICON_MAP` (components/icons/theme-icon-map.tsx) — на хабе пустой кружок темы (правило `theme-icon-missing`, error)
+- `mode_templates.icon` использованный в `program_modes` отсутствует в `INSTRUMENT_ICON_MAP` (components/hub/InstrumentList.tsx) — карточка без иконки (правило `mode-icon-missing`, warn)
+- `landing_data.author.photo_url` локальный, но файл не существует в `public/authors/` — broken image (правило `author-photo-file-missing`, warn)
+
+**Hub и тест-system-prompt:**
+- `programs.hub_messages` пуст или не содержит 3 обязательных ключа (`first`, `returning_test`, `returning_notest`) — на хабе пустой золотой кружок (правило `hub-messages-missing` / `hub-messages-key-missing`)
+- `features.test=true`, но `programs.test_system_prompt` пуст — AI streaming text-answers идёт без контекста (правило `test-system-prompt-missing`, error)
+
+**Brand glossary:**
+- Запрещённые фразы из `docs/brand-glossary.md` («AI-тренажёр», «Nice Guy AI», «ИИ-/AI-<существительное>») в seed-полях программы, режимов и тем — линтер парсит словарь и подсвечивает (правило `brand-banned-phrase`, warn). Исключения: `meta_title`/`meta_description` (там допустимы «Книжный Спарринг», «Институт Метаморфозы») и `landing_data.comparison.columns[*].name` (там допустим «Книжный Спарринг»).
 
 **Прочее:**
 - `welcome_message` (legacy) и `welcome_ai_message` заполнены одновременно — приоритет legacy → новые поля теряются
@@ -628,7 +663,12 @@ npm run dev   # → http://localhost:3000
 - [ ] `landing_data.chat_header` / `book.*` / `personas.items[].body` — без HTML-тегов (`<em>`, `<strong>`, `<br>`) — поля не поддерживают разметку
 - [ ] `landing_data.author.photo_url` — локальный путь `/authors/<slug>.jpg`, файл ≥100 КБ (не Wikipedia thumbnail)
 - [ ] Если есть тест: вопросы в `test_configs.questions[]` сгруппированы по шкалам блоками `ui_config.questions_per_block`
-- [ ] `programs.hub_messages` — заполнены 3 ключа (`first`, `returning_test`, `returning_notest`)
+- [ ] `programs.hub_messages` — заполнены 3 ключа (`first`, `returning_test`, `returning_notest`) — иначе на хабе пустой золотой кружок (линтер: `hub-messages-missing`)
+- [ ] `programs.test_system_prompt` заполнен **если `features.test=true`** — иначе AI streaming text-answers идёт без контекста теста (линтер: `test-system-prompt-missing`)
+- [ ] `THEME_ICON_MAP` в `components/icons/theme-icon-map.tsx` содержит запись для каждого `program_themes.icon_key` — иначе пустой кружок темы на хабе (линтер: `theme-icon-missing`)
+- [ ] `INSTRUMENT_ICON_MAP` в `components/hub/InstrumentList.tsx` содержит запись для каждого `mode_templates.icon` использованного в `program_modes` — иначе карточка инструмента без иконки (линтер: `mode-icon-missing`)
+- [ ] Файл фото автора реально существует в `public/authors/<slug>.jpg` (помимо `photo_url = /authors/...` пути) — иначе broken image на лендинге (линтер: `author-photo-file-missing`)
+- [ ] Нет запрещённых фраз из `docs/brand-glossary.md` (`AI-тренажёр`, `Nice Guy AI`, `ИИ-<сущ.>`, и т.д.) в seed-полях — линтер парсит словарь и подсвечивает (правило: `brand-banned-phrase`)
 - [ ] **`npm run check:chats -- --book=<slug>` — 0 errors** (без этого книга не считается готовой)
 - [ ] **`npm run check:author-photos` — фото автора ≥100 КБ**
 

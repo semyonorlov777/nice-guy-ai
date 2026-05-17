@@ -44,7 +44,7 @@
  *   welcome_message + welcome_ai_message — взаимоисключающие
  */
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // --- Загрузка .env.local вручную (без dotenv) ---
@@ -113,6 +113,10 @@ interface ProgramRow {
   anonymous_quick_replies: unknown;
   landing_data: Record<string, unknown> | null;
   features: Record<string, boolean> | null;
+  hub_messages: Record<string, string> | null;
+  test_system_prompt: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
 }
 
 interface ModeRow {
@@ -130,6 +134,7 @@ interface ModeRow {
 interface ThemeRow {
   program_id: string;
   key: string;
+  icon_key: string | null;
   welcome_ai_message: string | null;
   welcome_replies: unknown;
   welcome_system_context: string | null;
@@ -999,6 +1004,367 @@ function checkMainConcepts(
   return out;
 }
 
+// --- Helpers + новые правила #9-#14 (после ретро 9 книг 2026-05) ---
+
+/**
+ * Парсит TS-файл, ищет объект `const NAME ... = { "key": ..., ... }` и
+ * возвращает Set всех ключей. Используется для проверки наличия иконок.
+ */
+const iconMapCache = new Map<string, Set<string>>();
+function readIconMapKeys(filePath: string, mapName: string): Set<string> {
+  const cacheKey = `${filePath}::${mapName}`;
+  const cached = iconMapCache.get(cacheKey);
+  if (cached) return cached;
+  let content: string;
+  try {
+    content = readFileSync(resolve(process.cwd(), filePath), "utf8");
+  } catch (e) {
+    console.warn(
+      `⚠️ check-chat-seed: cannot read ${filePath} — пропускаем проверку иконок (${(e as Error).message})`,
+    );
+    const empty = new Set<string>();
+    iconMapCache.set(cacheKey, empty);
+    return empty;
+  }
+  // Ищем `const NAME ... = { ... }` (с учётом многострочного объекта).
+  // Регекс не идеальный, но для текущих файлов работает: ловит блок до `\n}`.
+  const blockRe = new RegExp(
+    `(?:export\\s+)?const\\s+${mapName}\\b[\\s\\S]*?=\\s*\\{([\\s\\S]*?)\\n\\}`,
+    "m",
+  );
+  const m = content.match(blockRe);
+  const keys = new Set<string>();
+  if (!m) {
+    iconMapCache.set(cacheKey, keys);
+    return keys;
+  }
+  const body = m[1];
+  // Ключи объекта: `"foo":`, `'foo':`, `foo:` (без кавычек если без дефисов).
+  const keyRe = /(?:^|\n|,)\s*(?:"([\w-]+)"|'([\w-]+)'|([\w]+))\s*:/g;
+  let km: RegExpExecArray | null;
+  while ((km = keyRe.exec(body)) !== null) {
+    const key = km[1] ?? km[2] ?? km[3];
+    if (key) keys.add(key);
+  }
+  iconMapCache.set(cacheKey, keys);
+  return keys;
+}
+
+/**
+ * Парсит docs/brand-glossary.md секцию «Запрещено в коде» и возвращает
+ * массив запрещённых фраз с регексами. Источник истины: словарь бренда.
+ */
+interface BannedPhrase {
+  pattern: RegExp;
+  phrase: string;
+  replacement: string;
+}
+let bannedPhrasesCache: BannedPhrase[] | null = null;
+function loadBannedPhrases(): BannedPhrase[] {
+  if (bannedPhrasesCache) return bannedPhrasesCache;
+  let content: string;
+  try {
+    content = readFileSync(
+      resolve(process.cwd(), "docs/brand-glossary.md"),
+      "utf8",
+    );
+  } catch (e) {
+    console.warn(
+      `⚠️ check-chat-seed: cannot read docs/brand-glossary.md — пропускаем brand glossary check (${(e as Error).message})`,
+    );
+    bannedPhrasesCache = [];
+    return bannedPhrasesCache;
+  }
+  // Находим секцию `## Запрещено в коде` до следующего `## ` или конца файла
+  const sectionMatch = content.match(/## Запрещено в коде[\s\S]*?(?=\n## |\n*$)/);
+  const result: BannedPhrase[] = [];
+  const seen = new Set<string>();
+  if (sectionMatch) {
+    const section = sectionMatch[0];
+    for (const line of section.split("\n")) {
+      if (!line.startsWith("|") || /Фраза|---/.test(line)) continue;
+      const cols = line
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (cols.length < 2) continue;
+      const phraseCell = cols[0];
+      const replacementCell = cols[1].replace(/`/g, "");
+      const backtickRe = /`([^`]+)`/g;
+      let pm: RegExpExecArray | null;
+      while ((pm = backtickRe.exec(phraseCell)) !== null) {
+        // Каждый бэктик-блок может содержать несколько вариантов через ` / `
+        const variants = pm[1]
+          .split("/")
+          .map((v) => v.trim())
+          .filter(Boolean);
+        for (const variant of variants) {
+          // Плейсхолдеры в скобках (`ИИ-<существительное>`) — отдельным regex ниже
+          if (/<|>/.test(variant)) continue;
+          // Слишком общие («ИИ», «AI» одиночные) — высокий риск false-positive
+          if (variant === "ИИ" || variant === "AI") continue;
+          if (seen.has(variant)) continue;
+          seen.add(variant);
+          const escaped = variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          result.push({
+            pattern: new RegExp(escaped, "g"),
+            phrase: variant,
+            replacement: replacementCell,
+          });
+        }
+      }
+    }
+  }
+  // Доп. регекс: «ИИ-<сущ.>» / «AI-<сущ.>» — паттерн, который не извлекается как литерал
+  result.push({
+    pattern: /\b(ИИ|AI)-[А-ЯA-Zа-яa-z][А-ЯA-Zа-яa-z]+/g,
+    phrase: "ИИ-/AI-<существительное>",
+    replacement: "Система",
+  });
+  bannedPhrasesCache = result;
+  return bannedPhrasesCache;
+}
+
+// Поля, где «Книжный Спарринг» / «Институт Метаморфозы» допустимы (см. brand-glossary.md
+// «Где «Книжный Спарринг» ЕДИНСТВЕННО допустим» и «Где допустимо «Институт Метаморфозы»»).
+const BRAND_PHRASE_EXCEPTIONS: Record<string, Set<string>> = {
+  "programs.meta_title": new Set(["Книжный Спарринг", "Институт Метаморфозы"]),
+  "programs.meta_description": new Set([
+    "Книжный Спарринг",
+    "Институт Метаморфозы",
+  ]),
+};
+
+function isBrandPhraseAllowed(location: string, phrase: string): boolean {
+  // Точная локация
+  if (BRAND_PHRASE_EXCEPTIONS[location]?.has(phrase)) return true;
+  // Префиксная: landing_data.comparison.columns[*].name — допустим «Книжный Спарринг»
+  if (
+    /^programs\.landing_data\.comparison\.columns\[\d+\]\.name$/.test(location) &&
+    phrase === "Книжный Спарринг"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Правило #9 — иконки тем (error).
+ * Для каждой program_themes.icon_key проверить, что есть в THEME_ICON_MAP
+ * (components/icons/theme-icon-map.tsx). Без неё на хабе пустой кружок.
+ */
+function checkThemeIconExists(
+  program: string,
+  themeKey: string,
+  iconKey: string | null,
+  knownIcons: Set<string>,
+): Violation[] {
+  if (!iconKey) return [];
+  if (knownIcons.size === 0) return []; // линтер не смог прочитать файл — не блокируем
+  if (knownIcons.has(iconKey)) return [];
+  return [
+    violation(
+      program,
+      `program_themes[${themeKey}].icon_key`,
+      "theme-icon-missing",
+      `THEME_ICON_MAP в components/icons/theme-icon-map.tsx не содержит ключ "${iconKey}". На хабе будет пустой кружок вместо иконки темы. Добавь иконку: импортируй её и впиши в THEME_ICON_MAP. Прецеденты: 100-notes (2d9c20c0), heroes-and-outlaws (2505c4b4).`,
+    ),
+  ];
+}
+
+/**
+ * Правило #10 — иконки режимов (warn).
+ * Для каждого mode_template.icon, использованного в program_modes, проверить,
+ * что есть в INSTRUMENT_ICON_MAP (components/hub/InstrumentList.tsx).
+ */
+function checkModeIconExists(
+  program: string,
+  modeKey: string,
+  modeIcon: string | null,
+  knownIcons: Set<string>,
+): Violation[] {
+  if (!modeIcon) return [];
+  if (knownIcons.size === 0) return [];
+  if (knownIcons.has(modeIcon)) return [];
+  return [
+    violation(
+      program,
+      `mode_templates[${modeKey}].icon`,
+      "mode-icon-missing",
+      `INSTRUMENT_ICON_MAP в components/hub/InstrumentList.tsx не содержит "${modeIcon}". Карточка инструмента на хабе будет без иконки. Либо добавь её, либо переиспользуй один из существующих ключей (pen, clock, check, book, chat, heart, users, compass, lightbulb, translate, drama, target, search, message-circle, book-open, map, sparkles, shield, unlock, rocket, lightning, flask, brain, layout, eraser).`,
+      "warn",
+    ),
+  ];
+}
+
+/**
+ * Правило #11 — фото автора реально на диске (warn).
+ * Если landing_data.author.photo_url локальный — проверить через existsSync.
+ * Прецедент: eq-2-0 (b266ac84+).
+ */
+function checkAuthorPhotoFile(
+  program: string,
+  landing: Record<string, unknown> | null,
+): Violation[] {
+  if (!landing) return [];
+  const author = landing.author as Record<string, unknown> | undefined;
+  const photoUrl = author?.photo_url as string | undefined;
+  if (!photoUrl || !photoUrl.startsWith("/")) return [];
+  const localPath = resolve(
+    process.cwd(),
+    "public",
+    photoUrl.replace(/^\//, ""),
+  );
+  if (existsSync(localPath)) return [];
+  return [
+    violation(
+      program,
+      "programs.landing_data.author.photo_url",
+      "author-photo-file-missing",
+      `Файл фото автора ${photoUrl} не существует в public/. На лендинге будет broken image. Скачай файл в ${localPath} (≥100 КБ, ≥500×500 px) и проверь через npm run check:author-photos.`,
+      "warn",
+    ),
+  ];
+}
+
+/**
+ * Правило #12 — programs.hub_messages 3 обязательных ключа.
+ * Без них на хабе пустой золотой кружок (вместо приветствия Системы).
+ * Прецеденты: razgovorny-gipnoz, 100-notes (retroactive-тесты).
+ */
+function checkHubMessages(
+  program: string,
+  hubMessages: Record<string, string> | null,
+  hasTest: boolean,
+): Violation[] {
+  const required = ["first", "returning_test", "returning_notest"] as const;
+  if (
+    !hubMessages ||
+    typeof hubMessages !== "object" ||
+    Object.keys(hubMessages).length === 0
+  ) {
+    return [
+      violation(
+        program,
+        "programs.hub_messages",
+        "hub-messages-missing",
+        `programs.hub_messages пуст или null. Без 3 ключей (first, returning_test, returning_notest) на хабе будет пустой золотой кружок вместо приветствия Системы. См. PLATFORM_MAP.md «hub_messages».`,
+        hasTest ? "error" : "warn",
+      ),
+    ];
+  }
+  const out: Violation[] = [];
+  for (const key of required) {
+    const value = hubMessages[key];
+    if (!value || value.trim().length === 0) {
+      const desc =
+        key === "first"
+          ? "Первое посещение хаба"
+          : key === "returning_test"
+            ? "Возврат на хаб после теста"
+            : "Возврат на хаб без теста";
+      out.push(
+        violation(
+          program,
+          `programs.hub_messages.${key}`,
+          "hub-messages-key-missing",
+          `programs.hub_messages.${key} пуст. ${desc} → Система покажет пустое сообщение или fallback на другой ключ. Заполни конкретным приветствием с хуком про книгу.`,
+          "warn",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * Правило #13 — test_system_prompt обязателен если features.test=true.
+ * Без него app/api/test/route.ts отдаёт пустой контекст (есть `?? ""` fallback),
+ * AI streaming text-answers идёт без понимания книги — качество резко падает.
+ */
+function checkTestSystemPromptFilled(
+  program: string,
+  features: Record<string, boolean> | null,
+  testSystemPrompt: string | null,
+): Violation[] {
+  if (!features?.test) return [];
+  if (testSystemPrompt && testSystemPrompt.trim().length > 0) return [];
+  return [
+    violation(
+      program,
+      "programs.test_system_prompt",
+      "test-system-prompt-missing",
+      `features.test=true, но programs.test_system_prompt пуст. AI streaming text-answers получит пустой контекст — качество интерпретации текстовых ответов резко падает. Заполни промптом про логику теста и книгу. См. PLATFORM_MAP.md §test_configs шаг 3.`,
+    ),
+  ];
+}
+
+/**
+ * Правило #14 — brand glossary (warn).
+ * Ловит запрещённые фразы из docs/brand-glossary.md в seed-полях программы.
+ * Допустимые локации (meta_title/meta_description, comparison.columns[].name)
+ * заданы в BRAND_PHRASE_EXCEPTIONS.
+ */
+function checkBrandPhrases(
+  program: string,
+  location: string,
+  text: string | null,
+  bannedPhrases: BannedPhrase[],
+): Violation[] {
+  if (!text || bannedPhrases.length === 0) return [];
+  const out: Violation[] = [];
+  for (const { pattern, phrase, replacement } of bannedPhrases) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(text);
+    if (!match) continue;
+    if (isBrandPhraseAllowed(location, phrase)) continue;
+    if (isBrandPhraseAllowed(location, match[0])) continue;
+    const start = Math.max(0, match.index - 20);
+    const end = Math.min(text.length, match.index + match[0].length + 20);
+    const excerpt = text.slice(start, end).replace(/\s+/g, " ");
+    out.push(
+      violation(
+        program,
+        location,
+        "brand-banned-phrase",
+        `Запрещённая фраза «${match[0]}» (см. docs/brand-glossary.md): «…${excerpt}…». Замени на «${replacement}».`,
+        "warn",
+      ),
+    );
+  }
+  return out;
+}
+
+/**
+ * Рекурсивный обход landing_data — собирает все string-значения с их JSON-path.
+ * Используется для brand glossary check по полям лендинга.
+ */
+function collectLandingStrings(
+  data: unknown,
+  pathPrefix: string,
+): Array<{ path: string; value: string }> {
+  const out: Array<{ path: string; value: string }> = [];
+  if (data == null) return out;
+  if (typeof data === "string") {
+    if (pathPrefix) out.push({ path: pathPrefix, value: data });
+    return out;
+  }
+  if (Array.isArray(data)) {
+    for (let i = 0; i < data.length; i++) {
+      out.push(...collectLandingStrings(data[i], `${pathPrefix}[${i}]`));
+    }
+    return out;
+  }
+  if (typeof data === "object") {
+    for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+      out.push(
+        ...collectLandingStrings(v, pathPrefix ? `${pathPrefix}.${k}` : k),
+      );
+    }
+  }
+  return out;
+}
+
 // --- Исполнитель ---
 
 async function main() {
@@ -1015,7 +1381,7 @@ async function main() {
   let programsQuery = supabase
     .from("programs")
     .select(
-      "id, slug, title, system_prompt, anonymous_system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome, anonymous_quick_replies, landing_data, features",
+      "id, slug, title, system_prompt, anonymous_system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome, anonymous_quick_replies, landing_data, features, hub_messages, test_system_prompt, meta_title, meta_description",
     );
   if (bookFilter) {
     programsQuery = programsQuery.eq("slug", bookFilter);
@@ -1144,16 +1510,115 @@ async function main() {
       violations.push(
         ...checkMainConcepts(p.slug, p.landing_data, p.anonymous_system_prompt),
       );
+
+      // Правило #11 — фото автора реально на диске (warn)
+      violations.push(...checkAuthorPhotoFile(p.slug, p.landing_data));
+
+      // Правило #12 — programs.hub_messages 3 обязательных ключа
+      violations.push(
+        ...checkHubMessages(
+          p.slug,
+          p.hub_messages,
+          p.features?.test === true,
+        ),
+      );
+
+      // Правило #13 — test_system_prompt обязателен если features.test=true
+      violations.push(
+        ...checkTestSystemPromptFilled(
+          p.slug,
+          p.features,
+          p.test_system_prompt,
+        ),
+      );
+
+      // Правило #14 — brand glossary по всем text-полям программы
+      const bannedPhrases = loadBannedPhrases();
+      violations.push(
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.system_prompt",
+          p.system_prompt,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.anonymous_system_prompt",
+          p.anonymous_system_prompt,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.author_chat_system_prompt",
+          p.author_chat_system_prompt,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.free_chat_welcome",
+          p.free_chat_welcome,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.author_chat_welcome",
+          p.author_chat_welcome,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.test_system_prompt",
+          p.test_system_prompt,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.meta_title",
+          p.meta_title,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          p.slug,
+          "programs.meta_description",
+          p.meta_description,
+          bannedPhrases,
+        ),
+      );
+      // landing_data — рекурсивно по всем string-полям
+      if (p.landing_data) {
+        for (const { path, value } of collectLandingStrings(p.landing_data, "")) {
+          violations.push(
+            ...checkBrandPhrases(
+              p.slug,
+              `programs.landing_data.${path}`,
+              value,
+              bannedPhrases,
+            ),
+          );
+        }
+      }
     }
   }
 
   const programIds = ((programs ?? []) as ProgramRow[]).map((p) => p.id);
 
+  // Загружаем карты иконок один раз — будут использованы в циклах ниже.
+  // Если файл не читается (например в CI без полного чекаута) — knownIcons = empty,
+  // проверки тогда no-op (не блокируют).
+  const themeIcons = readIconMapKeys(
+    "components/icons/theme-icon-map.tsx",
+    "THEME_ICON_MAP",
+  );
+  const modeIcons = readIconMapKeys(
+    "components/hub/InstrumentList.tsx",
+    "INSTRUMENT_ICON_MAP",
+  );
+
   // program_modes уровень
   let modesQuery = supabase
     .from("program_modes")
     .select(
-      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key, name)",
+      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key, name, icon)",
     );
   if (bookFilter && programIds.length) {
     modesQuery = modesQuery.in("program_id", programIds);
@@ -1170,11 +1635,14 @@ async function main() {
   }
 
   for (const m of (modes ?? []) as unknown as Array<
-    ModeRow & { mode_templates: { key: string; name: string } }
+    ModeRow & {
+      mode_templates: { key: string; name: string; icon: string | null };
+    }
   >) {
     const slug = slugByProgramId.get(m.program_id) ?? "unknown";
     const modeKey = m.mode_templates?.key ?? "unknown";
     const modeName = m.mode_templates?.name ?? null;
+    const modeIcon = m.mode_templates?.icon ?? null;
     const loc = `program_modes[${modeKey}]`;
 
     violations.push(
@@ -1235,6 +1703,40 @@ async function main() {
           ),
         );
       }
+
+      // Правило #10 — иконка режима в INSTRUMENT_ICON_MAP (warn)
+      violations.push(
+        ...checkModeIconExists(slug, modeKey, modeIcon, modeIcons),
+      );
+
+      // Правило #14 — brand glossary в welcome-полях + system_prompt режима
+      const bannedPhrases = loadBannedPhrases();
+      violations.push(
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.welcome_ai_message`,
+          m.welcome_ai_message,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.welcome_title`,
+          m.welcome_title,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.welcome_subtitle`,
+          m.welcome_subtitle,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.system_prompt`,
+          m.system_prompt,
+          bannedPhrases,
+        ),
+      );
     }
   }
 
@@ -1242,7 +1744,7 @@ async function main() {
   let themesQuery = supabase
     .from("program_themes")
     .select(
-      "program_id, key, welcome_ai_message, welcome_replies, welcome_system_context",
+      "program_id, key, icon_key, welcome_ai_message, welcome_replies, welcome_system_context",
     );
   if (bookFilter && programIds.length) {
     themesQuery = themesQuery.in("program_id", programIds);
@@ -1272,6 +1774,28 @@ async function main() {
           "theme-no-qr-duplication",
           "welcome_system_context темы дублирует блок QR — правила наследуются из programs.system_prompt. Убрать.",
           "warn",
+        ),
+      );
+    }
+
+    if (!legacyRelaxed) {
+      // Правило #9 — иконка темы в THEME_ICON_MAP (error)
+      violations.push(...checkThemeIconExists(slug, t.key, t.icon_key, themeIcons));
+
+      // Правило #14 — brand glossary в welcome-полях темы
+      const bannedPhrases = loadBannedPhrases();
+      violations.push(
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.welcome_ai_message`,
+          t.welcome_ai_message,
+          bannedPhrases,
+        ),
+        ...checkBrandPhrases(
+          slug,
+          `${loc}.welcome_system_context`,
+          t.welcome_system_context,
+          bannedPhrases,
         ),
       );
     }

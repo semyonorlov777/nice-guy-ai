@@ -264,3 +264,9 @@ DELETE FROM programs WHERE slug = '{book-slug}';
 | Кэш не обновился | 60с TTL в `lib/config.ts` | Подожди минуту или рестартни dev-сервер |
 | Лендинг 404 | Slug не совпадает | `programs.slug` должен совпадать с URL |
 | Обложка не грузится | CSP блокирует домен | Добавь домен в `img-src` в `next.config.ts` |
+| Пустой золотой кружок на хабе у темы | `THEME_ICON_MAP` не содержит ключ темы | Добавь иконку в `components/icons/theme-icon-map.tsx` под ключом из `program_themes.icon_key`. Линтер `npm run check:chats` ловит это правилом `theme-icon-missing` |
+| Пустой золотой кружок на хабе вместо приветствия Системы | `programs.hub_messages` пуст или не содержит 3 ключей | Заполни через `UPDATE programs SET hub_messages = jsonb_build_object('first', '...', 'returning_test', '...', 'returning_notest', '...')`. Линтер: `hub-messages-missing` / `hub-messages-key-missing` |
+| Broken image для фото автора на лендинге | Файла нет в `public/authors/<slug>.jpg` или путь не локальный | Скачай фото (≥100 КБ, ≥500×500 px) в `public/authors/<slug>.jpg`, в `landing_data.author.photo_url` пропиши `/authors/<slug>.jpg`. Линтер: `author-photo-file-missing` |
+| AI streaming text-answers в тесте без понимания книги | `programs.test_system_prompt` пуст (при `features.test=true`) | Заполни промптом про логику теста и книгу. Линтер: `test-system-prompt-missing` |
+| Карточка инструмента на хабе без иконки | `mode_templates.icon` ссылается на отсутствующий ключ | Добавь в `components/hub/InstrumentList.tsx::INSTRUMENT_ICON_MAP` или переиспользуй существующий (pen, clock, check, book, chat, heart, и др.). Линтер: `mode-icon-missing` |
+| Запрещённая фраза «AI-тренажёр» / «ИИ-ассистент» / «Nice Guy AI» в seed-полях | Старая версия словаря бренда | Замени по `docs/brand-glossary.md`: «Онлайн-тренажёр по книге X», «Система», «Книжный Спарринг». Линтер: `brand-banned-phrase` |
