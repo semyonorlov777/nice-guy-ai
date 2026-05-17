@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Script from "next/script";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
 import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
-const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
+const TELEGRAM_BOT_USERNAME = "skillstrainerai_bot";
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
 
 interface TelegramAuthData {
@@ -22,14 +21,7 @@ interface TelegramAuthData {
 
 declare global {
   interface Window {
-    Telegram?: {
-      Login: {
-        auth: (
-          options: { bot_id: string; request_access?: string; lang?: string },
-          callback: (data: TelegramAuthData | false) => void,
-        ) => void;
-      };
-    };
+    onTelegramAuth?: (user: TelegramAuthData) => void;
   }
 }
 
@@ -267,46 +259,59 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     };
   }, []);
 
-  // Telegram auth (inline, same tab)
-  const handleTelegram = useCallback(() => {
-    if (!window.Telegram?.Login?.auth) {
-      setError("Telegram SDK ещё загружается...");
-      return;
-    }
+  // Telegram auth via official login widget. The widget renders its own
+  // iframe button (legacy widget has no programmatic JS API), and calls
+  // window.onTelegramAuth with real user data (id, first_name, last_name,
+  // username, photo_url, auth_date, hash).
+  const telegramWidgetRef = useRef<HTMLDivElement | null>(null);
 
-    setError("");
-    setTgLoading(true);
+  useEffect(() => {
+    if (!open) return;
+    const container = telegramWidgetRef.current;
+    if (!container) return;
 
-    window.Telegram.Login.auth(
-      { bot_id: TELEGRAM_BOT_ID, request_access: "write", lang: "ru" },
-      async (data) => {
-        if (!data) {
-          setTgLoading(false);
-          setError("Не удалось войти через Telegram. Попробуй ещё раз.");
-          return;
-        }
-
-        try {
-          const res = await fetch("/api/auth/telegram/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          });
-
-          if (res.ok) {
-            handleSuccess();
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            setError(errData.error || "Ошибка авторизации");
-            setTgLoading(false);
-          }
-        } catch {
-          setError("Ошибка сети. Попробуй ещё раз.");
+    window.onTelegramAuth = async (data: TelegramAuthData) => {
+      setError("");
+      setTgLoading(true);
+      try {
+        const res = await fetch("/api/auth/telegram/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          handleSuccess();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.error || "Ошибка авторизации");
           setTgLoading(false);
         }
-      },
-    );
-  }, [handleSuccess]);
+      } catch {
+        setError("Ошибка сети. Попробуй ещё раз.");
+        setTgLoading(false);
+      }
+    };
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "12");
+    script.setAttribute("data-userpic", "false");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.setAttribute("data-lang", "ru");
+    script.onload = () => setScriptReady(true);
+
+    container.innerHTML = "";
+    container.appendChild(script);
+
+    return () => {
+      delete window.onTelegramAuth;
+      container.innerHTML = "";
+    };
+  }, [open, handleSuccess]);
 
   // Open OAuth popup (shared logic for Yandex and Google)
   const openOAuthPopup = useCallback((providerPath: string) => {
@@ -452,14 +457,20 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               Войти через Google
             </button>
 
-            <button
-              className="auth-sheet-btn tg"
-              onClick={handleTelegram}
-              disabled={tgLoading || !scriptReady}
-            >
-              <TelegramIcon />
-              {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
-            </button>
+            <div className="auth-sheet-tg-widget">
+              <div ref={telegramWidgetRef} aria-hidden={!scriptReady} />
+              {!scriptReady && (
+                <div className="auth-sheet-tg-widget-placeholder">
+                  <TelegramIcon />
+                  <span>Telegram загружается...</span>
+                </div>
+              )}
+              {tgLoading && (
+                <div className="auth-sheet-tg-widget-loading">
+                  Подтверди вход в Telegram...
+                </div>
+              )}
+            </div>
 
             {MAX_TROLL_ENABLED && (
               <button
@@ -569,13 +580,6 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   if (mode === "fullscreen") {
     return (
       <>
-        {open && (
-          <Script
-            src="https://telegram.org/js/telegram-widget.js?22"
-            strategy="afterInteractive"
-            onLoad={() => setScriptReady(true)}
-          />
-        )}
         <div className="auth-sheet-fullscreen-wrap">
           <div className="auth-sheet-logo">
             <div className="auth-sheet-logo-icon">К</div>
@@ -594,14 +598,6 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   // Sheet mode
   return (
     <>
-      {open && (
-        <Script
-          src="https://oauth.telegram.org/js/telegram-login.js?3"
-          strategy="afterInteractive"
-          onLoad={() => setScriptReady(true)}
-        />
-      )}
-
       {open && (
         <button
           type="button"
