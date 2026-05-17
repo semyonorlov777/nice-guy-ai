@@ -23,6 +23,13 @@
 -- Главная интерпретация — топ-2 архетипа из 12 (а не уровень по каждой шкале).
 -- Это новый паттерн платформы: тест возвращает «профиль», не «диагноз».
 --
+-- Формат top_zones в interpretation_prompt — РАСШИРЕННЫЙ (для тестов-типологий):
+--   { scale_key, score, headline, body, action_text, action_route }
+-- где scale_key — внутренний ключ архетипа (impact_hero, belonging_lover и т.д.),
+-- НЕ русское имя. Это даёт UI правильно резолвить % и название из конфига.
+-- Минимальный формат { scale_key, action_text } — для тестов-навыков (eq-test, issp-test).
+-- См. components/test-results/TestResultsPage.tsx::TopZones — он рендерит оба формата.
+--
 -- Связанные SQL-операции (применены тем же шагом):
 --   1. INSERT test_configs (этот файл — описание)
 --   2. UPDATE programs.features.test = true
