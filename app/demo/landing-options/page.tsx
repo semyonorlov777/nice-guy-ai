@@ -40,19 +40,38 @@ export default function DemoLandingOptionsPage() {
           </div>
         </div>
 
-        <div className="demo-picker__cards demo-picker__cards--three">
-          <Link href="/demo/landing-options/c" className="demo-picker__card demo-picker__card--featured">
-            <div className="demo-picker__card-tag">Вариант C · компактный ⭐</div>
-            <h2 className="demo-picker__card-title">Заголовок сверху, блоки компактно</h2>
+        <div className="demo-picker__cards-label">Выбери, какой вариант посмотреть:</div>
+
+        <div className="demo-picker__cards demo-picker__cards--four">
+          <Link href="/demo/landing-options/e" className="demo-picker__card demo-picker__card--featured">
+            <div className="demo-picker__card-tag">Вариант E · название книги в заголовке ⭐</div>
+            <h2 className="demo-picker__card-title">«Хватит быть славным парнем»</h2>
             <p className="demo-picker__card-desc">
-              Слева: eyebrow → крупный заголовок → три компактных блока (книга,
-              автор, сообщество). Справа — живой чат. Без кнопки «начать»,
-              без цены. «Войти» отдельно сверху.
+              На базе A. В H1 — название книги, в карточке книги название
+              убрано (освободился воздух). Обещание-посыл переехало в
+              приветствие чата. «Ёлочки» — в стандартном стиле кабинета
+              (золотые, с подписью сверху).
+            </p>
+            <ul className="demo-picker__card-list">
+              <li>+ Привязка к книге считывается за полсекунды</li>
+              <li>+ Чище композиция: название не дублируется</li>
+              <li>+ Стандартные «ёлочки» проекта</li>
+            </ul>
+            <span className="demo-picker__card-go">Посмотреть →</span>
+          </Link>
+
+          <Link href="/demo/landing-options/c" className="demo-picker__card">
+            <div className="demo-picker__card-tag">Вариант C · компактный</div>
+            <h2 className="demo-picker__card-title">Заголовок-обещание, блоки компактно</h2>
+            <p className="demo-picker__card-desc">
+              Слева: eyebrow → заголовок-обещание («Перестань быть „хорошим
+              парнем"…») → три компактных блока. Без кнопки «начать», без цены.
+              «Войти» отдельно сверху.
             </p>
             <ul className="demo-picker__card-list">
               <li>+ Самая чистая композиция, чат не теряется</li>
-              <li>+ Заголовок сразу задаёт смысл</li>
-              <li>+ Блоки компактные — не перетягивают внимание</li>
+              <li>+ Обещание сразу задаёт смысл</li>
+              <li>− В H1 не сразу видно «о какой книге речь»</li>
             </ul>
             <span className="demo-picker__card-go">Посмотреть →</span>
           </Link>
