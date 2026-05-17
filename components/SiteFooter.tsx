@@ -1,4 +1,4 @@
-import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import Link from "next/link";
 
 interface SiteFooterProps {
   variant?: "program" | "default";
@@ -18,21 +18,22 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
             <ul>
               <li>
                 {variant === "program" ? (
+                  // Якорь на той же странице — обычный <a>, не <Link>
                   <a href="#chat-block">Начать бесплатно</a>
                 ) : (
-                  <a href="/">Главная</a>
+                  <Link href="/">Главная</Link>
                 )}
               </li>
-              <li><a href="/auth">Войти в аккаунт</a></li>
-              <li><a href="/tests">Все тесты</a></li>
-              <li><a href="/balance" target="_blank" rel="noopener noreferrer">Тарифы и цены</a></li>
+              <li><Link href="/auth">Войти в аккаунт</Link></li>
+              <li><Link href="/tests">Все тесты</Link></li>
+              <li><Link href="/balance" target="_blank" rel="noopener noreferrer">Тарифы и цены</Link></li>
             </ul>
           </div>
           <div className="footer-col">
             <div className="footer-col-title">Юридическое</div>
             <ul>
-              <li><a href="/legal" target="_blank" rel="noopener noreferrer">Оферта</a></li>
-              <li><a href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a></li>
+              <li><Link href="/legal" target="_blank" rel="noopener noreferrer">Оферта</Link></li>
+              <li><Link href="/privacy" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</Link></li>
             </ul>
             <div className="legal-info">
               ИП Орлов Семён Вячеславович<br />
