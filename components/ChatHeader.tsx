@@ -37,7 +37,11 @@ export function ChatHeader({
 
   return (
     <div className="chat-header">
-      <button className="chat-header-back" onClick={onBack}>
+      <button
+        className="chat-header-back"
+        onClick={onBack}
+        aria-label="Назад"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M15 18l-6-6 6-6" />
         </svg>
@@ -55,6 +59,9 @@ export function ChatHeader({
       <button
         className={`chat-header-switcher ${isPanelOpen ? "active" : ""}`}
         onClick={() => setIsPanelOpen(!isPanelOpen)}
+        aria-label="Переключить режим"
+        aria-haspopup="menu"
+        aria-expanded={isPanelOpen}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -70,8 +77,13 @@ export function ChatHeader({
 
       {isPanelOpen && (
         <>
-          <div className="mode-panel-scrim" onClick={() => setIsPanelOpen(false)} />
-          <div className="mode-panel">
+          <button
+            type="button"
+            className="mode-panel-scrim"
+            onClick={() => setIsPanelOpen(false)}
+            aria-label="Закрыть панель режимов"
+          />
+          <div className="mode-panel" role="menu">
             <div className="mode-panel-title">Режимы работы</div>
             <div className="mode-panel-list">
               {modes.map((mode) => {
@@ -82,12 +94,16 @@ export function ChatHeader({
                 const iconColorClass = mode.access_type === "paid" ? "accent" : "green";
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={mode.key}
                     className={`mode-panel-item ${isCurrent ? "current" : ""} ${isComingSoon ? "coming-soon" : ""}`}
                     onClick={() => {
                       if (!isComingSoon) handleModeClick(mode.route_suffix);
                     }}
+                    disabled={isComingSoon}
+                    role="menuitem"
+                    aria-current={isCurrent ? "page" : undefined}
                   >
                     <div className={`mode-panel-icon ${iconColorClass}`}>
                       {getModeIcon(mode.icon)}
@@ -109,12 +125,13 @@ export function ChatHeader({
                     ) : !isComingSoon ? (
                       <div className="mode-panel-arrow">&#8250;</div>
                     ) : null}
-                  </div>
+                  </button>
                 );
               })}
             </div>
             {slug && (
-              <div
+              <button
+                type="button"
                 className="mode-panel-hub-link"
                 onClick={() => {
                   setIsPanelOpen(false);
@@ -123,7 +140,7 @@ export function ChatHeader({
               >
                 Все режимы и прогресс
                 <span className="mode-panel-hub-arrow">&#8250;</span>
-              </div>
+              </button>
             )}
           </div>
         </>
