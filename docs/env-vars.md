@@ -13,6 +13,7 @@
 | `NEXT_PUBLIC_APP_URL` | URL приложения (fallback) | ❌ | `lib/constants.ts` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Sentry DSN для клиентского мониторинга | ❌ | `sentry.client.config.ts` |
 | `NEXT_PUBLIC_DEBUG_ENABLED` | Включить debug-страницы (`"true"`) | ❌ | `app/test/debug/page.tsx` |
+| `NEXT_PUBLIC_ENABLE_MAX_TROLL` | Включает шуточную кнопку «Войти через Мах» в `AuthSheet` (`"1"` — включено, иначе выкл). Kill switch — убирается за ~2 мин через Vercel Dashboard без коммита. | ❌ | `components/AuthSheet.tsx` |
 
 ## Server-only (только сервер)
 

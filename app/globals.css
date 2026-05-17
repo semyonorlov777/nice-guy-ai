@@ -3785,6 +3785,125 @@ html:not(.no-transition) .app-main {
 .auth-sheet-btn.ya:hover:not(:disabled) {
   background: var(--auth-ya-red-hover);
 }
+.auth-sheet-btn.max {
+  background: #1c3d7a;
+  color: #fff;
+}
+.auth-sheet-btn.max:hover:not(:disabled) {
+  background: #16335f;
+}
+
+/* MAX trolling screen — quasi-official look */
+.auth-sheet-max-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 2px;
+  color: #1a1a1a;
+}
+.auth-sheet-max-emblem {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.auth-sheet-max-emblem svg {
+  width: 64px;
+  height: 64px;
+}
+.auth-sheet-max-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: #1a1a1a;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+.auth-sheet-max-preamble {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #3a3a3a;
+  text-align: justify;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.auth-sheet-max-requirements {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #2a2a2a;
+  margin: 0;
+  padding-left: 22px;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.auth-sheet-max-requirements li {
+  margin-bottom: 7px;
+}
+.auth-sheet-max-requirements li:last-child {
+  margin-bottom: 0;
+}
+.auth-sheet-max-requirements strong {
+  font-weight: 700;
+}
+.auth-sheet-max-instructions {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #3a3a3a;
+  text-align: justify;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.auth-sheet-max-cta {
+  width: 100%;
+  background: #1c3d7a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 20px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+  transition: background 0.2s var(--auth-ease);
+  margin-top: 4px;
+}
+.auth-sheet-max-cta:hover {
+  background: #16335f;
+}
+.auth-sheet-max-cta:active {
+  transform: scale(0.98);
+}
+.auth-sheet-max-fineprint {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #8a8a8a;
+  font-style: italic;
+  text-align: center;
+  margin: 2px 0 0;
+}
+.auth-sheet-max-back {
+  width: 100%;
+  background: transparent;
+  color: var(--auth-accent, #C9963B);
+  border: 1px solid var(--auth-accent, #C9963B);
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: all 0.2s var(--auth-ease);
+  margin-top: 6px;
+}
+.auth-sheet-max-back:hover {
+  background: var(--auth-accent, #C9963B);
+  color: #fff;
+}
+.auth-sheet-max-back:active {
+  transform: scale(0.98);
+}
 
 /* Divider */
 .auth-sheet-divider {
