@@ -15,6 +15,10 @@ import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 import { isTelegramWebView } from "@/lib/detect-browser";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 import { QuickReplyBar } from "@/components/chat/ChatMessage";
+import {
+  normalizeQuickReplies,
+  type QuickReplyInput,
+} from "@/lib/chat/normalize-quick-replies";
 
 interface ChatWindowProps {
   initialMessages: UIMessage[];
@@ -25,7 +29,7 @@ interface ChatWindowProps {
   userInitial: string;
   avatarUrl?: string | null;
   welcomeMessage?: string;
-  quickReplies?: Array<string | { text: string; type?: "normal" | "exit" }>;
+  quickReplies?: QuickReplyInput[];
   children?: React.ReactNode;
   programTitle?: string;
   coverUrl?: string;
@@ -231,13 +235,9 @@ export function ChatWindow({
   // Welcome-текст статический (из БД), не стримится — isStreaming=false.
   const parsedWelcome = welcomeMessage ? parseQuickReplies(welcomeMessage, false) : null;
   const effectiveWelcomeMessage = parsedWelcome?.cleanText || welcomeMessage;
-  const effectiveQuickReplies: Array<{ text: string; type: "normal" | "exit" }> =
+  const effectiveQuickReplies =
     quickReplies && quickReplies.length > 0
-      ? quickReplies.map((r) =>
-          typeof r === "string"
-            ? { text: r, type: "normal" }
-            : { text: r.text, type: r.type ?? "normal" },
-        )
+      ? normalizeQuickReplies(quickReplies)
       : parsedWelcome?.replies || [];
 
   // Parse quick replies from last AI message (inline «кавычки»)

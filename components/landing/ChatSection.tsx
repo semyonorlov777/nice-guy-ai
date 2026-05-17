@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AnonymousChat } from "@/components/AnonymousChat";
+import { ChatErrorBoundary } from "@/components/ChatErrorBoundary";
+import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 
 interface ChatSectionProps {
   isLoggedIn: boolean;
@@ -7,7 +9,7 @@ interface ChatSectionProps {
   chatHeader: { title: string; subtitle: string };
   price: { trial_text: string; price_text: string; anchor_text: string };
   welcomeMessage: string;
-  quickReplies: string[];
+  quickReplies: QuickReplyInput[];
 }
 
 export function ChatSection({ isLoggedIn, slug, chatHeader, price, welcomeMessage, quickReplies }: ChatSectionProps) {
@@ -27,11 +29,13 @@ export function ChatSection({ isLoggedIn, slug, chatHeader, price, welcomeMessag
           </div>
         ) : welcomeMessage ? (
           <div className="chat-window">
-            <AnonymousChat
-              programSlug={slug}
-              welcomeMessage={welcomeMessage}
-              quickReplies={quickReplies}
-            />
+            <ChatErrorBoundary>
+              <AnonymousChat
+                programSlug={slug}
+                welcomeMessage={welcomeMessage}
+                quickReplies={quickReplies}
+              />
+            </ChatErrorBoundary>
           </div>
         ) : null}
 

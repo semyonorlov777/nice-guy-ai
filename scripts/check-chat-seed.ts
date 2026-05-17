@@ -237,12 +237,22 @@ function checkWelcomeAiMessage(
   return out;
 }
 
-/** welcome_replies должен быть массив `{text, type: "normal"|"exit"}`. Не массив строк. */
+/**
+ * welcome_replies должен быть массив `{text, type: "normal"|"exit"}`. Не массив
+ * строк (legacy — компонент пережёвывает, но единого контроля над «exit»-кнопкой
+ * нет, см. runbook).
+ *
+ * Флаг `allowStrings` — для полей, где legacy-формат массив-строк ещё
+ * исторически живёт в проде (например `programs.anonymous_quick_replies`).
+ * В этом случае массив строк отдаём warn-ом «мигрируй», а не error-ом, чтобы
+ * не ломать CI пока заказчик не пересоберёт все seed.
+ */
 function checkWelcomeReplies(
   program: string,
   location: string,
   replies: unknown,
   requireExit = true,
+  allowStrings = false,
 ): Violation[] {
   if (replies == null) return [];
   if (!Array.isArray(replies)) {
@@ -264,6 +274,18 @@ function checkWelcomeReplies(
       "text" in (r as Record<string, unknown>),
   );
   if (!allObjects) {
+    if (allowStrings && replies.every((r) => typeof r === "string")) {
+      out.push(
+        violation(
+          program,
+          location,
+          "replies-legacy-strings",
+          `${location}: массив строк (legacy формат). Компонент пережёвывает, но без явного контроля над «exit»-кнопкой. Пересобери seed в формат [{text, type}], последний — type:"exit".`,
+          "warn",
+        ),
+      );
+      return out;
+    }
     out.push(
       violation(
         program,
@@ -1040,6 +1062,20 @@ async function main() {
         p.slug,
         "programs.author_chat_welcome",
         p.author_chat_welcome,
+      ),
+    );
+    // anonymous_quick_replies — стартовые «ёлочки» демо-чата на лендинге.
+    // Этот формат был слепой зоной линтера до 2026-05: новые программы заливали
+    // [{text, type}], старые — массив строк. Компонент AnonymousChat падал на
+    // объекте без нормализации (см. runbook «Диагностика живых багов»).
+    // allowStrings=true — legacy-формат принимаем с warn, чтобы не ломать CI.
+    violations.push(
+      ...checkWelcomeReplies(
+        p.slug,
+        "programs.anonymous_quick_replies",
+        p.anonymous_quick_replies,
+        /* requireExit */ true,
+        /* allowStrings */ true,
       ),
     );
     violations.push(...checkAuthorPhotoLocal(p.slug, p.landing_data));

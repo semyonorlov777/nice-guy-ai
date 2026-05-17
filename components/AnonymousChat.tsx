@@ -7,6 +7,10 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
+import {
+  normalizeQuickReplies,
+  type QuickReplyInput,
+} from "@/lib/chat/normalize-quick-replies";
 import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
@@ -16,7 +20,7 @@ import { isTelegramWebView } from "@/lib/detect-browser";
 interface AnonymousChatProps {
   programSlug: string;
   welcomeMessage: string;
-  quickReplies: string[];
+  quickReplies: QuickReplyInput[];
   scrollToSectionId?: string;
   headerTitle?: string;
   headerSubtitle?: string;
@@ -84,6 +88,13 @@ export function AnonymousChat({
   });
 
   const animActive = !hasSavedMessages.current && welcomePhase !== "done";
+
+  // Нормализуем «ёлочки» из БД к единому формату {text, type}.
+  // Поле programs.anonymous_quick_replies приходит либо массивом объектов
+  // (новые программы — 2026-05+), либо массивом строк (legacy). Без нормализации
+  // React падает на рендере объекта как child — это была причина экрана
+  // «Что-то пошло не так» на лендингах героев-и-бунтарей и других новых книг.
+  const normalizedQuickReplies = normalizeQuickReplies(quickReplies);
 
   // Input pulse via DOM
   useEffect(() => {
@@ -312,19 +323,20 @@ export function AnonymousChat({
           )}
 
           {/* Quick replies */}
-          {showQuickReplies && quickReplies.length > 0 &&
+          {showQuickReplies && normalizedQuickReplies.length > 0 &&
             (!animActive || welcomePhase === "quick-replies" || welcomePhase === "input-pulse") && (
             <div className="quick-replies">
-              {quickReplies.map((text, i) => {
+              {normalizedQuickReplies.map((reply, i) => {
                 if (animActive && i >= quickReplyStaggerIndex) return null;
+                const exitClass = reply.type === "exit" ? " quick-reply-btn-exit" : "";
                 return (
                   <button
                     key={i}
-                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}`}
-                    onClick={() => handleSend(text)}
+                    className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}${exitClass}`}
+                    onClick={() => handleSend(reply.text)}
                     disabled={isStreaming}
                   >
-                    {text}
+                    {reply.text}
                   </button>
                 );
               })}

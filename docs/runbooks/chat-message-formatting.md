@@ -63,6 +63,7 @@
 | `program_modes.welcome_mode_label` / `welcome_title` / `welcome_subtitle` | NewChatScreen карточка | литералы |
 | `program_modes.welcome_ai_message` | NewChatScreen `.nc-ai-text` | литералы |
 | `program_modes.welcome_replies[].text` | NewChatScreen кнопки | литералы |
+| `programs.anonymous_quick_replies[].text` | AnonymousChat кнопки на лендинге | литералы |
 
 ### Markdown в `welcome_ai_message`
 
@@ -159,6 +160,23 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 - `type: "normal"` — обычная кнопка (golden).
 - `type: "exit"` — safe exit, визуально мягче.
 - Массив строк `["Текст"]` — тоже работает (legacy normalizer), но **не используй** — будет `type=normal` без контроля.
+
+### Anonymous quick replies (стартовые «ёлочки» демо-чата на лендинге)
+
+Хранятся в `programs.anonymous_quick_replies` в **том же формате**, что и `welcome_replies`:
+
+```json
+[
+  {"text": "У меня IT-сервис для бизнеса — определи архетип", "type": "normal"},
+  {"text": "Я строю личный бренд эксперта", "type": "normal"},
+  {"text": "Объясни систему 12 архетипов", "type": "normal"},
+  {"text": "Мне сложно сформулировать", "type": "exit"}
+]
+```
+
+- Компонент `components/AnonymousChat.tsx` нормализует через `lib/chat/normalize-quick-replies.ts` — там же общий нормализатор для всех чатов.
+- Legacy: массив строк `["Текст", ...]` тоже работает (так залиты старые программы — `nice-guy`, `games-people-play`, `love-languages`, `eq-2-0`, `razgovorny-gipnoz`, `100-notes`). Линтер `npm run check:chats` выдаёт warn `replies-legacy-strings` — постепенно мигрируй.
+- Прецедент: 2026-05-17 — пять программ (`heroes-and-outlaws`, `pishi-sokraschay`, `radical-forgiveness`, `redecision-therapy`, `seven-principles`) залили в новом формате; `AnonymousChat` рендерил объект как React-child напрямую → React падал → лендинги показывали глобальный экран «Что-то пошло не так». Починка — нормализация через общий хелпер + `ChatErrorBoundary` вокруг `AnonymousChat` как сетка безопасности.
 
 ### In-chat replies (кнопки под ответами AI в диалоге)
 
@@ -422,6 +440,9 @@ import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 
 **«AI использует дефис-список `- "текст"` вместо «ёлочек»»**
 → Аналогично: слабый QR-блок без запрета на дефис-списки и прямые кавычки. ReactMarkdown видит `-` в начале строки и рендерит как `<ul><li>`. Фикс: добавить `НЕПРАВИЛЬНО: - "текст"` и `НЕПРАВИЛЬНО: "текст"` (прямые кавычки) в секцию ЗАПРЕЩЕНО.
+
+**«Лендинг новой программы сразу показывает экран «Что-то пошло не так»»**
+→ `programs.anonymous_quick_replies` залит в формате `[{text, type}]`, а компонент `AnonymousChat` рендерил массив строк напрямую — на объекте React падал. Починка 2026-05-17: вынес общий нормализатор `lib/chat/normalize-quick-replies.ts` + обернул `AnonymousChat` в `ChatErrorBoundary`, чтобы любая будущая ошибка чата показывала локальное «Ошибка загрузки чата», а не глобальный экран. Линтер `check-chat-seed.ts` теперь проверяет и `anonymous_quick_replies`.
 
 **«AI оборачивает «ёлочки» в буллет-список `* «текст»`»**
 → Парсер с 2026-04-24 **толерантен**: срезает ведущие `* `, `- `, `• `, `1. ` перед match-ом regex. Кнопки появятся, даже если AI добавил buллет. НО: markdown-обёртка — признак слабого QR-блока в system_prompt. Всё равно усилить промпт (явный пример ПРАВИЛЬНО без маркеров + запрет `* «...»` в НЕПРАВИЛЬНО), чтобы модель не плодила мусор. Толерантность парсера — защита от случайных сбоев, не оправдание слабого промпта.
