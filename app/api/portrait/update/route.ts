@@ -2,6 +2,13 @@ import { createServiceClient } from "@/lib/supabase-server";
 import { analyzeForPortrait } from "@/lib/gemini-portrait";
 import { PORTRAIT_ANALYST_PROMPT } from "@/lib/prompts/portrait-analyst";
 import { apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
+
+// Per-user rate limit: 1 обновление портрета в минуту.
+// updatePortrait вызывает Gemini Pro (дороже Flash), поэтому отдельный жёсткий
+// limit поверх chat-level rate-limit (20/мин). При spam'е сообщений портрет
+// обновится в следующий раз — это OK по UX.
+const checkPortraitRateLimit = createRateLimit({ windowMs: 60_000, max: 1 });
 
 /**
  * Core logic — called both from HTTP route and directly from chat/route.ts
@@ -21,6 +28,12 @@ export async function updatePortrait(chatId: string, trigger: string): Promise<{
   if (chatError || !chat) {
     console.error("[PORTRAIT] Chat not found:", chatId, chatError);
     return { success: false, error: "Чат не найден" };
+  }
+
+  // 1.5 Per-user rate limit (Gemini Pro is expensive)
+  if (!checkPortraitRateLimit(chat.user_id)) {
+    console.log("[PORTRAIT] Rate-limited for user:", chat.user_id);
+    return { success: false, error: "rate_limited" };
   }
 
   // 2. Load messages
