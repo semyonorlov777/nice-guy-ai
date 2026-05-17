@@ -11,7 +11,27 @@ CREATE TABLE IF NOT EXISTS test_sessions (
   updated_at       timestamptz DEFAULT now()
 );
 
--- БЕЗ RLS — анонимные данные, доступ по session_id через service client
+-- RLS включён, но прямой доступ для anon/authenticated запрещён deny-all policy
+-- (см. scripts/p1-lockdown-trigger-fns-and-test-sessions.sql). Все легальные
+-- обращения идут через:
+--   - public.append_anonymous_test_answer (SECURITY DEFINER, owner-bypass) — анонимный путь
+--   - createServiceClient() в app/api/test/*  (service_role, bypass RLS) — сервер
+ALTER TABLE test_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Direct access blocked"
+  ON test_sessions
+  FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
+REVOKE ALL ON TABLE test_sessions FROM anon, authenticated;
+
+COMMENT ON TABLE test_sessions IS
+  'Anonymous test sessions. Direct access denied for anon and authenticated '
+  '(deny-all RLS policy + revoked table privileges). All reads/writes go '
+  'through SECURITY DEFINER function append_anonymous_test_answer (anon path) '
+  'or service_role (server-side handlers in app/api/test/*).';
 
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_test_sessions_session_id ON test_sessions(session_id);

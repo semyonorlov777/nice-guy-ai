@@ -32,11 +32,13 @@ CREATE TABLE IF NOT EXISTS test_results (
 -- RLS для test_results
 ALTER TABLE test_results ENABLE ROW LEVEL SECURITY;
 
+-- (SELECT auth.uid()) обёртка — initPlan, кешируется на запрос (RLS perf).
 CREATE POLICY "Users see own test results" ON test_results
-  FOR SELECT USING (user_id = auth.uid());
+  FOR SELECT USING (user_id = (SELECT auth.uid()));
 
+-- Service can insert — явное TO service_role (без него policy применяется к public, что неправильно).
 CREATE POLICY "Service can insert test results" ON test_results
-  FOR INSERT WITH CHECK (true);
+  FOR INSERT TO service_role WITH CHECK (true);
 
 -- Индекс для быстрого поиска результатов по пользователю и программе
 CREATE INDEX IF NOT EXISTS idx_test_results_user_program
