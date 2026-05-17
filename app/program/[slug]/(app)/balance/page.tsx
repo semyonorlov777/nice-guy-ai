@@ -13,11 +13,23 @@ export default async function BalancePage({
   } = await supabase.auth.getUser();
   if (!user) return null; // middleware handles redirect
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("balance_tokens, subscription_plan, subscription_expires_at, card_last4")
-    .eq("id", user.id)
-    .single();
+  // Параллельно: profile + payments (оба зависят только от user.id).
+  const [profileRes, paymentsRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("balance_tokens, subscription_plan, subscription_expires_at, card_last4")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("payments")
+      .select("id, created_at, amount, tokens_added, yookassa_id, status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  const profile = profileRes.data;
+  const payments = paymentsRes.data;
 
   const balance = profile?.balance_tokens ?? 0;
 
@@ -33,14 +45,6 @@ export default async function BalancePage({
         cardLast4: (profile?.card_last4 as string) || null,
       }
     : null;
-
-  // Payment history
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("id, created_at, amount, tokens_added, yookassa_id, status")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
 
   const params = await searchParams;
 

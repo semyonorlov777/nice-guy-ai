@@ -27,19 +27,23 @@ export default async function ExercisesPage({
 
   const program = await requireProgramFeature(supabase, slug, "exercises");
 
-  const { data: exercises } = await supabase
-    .from("exercises")
-    .select("id, number, chapter, chapter_title, title, description")
-    .eq("program_id", program.id)
-    .order("number");
+  // Параллельно: exercises + chats (оба зависят только от program.id и user.id).
+  const [exercisesRes, chatsRes] = await Promise.all([
+    supabase
+      .from("exercises")
+      .select("id, number, chapter, chapter_title, title, description")
+      .eq("program_id", program.id)
+      .order("number"),
+    supabase
+      .from("chats")
+      .select("exercise_id, status")
+      .eq("user_id", user!.id)
+      .eq("program_id", program.id)
+      .not("exercise_id", "is", null),
+  ]);
 
-  // Get chat statuses for this user's exercises
-  const { data: chats } = await supabase
-    .from("chats")
-    .select("exercise_id, status")
-    .eq("user_id", user!.id)
-    .eq("program_id", program.id)
-    .not("exercise_id", "is", null);
+  const exercises = exercisesRes.data;
+  const chats = chatsRes.data;
 
   // Build status map: exercise_id -> status
   const statusMap = new Map<string, ExerciseStatus>();

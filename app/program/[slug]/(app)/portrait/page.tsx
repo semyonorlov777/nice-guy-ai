@@ -20,18 +20,22 @@ export default async function PortraitPage({
 
   const program = await requireProgramFeature(supabase, slug, "portrait");
 
-  // COUNT exercises for this program
-  const { count: totalExercises } = await supabase
-    .from("exercises")
-    .select("id", { count: "exact", head: true })
-    .eq("program_id", program.id);
+  // Параллельно: COUNT exercises + portrait load (оба зависят только от program.id).
+  const [exercisesCountRes, portraitRes] = await Promise.all([
+    supabase
+      .from("exercises")
+      .select("id", { count: "exact", head: true })
+      .eq("program_id", program.id),
+    supabase
+      .from("portraits")
+      .select("content")
+      .eq("user_id", user.id)
+      .eq("program_id", program.id)
+      .maybeSingle(),
+  ]);
 
-  const { data: portrait } = await supabase
-    .from("portraits")
-    .select("content")
-    .eq("user_id", user.id)
-    .eq("program_id", program.id)
-    .maybeSingle();
+  const totalExercises = exercisesCountRes.count;
+  const portrait = portraitRes.data;
 
   const raw = portrait?.content;
   let content: PortraitContent | null = null;
