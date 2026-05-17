@@ -17,17 +17,22 @@ export default async function HubPage({
   const query = await searchParams;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Параллельно: auth + programs (по slug). Независимы.
+  const [
+    {
+      data: { user },
+    },
+    { data: program },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("programs")
+      .select("id, title, landing_data, hub_messages")
+      .eq("slug", slug)
+      .single(),
+  ]);
+
   if (!user) redirect("/auth");
-
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id, title, landing_data, hub_messages")
-    .eq("slug", slug)
-    .single();
-
   if (!program) redirect("/");
 
   const landingData = program.landing_data as Record<string, unknown> | null;
