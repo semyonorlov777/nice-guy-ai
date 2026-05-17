@@ -1145,3 +1145,265 @@
   .landing-v3 .nc-hero3__page-brand-text { font-size: 15px; }
   .landing-v3 .nc-hero3__title { font-size: 32px; line-height: 1.08; }
 }
+
+/* =========================================================
+   Вариант D — Структура: eyebrow → блоки → заголовок.
+   Заголовок «выводом» из контекста выше, а не вступлением.
+   ========================================================= */
+.landing-v3 .nc-hero4 {
+  padding: 24px 0 48px;
+  max-width: var(--content-w, 1100px);
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.landing-v3 .nc-hero4__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 48px;
+  align-items: stretch;
+  min-height: clamp(620px, 78vh, 760px);
+}
+
+.landing-v3 .nc-hero4__intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 4px;
+  min-width: 0;
+  gap: 12px;
+}
+
+.landing-v3 .nc-hero4__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+
+/* Блоки в D — средний размер: компактнее A, крупнее C */
+.landing-v3 .nc-hero4__book {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+.landing-v3 .nc-hero4__cover {
+  width: 64px;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: 2px 5px 5px 2px;
+  overflow: hidden;
+  box-shadow: -2px 3px 12px rgba(0, 0, 0, 0.14);
+}
+.landing-v3 .nc-hero4__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.landing-v3 .nc-hero4__book-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.landing-v3 .nc-hero4__book-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.landing-v3 .nc-hero4__book-stat {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.landing-v3 .nc-hero4__author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+.landing-v3 .nc-hero4__author-photo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+.landing-v3 .nc-hero4__author-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  display: block;
+}
+.landing-v3 .nc-hero4__author-meta { min-width: 0; }
+.landing-v3 .nc-hero4__author-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.landing-v3 .nc-hero4__author-creds {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.landing-v3 .nc-hero4__social-proof {
+  padding: 12px 16px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+}
+.landing-v3 .nc-hero4__social-main {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.landing-v3 .nc-hero4__social-sub {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* Заголовок-обещание внизу — крупнее обычного, как кульминация */
+.landing-v3 .nc-hero4__title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.6vw, 44px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 8px 0 0;
+  color: var(--text);
+}
+.landing-v3 .nc-hero4__title em {
+  font-style: italic;
+  color: var(--accent);
+}
+.landing-v3 .nc-hero4__sub {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+}
+
+/* Чат справа */
+.landing-v3 .nc-hero4__chat-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: clamp(620px, 78vh, 760px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 0 50px var(--accent-glow);
+}
+.landing-v3 .nc-hero4 .chat-messages { min-height: 0; }
+.landing-v3 .nc-hero4 .chat-zone { height: 100%; }
+
+/* Блок «Продолжить» для залогиненного */
+.landing-v3 .nc-hero4__continue {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100%;
+  padding: 48px 40px;
+  gap: 14px;
+}
+.landing-v3 .nc-hero4__continue-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.landing-v3 .nc-hero4__continue-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--text);
+}
+.landing-v3 .nc-hero4__continue-sub {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+.landing-v3 .nc-hero4__continue-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.landing-v3 .nc-hero4__primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 26px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.2s;
+}
+.landing-v3 .nc-hero4__primary:hover { background: #b8862e; transform: translateY(-1px); }
+.landing-v3 .nc-hero4__secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.landing-v3 .nc-hero4__secondary:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+
+/* Мобильная адаптация варианта D — стек как в C, тот же приём через order */
+@media (max-width: 900px) {
+  .landing-v3 .nc-hero4 { padding-top: 18px; padding-bottom: 36px; }
+  .landing-v3 .nc-hero4__grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    min-height: 0;
+  }
+  .landing-v3 .nc-hero4__intro { padding: 0; gap: 10px; }
+  .landing-v3 .nc-hero4__chat-wrap {
+    height: 68dvh;
+    min-height: 460px;
+    order: 2;
+  }
+  .landing-v3 .nc-hero4__intro { order: 1; }
+}
+@media (max-width: 540px) {
+  .landing-v3 .nc-hero4 { padding-left: 16px; padding-right: 16px; }
+  .landing-v3 .nc-hero4__cover { width: 56px; height: 84px; }
+  .landing-v3 .nc-hero4__title { font-size: 28px; }
+}

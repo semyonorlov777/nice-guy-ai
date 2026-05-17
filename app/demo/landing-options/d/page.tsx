@@ -7,40 +7,39 @@ import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { TestSection } from "@/components/landing/TestSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { SiteFooter } from "@/components/SiteFooter";
-import { HeroChatSectionC } from "@/components/landing-v2/HeroChatSectionC";
+import { HeroChatSectionD } from "@/components/landing-v2/HeroChatSectionD";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 import "../demo.css";
 
 export const metadata: Metadata = {
-  title: "Демо C: chat-first (синтез исследований)",
+  title: "Демо D: контекст до заголовка",
   robots: { index: false, follow: false },
 };
 
 const SLUG = "nice-guy";
 
-// Тексты Hero — захардкожены для демо. После согласования переедут в БД.
+// Структура: сначала контекст (eyebrow + книга + автор + сообщество),
+// потом крупный заголовок-обещание. Логика: пока человек не понял
+// «о какой именно книге и каком авторе речь», крупный H1 ему ничего
+// не говорит. Сначала якорь — потом обещание.
 const HERO_EYEBROW = "✦ Интерактивный тренажёр по бестселлеру";
 const HERO_TITLE =
   'Перестань быть «<em>хорошим парнем</em>».<br>Стань тем, кем хотел.';
 const HERO_SUB =
   "46 упражнений на основе книги — практика, а не пересказ.";
 
-// Блок книги.
 const BOOK_TITLE_RUS = "Хватит быть славным парнем";
 const BOOK_STAT_1 = "Тираж 2+ млн копий, переведена на 20+ языков";
 const BOOK_STAT_2 = "Топ ЛитРес · 24 650 отзывов читателей";
 
-// Блок автора.
 const AUTHOR_NAME = "Доктор Роберт Гловер";
 const AUTHOR_CREDENTIALS =
   "Клинический психотерапевт, США · 30 лет работает с мужчинами";
 
-// Соцдоказательство — про сообщество.
 const SOCIAL_MAIN = "2 700+ мужчин в русскоязычном сообществе";
 const SOCIAL_SUB = "уже работают по методу Гловера";
 
-// Приветствие AI — короткое, без слова «проводник» (звучит эзотерично).
 const HERO_WELCOME =
   "Привет. Я AI-тренажёр по методу Роберта Гловера.\n\nРасскажи одну ситуацию: где ты последний раз сказал «да», когда хотел сказать «нет»?";
 
@@ -89,7 +88,7 @@ interface LandingData {
   };
 }
 
-export default async function DemoLandingC() {
+export default async function DemoLandingD() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -123,13 +122,10 @@ export default async function DemoLandingC() {
     <div className="landing-v3 demo-landing">
       <div className="demo-bar">
         <Link href="/demo/landing-options" className="demo-bar__back">← Вернуться к вариантам</Link>
-        <span className="demo-bar__tag">Вариант C · chat-first (синтез исследований)</span>
+        <span className="demo-bar__tag">Вариант D · контекст до заголовка</span>
         <Link href="/demo/landing-options#why" className="demo-bar__why">↗ Обоснования</Link>
       </div>
 
-      {/* Мини-шапка: «Войти» в правом верхнем углу страницы (Claude Research,
-          14 из 16 проанализированных AI-сайтов). Вне Hero-карточки, чтобы
-          не конкурировать с input справа за внимание. */}
       <header className="nc-hero3__page-header">
         <Link href="/" className="nc-hero3__page-brand">
           <span className="nc-hero3__page-brand-mark">К</span>
@@ -142,7 +138,7 @@ export default async function DemoLandingC() {
         )}
       </header>
 
-      <HeroChatSectionC
+      <HeroChatSectionD
         programSlug={SLUG}
         eyebrow={HERO_EYEBROW}
         title={HERO_TITLE}
@@ -168,12 +164,12 @@ export default async function DemoLandingC() {
         <div className="demo-why-block__inner">
           <div className="demo-why-block__eyebrow">Что в этом варианте</div>
           <ul className="demo-why-block__list">
-            <li>Три отдельных блока слева: книга (обложка + название + тираж + отзывы), автор (имя + регалии), сообщество (цифра + контекст). Каждый блок занимается своим делом.</li>
-            <li>Чат справа — единственное главное действие. Без отдельной кнопки «начать»: само поле ввода — и есть приглашение. Одно действие, а не два.</li>
-            <li>«Войти» — отдельно сверху страницы, не путается с основным действием. Подходит, если веришь, что первый ответ AI сам продаст программу.</li>
+            <li>Обратный порядок: сначала контекст (eyebrow → книга → автор → сообщество), потом крупный заголовок-обещание. Идея: пока человек не понял, о какой именно книге и каком авторе речь — крупный H1 ему ничего не говорит.</li>
+            <li>Заголовок становится «выводом» из контекста: «вот книга, вот автор, вот сообщество — а вот, собственно, обещание программы».</li>
+            <li>Чат справа — то же самое: единственное действие. Без кнопки.</li>
           </ul>
           <Link href="/demo/landing-options#why" className="demo-why-block__link">
-            Развёрнутое сравнение двух вариантов — на странице выбора ↗
+            Развёрнутое сравнение вариантов — на странице выбора ↗
           </Link>
         </div>
       </section>

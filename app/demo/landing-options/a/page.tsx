@@ -40,17 +40,15 @@ const AUTHOR_CREDENTIALS =
 const SOCIAL_MAIN = "2 700+ мужчин в русскоязычном сообществе";
 const SOCIAL_SUB = "уже работают по методу Гловера";
 
-const CTA_TEXT = "Начать бесплатный разбор";
-
-// Приветствие AI — короткое. Регалии автора уже видны в карточке слева,
-// дублировать их в чате — лишний шум. Главное здесь: прозрачность
-// «это не Гловер» + сразу конкретный первый вопрос.
+// Приветствие AI — короткое. Регалии автора уже в карточке слева.
+// «AI-тренажёр» в первой строке даёт прозрачность без эзотерики
+// (избегаем слова «проводник» — звучит как духовные практики).
 const HERO_WELCOME =
-  "Привет. Я не сам Гловер — цифровой проводник по его методу.\n\nРасскажи одну ситуацию: где ты последний раз сказал «да», когда хотел сказать «нет»?";
+  "Привет. Я AI-тренажёр по методу Роберта Гловера.\n\nРасскажи одну ситуацию: где ты последний раз сказал «да», когда хотел сказать «нет»?";
 
 const HERO_QUICK_REPLIES: QuickReplyInput[] = [
-  { text: "Сказал «да» жене, когда хотел отдохнуть" },
-  { text: "Промолчал на работе, когда был не согласен" },
+  { text: "Согласился, когда хотел отказаться" },
+  { text: "Промолчал, когда был не согласен" },
   { text: "Сам не понимаю, чего хочу" },
 ];
 
@@ -122,14 +120,27 @@ export default async function DemoLandingA() {
 
   const hubHref = `/program/${SLUG}/hub`;
   const chatHref = `/program/${SLUG}/chat`;
+  const authHref = `/auth?redirect=${encodeURIComponent(hubHref)}`;
 
   return (
     <div className="landing-v3 demo-landing">
       <div className="demo-bar">
         <Link href="/demo/landing-options" className="demo-bar__back">← Вернуться к вариантам</Link>
-        <span className="demo-bar__tag">Вариант A · живой чат в Hero (v2 — после исследования)</span>
+        <span className="demo-bar__tag">Вариант A · крупные блоки</span>
         <Link href="/demo/landing-options#why" className="demo-bar__why">↗ Обоснования</Link>
       </div>
+
+      <header className="nc-hero3__page-header">
+        <Link href="/" className="nc-hero3__page-brand">
+          <span className="nc-hero3__page-brand-mark">К</span>
+          <span className="nc-hero3__page-brand-text">Книжный Спарринг</span>
+        </Link>
+        {!isLoggedIn && (
+          <Link href={authHref} className="nc-hero3__page-login">
+            Войти →
+          </Link>
+        )}
+      </header>
 
       <HeroChatSection
         programSlug={SLUG}
@@ -145,7 +156,6 @@ export default async function DemoLandingA() {
         authorCredentials={AUTHOR_CREDENTIALS}
         socialProofMain={SOCIAL_MAIN}
         socialProofSub={SOCIAL_SUB}
-        ctaText={CTA_TEXT}
         welcomeMessage={HERO_WELCOME}
         quickReplies={HERO_QUICK_REPLIES}
         isLoggedIn={isLoggedIn}
@@ -157,12 +167,12 @@ export default async function DemoLandingA() {
         <div className="demo-why-block__inner">
           <div className="demo-why-block__eyebrow">Что в этом варианте</div>
           <ul className="demo-why-block__list">
-            <li>Слева три отдельных блока: книга (обложка, название, тираж, отзывы), автор (имя, регалии) и социальное доказательство (цифра про сообщество). Каждый блок — на своём месте, ничего не смешано.</li>
-            <li>Большая золотая кнопка «Начать разбор» — при нажатии курсор сам встаёт в поле ввода справа и подсвечивает его. Видно, куда жать.</li>
-            <li>Подходит, если важно, чтобы человек до клика понимал, что покупает: кто автор, какая книга, кому уже помогло.</li>
+            <li>Три отдельных блока слева: книга, автор, сообщество. То же что в C, но крупнее — обложка больше, фото автора больше, цифра соцдока крупнее.</li>
+            <li>Чат справа — единственное действие. Без отдельной кнопки «начать»: само поле ввода — и есть приглашение.</li>
+            <li>«Войти» — сверху страницы. Подходит, если важно, чтобы блоки про книгу/автора/сообщество были крупно видны и убедительны до того, как человек начнёт писать.</li>
           </ul>
           <Link href="/demo/landing-options#why" className="demo-why-block__link">
-            Развёрнутое сравнение двух вариантов — на странице выбора ↗
+            Развёрнутое сравнение вариантов — на странице выбора ↗
           </Link>
         </div>
       </section>

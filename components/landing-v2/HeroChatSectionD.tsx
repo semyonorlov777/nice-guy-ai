@@ -6,21 +6,19 @@ import { AnonymousChat } from "@/components/AnonymousChat";
 import { ChatErrorBoundary } from "@/components/ChatErrorBoundary";
 import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 
-interface HeroChatSectionProps {
+interface HeroChatSectionDProps {
   programSlug: string;
   eyebrow: string;
   title: string;
-  // Книга
+  sub: string;
   bookTitleRus: string;
   bookCoverUrl: string;
   bookAlt: string;
   bookStat1: string;
   bookStat2: string;
-  // Автор
   authorPhotoUrl: string | null;
   authorName: string;
   authorCredentials: string;
-  // Соцдоказательство (двухстрочное)
   socialProofMain: string;
   socialProofSub: string;
   welcomeMessage: string;
@@ -30,10 +28,11 @@ interface HeroChatSectionProps {
   chatHref: string;
 }
 
-export function HeroChatSection({
+export function HeroChatSectionD({
   programSlug,
   eyebrow,
   title,
+  sub,
   bookTitleRus,
   bookCoverUrl,
   bookAlt,
@@ -49,7 +48,7 @@ export function HeroChatSection({
   isLoggedIn,
   hubHref,
   chatHref,
-}: HeroChatSectionProps) {
+}: HeroChatSectionDProps) {
   const chatWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,63 +63,64 @@ export function HeroChatSection({
   }, [isLoggedIn]);
 
   return (
-    <section className="nc-hero2">
-      <div className="nc-hero2__grid">
-        <div className="nc-hero2__intro">
-          <div className="nc-hero2__eyebrow">{eyebrow}</div>
+    <section className="nc-hero4">
+      <div className="nc-hero4__grid">
+        <div className="nc-hero4__intro">
+          {/* Сначала — контекст (что это, чья книга, кому уже помогло) */}
+          <div className="nc-hero4__eyebrow">{eyebrow}</div>
 
-          <h1
-            className="nc-hero2__title"
-            dangerouslySetInnerHTML={{ __html: title }}
-          />
-
-          {/* Блок 1 — Книга */}
-          <div className="nc-hero2__book">
-            <div className="nc-hero2__cover">
+          <div className="nc-hero4__book">
+            <div className="nc-hero4__cover">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={bookCoverUrl} alt={bookAlt} />
             </div>
-            <div className="nc-hero2__book-meta">
-              <div className="nc-hero2__book-title">«{bookTitleRus}»</div>
-              <div className="nc-hero2__book-stat">{bookStat1}</div>
-              <div className="nc-hero2__book-stat">{bookStat2}</div>
+            <div className="nc-hero4__book-meta">
+              <div className="nc-hero4__book-title">«{bookTitleRus}»</div>
+              <div className="nc-hero4__book-stat">{bookStat1}</div>
+              <div className="nc-hero4__book-stat">{bookStat2}</div>
             </div>
           </div>
 
-          {/* Блок 2 — Автор */}
-          <div className="nc-hero2__author">
+          <div className="nc-hero4__author">
             {authorPhotoUrl && (
-              <div className="nc-hero2__author-photo">
+              <div className="nc-hero4__author-photo">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={authorPhotoUrl} alt={authorName} />
               </div>
             )}
-            <div className="nc-hero2__author-meta">
-              <div className="nc-hero2__author-name">{authorName}</div>
-              <div className="nc-hero2__author-creds">{authorCredentials}</div>
+            <div className="nc-hero4__author-meta">
+              <div className="nc-hero4__author-name">{authorName}</div>
+              <div className="nc-hero4__author-creds">{authorCredentials}</div>
             </div>
           </div>
 
-          {/* Блок 3 — Соцдоказательство */}
-          <div className="nc-hero2__social-proof">
-            <div className="nc-hero2__social-main">{socialProofMain}</div>
-            <div className="nc-hero2__social-sub">{socialProofSub}</div>
+          <div className="nc-hero4__social-proof">
+            <div className="nc-hero4__social-main">{socialProofMain}</div>
+            <div className="nc-hero4__social-sub">{socialProofSub}</div>
           </div>
+
+          {/* И только потом — крупный заголовок: главное обещание */}
+          <h1
+            className="nc-hero4__title"
+            dangerouslySetInnerHTML={{ __html: title }}
+          />
+
+          {sub && <p className="nc-hero4__sub">{sub}</p>}
         </div>
 
-        <div className="nc-hero2__chat-wrap" ref={chatWrapRef}>
+        <div className="nc-hero4__chat-wrap" ref={chatWrapRef}>
           {isLoggedIn ? (
-            <div className="nc-hero2__continue">
-              <div className="nc-hero2__continue-eyebrow">Ты уже работаешь по программе</div>
-              <h2 className="nc-hero2__continue-title">Продолжить там, где остановился</h2>
-              <p className="nc-hero2__continue-sub">
+            <div className="nc-hero4__continue">
+              <div className="nc-hero4__continue-eyebrow">Ты уже работаешь по программе</div>
+              <h2 className="nc-hero4__continue-title">Продолжить там, где остановился</h2>
+              <p className="nc-hero4__continue-sub">
                 Все упражнения, чаты и портрет ждут тебя в кабинете.
               </p>
-              <div className="nc-hero2__continue-actions">
-                <Link href={hubHref} className="nc-hero2__primary">
+              <div className="nc-hero4__continue-actions">
+                <Link href={hubHref} className="nc-hero4__primary">
                   В кабинет
                 </Link>
-                <Link href={chatHref} className="nc-hero2__secondary">
+                <Link href={chatHref} className="nc-hero4__secondary">
                   Открыть чат
                 </Link>
               </div>
