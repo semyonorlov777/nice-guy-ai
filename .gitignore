@@ -54,3 +54,6 @@ docs/personal/
 
 # Funnel — сырые материалы канона (большой объём, не для репо)
 .tmp/
+
+# Agent-skills universal mirror (symlink-дубль для других AI-CLI, источник в .claude/skills/)
+.agents/
