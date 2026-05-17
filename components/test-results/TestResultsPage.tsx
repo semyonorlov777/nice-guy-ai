@@ -9,6 +9,7 @@ import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
 import { RadarChart } from "./RadarChart";
 import { THEME_ICON_MAP } from "@/components/icons/theme-icon-map";
+import { AIBubble } from "@/components/chat/ChatMessage";
 
 // ── Types ──
 
@@ -123,9 +124,7 @@ function AIInterpretation({ text }: { text: string }) {
       className={`tr-interpretation tr-section-anim${isVisible ? " visible" : ""}`}
     >
       <div className="tr-interp-label">Ваш результат</div>
-      <div className="tr-interp-block">
-        <p dangerouslySetInnerHTML={{ __html: text }} />
-      </div>
+      <AIBubble text={text} className="tr-interp-block" />
     </div>
   );
 }

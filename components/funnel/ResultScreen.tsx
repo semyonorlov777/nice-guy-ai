@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 import { AnalyzingScreen } from "./AnalyzingScreen";
+import { AIBubble } from "@/components/chat/ChatMessage";
 import { loadSession, saveSession } from "@/lib/funnel/session";
 import type { AnalyzeResponse, FunnelSession } from "@/lib/funnel/types";
 
@@ -112,11 +111,11 @@ export function ResultScreen() {
         <h1 className="funnel-result-title">То, что мы услышали в ваших ответах</h1>
       </div>
 
-      <article className="funnel-result-body">
-        <ReactMarkdown remarkPlugins={[remarkBreaks]}>
-          {session.result}
-        </ReactMarkdown>
-      </article>
+      <AIBubble
+        text={session.result}
+        className="funnel-result-body"
+      />
+
 
       <div className="funnel-result-footer">
         <button
