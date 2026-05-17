@@ -66,4 +66,14 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   arch_impact: RocketIcon,
   arch_belonging: HeartLoveIcon,
   arch_order: ShieldIcon,
+  // mind-power (Kehoe — темы по сферам жизни + шкалы теста)
+  mp_money: RocketIcon,
+  mp_health: ShieldIcon,
+  mp_relationships: HeartLoveIcon,
+  mp_creativity: LightbulbIcon,
+  mp_mind_control: CompassIcon,
+  mp_visualization: SparklesIcon,
+  mp_affirmations: BookOpenIcon,
+  mp_appreciation: HeartLoveIcon,
+  mp_abundance_mindset: RocketIcon,
 };
