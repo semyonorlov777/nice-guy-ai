@@ -35,16 +35,18 @@ export default async function ChatsPage({
     .limit(50);
 
   const chatIds = (chatsData || []).map((c) => c.id);
-  const previews = await getChatPreviews(supabase, chatIds);
-
   const exerciseIds = [
     ...new Set(
       (chatsData || [])
         .filter((c) => c.exercise_id)
-        .map((c) => c.exercise_id as string)
+        .map((c) => c.exercise_id as string),
     ),
   ];
-  const exerciseMap = await getExerciseNumberMap(supabase, exerciseIds);
+  // previews и exerciseMap независимы — параллельно.
+  const [previews, exerciseMap] = await Promise.all([
+    getChatPreviews(supabase, chatIds),
+    getExerciseNumberMap(supabase, exerciseIds),
+  ]);
 
   const chatList = (chatsData || []).map((c) => ({
     id: c.id,
