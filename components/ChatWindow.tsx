@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
@@ -86,6 +86,22 @@ export function ChatWindow({
   const messagesRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
 
+  // Мемоизируем transport — иначе useChat реинициализируется на каждом render
+  // (даже на keystroke в InputBar). body — функция, читает свежий chatIdRef через closure.
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: () => ({
+          chatId: chatIdRef.current,
+          programId,
+          exerciseId,
+          chatType,
+        }),
+      }),
+    [programId, exerciseId, chatType],
+  );
+
   const {
     messages,
     sendMessage,
@@ -93,15 +109,7 @@ export function ChatWindow({
     error,
     regenerate,
   } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: () => ({
-        chatId: chatIdRef.current,
-        programId,
-        exerciseId,
-        chatType,
-      }),
-    }),
+    transport,
     messages: initialMessages,
     onFinish: ({ message }) => {
       // Получаем chatId из metadata ответа

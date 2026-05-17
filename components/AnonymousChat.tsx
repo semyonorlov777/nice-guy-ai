@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
@@ -103,27 +103,36 @@ export function AnonymousChat({
     return () => el.classList.remove("input-pulse");
   }, [inputPulseActive, chatZoneEl]);
 
-  const { messages, sendMessage, status, error, setMessages } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat/anonymous",
-      body: {
-        session_id: sessionIdRef.current,
-        program_slug: programSlug,
-      },
-      fetch: async (url, options) => {
-        const response = await globalThis.fetch(
-          url as string | URL | Request,
-          options as RequestInit
-        );
-        if (response.status === 429) {
-          const data = await response.clone().json();
-          if (data.requiresAuth) {
-            throw new Error("AUTH_REQUIRED");
+  // Мемоизируем transport — иначе useChat реинициализируется на каждом render.
+  // sessionIdRef.current стабилен после mount (инициализация выше синхронно),
+  // поэтому достаточно зависимости от programSlug.
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat/anonymous",
+        body: {
+          session_id: sessionIdRef.current,
+          program_slug: programSlug,
+        },
+        fetch: async (url, options) => {
+          const response = await globalThis.fetch(
+            url as string | URL | Request,
+            options as RequestInit,
+          );
+          if (response.status === 429) {
+            const data = await response.clone().json();
+            if (data.requiresAuth) {
+              throw new Error("AUTH_REQUIRED");
+            }
           }
-        }
-        return response;
-      },
-    }),
+          return response;
+        },
+      }),
+    [programSlug],
+  );
+
+  const { messages, sendMessage, status, error, setMessages } = useChat({
+    transport,
     onError: (err) => {
       if (err.message === "AUTH_REQUIRED") {
         setRequiresAuth(true);
