@@ -303,6 +303,25 @@ Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-из�
 
 При изменениях в дизайн-системе обновляй файлы скилла, не `DESIGN_SYSTEM.md`.
 
+## Внешние скиллы
+
+**Локальные** (в `.claude/skills/`, едут с git):
+- `vercel-react-best-practices` — 40+ правил по перформансу React/Next.js
+- `vercel-composition-patterns` — против boolean-prop ада, compound components
+- `web-design-guidelines` — доступность, UX, формы, тёмная тема, i18n
+- `supabase` — RLS, миграции, views с security_invoker, SECURITY DEFINER функции
+- `supabase-postgres-best-practices` — индексы, locking, query patterns
+
+**Из Vercel-плагина** (префикс `vercel:`, подключаются автоматом, не в git):
+- `vercel:ai-sdk`, `vercel:chat-sdk` — для Vercel AI SDK и чат-логики
+- `vercel:next-cache-components`, `vercel:nextjs`, `vercel:routing-middleware`, `vercel:vercel-functions`, `vercel:env-vars`, `vercel:turbopack`
+
+### Правила приоритета
+
+- При конфликте с локальными `niceguy-design`, `chat-rules`, `book-to-modes`, `book-audit` — приоритет у локальных (это правила проекта, не общие).
+- Игнорировать советы внешних скиллов про «сделать Server Component» для стримингового чата (`ChatWindow`, `ChatWindowV2`, `NewChatScreen`) — они обязаны быть `"use client"`, это инвариант проекта.
+- После SQL-миграций — верификация через MCP supabase: `mcp__supabase__get_advisors` (security + performance), `mcp__supabase__list_tables` (структура), и `mcp__supabase__execute_sql` с `SELECT * FROM pg_policies WHERE tablename = '...'` для проверки RLS-политик. Если MCP не подключён — те же проверки в Supabase Dashboard вручную.
+
 ## Дизайн (краткая справка)
 
 - Две цветовые системы через CSS-переменные в `globals.css`:
