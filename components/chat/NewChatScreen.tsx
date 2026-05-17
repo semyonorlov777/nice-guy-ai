@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -47,23 +47,31 @@ export function NewChatScreen({
     ? welcome.systemContext || `Тема: ${welcome.title}`
     : undefined;
 
+  // Мемоизируем transport — иначе useChat реинициализируется на каждом рендере.
+  // body — функция, читает свежие значения через closure/chatIdRef.
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: () => ({
+          chatId: chatIdRef.current,
+          programId,
+          chatType,
+          topicKey: topic,
+          toolKey: tool,
+          topicContext,
+          chatTitle: welcome.title,
+        }),
+      }),
+    [programId, chatType, topic, tool, topicContext, welcome.title],
+  );
+
   const {
     messages,
     sendMessage,
     status,
   } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: () => ({
-        chatId: chatIdRef.current,
-        programId,
-        chatType,
-        topicKey: topic,
-        toolKey: tool,
-        topicContext,
-        chatTitle: welcome.title,
-      }),
-    }),
+    transport,
     onFinish: ({ message }) => {
       const meta = message as UIMessage & { metadata?: Record<string, unknown> };
       if (meta.metadata?.chatId) {
