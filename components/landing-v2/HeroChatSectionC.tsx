@@ -11,11 +11,19 @@ interface HeroChatSectionCProps {
   eyebrow: string;
   title: string;
   sub: string;
+  // Книга
+  bookTitleRus: string;
   bookCoverUrl: string;
   bookAlt: string;
+  bookStat1: string;
+  bookStat2: string;
+  // Автор
+  authorPhotoUrl: string | null;
   authorName: string;
   authorCredentials: string;
-  socialProofText: string;
+  // Соцдоказательство
+  socialProofMain: string;
+  socialProofSub: string;
   welcomeMessage: string;
   quickReplies: QuickReplyInput[];
   isLoggedIn: boolean;
@@ -28,11 +36,16 @@ export function HeroChatSectionC({
   eyebrow,
   title,
   sub,
+  bookTitleRus,
   bookCoverUrl,
   bookAlt,
+  bookStat1,
+  bookStat2,
+  authorPhotoUrl,
   authorName,
   authorCredentials,
-  socialProofText,
+  socialProofMain,
+  socialProofSub,
   welcomeMessage,
   quickReplies,
   isLoggedIn,
@@ -41,8 +54,6 @@ export function HeroChatSectionC({
 }: HeroChatSectionCProps) {
   const chatWrapRef = useRef<HTMLDivElement>(null);
 
-  // Автофокус на десктопе — курсор в поле ввода виден как «живой» сигнал.
-  // На мобиле клавиатура не должна выскакивать сама.
   useEffect(() => {
     if (isLoggedIn) return;
     const isMobile = window.matchMedia("(max-width: 900px)").matches;
@@ -57,7 +68,6 @@ export function HeroChatSectionC({
   return (
     <section className="nc-hero3">
       <div className="nc-hero3__grid">
-        {/* Левая колонка — компактный якорь: что это, для кого, кто стоит, кому уже помогло */}
         <div className="nc-hero3__intro">
           <div className="nc-hero3__intro-top">
             <div className="nc-hero3__eyebrow">{eyebrow}</div>
@@ -67,28 +77,45 @@ export function HeroChatSectionC({
               dangerouslySetInnerHTML={{ __html: title }}
             />
 
-            <p className="nc-hero3__sub">{sub}</p>
+            {sub && <p className="nc-hero3__sub">{sub}</p>}
           </div>
 
           <div className="nc-hero3__intro-bottom">
-            {/* Компактная карточка автора с обложкой — привязка к понятному */}
-            <div className="nc-hero3__author">
+            {/* Блок книги — обложка + название по-русски + статистика */}
+            <div className="nc-hero3__book">
               <div className="nc-hero3__cover">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={bookCoverUrl} alt={bookAlt} />
               </div>
+              <div className="nc-hero3__book-meta">
+                <div className="nc-hero3__book-title">«{bookTitleRus}»</div>
+                <div className="nc-hero3__book-stat">{bookStat1}</div>
+                <div className="nc-hero3__book-stat">{bookStat2}</div>
+              </div>
+            </div>
+
+            {/* Блок автора — фото + имя + регалии */}
+            <div className="nc-hero3__author">
+              {authorPhotoUrl && (
+                <div className="nc-hero3__author-photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={authorPhotoUrl} alt={authorName} />
+                </div>
+              )}
               <div className="nc-hero3__author-meta">
                 <div className="nc-hero3__author-name">{authorName}</div>
                 <div className="nc-hero3__author-creds">{authorCredentials}</div>
               </div>
             </div>
 
-            {/* Социальное доказательство — одна сильная строка */}
-            <div className="nc-hero3__social-proof">{socialProofText}</div>
+            {/* Социальное доказательство — цифра + контекст */}
+            <div className="nc-hero3__social-proof">
+              <div className="nc-hero3__social-main">{socialProofMain}</div>
+              <div className="nc-hero3__social-sub">{socialProofSub}</div>
+            </div>
           </div>
         </div>
 
-        {/* Правая колонка — живой чат, единственное главное действие */}
         <div className="nc-hero3__chat-wrap" ref={chatWrapRef}>
           {isLoggedIn ? (
             <div className="nc-hero3__continue">

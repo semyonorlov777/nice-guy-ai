@@ -11,11 +11,20 @@ interface HeroChatSectionProps {
   programSlug: string;
   eyebrow: string;
   title: string;
-  authorName: string;
-  authorCredentials: string;
+  // Книга
+  bookTitleRus: string;
   bookCoverUrl: string;
   bookAlt: string;
-  socialProofText?: string;
+  bookStat1: string;
+  bookStat2: string;
+  // Автор
+  authorPhotoUrl: string | null;
+  authorName: string;
+  authorCredentials: string;
+  // Соцдоказательство (двухстрочное)
+  socialProofMain: string;
+  socialProofSub: string;
+  // Действия
   ctaText: string;
   welcomeMessage: string;
   quickReplies: QuickReplyInput[];
@@ -28,11 +37,16 @@ export function HeroChatSection({
   programSlug,
   eyebrow,
   title,
-  authorName,
-  authorCredentials,
+  bookTitleRus,
   bookCoverUrl,
   bookAlt,
-  socialProofText,
+  bookStat1,
+  bookStat2,
+  authorPhotoUrl,
+  authorName,
+  authorCredentials,
+  socialProofMain,
+  socialProofSub,
   ctaText,
   welcomeMessage,
   quickReplies,
@@ -66,7 +80,6 @@ export function HeroChatSection({
     const inputContainer = wrap.querySelector(".input-container");
     if (inputContainer) {
       inputContainer.classList.remove("input-pulse");
-      // reflow → перезапустит CSS-анимацию
       void (inputContainer as HTMLElement).offsetWidth;
       inputContainer.classList.add("input-pulse");
       setTimeout(() => inputContainer.classList.remove("input-pulse"), 1800);
@@ -84,20 +97,38 @@ export function HeroChatSection({
             dangerouslySetInnerHTML={{ __html: title }}
           />
 
-          <div className="nc-hero2__author-row">
+          {/* Блок 1 — Книга: обложка + название по-русски + статистика книги */}
+          <div className="nc-hero2__book">
             <div className="nc-hero2__cover">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={bookCoverUrl} alt={bookAlt} />
             </div>
+            <div className="nc-hero2__book-meta">
+              <div className="nc-hero2__book-title">«{bookTitleRus}»</div>
+              <div className="nc-hero2__book-stat">{bookStat1}</div>
+              <div className="nc-hero2__book-stat">{bookStat2}</div>
+            </div>
+          </div>
+
+          {/* Блок 2 — Автор: фото + имя + регалии */}
+          <div className="nc-hero2__author">
+            {authorPhotoUrl && (
+              <div className="nc-hero2__author-photo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={authorPhotoUrl} alt={authorName} />
+              </div>
+            )}
             <div className="nc-hero2__author-meta">
               <div className="nc-hero2__author-name">{authorName}</div>
               <div className="nc-hero2__author-creds">{authorCredentials}</div>
             </div>
           </div>
 
-          {socialProofText && (
-            <div className="nc-hero2__social-proof">{socialProofText}</div>
-          )}
+          {/* Блок 3 — Социальное доказательство: цифра + контекст */}
+          <div className="nc-hero2__social-proof">
+            <div className="nc-hero2__social-main">{socialProofMain}</div>
+            <div className="nc-hero2__social-sub">{socialProofSub}</div>
+          </div>
 
           <div className="nc-hero2__cta-block">
             {isLoggedIn ? (
