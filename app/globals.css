@@ -1743,6 +1743,44 @@
   color: var(--text-muted);
   font-size: 15px;
   font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.tr-interp-status-text {
+  font-style: italic;
+}
+
+.tr-interp-retry {
+  font-style: normal;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent-border, var(--accent));
+  padding: 10px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tr-interp-retry:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.tr-interp-retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tr-interp-retry-error {
+  font-style: normal;
+  font-size: 13px;
+  color: var(--red, #c75858);
 }
 
 .tr-interp-block p {
@@ -1769,6 +1807,13 @@
   width: 100%;
   max-width: 560px;
   height: auto;
+}
+
+.tr-radar-skeleton {
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
 }
 
 .tr-radar-area {

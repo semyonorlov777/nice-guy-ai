@@ -8,6 +8,7 @@ import {
 } from "@/components/test-results/TestResultsPage";
 import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { getScaleOrder, getScaleNames } from "@/lib/test-config";
+import { normalizeInterpretation } from "@/lib/test-interpretation";
 
 // UUID v4 regex
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,45 +58,49 @@ export default async function TestResultPage({
   // Validate UUID format
   if (!UUID_RE.test(id)) notFound();
 
-  // Fetch test result (bypass RLS — page is public by URL)
+  // Один запрос вместо двух sequential: test_results + programs через !inner-join.
+  // Bypass RLS — страница публична по URL (UUID unguessable).
   const svc = createServiceClient();
   const { data: result } = await svc
     .from("test_results")
     .select(
-      "id, user_id, program_id, total_score, scores_by_scale, top_scales, recommended_exercises, interpretation, created_at"
+      "id, user_id, program_id, total_score, scores_by_scale, top_scales, recommended_exercises, interpretation, created_at, programs!inner(slug, landing_data)"
     )
     .eq("id", id)
     .single();
 
   if (!result) notFound();
 
-  // Fetch program slug + landing data for test title
-  const { data: program } = await svc
-    .from("programs")
-    .select("slug, landing_data")
-    .eq("id", result.program_id)
-    .single();
+  const rawProgram = (
+    result as unknown as {
+      programs:
+        | { slug: string; landing_data: unknown }
+        | { slug: string; landing_data: unknown }[]
+        | null;
+    }
+  ).programs;
+  const program = Array.isArray(rawProgram) ? rawProgram[0] : rawProgram;
 
   const programSlug = program?.slug ?? DEFAULT_PROGRAM_SLUG;
   const landingData = program?.landing_data as { test?: { title?: string } } | null;
   const testTitle = landingData?.test?.title;
 
-  // Load test config for scale metadata
-  const testConfig = await getTestConfigByProgram(programSlug);
-
-  // Check ownership via cookie auth
-  let isOwner = false;
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user && user.id === result.user_id) {
-      isOwner = true;
-    }
-  } catch {
-    // Not authenticated — public view
-  }
+  // Параллельно: test config + auth-check. Оба независимы от data выше.
+  const [testConfig, ownerCheck] = await Promise.all([
+    getTestConfigByProgram(programSlug),
+    (async () => {
+      try {
+        const supabase = await createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        return user?.id === result.user_id;
+      } catch {
+        return false;
+      }
+    })(),
+  ]);
+  const isOwner = ownerCheck;
 
   // Derive scale metadata from testConfig (or use empty defaults)
   const scaleOrder = testConfig ? getScaleOrder(testConfig) : [];
@@ -116,8 +121,9 @@ export default async function TestResultPage({
     scoresByScale: result.scores_by_scale as TestResultsProps["scoresByScale"],
     topScales: (result.top_scales as string[]) ?? [],
     recommendedExercises: (result.recommended_exercises as number[]) ?? [],
-    interpretation:
-      (result.interpretation as TestResultsProps["interpretation"]) ?? null,
+    interpretation: normalizeInterpretation(
+      result.interpretation as TestResultsProps["interpretation"]
+    ),
     isOwner,
     createdAt: result.created_at,
     programSlug,

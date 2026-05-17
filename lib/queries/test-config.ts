@@ -58,27 +58,12 @@ export async function getTestConfigByProgram(
 
   const supabase = createServiceClient();
 
-  // First resolve program_id from slug
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id")
-    .eq("slug", programSlug)
-    .maybeSingle();
-
-  if (!program) return null;
-
-  // Check program_id cache
-  const programCacheKey = `test_config_program:${program.id}`;
-  const cachedByProgram = fromCache(programCacheKey);
-  if (cachedByProgram) {
-    toCache(cacheKey, cachedByProgram);
-    return cachedByProgram;
-  }
-
+  // Один запрос вместо двух sequential round-trips: фильтр по programs.slug
+  // через !inner-join и select только полей test_configs.
   const { data, error } = await supabase
     .from("test_configs")
-    .select("*")
-    .eq("program_id", program.id)
+    .select("*, programs!inner(slug)")
+    .eq("programs.slug", programSlug)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -93,9 +78,12 @@ export async function getTestConfigByProgram(
   }
   if (!data) return null;
 
+  // `programs` приходит в runtime от join'а, но не присутствует в TestConfig —
+  // консьюмеры не обращаются к нему, оставляем для простоты.
   const config = data as TestConfig;
+
   toCache(cacheKey, config);
-  toCache(programCacheKey, config);
+  toCache(`test_config_program:${config.program_id}`, config);
   toCache(`test_config:${config.slug}`, config);
   return config;
 }
