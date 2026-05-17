@@ -10,13 +10,23 @@ import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
 
+interface TelegramAuthData {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
 declare global {
   interface Window {
     Telegram?: {
       Login: {
         auth: (
-          options: { client_id: string; request_access?: string[]; lang?: string },
-          callback: (result: { id_token?: string; error?: string }) => void,
+          options: { bot_id: string; request_access?: string; lang?: string },
+          callback: (data: TelegramAuthData | false) => void,
         ) => void;
       };
     };
@@ -268,9 +278,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     setTgLoading(true);
 
     window.Telegram.Login.auth(
-      { client_id: TELEGRAM_BOT_ID, request_access: ["write"], lang: "ru" },
-      async (result) => {
-        if (result.error || !result.id_token) {
+      { bot_id: TELEGRAM_BOT_ID, request_access: "write", lang: "ru" },
+      async (data) => {
+        if (!data) {
           setTgLoading(false);
           setError("Не удалось войти через Telegram. Попробуй ещё раз.");
           return;
@@ -280,14 +290,14 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
           const res = await fetch("/api/auth/telegram/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id_token: result.id_token }),
+            body: JSON.stringify(data),
           });
 
           if (res.ok) {
             handleSuccess();
           } else {
-            const data = await res.json().catch(() => ({}));
-            setError(data.error || "Ошибка авторизации");
+            const errData = await res.json().catch(() => ({}));
+            setError(errData.error || "Ошибка авторизации");
             setTgLoading(false);
           }
         } catch {
@@ -561,7 +571,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       <>
         {open && (
           <Script
-            src="https://oauth.telegram.org/js/telegram-login.js?3"
+            src="https://telegram.org/js/telegram-widget.js?22"
             strategy="afterInteractive"
             onLoad={() => setScriptReady(true)}
           />

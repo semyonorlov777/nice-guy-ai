@@ -1,25 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createServerClient } from "@supabase/ssr";
-import { verifyTelegramToken, findOrCreateUser, type TelegramUser } from "@/lib/telegram-auth";
+import {
+  verifyTelegramAuth,
+  findOrCreateUser,
+  type TelegramUser,
+  type TelegramAuthData,
+} from "@/lib/telegram-auth";
 import { apiError } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest) {
   let tgUser: TelegramUser | null = null;
 
   try {
-    const { id_token } = await request.json();
+    const body = (await request.json()) as Partial<TelegramAuthData>;
 
-    if (!id_token || typeof id_token !== "string") {
-      return apiError("Отсутствует id_token", 400);
+    if (
+      typeof body?.id !== "number" ||
+      typeof body?.auth_date !== "number" ||
+      typeof body?.hash !== "string"
+    ) {
+      return apiError("Некорректные данные авторизации Telegram", 400);
     }
 
-    const clientId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
+    const botToken = process.env.TELEGRAM_CLIENT_SECRET!;
+    tgUser = verifyTelegramAuth(body as TelegramAuthData, botToken);
 
-    // Verify JWT signature, issuer, audience, expiration
-    tgUser = await verifyTelegramToken(id_token, clientId);
-
-    // Find or create Supabase user, get session
     const session = await findOrCreateUser(tgUser);
 
     if (!session) {
@@ -35,7 +41,6 @@ export async function POST(request: NextRequest) {
       return apiError("Не удалось создать сессию", 500);
     }
 
-    // Set Supabase session cookies on the response
     const cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[] = [];
 
     const supabase = createServerClient(
