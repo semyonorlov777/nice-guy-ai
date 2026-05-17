@@ -122,7 +122,8 @@ export default async function TestResultPage({
     topScales: (result.top_scales as string[]) ?? [],
     recommendedExercises: (result.recommended_exercises as number[]) ?? [],
     interpretation: normalizeInterpretation(
-      result.interpretation as TestResultsProps["interpretation"]
+      result.interpretation as TestResultsProps["interpretation"],
+      scaleNameMap
     ),
     isOwner,
     createdAt: result.created_at,

@@ -235,7 +235,7 @@ function TopZones({
   scaleNames,
   scaleExercises,
 }: {
-  topZones: Array<{ scale_key: string; action_text: string }>;
+  topZones: TestInterpretation["top_zones"];
   scoresByScale: Record<string, ScaleResult>;
   programSlug: string;
   scaleNames: Record<string, string>;
@@ -254,29 +254,40 @@ function TopZones({
       <div className="tr-zones-block">
         {topZones.map((zone, i) => {
           const name = scaleNames[zone.scale_key] ?? zone.scale_key;
-          const pct = scoresByScale[zone.scale_key]?.pct ?? 0;
+          const pct = zone.score ?? scoresByScale[zone.scale_key]?.pct ?? 0;
           const exercises = scaleExercises[zone.scale_key] ?? [];
+          const heading = zone.headline || `${name} — ${pct}%`;
+          const itemKey = zone.scale_key || `zone-${i}`;
 
           return (
-            <div key={zone.scale_key} className="tr-zone-item">
+            <div key={itemKey} className="tr-zone-item">
               <div className="tr-zone-number">{i + 1}</div>
               <div className="tr-zone-content">
-                <h4>
-                  {name} — {pct}%
-                </h4>
-                <p>{zone.action_text}</p>
-                {exercises.length > 0 && (
-                  <div className="tr-zone-exercises">
-                    {exercises.map((exId) => (
-                      <Link
-                        key={exId}
-                        href={`/program/${programSlug}/exercise/${exId}`}
-                        className="tr-zone-exercise-tag"
-                      >
-                        Упр. {exId}
-                      </Link>
-                    ))}
-                  </div>
+                <h4>{heading}</h4>
+                {zone.action_route ? (
+                  <>
+                    {zone.body && <p>{zone.body}</p>}
+                    <Link href={zone.action_route} className="tr-zone-cta">
+                      {zone.action_text} →
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p>{zone.body || zone.action_text}</p>
+                    {exercises.length > 0 && (
+                      <div className="tr-zone-exercises">
+                        {exercises.map((exId) => (
+                          <Link
+                            key={exId}
+                            href={`/program/${programSlug}/exercise/${exId}`}
+                            className="tr-zone-exercise-tag"
+                          >
+                            Упр. {exId}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

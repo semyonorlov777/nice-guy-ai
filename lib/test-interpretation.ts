@@ -7,7 +7,18 @@ export interface TestInterpretation {
   overall: string;
   level_label: string;
   scales: Array<{ scale_key: string; interpretation: string }>;
-  top_zones: Array<{ scale_key: string; action_text: string }>;
+  // Минимальный формат (eq-test, issp-test): scale_key + action_text.
+  // Расширенный формат для тестов-типологий (archetype-test): + score / headline / body / action_route.
+  // Поле archetype — legacy: ранние промпты выдавали русское имя; нормализатор резолвит его в scale_key.
+  top_zones: Array<{
+    scale_key: string;
+    action_text: string;
+    score?: number;
+    headline?: string;
+    body?: string;
+    action_route?: string;
+    archetype?: string;
+  }>;
 }
 
 export const FALLBACK_OVERALL_TEXT =
@@ -24,18 +35,33 @@ export function isFallbackInterpretation(
 }
 
 /**
- * Нормализует interpretation от Gemini: разные промпты выдают `key` или `scale_key`
- * (например, heroes-and-outlaws → `key`, nice-guy → `scale_key`). UI ждёт `scale_key`.
- * Безопасно вызывать на любом TestInterpretation — если поля уже корректны, ничего не меняется.
+ * Нормализует interpretation от Gemini. Разные промпты выдают разные ключи:
+ * - nice-guy / eq-test: `scale_key` (целевой формат UI).
+ * - heroes-and-outlaws (legacy): `key` или `archetype` (русское имя архетипа).
+ *
+ * Если передан `scaleNames` (мапа `scale_key → русское_имя` из конфига теста),
+ * нормализатор инвертирует её и резолвит `archetype` → `scale_key`. Без `scaleNames`
+ * делает только `key → scale_key` — безопасно для всех тестов.
  */
 export function normalizeInterpretation(
-  interp: TestInterpretation | null | undefined
+  interp: TestInterpretation | null | undefined,
+  scaleNames?: Record<string, string>
 ): TestInterpretation | null {
   if (!interp) return null;
-  type Loose = { scale_key?: string; key?: string };
+  const nameToKey = new Map<string, string>();
+  if (scaleNames) {
+    for (const [key, name] of Object.entries(scaleNames)) {
+      if (name) nameToKey.set(name.trim().toLowerCase(), key);
+    }
+  }
+  type Loose = { scale_key?: string; key?: string; archetype?: string };
   const fixKey = <T extends Loose>(item: T): T => {
     if (item.scale_key) return item;
     if (item.key) return { ...item, scale_key: item.key };
+    if (item.archetype && nameToKey.size > 0) {
+      const resolved = nameToKey.get(item.archetype.trim().toLowerCase());
+      if (resolved) return { ...item, scale_key: resolved };
+    }
     return item;
   };
   return {
@@ -116,7 +142,10 @@ ${scaleLines}
       parsed.level_label = levelLabel;
     }
 
-    return normalizeInterpretation(parsed as TestInterpretation)!;
+    return normalizeInterpretation(
+      parsed as TestInterpretation,
+      Object.fromEntries(scaleNames)
+    )!;
   } catch (err) {
     console.error("[test-interpretation] Error:", err);
     return buildFallback(levelLabel, scaleOrder);
