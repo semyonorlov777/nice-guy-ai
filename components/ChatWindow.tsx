@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 import type { UIMessage } from "ai";
 import { useRouter } from "next/navigation";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
@@ -14,7 +12,7 @@ import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
 import { isTelegramWebView } from "@/lib/detect-browser";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
-import { QuickReplyBar } from "@/components/chat/ChatMessage";
+import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import {
   normalizeQuickReplies,
   type QuickReplyInput,
@@ -183,11 +181,10 @@ export function ChatWindow({
       .join("");
   }
 
-  function renderContent(content: string, isAi: boolean) {
+  // Только для user-сообщений: plain split на параграфы.
+  // AI-сообщения рендерятся через <AIBubble> (архитектурный инвариант).
+  function renderUserContent(content: string) {
     if (!content) return null;
-    if (isAi) {
-      return <ReactMarkdown remarkPlugins={[remarkBreaks]}>{content}</ReactMarkdown>;
-    }
     return content.split("\n\n").map((paragraph, i) => (
       <p key={i}>{paragraph}</p>
     ));
@@ -319,10 +316,11 @@ export function ChatWindow({
           {showWelcome && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`} role="article">
               <div className="msg-avatar ai" />
-              <div className="msg-bubble">
-                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{animActive ? streamedText : effectiveWelcomeMessage}</ReactMarkdown>
-                {showCursor && <span className="streaming-cursor">{"▊"}</span>}
-              </div>
+              <AIBubble
+                text={(animActive ? streamedText : effectiveWelcomeMessage) ?? ""}
+                className="msg-bubble"
+                bubbleSuffix={showCursor ? <span className="streaming-cursor">{"▊"}</span> : undefined}
+              />
             </div>
           )}
 
@@ -387,12 +385,19 @@ export function ChatWindow({
                 {isAi
                   ? <div className="msg-avatar ai" />
                   : renderUserAvatar()}
-                <div className="msg-bubble">
-                  {renderContent(displayText, isAi)}
-                  {status === "streaming" && isLast && isAi && (
-                    <span className="streaming-cursor">{"▊"}</span>
-                  )}
-                </div>
+                {isAi ? (
+                  <AIBubble
+                    text={displayText}
+                    className="msg-bubble"
+                    bubbleSuffix={
+                      status === "streaming" && isLast ? (
+                        <span className="streaming-cursor">{"▊"}</span>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <div className="msg-bubble">{renderUserContent(displayText)}</div>
+                )}
               </div>
             );
           })}
