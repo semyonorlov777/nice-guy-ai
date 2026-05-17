@@ -3,7 +3,7 @@ import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
 import { createRateLimit } from "@/lib/rate-limit";
-import { updatePortrait } from "@/app/api/portrait/update/route";
+import { updatePortrait } from "@/lib/portrait-updater";
 import {
   ChatError,
   parseBody,
