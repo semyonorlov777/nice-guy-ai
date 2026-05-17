@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SocialProof } from "@/components/landing/SocialProof";
 import { OutcomesSection } from "@/components/landing/OutcomesSection";
 import { AuthorSection } from "@/components/landing/AuthorSection";
 import { PersonasSection } from "@/components/landing/PersonasSection";
@@ -30,7 +29,7 @@ const HERO_SUB =
 // Блок книги.
 const BOOK_TITLE_RUS = "Хватит быть славным парнем";
 const BOOK_STAT_1 = "Тираж 2+ млн копий, переведена на 20+ языков";
-const BOOK_STAT_2 = "4,04 из 5 — 24 650 отзывов читателей";
+const BOOK_STAT_2 = "Топ ЛитРес · 24 650 отзывов читателей";
 
 // Блок автора.
 const AUTHOR_NAME = "Доктор Роберт Гловер";
@@ -41,9 +40,9 @@ const AUTHOR_CREDENTIALS =
 const SOCIAL_MAIN = "2 700+ мужчин в русскоязычном сообществе";
 const SOCIAL_SUB = "уже работают по методу Гловера";
 
-// Приветствие AI — глубокое, с прозрачностью про AI и сразу первый вопрос.
+// Приветствие AI — короткое. Регалии автора уже в карточке слева.
 const HERO_WELCOME =
-  "Привет. Я цифровой проводник по методу Роберта Гловера — клинического психотерапевта, который 30 лет лечит мужчин от синдрома «хорошего парня». Я не сам Гловер, я обучен на его 46 упражнениях и сотнях разборов из практики.\n\nРасскажи одну ситуацию из последних дней: где ты сказал «да», когда внутри хотел сказать «нет»?";
+  "Привет. Я не сам Гловер — цифровой проводник по его методу.\n\nРасскажи одну ситуацию: где ты последний раз сказал «да», когда хотел сказать «нет»?";
 
 const HERO_QUICK_REPLIES: QuickReplyInput[] = [
   { text: "Сказал «да» жене, когда хотел отдохнуть" },
@@ -178,8 +177,6 @@ export default async function DemoLandingC() {
           </Link>
         </div>
       </section>
-
-      <SocialProof items={landingData.social_proof} />
 
       <OutcomesSection
         label={landingData.outcomes.label}
