@@ -5,8 +5,10 @@ import Script from "next/script";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
+import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
 const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
+const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
 
 declare global {
   interface Window {
@@ -99,6 +101,18 @@ function GoogleIcon() {
   );
 }
 
+function MaxIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="#1c3d7a" />
+      <path
+        d="M5.5 17V7h2.6l3.4 6.2L14.9 7h2.6v10h-2.2v-6.4l-2.8 5.1h-1.4l-2.8-5.1V17H5.5z"
+        fill="#fff"
+      />
+    </svg>
+  );
+}
+
 function LockIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,6 +155,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   const [tgLoading, setTgLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [scriptReady, setScriptReady] = useState(false);
+  const [showMax, setShowMax] = useState(false);
 
   const calledRef = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -167,6 +182,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setError("");
       setLoading(false);
       setTgLoading(false);
+      setShowMax(false);
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -392,7 +408,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     <>
       {mode === "sheet" && <div className="auth-sheet-handle" />}
 
-      {!emailSent ? (
+      {MAX_TROLL_ENABLED && showMax ? (
+        <MaxTrollingScreen onCancel={() => setShowMax(false)} />
+      ) : !emailSent ? (
         <div>
           <div className="auth-sheet-header">
             <h2
@@ -432,6 +450,17 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               <TelegramIcon />
               {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
             </button>
+
+            {MAX_TROLL_ENABLED && (
+              <button
+                type="button"
+                className="auth-sheet-btn max"
+                onClick={() => setShowMax(true)}
+              >
+                <MaxIcon />
+                Войти через Мах
+              </button>
+            )}
           </div>
 
           <div className="auth-sheet-divider">
