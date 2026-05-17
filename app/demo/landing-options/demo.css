@@ -1686,3 +1686,167 @@
   margin: 0 0 12px;
   padding: 0 4px;
 }
+
+/* ── Ссылка на before/after с верха страницы выбора ── */
+.demo-picker__ba-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 32px;
+  padding: 14px 20px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.demo-picker__ba-link:hover {
+  border-color: var(--accent);
+  background: var(--accent-medium, var(--accent-soft));
+  transform: translateY(-1px);
+}
+.demo-picker__ba-link-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 1px;
+}
+.demo-picker__ba-link-arrow {
+  font-size: 18px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Страница «было/стало» ── */
+.demo-ba-page {
+  min-height: 100vh;
+  background: var(--bg-main, #fafaf5);
+  font-family: var(--font-body);
+  color: var(--text, #1a1a1a);
+}
+.demo-ba-head {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 16px;
+}
+.demo-ba-head__title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.6vw, 36px);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+.demo-ba-head__lead {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 760px;
+}
+
+.demo-ba-label {
+  max-width: var(--content-w, 1100px);
+  margin: 0 auto;
+  padding: 24px 24px 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.demo-ba-label__tag {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.demo-ba-label__sub {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* Тёмная полоса-разделитель между «было» и «стало» */
+.demo-ba-divider {
+  position: relative;
+  margin: 48px 0;
+  padding: 40px 24px;
+  background: linear-gradient(180deg, #14161b 0%, #1a1c22 100%);
+  color: #fff;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.demo-ba-divider::before,
+.demo-ba-divider::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(201, 150, 59, 0.45) 25%,
+    rgba(212, 165, 69, 0.75) 50%,
+    rgba(201, 150, 59, 0.45) 75%,
+    transparent 100%
+  );
+}
+.demo-ba-divider::before { top: 0; }
+.demo-ba-divider::after { bottom: 0; }
+.demo-ba-divider__inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.demo-ba-divider__arrow {
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--accent, #C9963B);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.demo-ba-divider__title {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin: 0 0 8px;
+  color: #fff;
+}
+.demo-ba-divider__sub {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+/* Контейнер каждой «версии» — чтобы старые секции не пересекались с метками */
+.demo-ba-version {
+  padding-bottom: 24px;
+}
+.demo-ba-version--before {
+  /* Старая версия — без чего-то особенного, она и так нейтральная */
+}
+.demo-ba-version--after {
+  /* Новая версия — еле заметная подложка, чтобы взгляд понимал «это другой блок» */
+  background: linear-gradient(
+    180deg,
+    rgba(201, 150, 59, 0.04) 0%,
+    transparent 320px
+  );
+}
+
+@media (max-width: 768px) {
+  .demo-ba-head { padding: 28px 16px 12px; }
+  .demo-ba-label { padding: 18px 16px 4px; }
+  .demo-ba-divider { padding: 32px 16px; margin: 32px 0; }
+}
+
