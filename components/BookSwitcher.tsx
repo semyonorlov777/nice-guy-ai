@@ -145,7 +145,12 @@ export function BookSwitcher({
       </button>
       {open && (
         <>
-          <div className="auth-sheet-scrim" onClick={close} />
+          <button
+            type="button"
+            className="auth-sheet-scrim"
+            onClick={close}
+            aria-label="Закрыть"
+          />
           <div
             className="auth-sheet mode-sheet open book-switcher-sheet"
             role="dialog"

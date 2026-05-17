@@ -593,9 +593,11 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       )}
 
       {open && (
-        <div
+        <button
+          type="button"
           className="auth-sheet-scrim"
           onClick={onClose}
+          aria-label="Закрыть"
         />
       )}
 
