@@ -630,7 +630,12 @@ INSERT INTO test_configs (
     ]
   }'::jsonb,
 
-  -- interpretation_prompt (ИИ-интерпретация результатов)
+  -- interpretation_prompt (ИИ-интерпретация результатов).
+  -- ВАЖНО: JSON-схема top_zones имеет ДВА формата (см. раздел «Формат top_zones» ниже).
+  -- Для тестов-навыков — минимальный (scale_key + action_text).
+  -- Для тестов-типологий/профилей — расширенный (+ score + headline + body + action_route).
+  -- В обоих случаях основное поле — scale_key (внутренний ключ из scales[]),
+  -- НЕ русское имя архетипа. UI режется по scale_key.
   E'Ты — психолог, специализирующийся на [тема книги].\n\n...',
 
   -- mini_analysis_prompt_template ({{questionText}} заменяется автоматически)
@@ -754,6 +759,42 @@ WHERE slug = 'BOOK_SLUG';
 
 Таблица `program_themes` имеет колонку `test_scale_key` (бывш. `issp_scale_key`). Если заполнена — темы сортируются по баллам теста (высшие первые). Маппинг: `program_themes.test_scale_key` → `test_results.scores_by_scale[key]`.
 
+### Формат `top_zones` в `interpretation_prompt`
+
+`top_zones` — блок «С чего начать» на странице результатов теста. У него **два формата**, оба поддерживаются компонентом `TopZones` (`components/test-results/TestResultsPage.tsx`):
+
+**Минимальный (для тестов-навыков: eq-test, issp-test)** — одна-три карточки с тегами упражнений:
+
+```json
+"top_zones": [
+  { "scale_key": "eq_self_awareness", "action_text": "Начни с самосознания..." }
+]
+```
+
+**Расширенный (для тестов-типологий: archetype-test, MBTI-подобные)** — две карточки с заголовком, абзацем и кнопкой-CTA в режим:
+
+```json
+"top_zones": [
+  {
+    "scale_key": "belonging_lover",
+    "score": 88,
+    "headline": "Любовник — твой ведущий архетип",
+    "body": "1-2 абзаца про этот архетип…",
+    "action_text": "Разобрать архетип твоего бренда",
+    "action_route": "/program/heroes-and-outlaws/chat/new?tool=arch_brand"
+  }
+]
+```
+
+**Правила:**
+- `scale_key` — ВСЕГДА внутренний ключ из `scales[].key`. НЕ русское имя. UI режется по этому ключу через `scaleNames`/`scoresByScale`.
+- Если есть `headline` — он используется как заголовок (вместо `{name} — {pct}%`). `score` подменяет `scoresByScale[key].pct` если задан.
+- Если есть `body` — он рендерится как абзац (вместо одной строки `action_text`).
+- Если есть `action_route` — рендерится большая кнопка-CTA, ведущая в режим (приоритет над тегами упражнений).
+- Если нет `action_route` — рендерятся теги упражнений из `scales[].exercises` (как в issp-test).
+
+**Legacy-safety:** нормализатор `normalizeInterpretation(interp, scaleNames)` ([lib/test-interpretation.ts](lib/test-interpretation.ts)) автоматически конвертирует старое поле `archetype` (русское имя) в `scale_key` через инверсию `scaleNames` — это для старых результатов в БД. Новые промпты должны сразу выдавать `scale_key`.
+
 ### Известные баги и грабли (lessons learned)
 
 | # | Баг | Причина | Как избежать |
@@ -769,6 +810,7 @@ WHERE slug = 'BOOK_SLUG';
 | 9 | HistoryScreen теста показывал «Индекс Синдрома Славного Парня» для других книг | Захардкожен h1 и badge | Исправлено: `HistoryScreen` берёт из `testConfig.ui_config.welcome_title/welcome_badge`. Проверка через `?test_state=history-multi` |
 | 10 | RadarChart рендерил высокий навык красным (тревога) для навыкового теста | `dotColor` и текстовые лейблы зон были захардкожены под `lower_is_better` | Исправлено в Phase A теста Бакирова: `RadarChart` принимает prop `scoreDirection`, инвертирует пороги цвета и зоны лейблов для `higher_is_better`. `TestResultsPage` пробрасывает `testConfig.scoring.score_direction`. Регрессия: ISSP/GPP остались как раньше (default `lower_is_better`) |
 | 11 | `TestResultsPage` хардкодил `getLevelLabel(score)` русскими строками для ISSP | Fallback при отсутствии `interpretation.level_label` от AI всегда возвращал «Низкий/…/Высокий» | Исправлено вместе с #10: `TestResultsPage` принимает props `levelLabels` и `levelThresholds` из `testConfig.scoring`, использует их для fallback. Bakirov-уровни «Новичок/…/Мастер» работают сразу |
+| 12 | Блок «С чего начать» в archetype-test показывал «1 — 0%» / «2 — 0%» с одинаковым текстом | Промпт выдавал `archetype: "Любовник"` (русское имя) вместо `scale_key`, и компонент `TopZones` игнорировал расширенные поля `headline`/`body`/`action_route` | Исправлено: расширили `TopZones` под два формата (минимальный + расширенный), `normalizeInterpretation` теперь принимает `scaleNames` и инвертирует `archetype → scale_key` для legacy. Промпт `archetype-test` в БД поправлен на `scale_key`. См. раздел «Формат top_zones» выше |
 
 ### Реестр тестов
 
