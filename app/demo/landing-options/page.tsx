@@ -23,6 +23,13 @@ export default function DemoLandingOptionsPage() {
           без прокрутки и без клика «начать».
         </p>
 
+        <Link href="/demo/before-after" className="demo-picker__ba-link">
+          <span className="demo-picker__ba-link-text">
+            Сравнить «было/стало» на лендинге nice-guy
+          </span>
+          <span className="demo-picker__ba-link-arrow">↗</span>
+        </Link>
+
         <div className="demo-picker__compare">
           <div className="demo-picker__compare-row">
             <span className="demo-picker__compare-label">Сейчас</span>
