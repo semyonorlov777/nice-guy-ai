@@ -10,6 +10,41 @@ export interface TestInterpretation {
   top_zones: Array<{ scale_key: string; action_text: string }>;
 }
 
+export const FALLBACK_OVERALL_TEXT =
+  "Тест завершён. Подробная интерпретация временно недоступна.";
+
+const FALLBACK_SCALE_TEXT = "Интерпретация временно недоступна.";
+
+export function isFallbackInterpretation(
+  interp: TestInterpretation | null | undefined
+): boolean {
+  if (!interp) return true;
+  if (!interp.overall) return true;
+  return interp.overall === FALLBACK_OVERALL_TEXT;
+}
+
+/**
+ * Нормализует interpretation от Gemini: разные промпты выдают `key` или `scale_key`
+ * (например, heroes-and-outlaws → `key`, nice-guy → `scale_key`). UI ждёт `scale_key`.
+ * Безопасно вызывать на любом TestInterpretation — если поля уже корректны, ничего не меняется.
+ */
+export function normalizeInterpretation(
+  interp: TestInterpretation | null | undefined
+): TestInterpretation | null {
+  if (!interp) return null;
+  type Loose = { scale_key?: string; key?: string };
+  const fixKey = <T extends Loose>(item: T): T => {
+    if (item.scale_key) return item;
+    if (item.key) return { ...item, scale_key: item.key };
+    return item;
+  };
+  return {
+    ...interp,
+    scales: Array.isArray(interp.scales) ? interp.scales.map(fixKey) : [],
+    top_zones: Array.isArray(interp.top_zones) ? interp.top_zones.map(fixKey) : [],
+  };
+}
+
 function getLevelLabel(score: number, config: TestConfig): string {
   const { level_thresholds, level_labels } = config.scoring;
   for (let i = 0; i < level_thresholds.length; i++) {
@@ -81,7 +116,7 @@ ${scaleLines}
       parsed.level_label = levelLabel;
     }
 
-    return parsed as TestInterpretation;
+    return normalizeInterpretation(parsed as TestInterpretation)!;
   } catch (err) {
     console.error("[test-interpretation] Error:", err);
     return buildFallback(levelLabel, scaleOrder);
@@ -93,11 +128,11 @@ function buildFallback(
   scaleOrder: string[]
 ): TestInterpretation {
   return {
-    overall: "Тест завершён. Подробная интерпретация временно недоступна.",
+    overall: FALLBACK_OVERALL_TEXT,
     level_label: levelLabel,
     scales: scaleOrder.map((key) => ({
       scale_key: key,
-      interpretation: "Интерпретация временно недоступна.",
+      interpretation: FALLBACK_SCALE_TEXT,
     })),
     top_zones: [],
   };
