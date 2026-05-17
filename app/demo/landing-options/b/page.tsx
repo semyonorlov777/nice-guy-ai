@@ -98,6 +98,7 @@ export default async function DemoLandingB() {
       <div className="demo-bar">
         <Link href="/demo/landing-options" className="demo-bar__back">← Вернуться к вариантам</Link>
         <span className="demo-bar__tag">Вариант B · чат во весь экран</span>
+        <Link href="/demo/landing-options#why" className="demo-bar__why">↗ Обоснования</Link>
       </div>
 
       <FullChatHero
@@ -112,6 +113,20 @@ export default async function DemoLandingB() {
       />
 
       <div id={aboutId} />
+
+      <section className="demo-why-block">
+        <div className="demo-why-block__inner">
+          <div className="demo-why-block__eyebrow">Главное в этом варианте</div>
+          <ul className="demo-why-block__list">
+            <li>Чат во весь первый экран — нулевой шум вокруг главного действия. Самый радикальный chat-first.</li>
+            <li>Только тонкая шапка сверху (логотип + «Войти») + ссылка «Узнать о программе ↓» под чатом.</li>
+            <li>Обложка, автор, цена, обещания — всё ниже первого экрана, после первого скролла.</li>
+          </ul>
+          <Link href="/demo/landing-options#why" className="demo-why-block__link">
+            Полное обоснование — на странице выбора ↗
+          </Link>
+        </div>
+      </section>
 
       <SocialProof items={landingData.social_proof} />
 

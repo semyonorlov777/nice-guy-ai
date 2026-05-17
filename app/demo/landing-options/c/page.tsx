@@ -122,6 +122,7 @@ export default async function DemoLandingC() {
       <div className="demo-bar">
         <Link href="/demo/landing-options" className="demo-bar__back">← Вернуться к вариантам</Link>
         <span className="demo-bar__tag">Вариант C · chat-first (синтез исследований)</span>
+        <Link href="/demo/landing-options#why" className="demo-bar__why">↗ Обоснования</Link>
       </div>
 
       {/* Мини-шапка: «Войти» в правом верхнем углу страницы (Claude Research,
@@ -152,6 +153,20 @@ export default async function DemoLandingC() {
         hubHref={hubHref}
         chatHref={chatHref}
       />
+
+      <section className="demo-why-block">
+        <div className="demo-why-block__inner">
+          <div className="demo-why-block__eyebrow">Главное в этом варианте</div>
+          <ul className="demo-why-block__list">
+            <li>Чат на первом экране — единственное главное действие. Без конкурирующей кнопки.</li>
+            <li>Авторитет автора — через цифры (тираж 2+ млн, 20+ языков), а не через имя. Гловер в РФ узнаваем у ~5%.</li>
+            <li>Proof — конкретные цифры (Goodreads 4,04★, 35 вопросов теста), не пункты обещаний.</li>
+          </ul>
+          <Link href="/demo/landing-options#why" className="demo-why-block__link">
+            Полное обоснование — на странице выбора ↗
+          </Link>
+        </div>
+      </section>
 
       <SocialProof items={landingData.social_proof} />
 
