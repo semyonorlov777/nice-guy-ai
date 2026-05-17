@@ -149,60 +149,62 @@ export async function loadProgramContext(
   exerciseId?: string,
   chatType?: string,
 ): Promise<ProgramContextResult> {
-  // Load program
-  const { data: program, error: programError } = await supabase
-    .from("programs")
-    .select("id, system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome")
-    .eq("id", programId)
-    .single();
+  // Все три запроса независимы — параллельно через Promise.all.
+  // Раньше было 1-3 sequential await'а в worst case.
+  const [programRes, exerciseRes, modeRes] = await Promise.all([
+    supabase
+      .from("programs")
+      .select("id, system_prompt, free_chat_welcome, author_chat_system_prompt, author_chat_welcome")
+      .eq("id", programId)
+      .single(),
+    exerciseId
+      ? supabase
+          .from("exercises")
+          .select("id, system_prompt, title, welcome_message")
+          .eq("id", exerciseId)
+          .single()
+      : Promise.resolve({ data: null }),
+    chatType
+      ? supabase
+          .from("program_modes")
+          .select(
+            "system_prompt, welcome_message, welcome_ai_message, welcome_replies, mode_templates!inner(chat_type)",
+          )
+          .eq("program_id", programId)
+          .eq("mode_templates.chat_type", chatType)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
+  const program = programRes.data;
   if (!program) {
-    console.error("[chat] Program not found:", programId, programError);
+    console.error("[chat] Program not found:", programId, programRes.error);
     throw new ChatError(404, "Программа не найдена");
   }
 
-  // Load exercise (if exercise chat)
-  let exercise: ProgramContextResult["exercise"] = null;
-  if (exerciseId) {
-    const { data } = await supabase
-      .from("exercises")
-      .select("id, system_prompt, title, welcome_message")
-      .eq("id", exerciseId)
-      .single();
-    exercise = data;
-  }
+  const exercise: ProgramContextResult["exercise"] = exerciseRes.data ?? null;
+  const modeRow = modeRes.data;
 
   // Build system prompt: mode-level → program-level fallback
-  // 1. Check program_modes for a custom system_prompt and welcome_message.
+  // 1. Use program_modes если есть custom system_prompt и welcome_message.
   //    Для tool-режимов welcome обычно хранится как `welcome_ai_message` (plain-text)
   //    + `welcome_replies` (jsonb array {text, type}) — их нужно СЕРИАЛИЗОВАТЬ
   //    в единый текст с «ёлочками», чтобы после reload `parseQuickReplies`
   //    восстановил кнопки из сохранённого messages.content.
   let systemPrompt = "";
   let modeWelcome: string | null = null;
-  if (chatType) {
-    const { data: modeRow } = await supabase
-      .from("program_modes")
-      .select(
-        "system_prompt, welcome_message, welcome_ai_message, welcome_replies, mode_templates!inner(chat_type)",
-      )
-      .eq("program_id", programId)
-      .eq("mode_templates.chat_type", chatType)
-      .maybeSingle();
-
-    if (modeRow?.system_prompt) {
-      systemPrompt = modeRow.system_prompt;
-    }
-    if (modeRow?.welcome_message) {
-      // Legacy: welcome_message уже содержит ёлочки в тексте
-      modeWelcome = modeRow.welcome_message;
-    } else if (modeRow?.welcome_ai_message) {
-      // Новый формат: ai-message + отдельные replies → склеиваем в текст
-      modeWelcome = serializeWelcomeWithReplies(
-        modeRow.welcome_ai_message,
-        modeRow.welcome_replies,
-      );
-    }
+  if (modeRow?.system_prompt) {
+    systemPrompt = modeRow.system_prompt;
+  }
+  if (modeRow?.welcome_message) {
+    // Legacy: welcome_message уже содержит ёлочки в тексте
+    modeWelcome = modeRow.welcome_message;
+  } else if (modeRow?.welcome_ai_message) {
+    // Новый формат: ai-message + отдельные replies → склеиваем в текст
+    modeWelcome = serializeWelcomeWithReplies(
+      modeRow.welcome_ai_message,
+      modeRow.welcome_replies,
+    );
   }
 
   // 2. Fallback to program-level prompts
