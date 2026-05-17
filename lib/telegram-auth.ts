@@ -25,6 +25,13 @@ export async function verifyTelegramToken(
     audience: clientId,
   });
 
+  console.log("[telegram-auth] payload fields:", {
+    has_name: typeof payload.name === "string",
+    has_preferred_username: typeof payload.preferred_username === "string",
+    has_picture: typeof payload.picture === "string",
+    has_phone: typeof payload.phone_number === "string",
+  });
+
   return {
     id: String(payload.sub),
     name: (payload.name as string) || (payload.preferred_username as string) || "",
