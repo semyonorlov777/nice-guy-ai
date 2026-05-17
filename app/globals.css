@@ -3981,6 +3981,45 @@ html:not(.no-transition) .app-main {
 .auth-sheet-btn.tg:hover:not(:disabled) {
   background: var(--auth-tg-blue-hover);
 }
+
+.auth-sheet-tg-widget {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+.auth-sheet-tg-widget > div:first-child {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.auth-sheet-tg-widget-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--auth-tg-blue);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.auth-sheet-tg-widget-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 136, 204, 0.85);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
 .auth-sheet-btn.google {
   background: var(--auth-google-bg);
   color: #3c4043;
