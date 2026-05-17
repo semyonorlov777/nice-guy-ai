@@ -3,6 +3,10 @@
 
 import { createServiceClient } from "@/lib/supabase-server";
 import { apiError } from "@/lib/api-helpers";
+import {
+  normalizeInterpretation,
+  type TestInterpretation,
+} from "@/lib/test-interpretation";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,7 +33,9 @@ export async function GET(
   }
 
   return Response.json({
-    interpretation: data.interpretation,
+    interpretation: normalizeInterpretation(
+      data.interpretation as TestInterpretation | null
+    ),
     status: data.status,
   });
 }
