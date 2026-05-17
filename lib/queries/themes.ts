@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WelcomeReply, WelcomeConfig } from "@/types/welcome";
 import { normalizeWelcomeReplies } from "@/types/welcome";
@@ -19,11 +20,13 @@ export interface ProgramTheme {
 
 /**
  * Загружает все включённые темы для программы, отсортированные по sort_order.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
-export async function getProgramThemes(
+export const getProgramThemes = cache(async (
   supabase: SupabaseClient,
   programId: string,
-): Promise<ProgramTheme[]> {
+): Promise<ProgramTheme[]> => {
   const { data, error } = await supabase
     .from("program_themes")
     .select(
@@ -39,7 +42,7 @@ export async function getProgramThemes(
     ...row,
     welcome_replies: normalizeWelcomeReplies(row.welcome_replies),
   }));
-}
+});
 
 /**
  * Сортирует темы по баллам теста (наивысший балл первый).

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 export interface UserProfileForChat {
@@ -9,25 +10,29 @@ export interface UserProfileForChat {
 /**
  * Загружает профиль пользователя и вычисляет userInitial / avatarUrl.
  * Если balance_tokens не нужен — он всё равно возвращается (0 по умолчанию).
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
-export async function getUserProfileForChat(
-  supabase: SupabaseClient,
-  user: User,
-): Promise<UserProfileForChat> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("name, avatar_url, balance_tokens")
-    .eq("id", user.id)
-    .maybeSingle();
+export const getUserProfileForChat = cache(
+  async (
+    supabase: SupabaseClient,
+    user: User,
+  ): Promise<UserProfileForChat> => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("name, avatar_url, balance_tokens")
+      .eq("id", user.id)
+      .maybeSingle();
 
-  const userInitial =
-    data?.name?.[0]?.toUpperCase() ||
-    user.email?.[0]?.toUpperCase() ||
-    "?";
+    const userInitial =
+      data?.name?.[0]?.toUpperCase() ||
+      user.email?.[0]?.toUpperCase() ||
+      "?";
 
-  return {
-    userInitial,
-    avatarUrl: data?.avatar_url || null,
-    balanceTokens: data?.balance_tokens ?? 0,
-  };
-}
+    return {
+      userInitial,
+      avatarUrl: data?.avatar_url || null,
+      balanceTokens: data?.balance_tokens ?? 0,
+    };
+  },
+);
