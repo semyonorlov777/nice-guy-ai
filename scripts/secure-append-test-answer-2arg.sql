@@ -1,0 +1,28 @@
+-- P0.4 (revised): secure append_test_answer(uuid, jsonb) — the legacy 2-arg overload
+-- Applied as migration 2026-05-17 secure_append_test_answer_2arg
+-- See docs/audits/2026-05-supabase-audit.md
+--
+-- Original plan in the audit was DROP. Grep changed the plan:
+--   app/api/test/_handlers/typed-answer.ts   — 4 calls with {p_chat_id, p_answer}
+--   app/api/test/_handlers/final-answer.ts:85
+--   app/api/test/_handlers/authenticated.ts:155
+-- All six pass exactly two named arguments. PostgREST resolves RPC overloads
+-- by exact parameter-name match (it does not auto-fill DEFAULT), so a DROP
+-- would cause "function does not exist" 404s on those callers — the 3-arg
+-- overload requires p_expected_question in the body.
+--
+-- All callers use createServiceClient() (service_role), so REVOKE from
+-- anon/authenticated is safe.
+--
+-- Unifying both overloads into a single 3-arg function (with optional
+-- p_expected_question) is a refactor that needs coordinated app+DB changes;
+-- it is tracked outside P0.
+--
+-- search_path = public is already set on this overload, so advisor 0011 was
+-- not raised for it. This migration only updates EXECUTE privileges.
+--
+-- Linter advisors closed:
+--   0028 anon_security_definer_function_executable / append_test_answer(uuid, jsonb)
+--   0029 authenticated_security_definer_function_executable / append_test_answer(uuid, jsonb)
+
+REVOKE EXECUTE ON FUNCTION public.append_test_answer(uuid, jsonb) FROM anon, authenticated, PUBLIC;
