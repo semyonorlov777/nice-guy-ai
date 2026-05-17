@@ -1,16 +1,26 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
 
 interface MigrateMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+// Per-user rate limit: 5 миграций в минуту. Защита от abuse-вектора —
+// создания мусорных чатов с insert'ами до 200 сообщений.
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 5 });
+
 export async function POST(request: Request) {
   // 1. Auth check
   const supabase = await createClient();
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
+
+  // 2. Rate limit (per user)
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
 
   // 2. Parse body
   let body: { program_slug?: string; messages?: unknown[]; session_id?: string };

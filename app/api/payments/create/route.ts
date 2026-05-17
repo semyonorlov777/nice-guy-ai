@@ -1,9 +1,14 @@
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
+import { createRateLimit } from "@/lib/rate-limit";
 import yookassa from "@/lib/yookassa";
 import { PRODUCTS } from "@/lib/products";
 import { APP_URL } from "@/lib/constants";
 import { randomUUID } from "crypto";
+
+// Per-user rate limit: 5 заказов в минуту. Защита от заваливания таблицы
+// orders при автоматизированном abuse'е.
+const checkRateLimit = createRateLimit({ windowMs: 60_000, max: 5 });
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -11,6 +16,11 @@ export async function POST(request: Request) {
   // 1. Auth
   const { user, response } = await requireAuth(supabase);
   if (response) return response;
+
+  // 2. Rate limit (per user)
+  if (!checkRateLimit(user.id)) {
+    return apiError("Слишком много запросов. Подожди минуту.", 429);
+  }
 
   // 2. Parse body
   const { productKey } = await request.json();
