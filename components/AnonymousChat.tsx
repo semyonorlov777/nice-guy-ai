@@ -3,8 +3,6 @@
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 import {
@@ -315,10 +313,11 @@ export function AnonymousChat({
           {messages.length === 0 && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`}>
               <div className="msg-avatar ai">НС</div>
-              <div className="msg-bubble">
-                <ReactMarkdown remarkPlugins={[remarkBreaks]}>{animActive ? streamedText : welcomeMessage}</ReactMarkdown>
-                {showCursor && <span className="streaming-cursor">{"▊"}</span>}
-              </div>
+              <AIBubble
+                text={animActive ? streamedText : welcomeMessage}
+                className="msg-bubble"
+                bubbleSuffix={showCursor ? <span className="streaming-cursor">{"▊"}</span> : undefined}
+              />
             </div>
           )}
 
