@@ -1,4 +1,5 @@
-import { THEME_ICON_MAP, ArrowRightIcon } from "@/components/icons/hub-icons";
+import { ArrowRightIcon } from "@/components/icons/hub-icons";
+import { THEME_ICON_MAP } from "@/components/icons/theme-icon-map";
 import type { ProgramTheme } from "@/lib/queries/themes";
 
 interface ThemeCardProps {
