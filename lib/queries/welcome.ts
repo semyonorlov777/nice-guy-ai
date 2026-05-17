@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WelcomeConfig } from "@/types/welcome";
 import { normalizeWelcomeReplies } from "@/types/welcome";
@@ -8,12 +9,16 @@ import type { ProgramModeWithTemplate } from "@/types/modes";
 /**
  * Получает WelcomeConfig из БД по topic или tool.
  * Заменяет хардкод из lib/welcome-config.ts.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
+ * cache() корректно работает с объектным параметром — React сериализует
+ * аргументы поверхностно, идентичные { topic, tool } дадут попадание.
  */
-export async function getWelcomeConfig(
+export const getWelcomeConfig = cache(async (
   supabase: SupabaseClient,
   programId: string,
   params: { topic?: string; tool?: string },
-): Promise<WelcomeConfig> {
+): Promise<WelcomeConfig> => {
   // 1. По теме
   if (params.topic) {
     const { data: theme } = await supabase
@@ -157,4 +162,4 @@ export async function getWelcomeConfig(
     aiMessage: "",
     replies: [],
   };
-}
+});

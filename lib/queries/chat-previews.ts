@@ -1,13 +1,17 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Загружает превью (последнее assistant-сообщение, обрезанное до 80 символов)
  * для списка chatIds. Возвращает Map<chatId, preview>.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса
+ * (часто вызывается и из layout.tsx, и из chats/page.tsx).
  */
-export async function getChatPreviews(
+export const getChatPreviews = cache(async (
   supabase: SupabaseClient,
   chatIds: string[],
-): Promise<Map<string, string>> {
+): Promise<Map<string, string>> => {
   const previews = new Map<string, string>();
   if (chatIds.length === 0) return previews;
 
@@ -27,4 +31,4 @@ export async function getChatPreviews(
   }
 
   return previews;
-}
+});

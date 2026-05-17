@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProgramFeatures } from "@/types/program";
 
@@ -17,9 +18,10 @@ interface LandingDataBook {
   };
 }
 
-export async function getAllPrograms(
+/** Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса. */
+export const getAllPrograms = cache(async (
   supabase: SupabaseClient,
-): Promise<ProgramSwitcherItem[]> {
+): Promise<ProgramSwitcherItem[]> => {
   const { data } = await supabase
     .from("programs")
     .select("id, slug, title, landing_data, features")
@@ -38,4 +40,4 @@ export async function getAllPrograms(
       features: (p.features ?? null) as ProgramFeatures | null,
     };
   });
-}
+});

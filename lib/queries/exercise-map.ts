@@ -1,13 +1,16 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * По списку exercise IDs возвращает Map<exerciseId, number>.
  * Используется для отображения номера упражнения в списке чатов.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
-export async function getExerciseNumberMap(
+export const getExerciseNumberMap = cache(async (
   supabase: SupabaseClient,
   exerciseIds: string[],
-): Promise<Map<string, number>> {
+): Promise<Map<string, number>> => {
   const exerciseMap = new Map<string, number>();
   if (exerciseIds.length === 0) return exerciseMap;
 
@@ -23,4 +26,4 @@ export async function getExerciseNumberMap(
   }
 
   return exerciseMap;
-}
+});
