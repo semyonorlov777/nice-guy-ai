@@ -8,7 +8,7 @@ import { useCountUp } from "./useCountUp";
 import { useScrollReveal } from "./useScrollReveal";
 import { ShareButtons } from "./ShareButtons";
 import { RadarChart } from "./RadarChart";
-import { THEME_ICON_MAP } from "@/components/icons/hub-icons";
+import { THEME_ICON_MAP } from "@/components/icons/theme-icon-map";
 
 // ── Types ──
 

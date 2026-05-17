@@ -1,4 +1,4 @@
-interface IconProps {
+export interface IconProps {
   size?: number;
   className?: string;
 }
@@ -504,44 +504,3 @@ export function FlaskIcon({ size = 18, className }: IconProps) {
   );
 }
 
-// ═══ Theme Icon Map (keys = program_themes.icon_key) ═══
-
-export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
-  // nice-guy (ISSP scales)
-  approval: ApprovalIcon,
-  contracts: ContractsIcon,
-  suppression: SuppressionIcon,
-  control: ControlIcon,
-  boundaries: BoundariesIcon,
-  masculinity: MasculinityIcon,
-  attachment: AttachmentIcon,
-  // games-people-play (TA scales)
-  games: DramaIcon,
-  "ego-states": CompassIcon,
-  "life-script": BookOpenIcon,
-  strokes: HeartLoveIcon,
-  karpman: TargetIcon,
-  // razgovorny-gipnoz (Bakirov scales)
-  rapport: UsersLoveIcon,
-  suggestions: SparklesIcon,
-  strategy: CompassIcon,
-  awareness: ShieldIcon,
-  trance: LightbulbIcon,
-  // 100-notes (Osipov scales)
-  fear_mastery: ShieldIcon,
-  scale_thinking: RocketIcon,
-  energy_agency: InstrumentLightningIcon,
-  environment_hygiene: UsersLoveIcon,
-  self_reflection: BookOpenIcon,
-  // redecision-therapy (Goulding injunctions)
-  intimacy: HeartLoveIcon,
-  feelings: SuppressionIcon,
-  success: RocketIcon,
-  authenticity: MasculinityIcon,
-  drivers: InstrumentLightningIcon,
-  // heroes-and-outlaws (Mark/Pearson archetype groups)
-  arch_paradise: CompassIcon,
-  arch_impact: RocketIcon,
-  arch_belonging: HeartLoveIcon,
-  arch_order: ShieldIcon,
-};
