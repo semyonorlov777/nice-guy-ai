@@ -15,7 +15,7 @@ declare global {
     Telegram?: {
       Login: {
         auth: (
-          options: { client_id: string; request_access?: string[] },
+          options: { client_id: string; request_access?: string[]; lang?: string },
           callback: (result: { id_token?: string; error?: string }) => void,
         ) => void;
       };
@@ -268,7 +268,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     setTgLoading(true);
 
     window.Telegram.Login.auth(
-      { client_id: TELEGRAM_BOT_ID, request_access: ["write"] },
+      { client_id: TELEGRAM_BOT_ID, request_access: ["write"], lang: "ru" },
       async (result) => {
         if (result.error || !result.id_token) {
           setTgLoading(false);
