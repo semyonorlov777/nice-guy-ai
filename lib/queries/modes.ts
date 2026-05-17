@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
 import type { WelcomeConfig } from "@/types/welcome";
@@ -5,11 +6,13 @@ import { normalizeWelcomeReplies } from "@/types/welcome";
 
 /**
  * Загружает все включённые режимы для программы, отсортированные по sort_order.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
-export async function getProgramModes(
+export const getProgramModes = cache(async (
   supabase: SupabaseClient,
   programId: string,
-): Promise<ProgramModeWithTemplate[]> {
+): Promise<ProgramModeWithTemplate[]> => {
   const { data, error } = await supabase
     .from("program_modes")
     .select(
@@ -75,17 +78,19 @@ export async function getProgramModes(
       badge: row.badge ?? null,
     };
   });
-}
+});
 
 /**
  * Возвращает последний активный режим пользователя в программе.
  * Выводится из chats.last_message_at через join на mode_templates.chat_type.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
-export async function getLastActiveMode(
+export const getLastActiveMode = cache(async (
   supabase: SupabaseClient,
   userId: string,
   programId: string,
-): Promise<LastActiveMode | null> {
+): Promise<LastActiveMode | null> => {
   const { data, error } = await supabase
     .from("chats")
     .select("id, chat_type, last_message_at")
@@ -116,7 +121,7 @@ export async function getLastActiveMode(
     last_at: data.last_message_at,
     chat_id: data.id,
   };
-}
+});
 
 /**
  * Преобразует режим в WelcomeConfig для NewChatScreen.
