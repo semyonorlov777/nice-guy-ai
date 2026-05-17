@@ -81,8 +81,35 @@ export const getProgramModes = cache(async (
 });
 
 /**
+ * Загружает справочник всех mode_templates. Маленькая таблица-справочник,
+ * подходит для кеширования и локального match по chat_type.
+ *
+ * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
+ */
+const getAllModeTemplates = cache(async (
+  supabase: SupabaseClient,
+): Promise<
+  Array<{
+    key: string;
+    name: string;
+    icon: string;
+    route_suffix: string;
+    chat_type: string | null;
+  }>
+> => {
+  const { data } = await supabase
+    .from("mode_templates")
+    .select("key, name, icon, route_suffix, chat_type");
+  return data ?? [];
+});
+
+/**
  * Возвращает последний активный режим пользователя в программе.
- * Выводится из chats.last_message_at через join на mode_templates.chat_type.
+ * Выводится из chats.last_message_at и сматчивается на mode_templates по chat_type.
+ *
+ * Раньше делал 2 sequential запроса (chats → mode_templates по chat_type).
+ * Теперь запросы идут параллельно, match — локально по уже загруженным
+ * mode_templates (маленькая таблица-справочник).
  *
  * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса.
  */
@@ -91,26 +118,24 @@ export const getLastActiveMode = cache(async (
   userId: string,
   programId: string,
 ): Promise<LastActiveMode | null> => {
-  const { data, error } = await supabase
-    .from("chats")
-    .select("id, chat_type, last_message_at")
-    .eq("user_id", userId)
-    .eq("program_id", programId)
-    .eq("status", "active")
-    .not("last_message_at", "is", null)
-    .order("last_message_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [chatRes, modeTemplates] = await Promise.all([
+    supabase
+      .from("chats")
+      .select("id, chat_type, last_message_at")
+      .eq("user_id", userId)
+      .eq("program_id", programId)
+      .eq("status", "active")
+      .not("last_message_at", "is", null)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getAllModeTemplates(supabase),
+  ]);
 
-  if (error || !data || !data.chat_type) return null;
+  const data = chatRes.data;
+  if (chatRes.error || !data || !data.chat_type) return null;
 
-  // Найти mode_template по chat_type
-  const { data: mt } = await supabase
-    .from("mode_templates")
-    .select("key, name, icon, route_suffix")
-    .eq("chat_type", data.chat_type)
-    .maybeSingle();
-
+  const mt = modeTemplates.find((m) => m.chat_type === data.chat_type);
   if (!mt) return null;
 
   return {
