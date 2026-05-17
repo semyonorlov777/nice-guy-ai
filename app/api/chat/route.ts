@@ -55,12 +55,15 @@ export async function POST(request: Request) {
       supabase, user.id, chatId, programId, currentChatType, exerciseId, ctx.welcomeMessage,
     );
 
-    // 6. Final system prompt (base + portrait + test scores + calibration + topic context)
-    let systemPrompt = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
-    systemPrompt = await appendTestScores(supabase, systemPrompt, user.id, programId);
-    systemPrompt = await appendCalibrationContext(
-      supabase, systemPrompt, user.id, programId, currentChatType,
-    );
+    // 6. Final system prompt (base + portrait + test scores + calibration + topic context).
+    // appendTestScores и appendCalibrationContext независимы — параллелим через Promise.all.
+    // Передаём "" чтобы получить только suffix; затем складываем.
+    const baseWithPortrait = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
+    const [scoresSuffix, calibrationSuffix] = await Promise.all([
+      appendTestScores(supabase, "", user.id, programId),
+      appendCalibrationContext(supabase, "", user.id, programId, currentChatType),
+    ]);
+    let systemPrompt = baseWithPortrait + scoresSuffix + calibrationSuffix;
     if (topicContext) {
       systemPrompt += `\n\n---\nКОНТЕКСТ ТЕМЫ:\n${topicContext}`;
     }
