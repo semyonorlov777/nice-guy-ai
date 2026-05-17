@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { streamText } from "ai";
 import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -147,6 +148,10 @@ export async function handleFinalTestAnswer({
       .single();
 
     if (insertError) {
+      Sentry.captureException(insertError, {
+        tags: { area: "test-interpretation", phase: "insert" },
+        extra: { chatId, programId, testSlug: testConfig.slug, userId: user.id },
+      });
       console.error("[test:final] Failed to insert test_results:", insertError);
     }
 
@@ -181,6 +186,10 @@ export async function handleFinalTestAnswer({
           .eq("id", insertData.id);
 
         if (interpError) {
+          Sentry.captureException(interpError, {
+            tags: { area: "test-interpretation", phase: "save" },
+            extra: { resultId: insertData.id, testSlug: testConfig.slug, userId: user.id },
+          });
           console.error(
             "[test:final] Failed to save interpretation:",
             interpError,
@@ -188,6 +197,15 @@ export async function handleFinalTestAnswer({
         }
       }
     } catch (interpErr) {
+      Sentry.captureException(interpErr, {
+        tags: { area: "test-interpretation", phase: "generate" },
+        extra: {
+          resultId: insertData?.id,
+          chatId,
+          testSlug: testConfig.slug,
+          userId: user.id,
+        },
+      });
       console.error("[test:final] Interpretation generation failed:", interpErr);
       if (insertData?.id) {
         await serviceClient

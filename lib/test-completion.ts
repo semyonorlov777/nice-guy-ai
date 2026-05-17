@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateTestScore } from "@/lib/test-scoring";
 import { generateTestInterpretation } from "@/lib/test-interpretation";
@@ -52,6 +53,10 @@ export async function calculateAndSaveResult({
       .single();
 
     if (insertError) {
+      Sentry.captureException(insertError, {
+        tags: { area: "test-interpretation", phase: "insert" },
+        extra: { chatId, programId, testSlug: testConfig.slug, userId: user.id },
+      });
       console.error("[test:bg] Step 2 FAILED: insert test_results error:", insertError);
       return;
     }
@@ -83,6 +88,10 @@ export async function calculateAndSaveResult({
         .eq("id", resultId);
       console.log("[test:bg] Interpretation saved for result:", resultId);
     } catch (interpErr) {
+      Sentry.captureException(interpErr, {
+        tags: { area: "test-interpretation", phase: "generate" },
+        extra: { resultId, chatId, testSlug: testConfig.slug, userId: user.id },
+      });
       console.error("[test:bg] Step 4 FAILED: generateTestInterpretation error:", interpErr);
       // Still mark as ready so user isn't stuck
       await serviceClient
@@ -92,6 +101,10 @@ export async function calculateAndSaveResult({
       console.log("[test:bg] Marked as ready (without interpretation) for result:", resultId);
     }
   } catch (err) {
+    Sentry.captureException(err, {
+      tags: { area: "test-interpretation", phase: "outer" },
+      extra: { chatId, programId, testSlug: testConfig.slug, userId: user.id },
+    });
     console.error("[test:bg] calculateAndSaveResult FAILED:", err);
   }
 }
