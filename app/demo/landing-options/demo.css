@@ -331,6 +331,49 @@
   margin: 28px 0 14px;
   color: var(--text);
 }
+
+/* Карточка зафиксированного принципа: что → почему → как */
+.demo-principle {
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+.demo-principle__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.demo-principle__row {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+.demo-principle__row em {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--text);
+}
+.demo-principle__row + .demo-principle__row {
+  margin-top: 4px;
+}
+.demo-principle__label {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-right: 8px;
+  vertical-align: baseline;
+}
 .demo-why__list {
   list-style: none;
   margin: 0 0 12px;
