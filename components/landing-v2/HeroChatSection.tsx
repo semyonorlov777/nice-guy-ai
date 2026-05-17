@@ -7,11 +7,6 @@ import { ChatErrorBoundary } from "@/components/ChatErrorBoundary";
 import { AuthSheet } from "@/components/AuthSheet";
 import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 
-export interface ProofItem {
-  icon: "test" | "exercises" | "privacy";
-  text: string;
-}
-
 interface HeroChatSectionProps {
   programSlug: string;
   eyebrow: string;
@@ -20,52 +15,13 @@ interface HeroChatSectionProps {
   authorCredentials: string;
   bookCoverUrl: string;
   bookAlt: string;
-  proofItems: ProofItem[];
-  priceText: string;
+  socialProofText?: string;
   ctaText: string;
   welcomeMessage: string;
   quickReplies: QuickReplyInput[];
   isLoggedIn: boolean;
   hubHref: string;
   chatHref: string;
-}
-
-function ProofIcon({ kind }: { kind: ProofItem["icon"] }) {
-  const common = {
-    width: 18,
-    height: 18,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.6,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (kind === "test") {
-    return (
-      <svg {...common} aria-hidden="true">
-        <path d="M9 11h6M9 15h4" />
-        <rect x="6" y="4" width="12" height="16" rx="2" />
-        <path d="M9 8h6" />
-      </svg>
-    );
-  }
-  if (kind === "exercises") {
-    return (
-      <svg {...common} aria-hidden="true">
-        <path d="M4 6h16M4 12h16M4 18h10" />
-        <circle cx="4" cy="6" r="1.2" fill="currentColor" />
-        <circle cx="4" cy="12" r="1.2" fill="currentColor" />
-        <circle cx="4" cy="18" r="1.2" fill="currentColor" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common} aria-hidden="true">
-      <rect x="5" y="11" width="14" height="9" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-    </svg>
-  );
 }
 
 export function HeroChatSection({
@@ -76,8 +32,7 @@ export function HeroChatSection({
   authorCredentials,
   bookCoverUrl,
   bookAlt,
-  proofItems,
-  priceText,
+  socialProofText,
   ctaText,
   welcomeMessage,
   quickReplies,
@@ -135,22 +90,14 @@ export function HeroChatSection({
               <img src={bookCoverUrl} alt={bookAlt} />
             </div>
             <div className="nc-hero2__author-meta">
-              <div className="nc-hero2__author-label">Основано на бестселлере</div>
               <div className="nc-hero2__author-name">{authorName}</div>
               <div className="nc-hero2__author-creds">{authorCredentials}</div>
             </div>
           </div>
 
-          <ul className="nc-hero2__proof">
-            {proofItems.map((item, i) => (
-              <li key={i} className="nc-hero2__proof-item">
-                <span className="nc-hero2__proof-icon">
-                  <ProofIcon kind={item.icon} />
-                </span>
-                <span className="nc-hero2__proof-text">{item.text}</span>
-              </li>
-            ))}
-          </ul>
+          {socialProofText && (
+            <div className="nc-hero2__social-proof">{socialProofText}</div>
+          )}
 
           <div className="nc-hero2__cta-block">
             {isLoggedIn ? (
@@ -166,7 +113,6 @@ export function HeroChatSection({
                 >
                   {ctaText} <span aria-hidden="true">→</span>
                 </button>
-                <div className="nc-hero2__price">{priceText}</div>
                 <button
                   type="button"
                   className="nc-hero2__login-link"

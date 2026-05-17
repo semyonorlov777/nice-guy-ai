@@ -8,7 +8,7 @@ import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { TestSection } from "@/components/landing/TestSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { SiteFooter } from "@/components/SiteFooter";
-import { HeroChatSection, type ProofItem } from "@/components/landing-v2/HeroChatSection";
+import { HeroChatSection } from "@/components/landing-v2/HeroChatSection";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
 import "../demo.css";
@@ -20,30 +20,29 @@ export const metadata: Metadata = {
 
 const SLUG = "nice-guy";
 
-// Тексты Hero — захардкожены для демо, по итогам исследования.
-// После согласования финального варианта переедут в БД (programs.landing_data)
-// либо в реальный лендинг app/program/[slug]/page.tsx.
+// Тексты Hero — захардкожены для демо. После согласования переедут в БД
+// (programs.landing_data) либо в реальный лендинг.
 const HERO_EYEBROW = "✦ Интерактивный тренажёр по бестселлеру";
 const HERO_TITLE =
-  "Хватит искать <em>чужого одобрения</em>.<br>Верни контроль над своей жизнью.";
+  'Перестань быть «<em>хорошим парнем</em>».<br>Стань тем, кем хотел.';
 const AUTHOR_NAME = "Доктор Роберт Гловер";
-const AUTHOR_CREDENTIALS = "Психотерапевт · США · 30+ лет клинической практики";
-const PROOF_ITEMS: ProofItem[] = [
-  { icon: "test", text: "Психологический тест — найди свой скрытый паттерн" },
-  { icon: "exercises", text: "46 структурированных упражнений из оригинальной книги" },
-  { icon: "privacy", text: "Приватное пространство, без осуждения" },
-];
-const PRICE_TEXT = "Первые 5 сообщений бесплатно · потом 990 ₽/мес · отмена в любой момент";
+const AUTHOR_CREDENTIALS =
+  "Психотерапевт, США · 30+ лет практики · Тираж 2+ млн в 20+ странах";
+// Социальное доказательство — цифра-плейсхолдер до реальных данных.
+const SOCIAL_PROOF =
+  "В этом месяце первый разбор прошли 1 247 мужчин";
 const CTA_TEXT = "Начать бесплатный разбор";
 
-// Приветствие AI и «ёлочки» — формулировки из исследования,
-// бьющие напрямую в боль «славного парня».
+// Приветствие AI — глубокое: прозрачно про AI, привязка к автору и его опыту,
+// сразу даёт конкретный первый вопрос (не «расскажи о себе»).
 const HERO_WELCOME =
-  "Привет. Я — цифровой проводник по методу доктора Гловера. Моя задача — помочь тебе перестать угождать в ущерб себе и начать жить по своим правилам.\n\nС чем ты сталкиваешься чаще всего?";
+  "Привет. Я цифровой проводник по методу Роберта Гловера — клинического психотерапевта, который 30 лет лечит мужчин от синдрома «хорошего парня». Я не сам Гловер, я обучен на его 46 упражнениях и сотнях разборов из практики.\n\nРасскажи одну ситуацию из последних дней: где ты сказал «да», когда внутри хотел сказать «нет»?";
+
+// «Ёлочки» — конкретные ситуации, не философские темы.
 const HERO_QUICK_REPLIES: QuickReplyInput[] = [
-  { text: "Боюсь конфликтов и часто уступаю" },
-  { text: "Делаю всё для партнёрши, но чувствую себя пустым" },
-  { text: "Хочу пройти тест на паттерны «славного парня»" },
+  { text: "Сказал «да» жене, когда хотел отдохнуть" },
+  { text: "Промолчал на работе, когда был не согласен" },
+  { text: "Сам не понимаю, чего хочу" },
 ];
 
 interface LandingData {
@@ -131,8 +130,7 @@ export default async function DemoLandingA() {
         authorCredentials={AUTHOR_CREDENTIALS}
         bookCoverUrl={landingData.book.cover_url}
         bookAlt={landingData.book.alt}
-        proofItems={PROOF_ITEMS}
-        priceText={PRICE_TEXT}
+        socialProofText={SOCIAL_PROOF}
         ctaText={CTA_TEXT}
         welcomeMessage={HERO_WELCOME}
         quickReplies={HERO_QUICK_REPLIES}
@@ -145,12 +143,12 @@ export default async function DemoLandingA() {
         <div className="demo-why-block__inner">
           <div className="demo-why-block__eyebrow">Что в этом варианте</div>
           <ul className="demo-why-block__list">
-            <li>Слева видно сразу: обложку книги, имя автора с регалиями, цену 990 ₽. Справа — живой чат. Привычная структура лендинга, ничего не надо догадывать.</li>
-            <li>Большая кнопка «Начать разбор» — при нажатии курсор сам встаёт в поле ввода справа и подсвечивает его. Видно, куда жать.</li>
-            <li>Подходит, если важно, чтобы человек до клика понимал, что покупает: автор, цена, программа.</li>
+            <li>Слева сразу видны обложка книги, автор с регалиями и цифра-доказательство («1 247 мужчин в этом месяце»). Привычная структура лендинга, без сюрпризов.</li>
+            <li>Большая золотая кнопка «Начать разбор» — при нажатии курсор сам встаёт в поле ввода справа и подсвечивает его. Видно, куда жать.</li>
+            <li>Подходит, если важно, чтобы человек до клика понимал, что покупает: кто автор, какая программа, кому это уже помогло.</li>
           </ul>
           <Link href="/demo/landing-options#why" className="demo-why-block__link">
-            Развёрнутое сравнение трёх вариантов — на странице выбора ↗
+            Развёрнутое сравнение двух вариантов — на странице выбора ↗
           </Link>
         </div>
       </section>
