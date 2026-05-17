@@ -46,17 +46,20 @@ export default async function ProgramLayout({
   let loadedModes: import("@/types/modes").ProgramModeWithTemplate[] = [];
 
   if (isAuthed) {
-    const programs = await getAllPrograms(supabase);
-    const program = programs.find((p) => p.slug === slug);
+    // Этап 1: параллельно — список программ + профиль (оба независимы от program.id).
+    const [programs, profileRes] = await Promise.all([
+      getAllPrograms(supabase),
+      supabase
+        .from("profiles")
+        .select("name, telegram_username, avatar_url, balance_tokens")
+        .eq("id", user.id)
+        .single(),
+    ]);
 
+    const program = programs.find((p) => p.slug === slug);
     if (!program) redirect("/");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name, telegram_username, avatar_url, balance_tokens")
-      .eq("id", user.id)
-      .single();
-
+    const profile = profileRes.data;
     const userInfo = profile
       ? {
           name: profile.name || "",
@@ -65,35 +68,40 @@ export default async function ProgramLayout({
         }
       : null;
 
-    // Количество упражнений для badge
-    const { count: exerciseCount } = await supabase
-      .from("exercises")
-      .select("id", { count: "exact", head: true })
-      .eq("program_id", program.id);
+    // Этап 2: параллельно — exerciseCount + chatsData + modes (все зависят от program.id).
+    const [exerciseCountRes, chatsRes, modesData] = await Promise.all([
+      supabase
+        .from("exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("program_id", program.id),
+      supabase
+        .from("chats")
+        .select("id, title, chat_type, exercise_id, status, last_message_at")
+        .eq("user_id", user.id)
+        .eq("program_id", program.id)
+        .in("status", ["active", "completed"])
+        .order("last_message_at", { ascending: false })
+        .limit(15),
+      getProgramModes(supabase, program.id),
+    ]);
 
-    // Серверная загрузка списка чатов для sidebar
-    const { data: chatsData } = await supabase
-      .from("chats")
-      .select("id, title, chat_type, exercise_id, status, last_message_at")
-      .eq("user_id", user.id)
-      .eq("program_id", program.id)
-      .in("status", ["active", "completed"])
-      .order("last_message_at", { ascending: false })
-      .limit(15);
+    const exerciseCount = exerciseCountRes.count;
+    const chatsData = chatsRes.data;
+    loadedModes = modesData;
 
-    // Превью: последнее assistant-сообщение для каждого чата
+    // Этап 3: параллельно — previews + exerciseMap (оба зависят от chatsData).
     const chatIds = (chatsData || []).map((c) => c.id);
-    const previews = await getChatPreviews(supabase, chatIds);
-
-    // Номера упражнений для exercise-чатов
     const exerciseIds = [
       ...new Set(
         (chatsData || [])
           .filter((c) => c.exercise_id)
-          .map((c) => c.exercise_id as string)
+          .map((c) => c.exercise_id as string),
       ),
     ];
-    const exerciseMap = await getExerciseNumberMap(supabase, exerciseIds);
+    const [previews, exerciseMap] = await Promise.all([
+      getChatPreviews(supabase, chatIds),
+      getExerciseNumberMap(supabase, exerciseIds),
+    ]);
 
     const initialChats = (chatsData || []).map((c) => ({
       id: c.id,
@@ -122,8 +130,6 @@ export default async function ProgramLayout({
       programs,
       currentProgram: program,
     };
-
-    loadedModes = await getProgramModes(supabase, program.id);
   }
 
   // ВСЕГДА одинаковая структура DOM: div > main > children
