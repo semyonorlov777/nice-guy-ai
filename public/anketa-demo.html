@@ -1,0 +1,3313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Анкета vs Тест — путь клиента | Книжный Спарринг</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ТОКЕНЫ — тёмная (основная, как платформа) + светлая (как auth/test)
+   ============================================================ */
+:root {
+  /* Dark — лендинг/хаб/чат/кабинет */
+  --bg-main: #111318;
+  --bg-card: #1C1F26;
+  --bg-card-2: #232631;
+  --bg-elevated: #22262D;
+  --border: #2A2D33;
+  --border-strong: #3A3F4D;
+  --text-main: #E8E6E1;
+  --text-mute: #9A978F;
+  --text-dim: #5F5D57;
+  --accent: #D4A545;
+  --accent-soft: rgba(212, 165, 69, 0.12);
+  --accent-border: rgba(212, 165, 69, 0.35);
+  --accent-glow: rgba(212, 165, 69, 0.20);
+  --msg-user-bg: rgba(212, 165, 69, 0.10);
+  --msg-user-border: rgba(212, 165, 69, 0.20);
+  --msg-ai-bg: #1C1F26;
+  --msg-ai-border: #2A2D33;
+  --green: #6AAE6A;
+  --green-soft: rgba(106, 174, 106, 0.12);
+  --danger: #D46B6B;
+  --danger-soft: rgba(220, 80, 80, 0.12);
+
+  /* Light — анкета/confirmation/auth */
+  --light-bg: #FAFAF5;
+  --light-bg-card: #FFFFFF;
+  --light-bg-soft: #F4F0E8;
+  --light-text: #1A1917;
+  --light-text-sec: #6B6860;
+  --light-text-mute: #9E9B93;
+  --light-border: #E8E5DE;
+  --light-border-soft: #F0EBE0;
+  --light-accent: #C9963B;
+  --light-accent-soft: rgba(201, 150, 59, 0.10);
+  --light-accent-border: rgba(201, 150, 59, 0.25);
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Onest', system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.55;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   STICKY НАВ
+   ============================================================ */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(17, 19, 24, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.topnav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.topnav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+.topnav-brand-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.topnav-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.topnav-tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text-mute);
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  transition: all 200ms var(--ease);
+  white-space: nowrap;
+}
+.topnav-tab:hover {
+  color: var(--text-main);
+  background: var(--bg-card);
+}
+.topnav-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.topnav-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-mute);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 180ms var(--ease);
+}
+.topnav-toggle:hover { color: var(--text-main); border-color: var(--border-strong); }
+.topnav-toggle.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+.page-header {
+  margin-bottom: 60px;
+  max-width: 760px;
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: clamp(38px, 5vw, 52px);
+  font-weight: 500;
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+}
+.page-title em {
+  color: var(--accent);
+  font-style: italic;
+}
+.page-lead {
+  color: var(--text-mute);
+  font-size: 17px;
+  line-height: 1.65;
+  margin: 0 0 16px;
+}
+.page-lead strong { color: var(--text-main); font-weight: 500; }
+.page-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+.context-card {
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.context-card .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.context-card .value { color: var(--text-main); }
+
+.section {
+  margin-bottom: 100px;
+  scroll-margin-top: 90px;
+}
+.section-num {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.4vw, 36px);
+  font-weight: 500;
+  color: var(--text-main);
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+}
+.section-hint {
+  color: var(--text-mute);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 720px;
+  margin: 0 0 32px;
+}
+.section-hint strong { color: var(--text-main); font-weight: 500; }
+
+.step-block { margin-bottom: 48px; }
+.step-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--accent);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.step-label::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--accent);
+}
+.step-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-main);
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+.step-desc {
+  color: var(--text-mute);
+  font-size: 14px;
+  margin: 0 0 22px;
+  max-width: 720px;
+}
+
+/* ============================================================
+   COMPARE ROW (mock + annotation)
+   ============================================================ */
+.compare-row {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 36px;
+  align-items: start;
+}
+.compare-row.flipped { grid-template-columns: 1fr 380px; }
+.compare-row.equal {
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.compare-row.desktop-mock {
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .compare-row, .compare-row.flipped, .compare-row.equal {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+/* ============================================================
+   MOCK — phone-frame
+   ============================================================ */
+.mock {
+  background: var(--bg-card);
+  border-radius: 28px;
+  border: 8px solid #0B0D11;
+  width: 100%;
+  max-width: 380px;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+}
+.mock.light {
+  background: var(--light-bg);
+  color: var(--light-text);
+}
+.mock.desktop {
+  border-radius: 16px;
+  border-width: 2px;
+  border-color: var(--border);
+  max-width: 100%;
+  min-height: 520px;
+  padding: 0;
+}
+
+.mock-statusbar {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-main);
+  background: transparent;
+  flex-shrink: 0;
+}
+.mock.light .mock-statusbar { color: var(--light-text); }
+.mock-statusbar-icons {
+  display: inline-flex; gap: 4px; align-items: center;
+}
+.mock-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================
+   ANNOTATION (right of mock)
+   ============================================================ */
+.annotation {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+.ann-block {
+  padding: 16px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.ann-block.highlight {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+.ann-block.warn {
+  background: rgba(220, 80, 80, 0.06);
+  border-color: rgba(220, 80, 80, 0.20);
+}
+.ann-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.ann-block.warn .ann-label { color: var(--danger); }
+.ann-block:not(.highlight):not(.warn) .ann-label { color: var(--text-dim); }
+.ann-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+.ann-body strong { color: var(--text-main); font-weight: 500; }
+.ann-body em { color: var(--accent); font-style: normal; font-weight: 500; }
+.ann-body ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.ann-body li {
+  position: relative;
+  padding-left: 14px;
+  margin: 4px 0;
+}
+.ann-body li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.ann-body li strong { color: var(--accent); font-weight: 500; }
+.ann-code {
+  display: block;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-mute);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ann-code .key { color: var(--accent); }
+.ann-code .str { color: #9bd4a8; }
+.ann-code .com { color: var(--text-dim); font-style: italic; }
+
+body.annotations-hidden .annotation { display: none; }
+body.annotations-hidden .compare-row,
+body.annotations-hidden .compare-row.flipped {
+  grid-template-columns: minmax(380px, 480px);
+  justify-content: start;
+}
+
+/* ============================================================
+   LANDING — dark
+   ============================================================ */
+.land-hero {
+  padding: 26px 22px 28px;
+  display: flex;
+  flex-direction: column;
+}
+.land-tag {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--accent-border);
+  margin-bottom: 18px;
+  align-self: flex-start;
+}
+.land-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.10;
+  color: var(--text-main);
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+}
+.land-title em { color: var(--accent); font-style: italic; }
+.land-sub {
+  font-size: 13px;
+  color: var(--text-mute);
+  line-height: 1.55;
+  margin: 0 0 20px;
+}
+.land-cta {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--accent);
+  color: #1A1408;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.land-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+}
+.land-book {
+  margin-top: 24px;
+  padding: 18px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.land-book-cover {
+  width: 76px;
+  height: 108px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6B4E2E, #3A2A1A);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D4A545;
+  font-family: var(--font-display);
+  font-size: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  padding: 8px;
+  line-height: 1.1;
+}
+.land-book-info { flex: 1; min-width: 0; }
+.land-book-author {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.land-book-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-main);
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.land-book-meta {
+  font-size: 11px;
+  color: var(--text-mute);
+}
+.land-test-block {
+  margin-top: 22px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(212, 165, 69, 0.10), rgba(212, 165, 69, 0.03));
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+}
+.land-test-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.land-test-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-main);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.land-test-meta {
+  font-size: 11px;
+  color: var(--text-mute);
+  margin-bottom: 12px;
+}
+.land-test-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ============================================================
+   AUTH SHEET — light
+   ============================================================ */
+.auth-shell {
+  background: var(--light-bg);
+  color: var(--light-text);
+  padding: 32px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.auth-logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--light-text);
+  text-align: center;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+.auth-logo span { color: var(--light-accent); }
+.auth-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  text-align: center;
+  margin: 0 0 8px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+.auth-sub {
+  font-size: 13px;
+  color: var(--light-text-sec);
+  text-align: center;
+  margin: 0 0 22px;
+}
+.auth-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--light-border);
+  background: var(--light-bg-card);
+  color: var(--light-text);
+  margin-bottom: 10px;
+}
+.auth-btn.tg { background: #2AABEE; color: #fff; border-color: #2AABEE; }
+.auth-btn.ya { background: #FC3F1D; color: #fff; border-color: #FC3F1D; }
+.auth-btn.gg { background: #fff; color: #1A1917; border-color: var(--light-border); }
+.auth-divider {
+  text-align: center;
+  font-size: 11px;
+  color: var(--light-text-mute);
+  margin: 16px 0 12px;
+  position: relative;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; position: absolute; top: 50%;
+  width: 36%; height: 1px; background: var(--light-border);
+}
+.auth-divider::before { left: 0; }
+.auth-divider::after { right: 0; }
+.auth-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--light-border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--light-bg-card);
+  color: var(--light-text);
+  margin-bottom: 10px;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--light-accent);
+  box-shadow: 0 0 0 3px var(--light-accent-soft);
+}
+
+/* ============================================================
+   ANKETA — light, form-card
+   ============================================================ */
+.anketa {
+  background: var(--light-bg);
+  color: var(--light-text);
+  padding: 28px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.anketa-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.anketa-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--light-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.anketa-progress-fill {
+  height: 100%;
+  background: var(--light-accent);
+  width: 100%;
+}
+.anketa-progress-text {
+  font-size: 11px;
+  color: var(--light-text-mute);
+  white-space: nowrap;
+}
+.anketa-skip {
+  position: absolute;
+  top: 36px;
+  right: 22px;
+  font-size: 12px;
+  color: var(--light-text-mute);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  z-index: 2;
+}
+.anketa-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--light-accent);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.anketa-q {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.20;
+  color: var(--light-text);
+  margin: 0 0 8px;
+}
+.anketa-help {
+  font-size: 13px;
+  color: var(--light-text-sec);
+  margin: 0 0 20px;
+}
+.anketa-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.anketa-opt {
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--light-border);
+  background: var(--light-bg-card);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--light-text);
+  cursor: pointer;
+  line-height: 1.45;
+  transition: all 180ms var(--ease);
+}
+.anketa-opt:hover {
+  border-color: var(--light-accent);
+  background: var(--light-accent-soft);
+}
+.anketa-opt.selected {
+  border-color: var(--light-accent);
+  background: var(--light-accent-soft);
+  color: var(--light-text);
+  font-weight: 500;
+}
+.anketa-opt.other {
+  border-style: dashed;
+  color: var(--light-text-sec);
+}
+.anketa-textarea-wrap {
+  position: relative;
+  border: 1px solid var(--light-border);
+  border-radius: 12px;
+  background: var(--light-bg-card);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.anketa-textarea-wrap:focus-within {
+  border-color: var(--light-accent);
+  box-shadow: 0 0 0 3px var(--light-accent-soft);
+}
+.anketa-textarea-wrap textarea {
+  width: 100%;
+  min-height: 100px;
+  border: none;
+  background: transparent;
+  color: var(--light-text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  padding-right: 36px;
+}
+.anketa-mic {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--light-accent-soft);
+  color: var(--light-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--light-accent-border);
+  cursor: pointer;
+}
+.anketa-cta {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--light-text);
+  color: var(--light-bg);
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.anketa-cta.disabled {
+  background: var(--light-bg-soft);
+  color: var(--light-text-mute);
+}
+
+/* ============================================================
+   HUB — dark
+   ============================================================ */
+.hub {
+  background: var(--bg-main);
+  padding: 24px 18px 100px;
+  flex: 1;
+  overflow-y: auto;
+}
+.hub-greet {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--text-main);
+  margin: 0 0 14px;
+  font-weight: 500;
+}
+.hub-greet em { color: var(--accent); font-style: italic; }
+.hub-ai-msg {
+  padding: 14px 16px;
+  background: var(--msg-ai-bg);
+  border: 1px solid var(--msg-ai-border);
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+.hub-ai-msg .from {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.hub-continue {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(212, 165, 69, 0.12), rgba(212, 165, 69, 0.04));
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.hub-continue-eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.hub-continue-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.hub-continue-hint {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+.hub-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-dim);
+  margin: 22px 0 10px;
+  font-weight: 500;
+}
+.hub-cards { display: flex; flex-direction: column; gap: 8px; }
+.hub-card {
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  position: relative;
+}
+.hub-card.recommended {
+  border-color: var(--accent-border);
+  background: linear-gradient(135deg, var(--accent-soft), transparent 60%);
+}
+.hub-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.hub-card-content { flex: 1; min-width: 0; }
+.hub-card-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.hub-card-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-main);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.hub-card-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-dim);
+}
+.hub-card-desc {
+  font-size: 12px;
+  color: var(--text-mute);
+  line-height: 1.4;
+}
+.hub-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+}
+.hub-badge.rec {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+.hub-badge.green {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.hub-card .lock {
+  position: absolute;
+  top: 12px; right: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   CHAT — dark
+   ============================================================ */
+.chat {
+  background: var(--bg-main);
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.chat-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.chat-header-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.chat-header-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.msg {
+  display: flex;
+  max-width: 88%;
+}
+.msg.ai { align-self: flex-start; }
+.msg.user { align-self: flex-end; }
+.msg-bubble {
+  padding: 11px 14px;
+  border-radius: 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.msg.ai .msg-bubble {
+  background: var(--msg-ai-bg);
+  border: 1px solid var(--msg-ai-border);
+  border-bottom-left-radius: 6px;
+  color: var(--text-main);
+}
+.msg.user .msg-bubble {
+  background: var(--msg-user-bg);
+  border: 1px solid var(--msg-user-border);
+  border-bottom-right-radius: 6px;
+  color: var(--text-main);
+}
+.msg em { color: var(--accent); font-style: italic; }
+.msg strong { font-weight: 600; }
+.qr-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 4px;
+  align-self: stretch;
+}
+.qr-btn {
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  align-self: flex-start;
+  max-width: 88%;
+}
+.qr-btn:hover { background: var(--accent-soft); }
+.qr-btn.exit { border-style: dashed; color: var(--text-mute); border-color: var(--border-strong); }
+.chat-input {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+.chat-input-field {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-mute);
+  min-height: 38px;
+}
+.chat-input-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1A1408;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+}
+.chat-input-btn.mic {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+/* ============================================================
+   CONFIRMATION — light
+   ============================================================ */
+.confirm {
+  background: var(--light-bg);
+  color: var(--light-text);
+  padding: 32px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.confirm-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--light-accent);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.confirm-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--light-text);
+  margin: 0 0 18px;
+  font-weight: 500;
+}
+.confirm-card {
+  padding: 18px 16px;
+  background: var(--light-bg-card);
+  border: 1px solid var(--light-border);
+  border-radius: 14px;
+  margin-bottom: 20px;
+}
+.confirm-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--light-text-mute);
+  margin-bottom: 12px;
+}
+.confirm-bullet {
+  font-size: 13.5px;
+  color: var(--light-text);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--light-border-soft);
+  line-height: 1.5;
+  display: flex;
+  gap: 10px;
+}
+.confirm-bullet:last-child { border-bottom: none; }
+.confirm-bullet .b-label {
+  font-size: 11px;
+  color: var(--light-text-mute);
+  flex-shrink: 0;
+  width: 88px;
+  padding-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.confirm-bullet .b-value { flex: 1; font-weight: 500; }
+.confirm-actions { display: flex; flex-direction: column; gap: 8px; }
+.confirm-btn {
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--light-border);
+  background: var(--light-bg-card);
+  color: var(--light-text);
+}
+.confirm-btn.primary {
+  background: var(--light-text);
+  color: var(--light-bg);
+  border-color: var(--light-text);
+}
+.confirm-btn.tertiary {
+  color: var(--light-text-mute);
+  border-color: transparent;
+}
+
+/* ============================================================
+   CABINET — dark, desktop
+   ============================================================ */
+.cab {
+  background: var(--bg-main);
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+.cab-header {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.cab-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+}
+.cab-name { font-size: 14px; color: var(--text-main); font-weight: 500; }
+.cab-email { font-size: 11px; color: var(--text-dim); }
+.cab-body { display: grid; grid-template-columns: 280px 1fr; flex: 1; }
+.cab-side {
+  padding: 22px 18px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.cab-nav { display: flex; flex-direction: column; gap: 2px; }
+.cab-nav-item {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-mute);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cab-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.cab-main { padding: 28px 32px; overflow-y: auto; }
+.cab-block-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--text-main);
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+.cab-block-sub {
+  font-size: 13px;
+  color: var(--text-mute);
+  margin: 0 0 18px;
+}
+.cab-profile-card {
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+.cab-profile-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.cab-profile-row:last-child { border-bottom: none; }
+.cab-profile-row .label { color: var(--text-mute); }
+.cab-profile-row .value { color: var(--text-main); }
+.cab-profile-edit {
+  margin-top: 14px;
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cab-programs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.cab-prog-card {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.cab-prog-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.cab-prog-stat {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-bottom: 8px;
+}
+.cab-prog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cab-prog-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--bg-elevated);
+  color: var(--text-mute);
+  border: 1px solid var(--border);
+}
+.cab-prog-chip.done { color: var(--green); border-color: var(--green-soft); background: var(--green-soft); }
+
+/* ============================================================
+   SKIPPER — side-by-side
+   ============================================================ */
+.skip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) { .skip-grid { grid-template-columns: 1fr; } }
+.skip-col-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.skip-col-label.no {
+  color: var(--danger);
+}
+.skip-col-label.no::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger);
+}
+.skip-col-label.yes {
+  color: var(--accent);
+}
+.skip-col-label.yes::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ============================================================
+   ARCHITECTURE DIAGRAM
+   ============================================================ */
+.arch-diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 20px;
+}
+@media (max-width: 900px) { .arch-diagram { grid-template-columns: 1fr; } }
+.arch-box {
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.arch-box.user { border-color: var(--accent-border); background: linear-gradient(135deg, var(--accent-soft), transparent 60%); }
+.arch-box-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text-main);
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+.arch-box.user .arch-box-title { color: var(--accent); }
+.arch-box-sub {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin: 0 0 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.arch-field {
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.arch-field .fname { color: var(--accent); }
+.arch-field .ftype { color: var(--text-dim); font-style: italic; }
+.arch-flow {
+  margin-top: 32px;
+  padding: 22px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.arch-flow-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0 0 14px;
+  color: var(--accent);
+  font-weight: 500;
+}
+.arch-flow-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+.arch-flow-code .layer { color: var(--accent); }
+.arch-flow-code .com { color: var(--text-dim); font-style: italic; }
+
+/* ============================================================
+   STOPS — финальная остановка
+   ============================================================ */
+.stops {
+  margin-top: 80px;
+  padding: 32px;
+  background: linear-gradient(135deg, rgba(212, 165, 69, 0.06), transparent);
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+}
+.stops-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-weight: 500;
+}
+.stops-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.stops-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.55;
+}
+.stops-list li:last-child { border-bottom: none; }
+.stops-list li strong { color: var(--accent); font-weight: 500; }
+
+/* ============================================================
+   MINI ICONS (inline SVG via mask, just unicode for simplicity)
+   ============================================================ */
+.icn { display: inline-block; line-height: 1; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+     STICKY НАВ
+     ════════════════════════════════════════════════ -->
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="topnav-brand">
+      <span class="topnav-brand-dot"></span>
+      Книжный Спарринг · Анкета vs Тест
+    </div>
+    <div class="topnav-tabs" id="tabs">
+      <button class="topnav-tab active" data-target="scenario-0">0. Сейчас</button>
+      <button class="topnav-tab" data-target="scenario-1">1. Первый раз</button>
+      <button class="topnav-tab" data-target="scenario-2">2. Возврат</button>
+      <button class="topnav-tab" data-target="scenario-3">3. Вторая книга</button>
+      <button class="topnav-tab" data-target="scenario-4">4. Кабинет</button>
+      <button class="topnav-tab" data-target="scenario-5">5. Skipper</button>
+      <button class="topnav-tab" data-target="architecture">Архитектура</button>
+    </div>
+    <button class="topnav-toggle on" id="ann-toggle">
+      <span>👁</span>
+      <span id="ann-toggle-label">Аннотации</span>
+    </button>
+  </div>
+</div>
+
+<main class="page">
+
+  <!-- ══════════ ИНТРО ══════════ -->
+  <header class="page-header">
+    <h1 class="page-title">Анкета vs Тест — <em>путь клиента</em> через 5 сценариев</h1>
+    <p class="page-lead">
+      Прототип для review. <strong>Не интеграция в продакшен-код</strong> — кликабельный макет,
+      чтобы согласовать UX до того, как трогать БД, миграции и `appendCalibrationContext`.
+      Каждый экран сопровождён аннотацией: что в данных, что инжектится в промпт LLM, какая модель.
+    </p>
+    <div class="page-context">
+      <div class="context-card">
+        <div class="label">Прототип-книга</div>
+        <div class="value">Герой и Бунтарь (Марк, Пирсон) — 12 архетипов</div>
+      </div>
+      <div class="context-card">
+        <div class="label">Вторая книга</div>
+        <div class="value">Пиши, сокращай (Ильяхов) — там уже есть калибровка</div>
+      </div>
+      <div class="context-card">
+        <div class="label">Принцип</div>
+        <div class="value">Анкета → User-level, Тест → per-program</div>
+      </div>
+      <div class="context-card">
+        <div class="label">UX-паттерн</div>
+        <div class="value">SPIN + OARS, гибрид кнопок и open-text</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 0. ЧТО НЕ ТАК СЕЙЧАС (контекст-картина)
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-0">
+    <div class="section-num">Сценарий 0 · контекст</div>
+    <h2 class="section-title">Что не так сейчас — два дубликата на двух книгах</h2>
+    <p class="section-hint">
+      На двух разных программах <strong>независимо появился одинаковый режим-обёртка для анкеты</strong> —
+      <code>pishi_calibration</code> у Ильяхова и <code>belousov_calibration</code> у Белоусова.
+      Один и тот же шаблон, дважды реализованный через формат чата, в общем списке тренажёров, с одним и тем же
+      бейджем «Сначала это». Это не теория — это уже существующий дубликат в боевой БД,
+      готовый размножаться с каждой новой книгой.
+    </p>
+
+    <!-- ─── 0.1 ДВА ХАБА SIDE-BY-SIDE ─── -->
+    <div class="step-block">
+      <div class="step-label">0.1</div>
+      <h3 class="step-title">Два хаба — одно и то же первой карточкой</h3>
+      <p class="step-desc">
+        Реальные seed'ы из БД (<code>scripts/seed-pishi-sokraschay-modes.sql:28-42</code> и
+        <code>scripts/seed-borba-za-vnimanie-modes.sql:33-47</code>). Зелёный бейдж «Сначала это»,
+        <em>sort_order=1</em>, <em>color_class=green</em>, <em>access=free</em> — совпадает в обеих.
+      </p>
+      <div class="skip-grid">
+        <div>
+          <div class="skip-col-label" style="color: var(--text-mute);">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-mute); display: inline-block;"></span>
+            Пиши, сокращай · Ильяхов
+          </div>
+          <div class="mock">
+            <div class="mock-statusbar"><span>9:41</span><span class="mock-statusbar-icons">●●●●</span></div>
+            <div class="mock-content">
+              <div class="hub">
+                <h4 class="hub-greet" style="font-size: 19px;">Тренажёр по пирамиде <em>Ильяхова</em></h4>
+                <div class="hub-section-title" style="margin-top: 14px;">Инструменты</div>
+                <div class="hub-cards">
+                  <div class="hub-card recommended" style="border-color: var(--green); background: linear-gradient(135deg, var(--green-soft), transparent 60%);">
+                    <div class="hub-card-icon" style="background: var(--green-soft); color: var(--green);">⊙</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Настройка тренажёра</div><div class="hub-card-label">Калибровка</div></div>
+                      <div class="hub-card-desc">3 коротких вопроса о твоей работе — чтобы Система настроилась под тебя</div>
+                      <span class="hub-badge" style="background: var(--green-soft); color: var(--green); border: 1px solid var(--green); margin-top: 6px; display: inline-block;">⚑ Сначала это</span>
+                    </div>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">🎯</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Зачем этот текст</div><div class="hub-card-label">Воркшоп · Ур. 1</div></div>
+                      <div class="hub-card-desc">Найдём цель и интерес читателя</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">🧠</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Сформулируй мысль</div><div class="hub-card-label">Воркшоп · Ур. 2</div></div>
+                      <div class="hub-card-desc">Тезис → аргументы → план</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">📐</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Структура и заголовки</div><div class="hub-card-label">Лекция</div></div>
+                      <div class="hub-card-desc">Уровни 3-4 пирамиды</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="skip-col-label" style="color: var(--text-mute);">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-mute); display: inline-block;"></span>
+            Борьба за внимание · Белоусов
+          </div>
+          <div class="mock">
+            <div class="mock-statusbar"><span>9:41</span><span class="mock-statusbar-icons">●●●●</span></div>
+            <div class="mock-content">
+              <div class="hub">
+                <h4 class="hub-greet" style="font-size: 19px;">Тренажёр по методике <em>Белоусова</em></h4>
+                <div class="hub-section-title" style="margin-top: 14px;">Инструменты</div>
+                <div class="hub-cards">
+                  <div class="hub-card recommended" style="border-color: var(--green); background: linear-gradient(135deg, var(--green-soft), transparent 60%);">
+                    <div class="hub-card-icon" style="background: var(--green-soft); color: var(--green);">⊙</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Настройка тренажёра</div><div class="hub-card-label">Калибровка</div></div>
+                      <div class="hub-card-desc">3 коротких вопроса о тебе — чтобы Система подобрала режим</div>
+                      <span class="hub-badge" style="background: var(--green-soft); color: var(--green); border: 1px solid var(--green); margin-top: 6px; display: inline-block;">⚑ Сначала это</span>
+                    </div>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">🎯</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Контексты</div><div class="hub-card-label">Воркшоп · Флагман</div></div>
+                      <div class="hub-card-desc">5-столбцовая методика автора</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">🔭</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Три линзы</div><div class="hub-card-label">Воркшоп</div></div>
+                      <div class="hub-card-desc">Триада: физика → фокус → смысл</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                  <div class="hub-card">
+                    <div class="hub-card-icon">🧠</div>
+                    <div class="hub-card-content">
+                      <div class="hub-card-row1"><div class="hub-card-title">Эквалайзер</div><div class="hub-card-label">Диагностика</div></div>
+                      <div class="hub-card-desc">Психология / инструменты / система</div>
+                    </div>
+                    <span class="lock">🔒</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation" style="margin-top: 24px; flex-direction: row; flex-wrap: wrap;">
+        <div class="ann-block warn" style="flex: 1; min-width: 280px;">
+          <div class="ann-label">Архетип «барьер в обличии инструмента»</div>
+          <div class="ann-body">
+            Карточка <em>Настройка тренажёра</em> визуально стоит в одном ряду с реальными инструментами
+            книги — «Зачем этот текст», «Контексты», «Сформулируй мысль». В одной плоскости лежат
+            <strong>барьер на входе</strong> и <strong>рабочий инструмент</strong>. Это разные сущности,
+            но UI их уравнивает. Пользователь читает как 7 курсов, первый из которых обязательный.
+          </div>
+        </div>
+        <div class="ann-block warn" style="flex: 1; min-width: 280px;">
+          <div class="ann-label">Сигнал из автогенерации</div>
+          <div class="ann-body">
+            Калибровка у Белоусова появилась <strong>не по решению дизайнера</strong>, а потому что
+            автогенератор режимов увидел: без неё программа не работает.
+            Это <em>refactoring smell</em> на уровне продукта — система кричит «нужен примитив выше».
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 0.2 ТАБЛИЦА БЛИЗНЕЦОВ ─── -->
+    <div class="step-block">
+      <div class="step-label">0.2</div>
+      <h3 class="step-title">Близнецы по структуре — копипаст с переменными</h3>
+      <p class="step-desc">Сводка по seed-файлам обеих книг. Различаются только содержание трёх вопросов и mapping вопрос → стартовый режим.</p>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <th style="text-align: left; padding: 12px 10px; color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.10em;">Поле</th>
+              <th style="text-align: left; padding: 12px 10px; color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.10em;">Пиши, сокращай</th>
+              <th style="text-align: left; padding: 12px 10px; color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.10em;">Борьба за внимание</th>
+              <th style="text-align: center; padding: 12px 10px; color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.10em;">=</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">mode_template.key</td>
+              <td style="padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);">pishi_calibration</td>
+              <td style="padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);">belousov_calibration</td>
+              <td style="padding: 10px; text-align: center; color: var(--text-mute);">шаблон</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">welcome_mode_label</td>
+              <td style="padding: 10px;">«Калибровка»</td>
+              <td style="padding: 10px;">«Калибровка»</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">badge</td>
+              <td style="padding: 10px;">«Сначала это»</td>
+              <td style="padding: 10px;">«Сначала это»</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">color_class</td>
+              <td style="padding: 10px;">green</td>
+              <td style="padding: 10px;">green</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">sort_order</td>
+              <td style="padding: 10px;">1</td>
+              <td style="padding: 10px;">1</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">access_type</td>
+              <td style="padding: 10px;">free</td>
+              <td style="padding: 10px;">free</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">Вопросов</td>
+              <td style="padding: 10px;">3 открытых</td>
+              <td style="padding: 10px;">3 открытых</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">welcome_replies</td>
+              <td style="padding: 10px;">4 (3 normal + 1 exit)</td>
+              <td style="padding: 10px;">4 (3 normal + 1 exit)</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px; color: var(--text-mute);">Маркер завершения</td>
+              <td style="padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">[КАЛИБРОВКА ЗАВЕРШЕНА]</td>
+              <td style="padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">[КАЛИБРОВКА ЗАВЕРШЕНА]</td>
+              <td style="padding: 10px; text-align: center; color: var(--green);">✓</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; color: var(--text-mute);">Содержание вопросов</td>
+              <td style="padding: 10px; color: var(--text-main);">профессия → цель работы с книгой → сложности с текстом</td>
+              <td style="padding: 10px; color: var(--text-main);">профессия + запрос → точка А → точка Б</td>
+              <td style="padding: 10px; text-align: center; color: var(--accent);">≠</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="annotation" style="margin-top: 18px;">
+        <div class="ann-block highlight">
+          <div class="ann-label">Что это значит</div>
+          <div class="ann-body">
+            <strong>Различаются только содержание трёх вопросов</strong> и mapping вопрос → стартовый режим.
+            Всё остальное — UI, sort_order, бейдж, формат, маркер, тон — копия. В правиле трёх в разработке принято
+            выносить в абстракцию после третьего повторения. Здесь повторений уже два, и второй появился сам собой
+            (без управленческого решения). К 13-й книге будет 13 копипастов.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 0.3 UX-БОЛИ ─── -->
+    <div class="step-block">
+      <div class="step-label">0.3</div>
+      <h3 class="step-title">Что в этом формате не так — взгляд UX-дизайнера</h3>
+      <p class="step-desc">Что чувствует пользователь, открывший хаб впервые. Без архитектуры — только восприятие.</p>
+      <div class="annotation" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="ann-block warn">
+          <div class="ann-label">1. Сломанная категория</div>
+          <div class="ann-body">
+            «Настройка тренажёра» стоит карточкой рядом с «Зачем этот текст». Это как в Notion положить
+            рядом «Onboarding wizard» и «Daily standup» — формально оба клик, но разные сущности.
+            В ментальной модели <em>инструмент = работа</em>; здесь первый «инструмент» — допрос.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">2. Слово «настройка» обещает trade-off</div>
+          <div class="ann-body">
+            Заголовок намекает «откладывается всё интересное». Auth пользователь принимает,
+            потому что после неё что-то происходит. «Настройка» обещает, что после неё будет
+            <em>ещё дольше</em>.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">3. Чат как форма — психометрический mismatch</div>
+          <div class="ann-body">
+            Чат подразумевает диалог. Здесь диалога нет: system_prompt запрещает AI отвечать содержательно,
+            только подтверждать и идти дальше. Это <strong>паспортный контроль под видом small-talk</strong>.
+            Раздражает сильнее, чем явная форма с прогрессом.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">4. Темп</div>
+          <div class="ann-body">
+            5–6 раундов «печатаю → жду стрим → читаю → печатаю» там, где форма бы заняла 30 секунд.
+            На мобилке тап побеждает печать в 3–4 раза. Анкета — самый плохой контекст для чата.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">5. Невозможно пропустить здесь и сейчас</div>
+          <div class="ann-body">
+            Skip-кнопки в чате нет. Чтобы выйти — назад в хаб через хедер.
+            Кнопка <code>{"type":"exit"}</code> не выводит, а просто меняет тон.
+            <strong>Friction по дизайну</strong>, убивающий activation у тех, кто ещё не решил остаться.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">6. Анти-память между книгами</div>
+          <div class="ann-body">
+            Прошёл Ильяхова («маркетолог, пишу лендинги, борюсь с водой»), зашёл к Белоусову —
+            снова «Кем ты работаешь?». Технически — один user_id. Продуктово — каждая программа
+            амнезична. Это особенно стыдно, потому что данные уже есть.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">7. Утечка тех-артефактов</div>
+          <div class="ann-body">
+            <code>[КАЛИБРОВКА ЗАВЕРШЕНА]</code> — маркер для других режимов, который AI пишет в тексте.
+            Прячут UI-ем, но это симптом: формат вынуждает костыли. Хороший UX не должен скрывать
+            собственные маркеры.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">8. Reply-кнопки про процедуру</div>
+          <div class="ann-body">
+            В welcome ёлочки: «Готов, давай начнём», «Сколько времени это займёт?». Это
+            <em>метакоммуникация</em>, а не ответы. В анкете с прогресс-баром не нужна вообще —
+            одна кнопка «Начать».
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">9. Невозможно исправить ответ</div>
+          <div class="ann-body">
+            Написал «маркетолог», нажал Enter — потом подумал «вообще-то копирайтер». В чате
+            не отредактируешь. В анкете — тап на чип, замена. Цена ошибки разная.
+          </div>
+        </div>
+        <div class="ann-block warn">
+          <div class="ann-label">10. «Барьер на входе» в верхнем sort_order</div>
+          <div class="ann-body">
+            Зелёный бейдж «Сначала это» + sort_order=1 принудительно делает калибровку первой картинкой.
+            Если пользователь хочет сначала <em>попробовать</em> тренажёр — он должен пройти барьер.
+            Это противоречит §6.3 документа: «не задавать анкету до первого «вкуса» программы».
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation" style="margin-top: 28px;">
+      <div class="ann-block highlight">
+        <div class="ann-label">Куда мы идём (далее — сценарии 1-5)</div>
+        <div class="ann-body">
+          Анкета <strong>выносится из списка тренажёров</strong> на уровень платформы (один раз — навсегда).
+          Получает свой UI: форма, прогресс, видимая skip, кнопки + open-text + голос. Не блокирует вход.
+          На второй книге — confirmation одним тапом, плюс один книгоспецифичный вопрос если нужно.
+          Внутри первой сессии — soft-onboarding в диалоге (там, где чат работает на плюс).
+          Существующие два дубликата <em>исчезают как режимы</em>, их содержимое мигрирует в две таблицы:
+          User-level (общее) и Enrollment-level (книгоспецифика).
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 1. ПЕРВЫЙ РАЗ НА ПЛАТФОРМЕ
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-1">
+    <div class="section-num">Сценарий 1</div>
+    <h2 class="section-title">Первый раз на платформе — лендинг → анкета → первая сессия</h2>
+    <p class="section-hint">
+      Новый пользователь зашёл на лендинг «Героя и Бунтаря». Цель — <strong>дать ему ценность за минимум усилий</strong>:
+      одна микро-анкета до сессии (контекст для тьютора), остальные SPIN-вопросы развернуть мягко внутри
+      первой сессии (OARS). Не блокирующий онбординг — анкета skippable.
+    </p>
+
+    <!-- ─── 1.1 ЛЕНДИНГ ─── -->
+    <div class="step-block">
+      <div class="step-label">1.1</div>
+      <h3 class="step-title">Лендинг книги</h3>
+      <p class="step-desc">Стандартный продуктовый лендинг — без следов того, что впереди будет анкета.</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>9:41</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="land-hero">
+              <span class="land-tag">Онлайн-тренажёр</span>
+              <h4 class="land-title">Узнай <em>архетип</em> своего бренда</h4>
+              <p class="land-sub">12 архетипов Юнга, метод «Артишок» и голос Кэрол Пирсон — для бренда и для тебя самого.</p>
+              <button class="land-cta">Начать бесплатно ↓</button>
+              <p class="land-hint">Бесплатно, без регистрации</p>
+              <div class="land-book">
+                <div class="land-book-cover">Герой и&nbsp;Бунтарь</div>
+                <div class="land-book-info">
+                  <div class="land-book-author">Маргарет Марк · Кэрол Пирсон</div>
+                  <div class="land-book-title">Герой и Бунтарь</div>
+                  <div class="land-book-meta">McGraw-Hill, 2001</div>
+                </div>
+              </div>
+              <div class="land-test-block">
+                <div class="land-test-label">⊕ Диагностика</div>
+                <div class="land-test-title">Тест на 12 архетипов</div>
+                <div class="land-test-meta">24 вопроса · ≈7 минут · топ-2 архетипа на выходе</div>
+                <button class="land-test-cta">Пройти тест →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Анонимный визит. Лендинг тянет контент из <em>programs.landing_data</em>,
+              предлагает два «входа»: диалоговый чат и диагностический тест.
+              <strong>Анкета не упомянута</strong> — она не пугает на лендинге, появится после auth.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Модель данных</div>
+            <div class="ann-body">
+              <ul>
+                <li><strong>users</strong> — анонимный, без записи</li>
+                <li><strong>user_profile_responses</strong> — пусто</li>
+                <li><strong>enrollments</strong> — пусто</li>
+              </ul>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">UX-обоснование</div>
+            <div class="ann-body">
+              <em>Soft onboarding</em> — сначала ценностное обещание, потом контекст.
+              Documented antipattern: «"Tell me about your goals" как первый экран» —
+              убивает activation на 30–40%.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 1.2 РЕГИСТРАЦИЯ ─── -->
+    <div class="step-block">
+      <div class="step-label">1.2</div>
+      <h3 class="step-title">Регистрация — AuthSheet</h3>
+      <p class="step-desc">Пользователь нажал CTA — стандартный AuthSheet платформы (светлый, как сейчас на проде).</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>9:41</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="auth-shell">
+              <div class="auth-logo">Книжный <span>Спарринг</span></div>
+              <h4 class="auth-title">Войдём — и продолжим</h4>
+              <p class="auth-sub">Один аккаунт на все программы платформы</p>
+              <button class="auth-btn tg">✈ Войти через Telegram</button>
+              <button class="auth-btn ya">Я Войти через Яндекс</button>
+              <button class="auth-btn gg">G Войти через Google</button>
+              <div class="auth-divider">или email</div>
+              <input class="auth-input" type="email" placeholder="you@example.com" value="">
+              <button class="auth-btn" style="background: var(--light-text); color: var(--light-bg); border-color: var(--light-text);">Получить ссылку</button>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Существующий <em>AuthSheet</em> платформы (без изменений). Telegram/Яндекс/Google/Magic Link.
+              После авторизации — переход на новый экран микро-анкеты, а не сразу на хаб.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Модель данных</div>
+            <div class="ann-body">
+              <ul>
+                <li><strong>users</strong>: id есть, email/имя из провайдера</li>
+                <li><strong>profiles</strong>: balance_tokens по умолчанию</li>
+                <li><strong>user_profile_responses</strong>: пусто (тут начинается зона нашей фичи)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 1.3 МИКРО-АНКЕТА ─── -->
+    <div class="step-block">
+      <div class="step-label">1.3</div>
+      <h3 class="step-title">Микро-анкета — один SPIN-Situation вопрос</h3>
+      <p class="step-desc">
+        Гибрид: 4 готовые цитаты-кнопки (узнаваемые формулировки) + «Другое (напишу сам)» с textarea.
+        Inner thinking всё равно вытащим — но позже, в первой сессии.
+      </p>
+      <div class="compare-row">
+        <div class="mock light">
+          <div class="mock-statusbar"><span>9:42</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <button class="anketa-skip">Пропустить →</button>
+          <div class="mock-content">
+            <div class="anketa">
+              <div class="anketa-progress">
+                <div class="anketa-progress-bar"><div class="anketa-progress-fill"></div></div>
+                <div class="anketa-progress-text">1 из 1</div>
+              </div>
+              <div class="anketa-eyebrow">Настройка тренажёра</div>
+              <h4 class="anketa-q">Что привело тебя к этой книге прямо сейчас?</h4>
+              <p class="anketa-help">Это не для матчинга — это чтобы тьютор понимал, какие примеры использовать. Выбери ближе всего или напиши своими словами.</p>
+              <div class="anketa-options">
+                <button class="anketa-opt selected">Разбираюсь в архетипах для <strong>своего</strong> бренда</button>
+                <button class="anketa-opt">Работаю с <strong>клиентским</strong> брендингом</button>
+                <button class="anketa-opt">Строю <strong>личный бренд</strong> и хочу понять архетип</button>
+                <button class="anketa-opt">Хочу <strong>понимать клиентов</strong> через архетипы</button>
+                <button class="anketa-opt other">✎ Другое (напишу сам)</button>
+              </div>
+              <button class="anketa-cta">Продолжить →</button>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              <strong>Единственный вопрос до первого касания с тьютором.</strong> Гибрид: 4 знакомые формулировки + open-text.
+              Skip всегда видим в правом верхнем углу — анкета не блокирует вход.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Что попадает в User.identity_facts</div>
+            <div class="ann-body">
+<span class="ann-code">{
+  <span class="key">"context_intent"</span>: <span class="str">"own_brand"</span>,
+  <span class="com">// если выбрана кнопка — enum;</span>
+  <span class="com">// если open-text — full_text</span>
+  <span class="key">"context_intent_text"</span>: <span class="str">null</span>,
+  <span class="key">"asked_at"</span>: <span class="str">"2026-05-19T..."</span>,
+  <span class="key">"source"</span>: <span class="str">"prelaunch_micro_anketa"</span>
+}</span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">UX-обоснование (§7 + §6.5)</div>
+            <div class="ann-body">
+              Узнаваемые цитаты-кнопки <em>снижают порог входа</em> (Headspace-style), но «Другое» оставляет
+              место для inner thinking. Один вопрос — sweet spot для предсессионной анкеты,
+              чтобы не уйти в drop-off (Survicate: ≥6 вопросов = «Valley of Death»).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 1.4 ХАБ ─── -->
+    <div class="step-block">
+      <div class="step-label">1.4</div>
+      <h3 class="step-title">Хаб программы — приветствие учитывает анкету</h3>
+      <p class="step-desc">
+        Hub-state = <em>first</em>. Карточка «Архетип твоего бренда» подсвечена как рекомендованная
+        — потому что в анкете выбрано «свой бренд».
+      </p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>9:43</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="hub">
+              <h4 class="hub-greet">Привет. Ты пришёл за <em>архетипом своего бренда</em> — давай начнём с него.</h4>
+              <div class="hub-ai-msg">
+                <div class="from">Система · архетипический стратег</div>
+                12 архетипов — это 12 базовых сюжетов психики Юнга. Apple — Бунтарь. Nike — Герой. Coca-Cola — Простодушный.
+                Когда бренд встаёт на свой архетип, он перестаёт быть товаром и становится символом.<br><br>
+                Чтобы поставить твой бренд на архетип — есть метод «Артишок». 5 шагов. Если хочешь,
+                начнём сразу с него — он точно под твою задачу.
+              </div>
+              <div class="hub-continue">
+                <div class="hub-continue-eyebrow">→ Рекомендовано тебе</div>
+                <div class="hub-continue-title">Архетип твоего бренда</div>
+                <div class="hub-continue-hint">Метод «Артишок» · 15–20 минут</div>
+              </div>
+              <div class="hub-section-title">Все инструменты</div>
+              <div class="hub-cards">
+                <div class="hub-card">
+                  <div class="hub-card-icon">⊕</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Тест на 12 архетипов</div><div class="hub-card-label">Диагностика</div></div>
+                    <div class="hub-card-desc">24 вопроса, топ-2 архетипа</div>
+                    <span class="hub-badge green">Бесплатно</span>
+                  </div>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">📖</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">12 архетипов: ликбез</div><div class="hub-card-label">Лекция</div></div>
+                    <div class="hub-card-desc">Сократическое объяснение через знакомые бренды</div>
+                  </div>
+                </div>
+                <div class="hub-card recommended">
+                  <div class="hub-card-icon">◎</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Архетип твоего бренда</div><div class="hub-card-label">Анализ</div></div>
+                    <div class="hub-card-desc">Метод «Артишок»: душа бренда → суть → клиенты → архетип</div>
+                    <span class="hub-badge rec">⭐ Под твою задачу</span>
+                  </div>
+                  <span class="lock">🔒</span>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">🧭</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Твой личный архетип</div><div class="hub-card-label">Анализ</div></div>
+                    <div class="hub-card-desc">Какой архетип ведёт тебя самого — по системе Пирсон</div>
+                  </div>
+                  <span class="lock">🔒</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Hub-state = <em>first</em>. AI-приветствие учитывает <strong>context_intent</strong> из анкеты.
+              Рекомендация (`hub_continue_card` + badge на карточке) — детерминированный матчинг
+              <em>context_intent="own_brand"</em> → <em>arch_brand</em>.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Что инжектится в welcome AI</div>
+            <div class="ann-body">
+<span class="ann-code"><span class="com">// system_prompt программы +</span>
+<span class="key">USER_CONTEXT</span>:
+- intent: own_brand
+- стадия: первый заход, без теста
+
+<span class="com">// в обычные welcome_ai_message
+// эти поля попадают через
+// PersonalizationService</span></span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Что делать с тестом</div>
+            <div class="ann-body">
+              Тест остаётся <em>per-program</em>, не на User-level. Он опциональный —
+              пользователь может пройти его потом для уточнения архетипа. На анкету никак не влияет.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 1.5 ПЕРВАЯ СЕССИЯ С SOFT-ONBOARDING ─── -->
+    <div class="step-block">
+      <div class="step-label">1.5</div>
+      <h3 class="step-title">Первая сессия — soft-onboarding через OARS</h3>
+      <p class="step-desc">
+        Тьютор разворачивает 3 SPIN-вопроса (Problem → Implication → Need-payoff) в диалоге.
+        <strong>Открытый текст, не кнопки</strong> — потому что inner thinking вытаскивается только текстом
+        (Indi Young, §4.4).
+      </p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>9:45</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="chat">
+              <div class="chat-header">
+                <div class="chat-header-icon">◎</div>
+                <div class="chat-header-title">Архетип твоего бренда</div>
+              </div>
+              <div class="chat-body">
+                <div class="msg ai">
+                  <div class="msg-bubble">
+                    Хорошо, что ты пришёл с задачей про <em>свой</em> бренд — это самое интересное.<br><br>
+                    Метод «Артишок» начинается не с того, какой ты крутой, а с того, что <strong>не так</strong>.
+                    Расскажи: что в твоём бренде сейчас идёт не так, как хочется? Куда смотришь — и понимаешь, что
+                    «вот это вот не моё»?
+                  </div>
+                </div>
+                <div class="msg user">
+                  <div class="msg-bubble">Я делаю студию дизайна, и у меня все коммуникации — сухие, ровные, как у всех. Я хочу больше характера, но боюсь скатиться в «креативчик».</div>
+                </div>
+                <div class="msg ai">
+                  <div class="msg-bubble">
+                    <em>Правильно понимаю</em>: тебе хочется характер, но без «креативчика» — то есть не паясничать ради паяцничать,
+                    а быть собой так, чтобы было видно. Это про границу между Шутом и, скажем, Бунтарём.<br><br>
+                    Если ничего не менять — допустим, ещё полгода в этом «как у всех» — <strong>что будет</strong>?
+                    К чему это приводит на практике?
+                  </div>
+                </div>
+                <div class="msg user">
+                  <div class="msg-bubble">Ну, постоянно проигрываем тендеры по принципу «дёшево». Клиенты приходят, для которых я взаимозаменяем. Я устал быть как все.</div>
+                </div>
+                <div class="msg ai">
+                  <div class="msg-bubble">
+                    Понял. <em>Услышал ключевое</em>: «устал быть как все». Это, кстати, типичный спусковой механизм для Бунтаря —
+                    но Бунтарь не всем подходит. Зависит от того, какой результат тебе важен.<br><br>
+                    Допустим, через три месяца ты говоришь «получилось» — что именно <strong>получилось</strong>?
+                    Что ты в этот момент видишь, делаешь или думаешь иначе?
+                  </div>
+                </div>
+                <div class="qr-bar">
+                  <button class="qr-btn">Хочу, чтобы клиенты сами приходили</button>
+                  <button class="qr-btn">Хочу гордиться своим сайтом</button>
+                  <button class="qr-btn exit">Мне сложно сформулировать</button>
+                </div>
+              </div>
+              <div class="chat-input">
+                <div class="chat-input-field">Напиши свой ответ…</div>
+                <button class="chat-input-btn mic">🎤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит (SPIN внутри сессии)</div>
+            <div class="ann-body">
+              Тьютор задаёт по очереди <em>Problem → Implication → Need-payoff</em> вопросы, между ними —
+              рефлексия по OARS («Правильно понимаю, что речь о Y?»). Кнопки появляются только как
+              <strong>примеры</strong>, не подменяя open-text.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Извлечение в User.identity_facts</div>
+            <div class="ann-body">
+              Фоновый job (после каждых N сообщений или раз в сессию) пропускает диалог через
+              Gemini Pro — тот же `analyzeForPortrait`, но с новым промптом
+              <em>analyzeForIdentity</em>.
+<span class="ann-code">{
+  <span class="key">"problem"</span>: <span class="str">"сухие коммуникации,
+    нет характера, страх креативчика"</span>,
+  <span class="key">"implication"</span>: <span class="str">"проигрываем тендеры
+    по дешевизне, взаимозаменяемость,
+    усталость"</span>,
+  <span class="key">"need_payoff"</span>: <span class="str">null,  // ещё не получен</span>
+  <span class="key">"updated_at"</span>: <span class="str">"2026-05-19T..."</span>
+}</span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Three-layer system_prompt</div>
+            <div class="ann-body">
+              <span class="ann-code">PersonalizationService.build():
+1. <span class="key">User.derived_summary</span>
+   <span class="com">// 500-слов summary, обновляется
+   // раз в N сессий</span>
+2. <span class="key">User.identity_facts</span>
+   <span class="com">// structured: intent, problem,
+   // implication, need_payoff</span>
+3. <span class="key">Enrollment.current_position</span>
+   + last_5_messages</span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Архитектурное расширение</div>
+            <div class="ann-body">
+              Существующий <em>appendCalibrationContext</em>
+              (<strong>lib/chat/prepare-context.ts:364-417</strong>) обобщается:
+              <ul>
+                <li>было: ищет чат с <em>chat_type='pishi_calibration'</em>, берёт первые 8 сообщений</li>
+                <li>станет: <em>PersonalizationService</em> берёт <em>identity_facts</em> из User-уровня,
+                независимо от книги</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 2. ВОЗВРАТ В ТУ ЖЕ КНИГУ
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-2">
+    <div class="section-num">Сценарий 2</div>
+    <h2 class="section-title">Возврат в ту же книгу — персонализированный хаб без повторных вопросов</h2>
+    <p class="section-hint">
+      Прошла неделя. Пользователь возвращается. <strong>Не переспрашиваем общее</strong> — используем
+      <em>User.derived_summary</em>. Hub-state = <em>returning-test</em> (или <em>returning-notest</em>).
+      Тренажёр продолжает там, где остановился.
+    </p>
+
+    <!-- ─── 2.1 ХАБ RETURNING ─── -->
+    <div class="step-block">
+      <div class="step-label">2.1</div>
+      <h3 class="step-title">Персонализированный хаб</h3>
+      <p class="step-desc">HubContinueCard с последним режимом. Welcome AI напоминает контекст без перечисления identity_facts.</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>14:08</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="hub">
+              <h4 class="hub-greet">С возвращением. Продолжим <em>с архетипа студии</em>?</h4>
+              <div class="hub-ai-msg">
+                <div class="from">Система · архетипический стратег</div>
+                В прошлый раз мы остановились на гипотезе «между Бунтарём и Шутом». Ты хотел характер,
+                но без «креативчика».<br><br>
+                Можем продолжить «Артишок» (мы на шаге 3 из 5) или зайти в «Голос архетипа» — потренироваться
+                сразу писать в Бунтарском тоне.
+              </div>
+              <div class="hub-continue">
+                <div class="hub-continue-eyebrow">→ Продолжить</div>
+                <div class="hub-continue-title">Архетип твоего бренда</div>
+                <div class="hub-continue-hint">«Артишок», шаг 3 из 5 · ≈10 минут до результата</div>
+              </div>
+              <div class="hub-section-title">Все инструменты</div>
+              <div class="hub-cards">
+                <div class="hub-card">
+                  <div class="hub-card-icon">⊕</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Тест на 12 архетипов</div><div class="hub-card-label">Диагностика</div></div>
+                    <div class="hub-card-desc">Уточни топ-2 архетипа за 7 минут</div>
+                  </div>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">🎭</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Голос архетипа</div><div class="hub-card-label">Ролевая</div></div>
+                    <div class="hub-card-desc">Натренируй тексты в Бунтарском тоне</div>
+                    <span class="hub-badge rec">По твоей теме</span>
+                  </div>
+                  <span class="lock">🔒</span>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">📜</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Манифест бренда</div><div class="hub-card-label">Воркшоп</div></div>
+                    <div class="hub-card-desc">Сформулируй 3 истории в тоне архетипа</div>
+                  </div>
+                  <span class="lock">🔒</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Hub-state = <em>returning-test</em> (если тест пройден) или <em>returning-notest</em>.
+              Welcome AI цитирует <strong>derived_summary</strong>, а не сырой <em>identity_facts</em> —
+              это удобнее читать и не «жутко» (борется с personalization-privacy paradox).
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">User.derived_summary</div>
+            <div class="ann-body">
+              <span class="ann-code"><span class="com">// LLM-генерируемое
+// раз в N сессий
+// (~500 слов)</span>
+"Пользователь — владелец студии дизайна,
+работает над собственным брендом.
+Жалуется на отсутствие характера в
+коммуникациях, опасается скатиться в
+«креативчик». Гипотеза:
+тяготеет к Бунтарю или Шуту.
+Проблема — взаимозаменяемость,
+проигрывает тендеры по цене.
+Готов работать через провокацию
+в текстах. Цель — чтобы клиенты
+приходили сами, а не выбирали по цене."</span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">TTL и confirmation</div>
+            <div class="ann-body">
+              Прошло меньше 1 недели → <em>silent reuse</em>, не дёргаем confirmation. См. §6.1:<br>
+              <ul>
+                <li><strong>≤ 1 неделя</strong> — молча использовать</li>
+                <li>1 неделя – 3 месяца — confirmation</li>
+                <li>>3 месяцев — re-ask 1-2 ключевых</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 2.2 ОТКРЫТИЕ ТРЕНАЖЁРА ─── -->
+    <div class="step-block">
+      <div class="step-label">2.2</div>
+      <h3 class="step-title">Тренажёр начинает не с нуля</h3>
+      <p class="step-desc">Welcome AI режима учитывает <em>Enrollment.current_position</em> и последние сообщения.</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>14:09</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="chat">
+              <div class="chat-header">
+                <div class="chat-header-icon">◎</div>
+                <div class="chat-header-title">Архетип твоего бренда · шаг 3</div>
+              </div>
+              <div class="chat-body">
+                <div class="msg ai">
+                  <div class="msg-bubble">
+                    Вспомню, где мы: студия дизайна, гипотеза — Бунтарь или Шут, не хочется «креативчика».
+                    Прошли шаги «душа бренда» и «суть». Сейчас — <strong>конкуренты</strong>.<br><br>
+                    Опиши 2-3 студии, на которые ты <em>не хочешь</em> быть похож. Не по уровню — а по тону,
+                    по тому, как они говорят. Кого ты узнаёшь и думаешь «нет, не сюда»?
+                  </div>
+                </div>
+                <div class="qr-bar">
+                  <button class="qr-btn">Студии Шотика — слишком «вкусняшки»</button>
+                  <button class="qr-btn">Большие сетевые агентства — сухо</button>
+                  <button class="qr-btn">Молодёжные — слишком развязно</button>
+                  <button class="qr-btn exit">Сложно с конкурентами</button>
+                </div>
+              </div>
+              <div class="chat-input">
+                <div class="chat-input-field">Напиши свой ответ…</div>
+                <button class="chat-input-btn mic">🎤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Тренажёр <strong>помнит точное место</strong> прошлой сессии. Не «здравствуй, расскажи о своём
+              бренде» — а «вспомню, где мы остановились». Это конверсия returning в продолжение работы.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Three-layer system_prompt в действии</div>
+            <div class="ann-body">
+              <span class="ann-code">PersonalizationService.build():
+
+1. <span class="layer">User.derived_summary</span>
+   <span class="com">студия дизайна, Бунтарь,
+   проблема — взаимозаменяемость</span>
+
+2. <span class="layer">User.identity_facts</span>
+   <span class="com">structured fields:
+   intent=own_brand, problem=...</span>
+
+3. <span class="layer">Enrollment.session_history</span>
+   <span class="com">artishok_step=3,
+   last_5_messages=[...]</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 3. ЗАХОД ВО ВТОРУЮ КНИГУ
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-3">
+    <div class="section-num">Сценарий 3</div>
+    <h2 class="section-title">Вторая книга — «Пиши, сокращай»: confirmation + 1 книгоспеч. вопрос</h2>
+    <p class="section-hint">
+      Пользователь, уже прошедший анкету в одной книге, заходит в другую. <strong>Не переспрашиваем общее</strong>,
+      но добавляем 1 книгоспецифичный вопрос. Прошёл 1 месяц с последнего ответа — пора confirmation.
+      Здесь же показано, как должна выглядеть программа <em>pishi-sokraschay</em> <strong>после миграции</strong>:
+      режим <em>pishi_calibration</em> исчезает из списка тренажёров.
+    </p>
+
+    <!-- ─── 3.1 ЛЕНДИНГ PISHI ─── -->
+    <div class="step-block">
+      <div class="step-label">3.1</div>
+      <h3 class="step-title">Лендинг «Пиши, сокращай»</h3>
+      <p class="step-desc">Стандартный лендинг другой книги. Пользователь уже залогинен — кнопка «В кабинет».</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>10:22</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="land-hero">
+              <span class="land-tag">Онлайн-тренажёр</span>
+              <h4 class="land-title">Пиши, <em>сокращай</em></h4>
+              <p class="land-sub">Тренажёр по пирамиде коммуникации Максима Ильяхова. Цель → тезис → структура → стоп-слова.</p>
+              <button class="land-cta">Начать →</button>
+              <p class="land-hint">Ты уже залогинен как Александр</p>
+              <div class="land-book">
+                <div class="land-book-cover" style="background: linear-gradient(135deg, #C9963B, #6B4E1E); color: #FAFAF5;">Пиши,<br>сокращай</div>
+                <div class="land-book-info">
+                  <div class="land-book-author">Максим Ильяхов · Людмила Сарычева</div>
+                  <div class="land-book-title">Пиши, сокращай</div>
+                  <div class="land-book-meta">АСТ, 2017</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              Пользователь авторизован, но <strong>в этой программе ещё не был</strong>.
+              Enrollment пока не создан. При нажатии «Начать» — переход на confirmation,
+              не сразу на хаб.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Модель данных</div>
+            <div class="ann-body">
+              <ul>
+                <li><strong>users</strong>: одна и та же запись</li>
+                <li><strong>user_profile_responses</strong>: 4 ответа из 1-й книги</li>
+                <li><strong>enrollments(heroes-and-outlaws)</strong>: есть</li>
+                <li><strong>enrollments(pishi-sokraschay)</strong>: <em>будет создан</em></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 3.2 CONFIRMATION ─── -->
+    <div class="step-block">
+      <div class="step-label">3.2</div>
+      <h3 class="step-title">Confirmation flow — «Это всё ещё про тебя?»</h3>
+      <p class="step-desc">
+        Показываем 3 буллета из <em>User.identity_facts</em>. Один клик — подтверждение, переход дальше.
+        «Изменить» открывает редактирование. «Пропустить» — продолжаем без подтверждения.
+      </p>
+      <div class="compare-row">
+        <div class="mock light">
+          <div class="mock-statusbar"><span>10:23</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="confirm">
+              <div class="confirm-eyebrow">Перед стартом</div>
+              <h4 class="confirm-title">Вот что мы про тебя помним. Это всё ещё актуально?</h4>
+              <div class="confirm-card">
+                <div class="confirm-card-label">Из прошлой работы с тренажёром</div>
+                <div class="confirm-bullet">
+                  <span class="b-label">Контекст</span>
+                  <span class="b-value">Владелец студии дизайна, работаешь над собственным брендом</span>
+                </div>
+                <div class="confirm-bullet">
+                  <span class="b-label">Что не так</span>
+                  <span class="b-value">Сухие коммуникации, страх «креативчика», взаимозаменяемость</span>
+                </div>
+                <div class="confirm-bullet">
+                  <span class="b-label">К чему идём</span>
+                  <span class="b-value">Чтобы клиенты приходили сами, не выбирали по цене</span>
+                </div>
+              </div>
+              <div class="confirm-actions">
+                <button class="confirm-btn primary">Да, актуально — продолжить</button>
+                <button class="confirm-btn">Изменить что-то</button>
+                <button class="confirm-btn tertiary">Пропустить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что происходит</div>
+            <div class="ann-body">
+              <strong>Один клик</strong> — снижает effort до минимума.
+              Показ identity_facts <em>буллетами</em> делает явным, какие данные использует AI
+              (борется с personalization-privacy paradox).
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Что записывается</div>
+            <div class="ann-body">
+              <span class="ann-code"><span class="com">// если "Да, актуально":</span>
+UPDATE user_profile_responses
+SET <span class="key">confirmed_at</span> = now()
+WHERE user_id = $1
+AND question_id IN
+  ('context_intent', 'problem',
+   'implication', 'need_payoff');
+
+<span class="com">// TTL обновляется,
+// не было бы re-ask</span></span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Когда вообще НЕ показываем</div>
+            <div class="ann-body">
+              §6.1: если прошло ≤1 недели от последнего подтверждения — silent reuse.
+              Этот экран — для returning через 1 неделю – 3 месяца. Дольше — re-ask отдельных вопросов.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 3.3 КНИГОСПЕЦ. ВОПРОС ─── -->
+    <div class="step-block">
+      <div class="step-label">3.3</div>
+      <h3 class="step-title">Один книгоспецифичный вопрос</h3>
+      <p class="step-desc">
+        Что меняется между книгами — здесь записывается в Enrollment (per-program), не в User-level.
+        Для «Пиши, сокращай» это «свои тексты разбираем или клиентские».
+      </p>
+      <div class="compare-row">
+        <div class="mock light">
+          <div class="mock-statusbar"><span>10:23</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="anketa">
+              <div class="anketa-progress">
+                <div class="anketa-progress-bar"><div class="anketa-progress-fill"></div></div>
+                <div class="anketa-progress-text">Один уточняющий</div>
+              </div>
+              <div class="anketa-eyebrow">Под книгу «Пиши, сокращай»</div>
+              <h4 class="anketa-q">С какими текстами мы здесь будем работать?</h4>
+              <p class="anketa-help">Один из главных режимов — «Разбор моего текста». Хочу понимать, на чём фокусироваться.</p>
+              <div class="anketa-options">
+                <button class="anketa-opt">Свои тексты — для студии, лендинги, посты</button>
+                <button class="anketa-opt selected">Клиентские — то, что пишу за других</button>
+                <button class="anketa-opt">И те и те, по ситуации</button>
+              </div>
+              <button class="anketa-cta">Продолжить →</button>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Что попадает в Enrollment</div>
+            <div class="ann-body">
+              <span class="ann-code">enrollments(pishi-sokraschay):
+{
+  <span class="key">"user_id"</span>: ...,
+  <span class="key">"program_specific_notes"</span>: {
+    <span class="key">"text_ownership"</span>: <span class="str">"client"</span>
+  }
+}
+
+<span class="com">// User.identity_facts —
+// без изменений</span></span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Где хранить такие вопросы</div>
+            <div class="ann-body">
+              Открытая архитектурная развилка (Этап 2): либо
+              <ul>
+                <li><strong>jsonb</strong> внутри Enrollment.program_specific_notes — быстро, но без типизации</li>
+                <li><strong>отдельная таблица program_intake_questions</strong> + ответы в program_responses —
+                  типизированно, но schema-нагрузка на каждый seed</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 3.4 ХАБ PISHI ─── -->
+    <div class="step-block">
+      <div class="step-label">3.4</div>
+      <h3 class="step-title">Хаб «Пиши, сокращай» — без режима <code>pishi_calibration</code></h3>
+      <p class="step-desc">
+        После миграции — режим «Настройка тренажёра» исчезает из списка инструментов.
+        Его данные теперь разлиты между User-level (identity_facts) и Enrollment-level (text_ownership).
+      </p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>10:24</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="hub">
+              <h4 class="hub-greet">Поехали. Главное — <em>разбор клиентских текстов</em>.</h4>
+              <div class="hub-ai-msg">
+                <div class="from">Система · Ильяховская</div>
+                Ты пишешь за других — это сразу определяет, на каком уровне пирамиды у тебя обычно беды:
+                чаще всего это <strong>уровень 1 — полезное действие</strong>. Заказчик ставит задачу
+                «напишите красиво», а кому и зачем — додумываешь сам.<br><br>
+                Можем начать с «Зачем этот текст», чтобы выработать привычку. Или принеси конкретный
+                текст — разберём его по всей пирамиде.
+              </div>
+              <div class="hub-section-title">Инструменты</div>
+              <div class="hub-cards">
+                <div class="hub-card recommended">
+                  <div class="hub-card-icon">⊕</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Зачем этот текст</div><div class="hub-card-label">Воркшоп · Ур. 1</div></div>
+                    <div class="hub-card-desc">Найдём цель и интерес читателя</div>
+                    <span class="hub-badge rec">Под клиентские тексты</span>
+                  </div>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">🧠</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Сформулируй мысль</div><div class="hub-card-label">Воркшоп · Ур. 2</div></div>
+                    <div class="hub-card-desc">Тезис → аргументы → план</div>
+                  </div>
+                </div>
+                <div class="hub-card">
+                  <div class="hub-card-icon">🔍</div>
+                  <div class="hub-card-content">
+                    <div class="hub-card-row1"><div class="hub-card-title">Разбор моего текста</div><div class="hub-card-label">Анализ</div></div>
+                    <div class="hub-card-desc">Принеси текст — пройдём по всей пирамиде</div>
+                  </div>
+                  <span class="lock">🔒</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block warn">
+            <div class="ann-label">До миграции (как сейчас)</div>
+            <div class="ann-body">
+              На хабе <em>pishi-sokraschay</em> сейчас первой карточкой висит
+              <strong>«Настройка тренажёра»</strong> с бейджем «Сначала это». 3 вопроса в чате —
+              неудобно для анкеты, и этот «барьер на входе» стоит в общем списке как равный инструмент.
+              <code>scripts/seed-pishi-sokraschay-modes.sql:28-42</code>
+            </div>
+          </div>
+          <div class="ann-block highlight">
+            <div class="ann-label">После миграции (то, что в макете)</div>
+            <div class="ann-body">
+              Режим <em>pishi_calibration</em> удалён. Welcome AI сразу учитывает контекст из двух
+              источников: общий (User.identity_facts) и книгоспецифичный (Enrollment.text_ownership).
+              Сразу подсвечивается рекомендованный режим.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Что инжектится в welcome</div>
+            <div class="ann-body">
+              <span class="ann-code">USER_CONTEXT:
+- intent: own_brand <span class="com">(studio)</span>
+- problem: сухие коммуникации,
+  взаимозаменяемость
+- need_payoff: клиенты приходят сами
+
+ENROLLMENT_CONTEXT:
+- text_ownership: client
+
+→ AI: "пишешь за других → уровень 1
+       обычно проседает"</span>
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">План миграции (Этап 2)</div>
+            <div class="ann-body">
+              <ul>
+                <li>Backfill: вычитать messages из старых чатов <em>pishi_calibration</em></li>
+                <li>Прогнать через analyzeForIdentity → распределить в User.identity_facts (общее)
+                  и Enrollment.text_ownership (специфика)</li>
+                <li>Удалить mode_template с key='pishi_calibration'</li>
+                <li>Сохранить старые чаты для аудита, но скрыть в UI</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 4. КАБИНЕТ
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-4">
+    <div class="section-num">Сценарий 4</div>
+    <h2 class="section-title">Кабинет — сводный профиль + per-program прогресс</h2>
+    <p class="section-hint">
+      Кабинет визуализирует <strong>оба слоя</strong>. Сверху — User-level («кто я»), редактируемый.
+      Ниже — список программ, у каждой свой прогресс. <em>Профессия, цель, контекст</em> — общие.
+      <em>Архетип, тест-результат, шаг «Артишока»</em> — per-program.
+    </p>
+
+    <div class="step-block">
+      <div class="step-label">4.1</div>
+      <h3 class="step-title">Десктоп — два слоя видны явно</h3>
+      <p class="step-desc">Левая колонка — навигация. В основном поле — профиль (User) сверху, программы (Enrollment) снизу.</p>
+      <div class="compare-row desktop-mock">
+        <div class="mock desktop" style="border-radius: 14px; max-width: 100%;">
+          <div class="cab">
+            <div class="cab-header">
+              <div class="cab-avatar">А</div>
+              <div>
+                <div class="cab-name">Александр Петров</div>
+                <div class="cab-email">alex@studiodesign.ru</div>
+              </div>
+              <div style="flex:1"></div>
+              <button class="cab-profile-edit" style="margin:0;">Выйти</button>
+            </div>
+            <div class="cab-body">
+              <div class="cab-side">
+                <div class="cab-nav">
+                  <div class="cab-nav-item active">◎ Мой профиль</div>
+                  <div class="cab-nav-item">📚 Программы</div>
+                  <div class="cab-nav-item">💳 Баланс</div>
+                  <div class="cab-nav-item">⚙ Настройки</div>
+                </div>
+              </div>
+              <div class="cab-main">
+                <h3 class="cab-block-title">Мой профиль</h3>
+                <p class="cab-block-sub">
+                  Это <strong>общая часть</strong> — используется во всех программах. Тьютор обращается к ней,
+                  чтобы понять контекст. Обновляется автоматически по ходу диалогов.
+                </p>
+                <div class="cab-profile-card">
+                  <div class="cab-profile-row">
+                    <span class="label">Контекст</span>
+                    <span class="value">Владелец студии дизайна, работа над собственным брендом</span>
+                  </div>
+                  <div class="cab-profile-row">
+                    <span class="label">Что не так</span>
+                    <span class="value">Сухие коммуникации, страх «креативчика», взаимозаменяемость на тендерах</span>
+                  </div>
+                  <div class="cab-profile-row">
+                    <span class="label">Что произойдёт, если ничего не менять</span>
+                    <span class="value">Продолжим проигрывать по цене, клиенты будут случайные</span>
+                  </div>
+                  <div class="cab-profile-row">
+                    <span class="label">К чему идём</span>
+                    <span class="value">Чтобы клиенты приходили сами, выбирали по характеру, не по цене</span>
+                  </div>
+                  <button class="cab-profile-edit">Редактировать профиль</button>
+                </div>
+                <h3 class="cab-block-title" style="margin-top: 30px;">Программы</h3>
+                <p class="cab-block-sub">
+                  Каждая программа держит <strong>свои данные</strong> отдельно: прогресс, тест, специфику.
+                </p>
+                <div class="cab-programs">
+                  <div class="cab-prog-card">
+                    <div class="cab-prog-name">Герой и Бунтарь</div>
+                    <div class="cab-prog-stat">5 сессий · 2 режима пройдено</div>
+                    <div class="cab-prog-meta">
+                      <span class="cab-prog-chip done">✓ Тест: Бунтарь · Шут</span>
+                      <span class="cab-prog-chip">«Артишок»: шаг 3/5</span>
+                    </div>
+                  </div>
+                  <div class="cab-prog-card">
+                    <div class="cab-prog-name">Пиши, сокращай</div>
+                    <div class="cab-prog-stat">1 сессия · только начал</div>
+                    <div class="cab-prog-meta">
+                      <span class="cab-prog-chip">Клиентские тексты</span>
+                      <span class="cab-prog-chip">Рекоменд.: «Зачем этот текст»</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="compare-row equal" style="margin-top: 28px;">
+        <div class="annotation" style="padding-top:0;">
+          <div class="ann-block highlight">
+            <div class="ann-label">Два aggregates в кабинете</div>
+            <div class="ann-body">
+              <ul>
+                <li><strong>User</strong>: identity_facts, derived_summary, preferences — один на пользователя</li>
+                <li><strong>Enrollment</strong>: один на (book × user) — диагностика, прогресс, специфика</li>
+              </ul>
+              Domain events связывают их (например, when User.identity_facts.problem changes →
+              invalidate Enrollment.derived_summary cache), но aggregates загружаются независимо.
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="padding-top:0;">
+          <div class="ann-block">
+            <div class="ann-label">Что доступно для редактирования</div>
+            <div class="ann-body">
+              <strong>User-level</strong> — пользователь может править руками: контекст, проблему, цель.
+              Это явный override автоматического извлечения.<br><br>
+              <strong>Enrollment-level</strong> — только через прохождение программы.
+              Архетип меняется через повторный тест, не через ручную правку.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Аналог</div>
+            <div class="ann-body">
+              Coursera Skills Taxonomy: профиль сверху (общий), курсы снизу (per-program).
+              ChatGPT memory: stored facts (анкета) + chat history reference (Enrollment.session_history).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── 4.2 РЕДАКТИРОВАНИЕ ─── -->
+    <div class="step-block">
+      <div class="step-label">4.2</div>
+      <h3 class="step-title">Редактирование профиля — на мобилке</h3>
+      <p class="step-desc">Скрин формы редактирования. Каждое поле — версионируется, не перезаписывается.</p>
+      <div class="compare-row">
+        <div class="mock">
+          <div class="mock-statusbar"><span>10:30</span><span class="mock-statusbar-icons">●●●●</span></div>
+          <div class="mock-content">
+            <div class="hub" style="padding: 16px 16px 100px;">
+              <h4 class="hub-greet" style="font-size: 20px;">Редактировать профиль</h4>
+              <div style="margin-bottom: 18px;">
+                <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Контекст</div>
+                <div style="padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-main);">Владелец студии дизайна, работа над собственным брендом</div>
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Версия 3 · обновлено 8 мая</div>
+              </div>
+              <div style="margin-bottom: 18px;">
+                <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">Что не так</div>
+                <div style="padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-main);">Сухие коммуникации, страх «креативчика»</div>
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Версия 2 · обновлено 3 мая</div>
+              </div>
+              <div style="margin-bottom: 18px;">
+                <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">К чему идём</div>
+                <div style="padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--accent-border); border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-main); box-shadow: 0 0 0 3px var(--accent-soft);">Чтобы клиенты приходили сами, не выбирали по цене<span style="display: inline-block; background: var(--accent); color: #1A1408; padding: 1px 6px; border-radius: 4px; font-size: 9px; margin-left: 6px; vertical-align: middle;">правлю</span></div>
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Версия 1 · 1 мая</div>
+              </div>
+              <button style="width:100%; padding: 13px; background: var(--accent); color: #1A1408; border: none; border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 500; margin-top: 10px;">Сохранить</button>
+              <button style="width:100%; padding: 11px; background: transparent; color: var(--text-mute); border: none; font-family: inherit; font-size: 13px; margin-top: 4px;">Удалить мой профиль</button>
+            </div>
+          </div>
+        </div>
+        <div class="annotation">
+          <div class="ann-block highlight">
+            <div class="ann-label">Versioning</div>
+            <div class="ann-body">
+              Каждое поле — отдельная строка в <em>user_profile_responses</em> с версией.
+              При правке создаётся новая версия, старая сохраняется. Audit-trail + GDPR-удаление одной операцией.
+              <span class="ann-code">CREATE TABLE user_profile_responses (
+  id uuid primary key,
+  user_id uuid references users,
+  <span class="key">question_id</span> text,
+  <span class="key">answer_text</span> text,
+  <span class="key">version</span> int,
+  <span class="key">source</span> text,
+  <span class="com">// 'anketa' | 'soft_onboarding'
+  // | 'manual_edit'</span>
+  created_at timestamptz,
+  confirmed_at timestamptz
+);</span>
+            </div>
+          </div>
+          <div class="ann-block warn">
+            <div class="ann-label">Что НЕ редактируется здесь</div>
+            <div class="ann-body">
+              Балл теста, архетип, прогресс по «Артишоку» — это всё в Enrollment, у каждой программы свой.
+              Чтобы поменять архетип — перепройти тест.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       СЦЕНАРИЙ 5. SKIPPER
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="scenario-5">
+    <div class="section-num">Сценарий 5</div>
+    <h2 class="section-title">Skipper-флоу — что теряет тот, кто пропустил анкету</h2>
+    <p class="section-hint">
+      Пользователь нажал «Пропустить» на микро-анкете. Тренажёр всё равно работает — но даёт <em>generic</em>-ответы.
+      Здесь — side-by-side: <strong>один и тот же вопрос пользователя</strong>, два разных ответа тьютора.
+      Это база для метрики «LLM-quality eval» (§10.4): разница ≥1.0 балл из 5 = анкета доказана.
+    </p>
+
+    <div class="step-block">
+      <div class="step-label">5.1</div>
+      <h3 class="step-title">Одно и то же сообщение — два качества ответа</h3>
+      <p class="step-desc">Пользователь спрашивает: «Подскажи архетип для моей студии».</p>
+      <div class="skip-grid">
+        <div>
+          <div class="skip-col-label no">Без анкеты — generic</div>
+          <div class="mock">
+            <div class="mock-statusbar"><span>9:45</span><span class="mock-statusbar-icons">●●●●</span></div>
+            <div class="mock-content">
+              <div class="chat">
+                <div class="chat-header">
+                  <div class="chat-header-icon">◎</div>
+                  <div class="chat-header-title">Архетип твоего бренда</div>
+                </div>
+                <div class="chat-body">
+                  <div class="msg user">
+                    <div class="msg-bubble">Подскажи архетип для моей студии</div>
+                  </div>
+                  <div class="msg ai">
+                    <div class="msg-bubble">
+                      Архетипы бренда — это глубокая категория. Сначала надо понять: студия чего?
+                      Дизайна, кино, фитнеса? И главное — какую <strong>душу</strong> ты вкладываешь
+                      в неё.<br><br>
+                      Метод «Артишок» начинается с 5 вопросов. Готов начать?
+                    </div>
+                  </div>
+                  <div class="qr-bar">
+                    <button class="qr-btn">Да, давай начнём</button>
+                    <button class="qr-btn">Сначала ликбез</button>
+                    <button class="qr-btn exit">Мне сложно сформулировать</button>
+                  </div>
+                </div>
+                <div class="chat-input">
+                  <div class="chat-input-field">Напиши свой ответ…</div>
+                  <button class="chat-input-btn mic">🎤</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="annotation" style="margin-top:16px;">
+            <div class="ann-block warn">
+              <div class="ann-label">Что в промпте</div>
+              <div class="ann-body">
+                <span class="ann-code">USER_CONTEXT: <span class="str">empty</span>
+ENROLLMENT_CONTEXT: new
+
+<span class="com">// тьютор не знает:
+// - какая студия
+// - в чём проблема
+// - что важно для клиента
+// → задаёт generic-вопрос</span></span>
+              </div>
+            </div>
+            <div class="ann-block warn">
+              <div class="ann-label">Стоимость</div>
+              <div class="ann-body">
+                +1-2 хода для уточнения контекста. Пользователь повторно проговаривает то, что мог бы
+                сказать один раз в анкете.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="skip-col-label yes">С анкетой — персональный</div>
+          <div class="mock">
+            <div class="mock-statusbar"><span>9:45</span><span class="mock-statusbar-icons">●●●●</span></div>
+            <div class="mock-content">
+              <div class="chat">
+                <div class="chat-header">
+                  <div class="chat-header-icon">◎</div>
+                  <div class="chat-header-title">Архетип твоего бренда</div>
+                </div>
+                <div class="chat-body">
+                  <div class="msg user">
+                    <div class="msg-bubble">Подскажи архетип для моей студии</div>
+                  </div>
+                  <div class="msg ai">
+                    <div class="msg-bubble">
+                      Помню — студия дизайна, страх «креативчика», устал быть как все. Это уже <em>не</em>
+                      Заботливый и <em>не</em> Простодушный. По симптомам — <strong>Бунтарь</strong> или
+                      <strong>Шут</strong>.<br><br>
+                      Между ними разница в одном: Бунтарь ломает правила потому что они тошны,
+                      Шут — потому что серьёзность душит. Какое тебе ближе?
+                    </div>
+                  </div>
+                  <div class="qr-bar">
+                    <button class="qr-btn">Правила тошны</button>
+                    <button class="qr-btn">Серьёзность душит</button>
+                    <button class="qr-btn">Сложно выбрать</button>
+                  </div>
+                </div>
+                <div class="chat-input">
+                  <div class="chat-input-field">Напиши свой ответ…</div>
+                  <button class="chat-input-btn mic">🎤</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="annotation" style="margin-top:16px;">
+            <div class="ann-block highlight">
+              <div class="ann-label">Что в промпте</div>
+              <div class="ann-body">
+                <span class="ann-code">USER_CONTEXT:
+- intent: own_brand (studio)
+- problem: страх креативчика,
+  усталость быть как все
+- need_payoff: клиенты приходят
+  по характеру
+
+<span class="com">// тьютор знает достаточно,
+// чтобы СУЗИТЬ выбор сразу
+// до 2 архетипов</span></span>
+              </div>
+            </div>
+            <div class="ann-block highlight">
+              <div class="ann-label">Выигрыш</div>
+              <div class="ann-body">
+                <strong>−1-2 хода</strong> до полезного ответа.
+                <strong>+ощущение «он помнит»</strong> = retention.
+                + AI делает более рискованные гипотезы, потому что есть контекст для проверки.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-block" style="margin-top: 40px;">
+      <div class="step-label">5.2</div>
+      <h3 class="step-title">Точка решения</h3>
+      <div class="compare-row equal">
+        <div class="ann-block">
+          <div class="ann-label">Метрика (§10.4)</div>
+          <div class="ann-body">
+            <strong>LLM-quality eval</strong>: 50 диалогов с анкетой vs 50 без, оценка contextual relevance
+            (GPT-judge по 5-балльной шкале).
+            <ul>
+              <li>Δ &lt; 0.5 балла → анкета не нужна в текущей форме</li>
+              <li>Δ ≥ 1.0 балл + retention выше → анкета доказана, оптимизируем формулировки</li>
+            </ul>
+          </div>
+        </div>
+        <div class="ann-block">
+          <div class="ann-label">Что нельзя ломать</div>
+          <div class="ann-body">
+            Skipper всё равно должен получить осмысленный диалог. Generic-ответ не должен быть
+            «извини, я не понимаю» — он должен быть просто <em>хуже</em>, а не <em>сломанным</em>.
+            Это правило для system_prompt: fallback на универсальный сценарий, если context_facts пуст.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       АРХИТЕКТУРА
+       ════════════════════════════════════════════════ -->
+  <section class="section" id="architecture">
+    <div class="section-num">Архитектура</div>
+    <h2 class="section-title">Два aggregates + PersonalizationService</h2>
+    <p class="section-hint">
+      Не для пользователя — для нас. Из чего собирается system_prompt и где живёт каждое поле.
+      Это поможет в Этапе 2 спроектировать миграцию точно.
+    </p>
+
+    <div class="arch-diagram">
+      <div class="arch-box user">
+        <h3 class="arch-box-title">User aggregate</h3>
+        <div class="arch-box-sub">один на пользователя · переиспользуется</div>
+        <div class="arch-field"><span class="fname">id</span> · <span class="ftype">uuid</span></div>
+        <div class="arch-field"><span class="fname">identity_facts</span> · <span class="ftype">structured fields</span><br>
+          context_intent, problem, implication, need_payoff
+        </div>
+        <div class="arch-field"><span class="fname">derived_summary</span> · <span class="ftype">~500 слов</span><br>
+          LLM-генерируемое, обновляется раз в N сессий
+        </div>
+        <div class="arch-field"><span class="fname">cross_program_preferences</span> · <span class="ftype">jsonb</span><br>
+          тон, частота напоминаний, голос/текст
+        </div>
+        <div class="arch-field"><span class="fname">user_profile_responses[]</span> · <span class="ftype">отдельная таблица</span><br>
+          versioned answers + audit-trail
+        </div>
+      </div>
+      <div class="arch-box">
+        <h3 class="arch-box-title">Enrollment aggregate</h3>
+        <div class="arch-box-sub">один на (book × user) · per-program</div>
+        <div class="arch-field"><span class="fname">id</span> · <span class="ftype">uuid</span></div>
+        <div class="arch-field"><span class="fname">user_id</span> · <span class="ftype">FK → User</span></div>
+        <div class="arch-field"><span class="fname">program_id</span> · <span class="ftype">FK → programs</span></div>
+        <div class="arch-field"><span class="fname">diagnostic_score</span> · <span class="ftype">jsonb</span><br>
+          результат теста (если пройден)
+        </div>
+        <div class="arch-field"><span class="fname">current_position</span> · <span class="ftype">jsonb</span><br>
+          артишок_step, открытые режимы
+        </div>
+        <div class="arch-field"><span class="fname">program_specific_notes</span> · <span class="ftype">jsonb</span><br>
+          text_ownership и подобное
+        </div>
+        <div class="arch-field"><span class="fname">session_history</span> · <span class="ftype">через messages</span></div>
+      </div>
+    </div>
+
+    <div class="arch-flow">
+      <div class="arch-flow-title">PersonalizationService.build(userId, programId)</div>
+      <div class="arch-flow-code"><span class="com">// заменяет appendCalibrationContext, обобщённый на любую книгу</span>
+
+const user = <span class="layer">await UserRepo.load(userId)</span>
+const enrollment = <span class="layer">await EnrollmentRepo.load(userId, programId)</span>
+
+return [
+  <span class="com">// слой 1 — общее саммари</span>
+  `## КТО ПЕРЕД ТОБОЙ\n${user.derived_summary}`,
+
+  <span class="com">// слой 2 — structured facts</span>
+  `## КОНТЕКСТ\n` + formatFacts(user.identity_facts),
+
+  <span class="com">// слой 3 — текущее место в программе</span>
+  `## ГДЕ МЫ СЕЙЧАС\n${formatEnrollment(enrollment)}`,
+
+  <span class="com">// + системный промпт режима, как сейчас</span>
+  mode.system_prompt,
+].join('\n\n')</div>
+    </div>
+
+    <div class="arch-flow">
+      <div class="arch-flow-title">Что меняется в существующем коде</div>
+      <div class="arch-flow-code"><span class="com">// lib/chat/prepare-context.ts:362-417</span>
+- const CALIBRATION_CHAT_TYPES = ["pishi_calibration"]
+- async function appendCalibrationContext(...) { ... }
+
+<span class="com">// → заменяется на:</span>
++ import { PersonalizationService } from "@/lib/personalization"
++ const personalizedPrompt = <span class="layer">await PersonalizationService.build(userId, programId)</span>
+
+<span class="com">// миграция данных:</span>
++ scripts/migrate-pishi-calibration-to-user-level.sql
++ <span class="com">// backfill: вычитать первые 8 сообщений каждого chat_type='pishi_calibration'</span>
++ <span class="com">//          → analyzeForIdentity (Gemini Pro) → user_profile_responses</span>
+
+<span class="com">// удаление режима:</span>
++ DELETE FROM program_modes WHERE mode_template_id IN (
++   SELECT id FROM mode_templates WHERE key='pishi_calibration'
++ );
++ <span class="com">// старые чаты не удаляем — оставляем для аудита</span></div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════
+       ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА
+       ════════════════════════════════════════════════ -->
+  <section class="stops">
+    <h2 class="stops-title">Что вылезло в процессе вёрстки</h2>
+    <p class="section-hint" style="margin-bottom: 20px;">
+      По плану — после демо обязательная остановка для feedback. Ниже список того, что я волевым решением
+      зафиксировал в макете (можно возразить), и что осталось открытым.
+    </p>
+    <ul class="stops-list">
+      <li>
+        <strong>Решено волевым:</strong> микро-анкета — гибрид (4 кнопки + open-text), не чистый open-text.
+        Обоснование: §7 — узнаваемые цитаты снижают порог входа, inner thinking всё равно вытащим в soft-onboarding.
+      </li>
+      <li>
+        <strong>Решено волевым:</strong> анкета и confirmation — в светлой теме, остальное (хаб, чат, кабинет) — в тёмной.
+        Платформенный паттерн: auth/test всегда светлые, кабинет/чат — тёмные.
+      </li>
+      <li>
+        <strong>Решено волевым:</strong> Skipper-флоу показан как side-by-side контраст одного сообщения,
+        а не как линейный сценарий. Иначе невозможно сравнить качество.
+      </li>
+      <li>
+        <strong>Решено волевым:</strong> 1 микро-анкета до сессии + 3 OARS-вопроса в сессии = 4 ответа всего.
+        Документ говорит 3 baseline / 5 потолок — мы в коридоре.
+      </li>
+      <li>
+        <strong>Открытый вопрос UX:</strong> что делать, если пользователь нажал «Изменить» на confirmation
+        flow в 3.2? Открыть форму редактирования всего (4 поля)? Только спорное поле? Re-ask заново?
+      </li>
+      <li>
+        <strong>Открытый вопрос UX:</strong> когда генерится <em>derived_summary</em>? Сразу после первой
+        сессии (1 раз)? Раз в N сообщений? При confirmation? — это влияет на стоимость Gemini Pro.
+      </li>
+      <li>
+        <strong>Открытый вопрос UX:</strong> книгоспецифичный вопрос (3.3) — это <em>тоже анкета</em>
+        или отдельная сущность? Где она живёт в UI: до хаба (как сейчас), внутри первого режима, или
+        вообще в welcome первого режима?
+      </li>
+      <li>
+        <strong>Архитектурный вопрос:</strong> identity_facts хранить как structured fields на users
+        (4 колонки) или в отдельной таблице <em>user_profile_responses</em> с question_id? Я нарисовал второй
+        вариант — он гибче для versioning + GDPR, но требует JOIN на каждом запросе.
+      </li>
+      <li>
+        <strong>Архитектурный вопрос:</strong> книгоспецифичные вопросы — это <em>program_intake_questions</em>
+        как отдельная таблица или jsonb в Enrollment.program_specific_notes? Первое — типизация и UI-конфиг,
+        второе — быстрее добавлять книгу.
+      </li>
+      <li>
+        <strong>По существующему коду:</strong> <em>appendCalibrationContext</em> в
+        <code>lib/chat/prepare-context.ts:364-417</code> — ищет последний чат с chat_type='pishi_calibration',
+        берёт первые 8 сообщений. Логика «8 сообщений» не масштабируется на User-level (там нет «сообщений»,
+        там нормализованные поля). Нужен новый extract-job через Gemini Pro.
+      </li>
+      <li>
+        <strong>По существующему коду:</strong> чтобы убрать карточку <em>pishi_calibration</em> с хаба —
+        достаточно DELETE из program_modes, mode_template можно оставить (вдруг ещё понадобится). Старые чаты
+        пользователей с этим chat_type остаются в messages, но фронт их не отрисует, потому что режима в списке нет.
+      </li>
+      <li>
+        <strong>По существующему коду:</strong> в <code>lib/queries/modes.ts</code> загрузка режимов идёт по
+        sort_order. Раз режим больше не «барьер на входе», то для остальных программ платформы можно ввести
+        новый <em>mode_type</em> или флаг <em>is_onboarding</em> на mode_templates — но <strong>в первой
+        итерации обойдёмся без этого</strong>, просто удалив один режим.
+      </li>
+      <li>
+        <strong>Дубликат уже существует — это аргумент сильнее теории:</strong> в семействе книг
+        Белоусова есть <em>belousov_calibration</em> (<code>scripts/seed-borba-za-vnimanie-modes.sql:33-47</code>),
+        полностью повторяющий шаблон Ильяхова — те же welcome_mode_label «Калибровка», бейдж «Сначала это»,
+        sort_order=1, формат «3 открытых вопроса в чате», маркер <code>[КАЛИБРОВКА ЗАВЕРШЕНА]</code>.
+        Различия только в содержании вопросов и mapping → стартовый режим.
+        Миграция должна охватить <strong>оба</strong> режима одной операцией —
+        backfill читает первые 8 сообщений из чатов обоих <em>chat_type</em>,
+        <em>analyzeForIdentity</em> распределяет в User-level (общее: профессия, контекст, цель) vs
+        Enrollment-level (специфика: text_ownership для Ильяхова, точка_А/точка_Б для Белоусова).
+      </li>
+      <li>
+        <strong>Сигнал про автогенерацию:</strong> Белоусовская калибровка появилась не по решению дизайнера —
+        её собрал автогенератор режимов, потому что без неё программа не работала.
+        Это значит, что любая следующая книга, в которой <em>тон тьютора зависит от профессии/контекста
+        пользователя</em>, будет автоматически порождать ещё один копипаст. Вынос наверх — обязателен
+        перед добавлением 4-й и далее книги с этим свойством.
+      </li>
+    </ul>
+  </section>
+
+</main>
+
+<script>
+// ────────────────────────────────────────────────
+// Sticky-нав: подсветка активного таба и smooth scroll
+// ────────────────────────────────────────────────
+const tabs = document.querySelectorAll('.topnav-tab');
+const sections = ['scenario-0','scenario-1','scenario-2','scenario-3','scenario-4','scenario-5','architecture'].map(id => document.getElementById(id));
+
+tabs.forEach(t => t.addEventListener('click', () => {
+  const id = t.getAttribute('data-target');
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}));
+
+// IntersectionObserver — активный таб
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.target === e.target.id));
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => s && io.observe(s));
+
+// ────────────────────────────────────────────────
+// Toggle аннотаций
+// ────────────────────────────────────────────────
+const annToggle = document.getElementById('ann-toggle');
+const annLabel = document.getElementById('ann-toggle-label');
+annToggle.addEventListener('click', () => {
+  document.body.classList.toggle('annotations-hidden');
+  const hidden = document.body.classList.contains('annotations-hidden');
+  annToggle.classList.toggle('on', !hidden);
+  annLabel.textContent = hidden ? 'Аннотации скрыты' : 'Аннотации';
+});
+
+// ────────────────────────────────────────────────
+// Имитация interaction для кнопок-опций (single-select)
+// ────────────────────────────────────────────────
+document.querySelectorAll('.anketa-options').forEach(group => {
+  group.addEventListener('click', (e) => {
+    const btn = e.target.closest('.anketa-opt');
+    if (!btn) return;
+    group.querySelectorAll('.anketa-opt').forEach(o => o.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+document.querySelectorAll('.confirm-actions').forEach(group => {
+  group.addEventListener('click', (e) => {
+    const btn = e.target.closest('.confirm-btn');
+    if (!btn) return;
+    // Просто визуальная имитация — переходим на следующий якорь
+    btn.style.opacity = 0.7;
+  });
+});
+
+document.querySelectorAll('.land-cta, .auth-btn:not(.tg):not(.ya):not(.gg), .anketa-cta, .hub-continue').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.style.transform = 'scale(0.97)';
+    setTimeout(() => btn.style.transform = '', 150);
+  });
+});
+</script>
+
+</body>
+</html>
