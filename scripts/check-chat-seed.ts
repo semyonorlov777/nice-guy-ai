@@ -1367,6 +1367,101 @@ function collectLandingStrings(
 
 // --- Исполнитель ---
 
+/**
+ * Литерал `{{cross_mode_data}}` (или другой `{{...}}` placeholder) в system_prompt
+ * полях. Эти placeholder'ы скопированы из шаблонов между книгами, но в коде
+ * (`lib/chat/prepare-context.ts`) НЕТ замены — Gemini видит `{{cross_mode_data}}`
+ * как буквальный текст. Кросс-режимные данные подмешиваются runtime'ом через
+ * `appendCalibrationContext` / `appendPortraitContext` / `appendTestScores` —
+ * placeholder не нужен.
+ *
+ * Прецедент: borba-za-vnimanie 2026-05. Placeholder есть также в seed-файлах
+ * eq-2-0, mind-power, redecision-therapy, heroes-and-outlaws — массовая
+ * копипаста.
+ */
+function checkCrossModeDataPlaceholder(
+  program: string,
+  location: string,
+  text: string | null,
+): Violation[] {
+  if (!text) return [];
+  if (!text.includes("{{cross_mode_data}}")) return [];
+  return [
+    violation(
+      program,
+      location,
+      "cross-mode-data-placeholder",
+      `${location}: содержит литерал \`{{cross_mode_data}}\` — placeholder не обрабатывается в коде, Gemini видит его буквально. Удали строку, runtime подмешивает кросс-режимные данные через appendCalibrationContext / appendPortraitContext / appendTestScores.`,
+      "warn",
+    ),
+  ];
+}
+
+/**
+ * Читает массив `CALIBRATION_CHAT_TYPES` из `lib/chat/prepare-context.ts`.
+ * Возвращает Set строк chat_type, или null если файл не читается / массив не
+ * нашёлся (тогда проверка `checkCalibrationWired` no-op).
+ *
+ * Парсим текстом, а не AST — нам достаточно ловить простой паттерн
+ * `const CALIBRATION_CHAT_TYPES = ["...", "...", ...]`.
+ */
+function readCalibrationChatTypes(): Set<string> | null {
+  const path = resolve(process.cwd(), "lib/chat/prepare-context.ts");
+  let src: string;
+  try {
+    src = readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+  const m = src.match(/CALIBRATION_CHAT_TYPES\s*=\s*\[([^\]]*)\]/);
+  if (!m) return null;
+  const inner = m[1] ?? "";
+  const types = new Set<string>();
+  for (const sm of inner.matchAll(/["'`]([^"'`]+)["'`]/g)) {
+    types.add(sm[1]);
+  }
+  return types;
+}
+
+/**
+ * Если у программы есть `program_modes` с `chat_type` похожим на калибровку
+ * (содержит подстроку `calibration`), и этот chat_type не упомянут в массиве
+ * `CALIBRATION_CHAT_TYPES` в `lib/chat/prepare-context.ts` — `appendCalibrationContext()`
+ * пропустит его при подмешивании контекста. Пользователь проходит калибровку,
+ * но следующий режим её не видит — повторно представляется.
+ *
+ * Прецедент: borba-za-vnimanie 2026-05. Режим `belousov_calibration` создан с
+ * бейджем «Сначала это» и маркером `[КАЛИБРОВКА ЗАВЕРШЕНА]` в финале, но
+ * хардкод whitelist в коде содержал только `["pishi_calibration"]` — калибровка
+ * стала декларативной.
+ *
+ * Backlog: вынести whitelist в БД-флаг (`mode_templates.is_calibration`) и
+ * выпилить хардкод вместе с этой проверкой.
+ */
+function checkCalibrationWired(
+  program: string,
+  modeChatTypes: string[],
+  knownTypes: Set<string> | null,
+): Violation[] {
+  if (knownTypes == null) return []; // файл не читается — no-op
+  const out: Violation[] = [];
+  for (const ct of modeChatTypes) {
+    if (!ct) continue;
+    if (!/calibration/i.test(ct)) continue;
+    if (knownTypes.has(ct)) continue;
+    out.push(
+      violation(
+        program,
+        `program_modes[chat_type=${ct}]`,
+        "calibration-not-wired",
+        `chat_type "${ct}" похож на калибровку, но не добавлен в CALIBRATION_CHAT_TYPES в lib/chat/prepare-context.ts. Пройденная пользователем калибровка не подмешивается как контекст в следующий режим — функция appendCalibrationContext() фильтрует по этому массиву. Добавь "${ct}" в массив, либо переименуй chat_type если калибровкой не является.`,
+        "warn",
+      ),
+    );
+  }
+  return out;
+}
+
 async function main() {
   const violations: Violation[] = [];
 
@@ -1414,6 +1509,32 @@ async function main() {
         "programs.anonymous_system_prompt",
         p.anonymous_system_prompt,
         /* strict */ false,
+      ),
+    );
+
+    // Правило `cross-mode-data-placeholder` (после ретро borba-za-vnimanie 2026-05):
+    // литерал `{{cross_mode_data}}` в любом system_prompt — копипаста из шаблонов
+    // других книг, в коде НЕТ обработчика, Gemini видит фигурные скобки буквально.
+    violations.push(
+      ...checkCrossModeDataPlaceholder(
+        p.slug,
+        "programs.system_prompt",
+        p.system_prompt,
+      ),
+      ...checkCrossModeDataPlaceholder(
+        p.slug,
+        "programs.author_chat_system_prompt",
+        p.author_chat_system_prompt,
+      ),
+      ...checkCrossModeDataPlaceholder(
+        p.slug,
+        "programs.anonymous_system_prompt",
+        p.anonymous_system_prompt,
+      ),
+      ...checkCrossModeDataPlaceholder(
+        p.slug,
+        "programs.test_system_prompt",
+        p.test_system_prompt,
       ),
     );
     violations.push(
@@ -1614,11 +1735,15 @@ async function main() {
     "INSTRUMENT_ICON_MAP",
   );
 
+  // Загружаем массив CALIBRATION_CHAT_TYPES из lib/chat/prepare-context.ts —
+  // нужен для правила calibration-not-wired (после ретро borba-za-vnimanie 2026-05).
+  const knownCalibrationTypes = readCalibrationChatTypes();
+
   // program_modes уровень
   let modesQuery = supabase
     .from("program_modes")
     .select(
-      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key, name, icon)",
+      "program_id, welcome_mode_label, welcome_title, welcome_subtitle, welcome_ai_message, welcome_message, welcome_replies, system_prompt, mode_template_id, mode_templates!inner(key, name, icon, chat_type)",
     );
   if (bookFilter && programIds.length) {
     modesQuery = modesQuery.in("program_id", programIds);
@@ -1634,16 +1759,32 @@ async function main() {
     slugByProgramId.set(p.id, p.slug);
   }
 
+  // Map<programId, chat_types[]> — для правила calibration-not-wired (после цикла модов).
+  const chatTypesByProgram = new Map<string, string[]>();
+
   for (const m of (modes ?? []) as unknown as Array<
     ModeRow & {
-      mode_templates: { key: string; name: string; icon: string | null };
+      mode_templates: {
+        key: string;
+        name: string;
+        icon: string | null;
+        chat_type: string | null;
+      };
     }
   >) {
     const slug = slugByProgramId.get(m.program_id) ?? "unknown";
     const modeKey = m.mode_templates?.key ?? "unknown";
     const modeName = m.mode_templates?.name ?? null;
     const modeIcon = m.mode_templates?.icon ?? null;
+    const modeChatType = m.mode_templates?.chat_type ?? null;
     const loc = `program_modes[${modeKey}]`;
+
+    // Накапливаем chat_types для проверки calibration-not-wired ниже.
+    if (modeChatType) {
+      const arr = chatTypesByProgram.get(m.program_id) ?? [];
+      arr.push(modeChatType);
+      chatTypesByProgram.set(m.program_id, arr);
+    }
 
     violations.push(
       ...checkBasicWelcomeFields(slug, loc, {
@@ -1674,6 +1815,14 @@ async function main() {
     if (m.system_prompt) {
       violations.push(
         ...checkSystemPromptQrBlock(slug, `${loc}.system_prompt`, m.system_prompt),
+      );
+      // Правило cross-mode-data-placeholder для уровня режима (после ретро borba-za-vnimanie 2026-05)
+      violations.push(
+        ...checkCrossModeDataPlaceholder(
+          slug,
+          `${loc}.system_prompt`,
+          m.system_prompt,
+        ),
       );
     }
 
@@ -1738,6 +1887,18 @@ async function main() {
         ),
       );
     }
+  }
+
+  // Правило calibration-not-wired (после цикла модов). Один вызов на программу.
+  // Проверяет, что каждый chat_type содержащий "calibration" в любом режиме
+  // программы упомянут в массиве CALIBRATION_CHAT_TYPES в lib/chat/prepare-context.ts.
+  // Иначе пользователь проходит калибровку, но контекст не подмешивается в
+  // следующий режим — повторно представляется. Прецедент: borba-za-vnimanie 2026-05.
+  for (const p of (programs ?? []) as ProgramRow[]) {
+    const chatTypes = chatTypesByProgram.get(p.id) ?? [];
+    violations.push(
+      ...checkCalibrationWired(p.slug, chatTypes, knownCalibrationTypes),
+    );
   }
 
   // program_themes уровень
