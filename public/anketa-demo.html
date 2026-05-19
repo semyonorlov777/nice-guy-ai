@@ -1479,20 +1479,20 @@ body.annotations-hidden .compare-row.flipped {
     </p>
     <div class="page-context">
       <div class="context-card">
-        <div class="label">Прототип-книга</div>
-        <div class="value">Герой и Бунтарь (Марк, Пирсон) — 12 архетипов</div>
+        <div class="label">Пилот-книга (v1)</div>
+        <div class="value"><strong>Гловер · No More Mr. Nice Guy</strong> — есть ISSP-тест + 46 упражнений</div>
       </div>
       <div class="context-card">
-        <div class="label">Вторая книга</div>
-        <div class="value">Пиши, сокращай (Ильяхов) — там уже есть калибровка</div>
+        <div class="label">Демо-кейс (для наглядности)</div>
+        <div class="value">Герой и Бунтарь (Марк, Пирсон) — здесь показан UX-флоу</div>
       </div>
       <div class="context-card">
         <div class="label">Принцип</div>
-        <div class="value">Анкета → User-level, Тест → per-program</div>
+        <div class="value">Анкета → primary, тест → опциональный, оба на разных уровнях</div>
       </div>
       <div class="context-card">
-        <div class="label">UX-паттерн</div>
-        <div class="value">SPIN + OARS, гибрид кнопок и open-text</div>
+        <div class="label">v1-ограничение</div>
+        <div class="value">Только identity_facts. Session-memory — в v2</div>
       </div>
     </div>
   </header>
@@ -2107,10 +2107,12 @@ body.annotations-hidden .compare-row.flipped {
             </div>
           </div>
           <div class="ann-block">
-            <div class="ann-label">Что делать с тестом</div>
+            <div class="ann-label">Анкета — primary, тест — опциональный</div>
             <div class="ann-body">
-              Тест остаётся <em>per-program</em>, не на User-level. Он опциональный —
-              пользователь может пройти его потом для уточнения архетипа. На анкету никак не влияет.
+              Рекомендация на хабе подсвечивается на основе <strong>анкеты</strong> (identity_facts.context_intent → arch_brand).
+              Тест — опциональное уточнение, пользователь может пройти его потом.
+              <strong>В программах без теста</strong> (например, «Борьба за внимание»)
+              анкета — единственный источник персонализации и работает в полную силу.
             </div>
           </div>
         </div>
@@ -2205,18 +2207,35 @@ body.annotations-hidden .compare-row.flipped {
 }</span>
             </div>
           </div>
+          <div class="ann-block highlight">
+            <div class="ann-label">Когда soft-onboarding включается (правило)</div>
+            <div class="ann-body">
+              Soft-onboarding активен <strong>пока соответствующее поле в identity_facts пусто</strong>.
+              Заполнили problem — тьютор больше не выводит на problem-вопрос. Все три заполнены — soft-onboarding отключается совсем.
+              <ul>
+                <li><strong>Где работает:</strong> все чат-режимы — Лекция, Анализ, Воркшоп, Ролевая, Свободный чат, Чат с автором</li>
+                <li><strong>Где не работает:</strong> Тест, Экзамен — там не место</li>
+              </ul>
+              Реализация — через шаблон <em>{{soft_onboarding_directive}}</em> в system_prompt каждого режима.
+              Если поле пусто — подставляется «мягко выведи на X»; заполнено — пустая строка.
+              Каждой книге не надо прописывать soft-onboarding отдельно.
+            </div>
+          </div>
           <div class="ann-block">
-            <div class="ann-label">Three-layer system_prompt</div>
+            <div class="ann-label">Two-layer system_prompt (упрощено в v1)</div>
             <div class="ann-body">
               <span class="ann-code">PersonalizationService.build():
-1. <span class="key">User.derived_summary</span>
-   <span class="com">// 500-слов summary, обновляется
-   // раз в N сессий</span>
-2. <span class="key">User.identity_facts</span>
-   <span class="com">// structured: intent, problem,
+1. <span class="key">User.identity_facts</span>
+   <span class="com">// все нужные данные из анкеты:
+   // intent, problem,
    // implication, need_payoff</span>
-3. <span class="key">Enrollment.current_position</span>
-   + last_5_messages</span>
+2. mode.system_prompt
+   <span class="com">// как сейчас, без изменений</span>
+
+<span class="com">// v1: убрали derived_summary
+// и Enrollment.session_history —
+// добавим в v2, если будет
+// потребность</span></span>
             </div>
           </div>
           <div class="ann-block">
@@ -2241,35 +2260,36 @@ body.annotations-hidden .compare-row.flipped {
        ════════════════════════════════════════════════ -->
   <section class="section" id="scenario-2">
     <div class="section-num">Сценарий 2</div>
-    <h2 class="section-title">Возврат в ту же книгу — персонализированный хаб без повторных вопросов</h2>
+    <h2 class="section-title">Возврат в ту же книгу — приветствие с контекстом</h2>
     <p class="section-hint">
-      Прошла неделя. Пользователь возвращается. <strong>Не переспрашиваем общее</strong> — используем
-      <em>User.derived_summary</em>. Hub-state = <em>returning-test</em> (или <em>returning-notest</em>).
-      Тренажёр продолжает там, где остановился.
+      Пользователь возвращается. <strong>Не переспрашиваем общее</strong> — приветствие на хабе и в тренажёре
+      учитывает <em>User.identity_facts</em> из анкеты. В v1 работа режима начинается <strong>с начала</strong>
+      (без точной памяти прошлого шага) — но welcome знает, кто перед ним и зачем пришёл. Если позже появится
+      проблема «пользователи устают повторять» — добавим session-memory в v2.
     </p>
 
     <!-- ─── 2.1 ХАБ RETURNING ─── -->
     <div class="step-block">
       <div class="step-label">2.1</div>
       <h3 class="step-title">Персонализированный хаб</h3>
-      <p class="step-desc">HubContinueCard с последним режимом. Welcome AI напоминает контекст без перечисления identity_facts.</p>
+      <p class="step-desc">Welcome AI обращается с учётом identity_facts. Рекомендация на хабе подсвечена по той же логике, что и в первый раз — на основе анкеты, а не теста.</p>
       <div class="compare-row">
         <div class="mock">
           <div class="mock-statusbar"><span>14:08</span><span class="mock-statusbar-icons">●●●●</span></div>
           <div class="mock-content">
             <div class="hub">
-              <h4 class="hub-greet">С возвращением. Продолжим <em>с архетипа студии</em>?</h4>
+              <h4 class="hub-greet">С возвращением. Главное у тебя — <em>архетип студии</em>.</h4>
               <div class="hub-ai-msg">
                 <div class="from">Система · архетипический стратег</div>
-                В прошлый раз мы остановились на гипотезе «между Бунтарём и Шутом». Ты хотел характер,
-                но без «креативчика».<br><br>
-                Можем продолжить «Артишок» (мы на шаге 3 из 5) или зайти в «Голос архетипа» — потренироваться
-                сразу писать в Бунтарском тоне.
+                Помню — ты делаешь свой бренд студии, хочешь характер без «креативчика», устал быть как все.
+                Это, скорее всего, Бунтарь или Шут — но это нужно проверить методически.<br><br>
+                Можем зайти в «Архетип твоего бренда» и пройти «Артишок» от начала до конца, или сразу
+                в «Голос архетипа» — потренироваться писать в Бунтарском тоне.
               </div>
               <div class="hub-continue">
-                <div class="hub-continue-eyebrow">→ Продолжить</div>
+                <div class="hub-continue-eyebrow">→ Рекомендовано тебе</div>
                 <div class="hub-continue-title">Архетип твоего бренда</div>
-                <div class="hub-continue-hint">«Артишок», шаг 3 из 5 · ≈10 минут до результата</div>
+                <div class="hub-continue-hint">Метод «Артишок» · 15–20 минут</div>
               </div>
               <div class="hub-section-title">Все инструменты</div>
               <div class="hub-cards">
@@ -2303,41 +2323,36 @@ body.annotations-hidden .compare-row.flipped {
         </div>
         <div class="annotation">
           <div class="ann-block highlight">
-            <div class="ann-label">Что происходит</div>
+            <div class="ann-label">Что происходит (v1)</div>
             <div class="ann-body">
-              Hub-state = <em>returning-test</em> (если тест пройден) или <em>returning-notest</em>.
-              Welcome AI цитирует <strong>derived_summary</strong>, а не сырой <em>identity_facts</em> —
-              это удобнее читать и не «жутко» (борется с personalization-privacy paradox).
+              Welcome AI читает <strong>identity_facts</strong> напрямую — пересказывает контекст в paraphrase'е,
+              а не цитирует поля буквально. Рекомендация на хабе — по <em>анкете</em>, не по тесту: в первый
+              раз была подсвечена «Архетип бренда» по intent=own_brand, при возврате — та же логика.
             </div>
           </div>
           <div class="ann-block">
-            <div class="ann-label">User.derived_summary</div>
+            <div class="ann-label">Что в промпте</div>
             <div class="ann-body">
-              <span class="ann-code"><span class="com">// LLM-генерируемое
-// раз в N сессий
-// (~500 слов)</span>
-"Пользователь — владелец студии дизайна,
-работает над собственным брендом.
-Жалуется на отсутствие характера в
-коммуникациях, опасается скатиться в
-«креативчик». Гипотеза:
-тяготеет к Бунтарю или Шуту.
-Проблема — взаимозаменяемость,
-проигрывает тендеры по цене.
-Готов работать через провокацию
-в текстах. Цель — чтобы клиенты
-приходили сами, а не выбирали по цене."</span>
+              <span class="ann-code">USER_CONTEXT:
+- intent: own_brand (studio)
+- problem: сухие коммуникации,
+  страх «креативчика»
+- implication: проигрываем по цене,
+  взаимозаменяемость
+- need_payoff: клиенты приходят
+  по характеру
+
+<span class="com">// без derived_summary,
+// без session_history —
+// этого нет в v1</span></span>
             </div>
           </div>
           <div class="ann-block">
-            <div class="ann-label">TTL и confirmation</div>
+            <div class="ann-label">Confirmation — НЕ показывается на той же книге</div>
             <div class="ann-body">
-              Прошло меньше 1 недели → <em>silent reuse</em>, не дёргаем confirmation. См. §6.1:<br>
-              <ul>
-                <li><strong>≤ 1 неделя</strong> — молча использовать</li>
-                <li>1 неделя – 3 месяца — confirmation</li>
-                <li>>3 месяцев — re-ask 1-2 ключевых</li>
-              </ul>
+              Confirmation flow — это <strong>экран при заходе во вторую программу</strong> (новый Enrollment).
+              На возврате в ту же книгу — он не нужен: профиль уже подтверждён первой сессией. Здесь просто
+              welcome с учётом контекста.
             </div>
           </div>
         </div>
@@ -2348,7 +2363,7 @@ body.annotations-hidden .compare-row.flipped {
     <div class="step-block">
       <div class="step-label">2.2</div>
       <h3 class="step-title">Тренажёр начинает не с нуля</h3>
-      <p class="step-desc">Welcome AI режима учитывает <em>Enrollment.current_position</em> и последние сообщения.</p>
+      <p class="step-desc">Welcome AI режима учитывает <em>User.identity_facts</em>, но работу режима начинаем с начала (без точной памяти сессии — это v2).</p>
       <div class="compare-row">
         <div class="mock">
           <div class="mock-statusbar"><span>14:09</span><span class="mock-statusbar-icons">●●●●</span></div>
@@ -2356,22 +2371,22 @@ body.annotations-hidden .compare-row.flipped {
             <div class="chat">
               <div class="chat-header">
                 <div class="chat-header-icon">◎</div>
-                <div class="chat-header-title">Архетип твоего бренда · шаг 3</div>
+                <div class="chat-header-title">Архетип твоего бренда</div>
               </div>
               <div class="chat-body">
                 <div class="msg ai">
                   <div class="msg-bubble">
-                    Вспомню, где мы: студия дизайна, гипотеза — Бунтарь или Шут, не хочется «креативчика».
-                    Прошли шаги «душа бренда» и «суть». Сейчас — <strong>конкуренты</strong>.<br><br>
-                    Опиши 2-3 студии, на которые ты <em>не хочешь</em> быть похож. Не по уровню — а по тону,
-                    по тому, как они говорят. Кого ты узнаёшь и думаешь «нет, не сюда»?
+                    Помню — студия дизайна, главный запрос «характер без креативчика». Это сильное намерение,
+                    хорошее для метода «Артишок».<br><br>
+                    Начнём с первого шага — <strong>душа бренда</strong>. Опиши свою студию в трёх
+                    прилагательных, как будто это человек: какой он по характеру? Не «качественный» — а
+                    например, «дотошный, ироничный, упрямый».
                   </div>
                 </div>
                 <div class="qr-bar">
-                  <button class="qr-btn">Студии Шотика — слишком «вкусняшки»</button>
-                  <button class="qr-btn">Большие сетевые агентства — сухо</button>
-                  <button class="qr-btn">Молодёжные — слишком развязно</button>
-                  <button class="qr-btn exit">Сложно с конкурентами</button>
+                  <button class="qr-btn">Можем повторить — расскажу заново</button>
+                  <button class="qr-btn">Сразу к шагу про конкурентов</button>
+                  <button class="qr-btn exit">Мне сложно сформулировать</button>
                 </div>
               </div>
               <div class="chat-input">
@@ -2383,28 +2398,38 @@ body.annotations-hidden .compare-row.flipped {
         </div>
         <div class="annotation">
           <div class="ann-block highlight">
-            <div class="ann-label">Что происходит</div>
+            <div class="ann-label">Что происходит (v1)</div>
             <div class="ann-body">
-              Тренажёр <strong>помнит точное место</strong> прошлой сессии. Не «здравствуй, расскажи о своём
-              бренде» — а «вспомню, где мы остановились». Это конверсия returning в продолжение работы.
+              Тьютор <strong>помнит контекст</strong> (студия, запрос, проблема) — но <strong>не точное место</strong>
+              в прошлой сессии. Работа режима начинается с первого шага «Артишока». Welcome намекает на
+              предыдущее знакомство, без претензии «помню где остановились».
             </div>
           </div>
           <div class="ann-block">
-            <div class="ann-label">Three-layer system_prompt в действии</div>
+            <div class="ann-label">Почему так в v1</div>
+            <div class="ann-body">
+              Точная память сессии (current_position, last_5_messages) — сложная фича: нужен autosave прогресса,
+              механизм инвалидации, отдельный экран. Пока проблемы «пользователи устают от повторения работы»
+              нет. Если появится — добавим в v2. Сейчас лучше потратить ресурс на качество самой анкеты.
+            </div>
+          </div>
+          <div class="ann-block">
+            <div class="ann-label">Two-layer system_prompt</div>
             <div class="ann-body">
               <span class="ann-code">PersonalizationService.build():
 
-1. <span class="layer">User.derived_summary</span>
-   <span class="com">студия дизайна, Бунтарь,
-   проблема — взаимозаменяемость</span>
+1. <span class="layer">User.identity_facts</span>
+   <span class="com">intent=own_brand (studio),
+   problem=сухие коммуникации,
+   страх «креативчика»,
+   implication=проигрываем по цене,
+   need_payoff=клиенты приходят
+   по характеру</span>
 
-2. <span class="layer">User.identity_facts</span>
-   <span class="com">structured fields:
-   intent=own_brand, problem=...</span>
-
-3. <span class="layer">Enrollment.session_history</span>
-   <span class="com">artishok_step=3,
-   last_5_messages=[...]</span></span>
+2. mode.system_prompt
+   <span class="com">+ {{soft_onboarding_directive}}
+   (пустая строка, т.к. все поля
+   identity_facts заполнены)</span></span>
             </div>
           </div>
         </div>
@@ -2419,10 +2444,10 @@ body.annotations-hidden .compare-row.flipped {
     <div class="section-num">Сценарий 3</div>
     <h2 class="section-title">Вторая книга — «Пиши, сокращай»: confirmation + 1 книгоспеч. вопрос</h2>
     <p class="section-hint">
-      Пользователь, уже прошедший анкету в одной книге, заходит в другую. <strong>Не переспрашиваем общее</strong>,
-      но добавляем 1 книгоспецифичный вопрос. Прошёл 1 месяц с последнего ответа — пора confirmation.
-      Здесь же показано, как должна выглядеть программа <em>pishi-sokraschay</em> <strong>после миграции</strong>:
-      режим <em>pishi_calibration</em> исчезает из списка тренажёров.
+      Пользователь, уже прошедший анкету в одной книге, заходит в другую. <strong>Не переспрашиваем общее</strong> —
+      показываем confirmation (правило: identity_facts непустой + новый Enrollment). Добавляем 1 книгоспецифичный
+      вопрос для уточнения. Здесь же показано, как должна выглядеть программа <em>pishi-sokraschay</em>
+      <strong>после миграции</strong>: режим <em>pishi_calibration</em> исчезает из списка тренажёров.
     </p>
 
     <!-- ─── 3.1 ЛЕНДИНГ PISHI ─── -->
@@ -2533,15 +2558,21 @@ AND question_id IN
   ('context_intent', 'problem',
    'implication', 'need_payoff');
 
-<span class="com">// TTL обновляется,
-// не было бы re-ask</span></span>
+<span class="com">// без TTL — просто метка
+// что юзер подтвердил
+// контекст явно</span></span>
             </div>
           </div>
-          <div class="ann-block">
-            <div class="ann-label">Когда вообще НЕ показываем</div>
+          <div class="ann-block highlight">
+            <div class="ann-label">Когда показывается — простое правило</div>
             <div class="ann-body">
-              §6.1: если прошло ≤1 недели от последнего подтверждения — silent reuse.
-              Этот экран — для returning через 1 неделю – 3 месяца. Дольше — re-ask отдельных вопросов.
+              Одно условие, без TTL и временных окон:
+              <ul>
+                <li><strong>User.identity_facts НЕ пустой</strong> и пользователь создаёт <strong>новый Enrollment</strong> (заходит во вторую/третью книгу) → показать confirmation</li>
+                <li><strong>User.identity_facts пустой</strong> (юзер скипнул анкету на первой книге) → показать обычную анкету</li>
+                <li><strong>Возврат в ту же книгу</strong> → ничего не показываем, просто welcome с учётом контекста</li>
+              </ul>
+              Прозрачно для пользователя: видит ровно те данные, что AI будет использовать.
             </div>
           </div>
         </div>
@@ -2806,11 +2837,10 @@ ENROLLMENT_CONTEXT:
             <div class="ann-label">Два aggregates в кабинете</div>
             <div class="ann-body">
               <ul>
-                <li><strong>User</strong>: identity_facts, derived_summary, preferences — один на пользователя</li>
-                <li><strong>Enrollment</strong>: один на (book × user) — диагностика, прогресс, специфика</li>
+                <li><strong>User</strong>: identity_facts (анкета) — один на пользователя</li>
+                <li><strong>Enrollment</strong>: один на (book × user) — диагностика, специфика</li>
               </ul>
-              Domain events связывают их (например, when User.identity_facts.problem changes →
-              invalidate Enrollment.derived_summary cache), но aggregates загружаются независимо.
+              В v1 связи минимум: identity_facts читается при сборке system_prompt, программа-специфика остаётся в Enrollment. Никаких фоновых job-ов, никаких saved-summary.
             </div>
           </div>
         </div>
@@ -2828,7 +2858,7 @@ ENROLLMENT_CONTEXT:
             <div class="ann-label">Аналог</div>
             <div class="ann-body">
               Coursera Skills Taxonomy: профиль сверху (общий), курсы снизу (per-program).
-              ChatGPT memory: stored facts (анкета) + chat history reference (Enrollment.session_history).
+              ChatGPT memory: stored facts (анкета). Chat history reference — это v2.
             </div>
           </div>
         </div>
@@ -3076,22 +3106,29 @@ ENROLLMENT_CONTEXT: new
       Это поможет в Этапе 2 спроектировать миграцию точно.
     </p>
 
+    <div class="ann-block highlight" style="margin-bottom: 24px;">
+      <div class="ann-label">v1 — упрощённая архитектура после review</div>
+      <div class="ann-body">
+        После first review убрали: <em>derived_summary</em>, <em>current_position</em>, <em>session_history</em>
+        инжекцию в промпт. В v1 — <strong>только identity_facts</strong>. Тренажёр приветствует с контекстом,
+        но работу режима начинает с начала. Это снимает фоновые job-ы, autosave и кеш-инвалидацию —
+        ресурс уходит на качество самой анкеты. Если появится боль «пользователи устают повторять» — v2.
+      </div>
+    </div>
+
     <div class="arch-diagram">
       <div class="arch-box user">
         <h3 class="arch-box-title">User aggregate</h3>
         <div class="arch-box-sub">один на пользователя · переиспользуется</div>
         <div class="arch-field"><span class="fname">id</span> · <span class="ftype">uuid</span></div>
-        <div class="arch-field"><span class="fname">identity_facts</span> · <span class="ftype">structured fields</span><br>
+        <div class="arch-field"><span class="fname">identity_facts</span> · <span class="ftype">читается из user_profile_responses</span><br>
           context_intent, problem, implication, need_payoff
-        </div>
-        <div class="arch-field"><span class="fname">derived_summary</span> · <span class="ftype">~500 слов</span><br>
-          LLM-генерируемое, обновляется раз в N сессий
-        </div>
-        <div class="arch-field"><span class="fname">cross_program_preferences</span> · <span class="ftype">jsonb</span><br>
-          тон, частота напоминаний, голос/текст
         </div>
         <div class="arch-field"><span class="fname">user_profile_responses[]</span> · <span class="ftype">отдельная таблица</span><br>
           versioned answers + audit-trail
+        </div>
+        <div class="arch-field" style="opacity: 0.5;"><span class="fname">derived_summary</span> · <span class="ftype">v2 (отложено)</span><br>
+          было: LLM-саммари. v1 не нужно
         </div>
       </div>
       <div class="arch-box">
@@ -3103,35 +3140,39 @@ ENROLLMENT_CONTEXT: new
         <div class="arch-field"><span class="fname">diagnostic_score</span> · <span class="ftype">jsonb</span><br>
           результат теста (если пройден)
         </div>
-        <div class="arch-field"><span class="fname">current_position</span> · <span class="ftype">jsonb</span><br>
-          артишок_step, открытые режимы
-        </div>
         <div class="arch-field"><span class="fname">program_specific_notes</span> · <span class="ftype">jsonb</span><br>
           text_ownership и подобное
         </div>
-        <div class="arch-field"><span class="fname">session_history</span> · <span class="ftype">через messages</span></div>
+        <div class="arch-field" style="opacity: 0.5;"><span class="fname">current_position</span> · <span class="ftype">v2 (отложено)</span><br>
+          было: артишок_step. v1 не нужно
+        </div>
+        <div class="arch-field" style="opacity: 0.5;"><span class="fname">session_history</span> · <span class="ftype">v2 (отложено)</span><br>
+          было: last_5_messages в промпт. v1 нет
+        </div>
       </div>
     </div>
 
     <div class="arch-flow">
-      <div class="arch-flow-title">PersonalizationService.build(userId, programId)</div>
+      <div class="arch-flow-title">PersonalizationService.build(userId, programId, modeKey) — v1</div>
       <div class="arch-flow-code"><span class="com">// заменяет appendCalibrationContext, обобщённый на любую книгу</span>
 
-const user = <span class="layer">await UserRepo.load(userId)</span>
-const enrollment = <span class="layer">await EnrollmentRepo.load(userId, programId)</span>
+const facts = <span class="layer">await UserProfileRepo.getFacts(userId)</span>
+const mode = <span class="layer">await ModeRepo.get(programId, modeKey)</span>
 
 return [
-  <span class="com">// слой 1 — общее саммари</span>
-  `## КТО ПЕРЕД ТОБОЙ\n${user.derived_summary}`,
+  <span class="com">// слой 1 — identity_facts из анкеты</span>
+  facts.isEmpty
+    ? '<span class="com">// skipper — пустой блок, generic-режим</span>'
+    : `## КТО ПЕРЕД ТОБОЙ\n${formatFacts(facts)}`,
 
-  <span class="com">// слой 2 — structured facts</span>
-  `## КОНТЕКСТ\n` + formatFacts(user.identity_facts),
-
-  <span class="com">// слой 3 — текущее место в программе</span>
-  `## ГДЕ МЫ СЕЙЧАС\n${formatEnrollment(enrollment)}`,
-
-  <span class="com">// + системный промпт режима, как сейчас</span>
-  mode.system_prompt,
+  <span class="com">// слой 2 — системный промпт режима
+  // с подставленным soft_onboarding_directive</span>
+  renderTemplate(mode.system_prompt, {
+    <span class="key">soft_onboarding_directive</span>:
+      buildSoftOnboardingDirective(facts, mode),
+      <span class="com">// возвращает текст «мягко выведи на X»
+      // если поле пусто, или '' если заполнено</span>
+  }),
 ].join('\n\n')</div>
     </div>
 
@@ -3162,85 +3203,95 @@ return [
        ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА
        ════════════════════════════════════════════════ -->
   <section class="stops">
-    <h2 class="stops-title">Что вылезло в процессе вёрстки</h2>
+    <h2 class="stops-title">Что решено по итогам review #1</h2>
     <p class="section-hint" style="margin-bottom: 20px;">
-      По плану — после демо обязательная остановка для feedback. Ниже список того, что я волевым решением
-      зафиксировал в макете (можно возразить), и что осталось открытым.
+      Обновлено после обратной связи: <strong>анкета — primary, тест — secondary</strong>;
+      <strong>в v1 не делаем session-memory</strong> (только identity_facts);
+      <strong>confirmation — простое правило без TTL</strong>;
+      <strong>первая книга-пилот — Гловер</strong>, а не «Герой и Бунтарь».
     </p>
     <ul class="stops-list">
       <li>
-        <strong>Решено волевым:</strong> микро-анкета — гибрид (4 кнопки + open-text), не чистый open-text.
-        Обоснование: §7 — узнаваемые цитаты снижают порог входа, inner thinking всё равно вытащим в soft-onboarding.
+        <strong>Анкета — primary, тест — secondary.</strong> Рекомендация на хабе и welcome строятся
+        на основе identity_facts, тест — опциональное уточнение. У программ без теста (Белоусов,
+        Гловер без ISSP) анкета работает в полную силу.
       </li>
       <li>
-        <strong>Решено волевым:</strong> анкета и confirmation — в светлой теме, остальное (хаб, чат, кабинет) — в тёмной.
+        <strong>Soft-onboarding — правило активации:</strong> работает пока соответствующее поле в
+        identity_facts пусто. Реализуется через шаблон <code>{{soft_onboarding_directive}}</code> в
+        system_prompt каждого режима, который PersonalizationService подставляет либо текстом
+        «мягко выведи на X», либо пустой строкой. Каждой книге не надо это прописывать отдельно.
+        Не работает в режимах Тест/Экзамен.
+      </li>
+      <li>
+        <strong>В v1 — НЕТ session-memory.</strong> Убрано: <em>derived_summary</em>, <em>current_position</em>,
+        <em>session_history</em> в промпте. Тренажёр приветствует с контекстом из identity_facts,
+        но работу режима начинает с начала. Three-layer → two-layer. Если появится боль «пользователи
+        устают повторять» — добавим в v2.
+      </li>
+      <li>
+        <strong>Confirmation flow — простое правило без TTL.</strong> Условие одно:
+        identity_facts непустой + новый Enrollment → confirmation;
+        пустой → обычная анкета;
+        возврат в ту же книгу → ничего, только welcome.
+        Без временных окон, прозрачно для пользователя.
+      </li>
+      <li>
+        <strong>Первая книга-пилот — Гловер (`nice-guy`).</strong> Не «Герой и Бунтарь».
+        Это первая книга платформы, у неё уже есть тест ISSP + 46 упражнений + author_chat —
+        много точек, где анкета влияет на промпт. На Гловере проверяем гипотезу,
+        потом масштабируем на Героя, Ильяхова и Белоусова.
+      </li>
+      <li>
+        <strong>SPIN-вопросы для Гловера (готовы к реализации):</strong>
+        <ul style="margin-top: 8px; padding-left: 0;">
+          <li style="margin-left: 0;"><em>Микро-анкета:</em> «Что привело тебя к этой книге?» + 4 кнопки-цитаты («Угождаю и коплю обиду» / «Сложно заявлять о потребностях» / «Хочу быть собой, а не удобной версией» / «Готовлюсь к разговору про границы») + «Другое (напишу сам)»</li>
+          <li style="margin-left: 0;"><em>Problem:</em> «Что в твоих отношениях/работе сейчас идёт не так? Где сам узнаёшь паттерн «славного парня»?»</li>
+          <li style="margin-left: 0;"><em>Implication:</em> «Если ничего не менять — что произойдёт через полгода-год? Что копится?»</li>
+          <li style="margin-left: 0;"><em>Need-payoff:</em> «Как поймёшь, что программа сработала? Что будешь делать или думать иначе?»</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Решено волевым:</strong> микро-анкета — гибрид (4 кнопки + open-text). Узнаваемые цитаты
+        снижают порог входа, inner thinking вытащим в soft-onboarding.
+      </li>
+      <li>
+        <strong>Решено волевым:</strong> анкета и confirmation — в светлой теме, остальное — в тёмной.
         Платформенный паттерн: auth/test всегда светлые, кабинет/чат — тёмные.
       </li>
       <li>
-        <strong>Решено волевым:</strong> Skipper-флоу показан как side-by-side контраст одного сообщения,
-        а не как линейный сценарий. Иначе невозможно сравнить качество.
-      </li>
-      <li>
-        <strong>Решено волевым:</strong> 1 микро-анкета до сессии + 3 OARS-вопроса в сессии = 4 ответа всего.
-        Документ говорит 3 baseline / 5 потолок — мы в коридоре.
+        <strong>Решено волевым:</strong> Skipper-флоу как side-by-side контраст одного сообщения,
+        а не линейный сценарий. Иначе невозможно сравнить качество.
       </li>
       <li>
         <strong>Открытый вопрос UX:</strong> что делать, если пользователь нажал «Изменить» на confirmation
-        flow в 3.2? Открыть форму редактирования всего (4 поля)? Только спорное поле? Re-ask заново?
+        flow? Открыть форму редактирования всего (4 поля)? Только спорное поле? Re-ask?
       </li>
       <li>
-        <strong>Открытый вопрос UX:</strong> когда генерится <em>derived_summary</em>? Сразу после первой
-        сессии (1 раз)? Раз в N сообщений? При confirmation? — это влияет на стоимость Gemini Pro.
+        <strong>Открытый вопрос UX:</strong> книгоспецифичный вопрос — отдельная сущность или welcome первого
+        режима? Я склоняюсь к welcome (меньше экранов), но это в Этап 2.
       </li>
       <li>
-        <strong>Открытый вопрос UX:</strong> книгоспецифичный вопрос (3.3) — это <em>тоже анкета</em>
-        или отдельная сущность? Где она живёт в UI: до хаба (как сейчас), внутри первого режима, или
-        вообще в welcome первого режима?
-      </li>
-      <li>
-        <strong>Архитектурный вопрос:</strong> identity_facts хранить как structured fields на users
-        (4 колонки) или в отдельной таблице <em>user_profile_responses</em> с question_id? Я нарисовал второй
-        вариант — он гибче для versioning + GDPR, но требует JOIN на каждом запросе.
-      </li>
-      <li>
-        <strong>Архитектурный вопрос:</strong> книгоспецифичные вопросы — это <em>program_intake_questions</em>
-        как отдельная таблица или jsonb в Enrollment.program_specific_notes? Первое — типизация и UI-конфиг,
-        второе — быстрее добавлять книгу.
+        <strong>Архитектурный вопрос:</strong> книгоспецифичные вопросы — отдельная таблица
+        <em>program_intake_questions</em> или jsonb в Enrollment.program_specific_notes? Первое —
+        типизация и UI-конфиг, второе — быстрее добавлять книгу. Решим при имплементации пилота.
       </li>
       <li>
         <strong>По существующему коду:</strong> <em>appendCalibrationContext</em> в
-        <code>lib/chat/prepare-context.ts:364-417</code> — ищет последний чат с chat_type='pishi_calibration',
-        берёт первые 8 сообщений. Логика «8 сообщений» не масштабируется на User-level (там нет «сообщений»,
-        там нормализованные поля). Нужен новый extract-job через Gemini Pro.
+        <code>lib/chat/prepare-context.ts:364-417</code> заменяется на <em>PersonalizationService</em>,
+        логика «8 сообщений» уходит — facts читаются напрямую из user_profile_responses.
       </li>
       <li>
-        <strong>По существующему коду:</strong> чтобы убрать карточку <em>pishi_calibration</em> с хаба —
-        достаточно DELETE из program_modes, mode_template можно оставить (вдруг ещё понадобится). Старые чаты
-        пользователей с этим chat_type остаются в messages, но фронт их не отрисует, потому что режима в списке нет.
+        <strong>По существующему коду:</strong> чтобы убрать карточку <em>pishi_calibration</em> с хаба
+        Ильяхова и <em>belousov_calibration</em> с хаба Белоусова — DELETE из program_modes,
+        mode_template можно оставить для аудита. Старые чаты с этим chat_type сохраняем.
+        <strong>Делаем после успеха пилота на Гловере</strong>, не вместе.
       </li>
       <li>
-        <strong>По существующему коду:</strong> в <code>lib/queries/modes.ts</code> загрузка режимов идёт по
-        sort_order. Раз режим больше не «барьер на входе», то для остальных программ платформы можно ввести
-        новый <em>mode_type</em> или флаг <em>is_onboarding</em> на mode_templates — но <strong>в первой
-        итерации обойдёмся без этого</strong>, просто удалив один режим.
-      </li>
-      <li>
-        <strong>Дубликат уже существует — это аргумент сильнее теории:</strong> в семействе книг
-        Белоусова есть <em>belousov_calibration</em> (<code>scripts/seed-borba-za-vnimanie-modes.sql:33-47</code>),
-        полностью повторяющий шаблон Ильяхова — те же welcome_mode_label «Калибровка», бейдж «Сначала это»,
-        sort_order=1, формат «3 открытых вопроса в чате», маркер <code>[КАЛИБРОВКА ЗАВЕРШЕНА]</code>.
-        Различия только в содержании вопросов и mapping → стартовый режим.
-        Миграция должна охватить <strong>оба</strong> режима одной операцией —
-        backfill читает первые 8 сообщений из чатов обоих <em>chat_type</em>,
-        <em>analyzeForIdentity</em> распределяет в User-level (общее: профессия, контекст, цель) vs
-        Enrollment-level (специфика: text_ownership для Ильяхова, точка_А/точка_Б для Белоусова).
-      </li>
-      <li>
-        <strong>Сигнал про автогенерацию:</strong> Белоусовская калибровка появилась не по решению дизайнера —
-        её собрал автогенератор режимов, потому что без неё программа не работала.
-        Это значит, что любая следующая книга, в которой <em>тон тьютора зависит от профессии/контекста
-        пользователя</em>, будет автоматически порождать ещё один копипаст. Вынос наверх — обязателен
-        перед добавлением 4-й и далее книги с этим свойством.
+        <strong>Дубликат уже существует</strong> — в книге Белоусова есть <em>belousov_calibration</em>,
+        полностью повторяющий шаблон Ильяхова. Сигнал, что нужен примитив выше: автогенератор режимов
+        сам собрал второй экземпляр, потому что без него программа не работала. К 13-й книге
+        будет 13 копипастов — нужно вынести наверх до добавления следующих книг с этим свойством.
       </li>
     </ul>
   </section>
