@@ -15,6 +15,7 @@ import {
   appendCalibrationContext,
   buildGeminiHistory,
 } from "@/lib/chat/prepare-context";
+import { buildPersonalizationContext } from "@/lib/personalization";
 
 // Per-user rate limit: 20 запросов в минуту на user.id.
 // Защищает от opустошения чужого баланса при компрометации сессии и
@@ -56,14 +57,20 @@ export async function POST(request: Request) {
     );
 
     // 6. Final system prompt (base + portrait + test scores + calibration + topic context).
-    // appendTestScores и appendCalibrationContext независимы — параллелим через Promise.all.
-    // Передаём "" чтобы получить только suffix; затем складываем.
+    // appendTestScores, appendCalibrationContext и buildPersonalizationContext независимы —
+    // параллелим через Promise.all. Передаём "" в append* чтобы получить только suffix.
+    // personalizationPrefix префиксируется к итоговому промпту (identity_facts —
+    // «кто перед тобой», семантически голова промпта).
     const baseWithPortrait = appendPortraitContext(ctx.systemPrompt, chatCtx.portrait);
-    const [scoresSuffix, calibrationSuffix] = await Promise.all([
+    const [scoresSuffix, calibrationSuffix, personalizationPrefix] = await Promise.all([
       appendTestScores(supabase, "", user.id, programId),
       appendCalibrationContext(supabase, "", user.id, programId, currentChatType),
+      buildPersonalizationContext(supabase, user.id, currentChatType),
     ]);
     let systemPrompt = baseWithPortrait + scoresSuffix + calibrationSuffix;
+    if (personalizationPrefix) {
+      systemPrompt = personalizationPrefix + "\n\n---\n" + systemPrompt;
+    }
     if (topicContext) {
       systemPrompt += `\n\n---\nКОНТЕКСТ ТЕМЫ:\n${topicContext}`;
     }
