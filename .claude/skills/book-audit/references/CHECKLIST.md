@@ -1,6 +1,6 @@
 # Эталонный чеклист аудита программы
 
-**Версия:** 1.7
+**Версия:** 1.8
 **Последнее обновление:** 2026-05-19
 **Эталон:** nice-guy v2 (полная переработка по скиллу book-to-modes v2)
 **Source of truth по форматированию:** [`docs/runbooks/chat-message-formatting.md`](../../../docs/runbooks/chat-message-formatting.md) — чеклист проверяет соответствие правилам оттуда
@@ -12,13 +12,14 @@
 - [ ] **A1:** Количество режимов ≥ 7 (5 архетипов + подвиды по паттерну размножения). Не считая Свободный чат и Разговор с автором
 - [ ] **A2:** Каждый режим имеет `system_prompt` в `program_modes` (не fallback на `programs.system_prompt`)
 - [ ] **A3:** Каждый промпт содержит секции: РОЛЬ, КНИГА, ПРАВИЛА ОТВЕТА, ЛОГИКА ДИАЛОГА, АНТИПАТТЕРНЫ
-- [ ] **A4:** Секция ПРАВИЛА ОТВЕТА включает: лимит 60-80 слов, один вопрос за раз, scaffolding fading (4→2→0)
+- [ ] **A4:** Секция ПРАВИЛА ОТВЕТА включает: лимит 60-80 слов, один вопрос за раз, scaffolding fading (4→2→0). **Note (v1.8):** для экзаменационных режимов (key содержит `_exam`) A4 неприменимо — у них винетки 200-400 слов + feedback 100-150, и адаптивная сложность Bennett-Levy DPR вместо scaffolding fading. Проверять через H5.
 - [ ] **A5:** Секция АНТИПАТТЕРНЫ перечислена явно: стены текста, похвала личности, overdiagnosis, несколько вопросов за раз
 - [ ] **A6:** Промпт содержит конкретные концепции из книги (не общие фразы, а термины автора)
 - [ ] **A7:** Промпт содержит suggested replies с типами (голос пользователя, сопротивление, навигация)
 - [ ] **A8 (v1.6):** Каждый `program_modes.system_prompt` содержит блок `### Quick replies — ФОРМАТ` с буквальным примером «ёлочек», контрпримером склеивания через пробел, Scaffolding fading, и ЗАПРЕЩЕНО-списком. SQL-проверка: `system_prompt LIKE '%### Quick replies%'` → true для всех tool-режимов
 - [ ] **A9 (v1.6):** `programs.system_prompt` и `programs.author_chat_system_prompt` тоже содержат тот же блок. **Критично для свободного чата и тем** — они наследуют programs.system_prompt (через prepare-context.ts), без блока кнопок не будет
 - [ ] **A10 (v1.6):** `programs.free_chat_welcome` и `programs.author_chat_welcome` заканчиваются 3–4 «ёлочками» на отдельных строках (starter replies в ChatWindow). SQL-проверка: `welcome LIKE '%«%»'` в последних ~300 символах
+- [ ] **A11 (v1.8):** Для программ с профильной/клинической ЦА (психологи, врачи, юристы) `programs.system_prompt` должен содержать ВСЕ применимые safety-триггеры, а не только те что в режимных промптах. `free_chat` и темы наследуют программный, не режимный — без полного safety на программном уровне эти поверхности получат урезанную защиту. Триггеры self-referent («у меня самого такие симптомы», «не вижу разницы между собой и клиентом») особенно критичны для тренажёров для специалистов. Прецедент: transdiagnostic-cbt 2026-05 — режимы имели 5 триггеров, программный promtпт только 3; свободный чат не реагировал на self-disclosure.
 
 ## B. Welcome-сообщения
 
@@ -48,6 +49,15 @@
 - [ ] **C5:** `access_type`: хотя бы 1 free режим (точка входа для конверсии)
 - [ ] **C6:** Нет `enabled: false` режимов, которые отображаются в UI как «coming soon» больше 1 месяца
 - [ ] **C7:** `chat_type` совпадает с `mode_template.key` для уникальных режимов
+- [ ] **C8 (v1.8):** В пределах одной программы нет двух `enabled` режимов с одинаковым `mode_template.icon`. На хабе появятся две карточки с одной иконкой, пользователь их не различает. SQL-проверка:
+```sql
+SELECT mt.icon, array_agg(mt.key) FROM program_modes pm
+JOIN mode_templates mt ON mt.id = pm.mode_template_id
+JOIN programs p ON p.id = pm.program_id
+WHERE p.slug = '{SLUG}' AND pm.enabled = true
+GROUP BY mt.icon HAVING COUNT(*) > 1;
+```
+Должно вернуть пустой результат. Прецедент: transdiagnostic-cbt 2026-05 — `tdcbt_exam` и `test_tdcbt-mastery` оба с `check`. Фикс: сменили `tdcbt_exam.icon` на `flask`.
 
 ## D. Кросс-режимные связки
 
@@ -134,3 +144,4 @@
 | 1.5 | 2026-04-18 | Второй UI-прогон preview нашёл ещё 2 невидимых чеклисту бага: (a) `programs.hub_messages = {}` у GPP → пустой золотой кружок на месте AI-приветствия хаба (добавлен E13), (b) HistoryScreen теста хардкодил «Индекс Синдрома Славного Парня» и «Диагностика» — для любой второй программы с тестом заголовок был чужой (добавлен E14, код фиксит через `testConfig.ui_config`). Новая секция I: паттерн `?<screen>_state=` для визуальной проверки stateful-экранов (hub_state, test_state). |
 | 1.6 | 2026-04-22 | После двух итераций ретро-фикса 100-notes и nice-guy: баги форматирования сообщений и quick replies были невидимы чеклисту. Добавлены: **A8** (блок «ФОРМАТ QUICK REPLIES» в каждом `program_modes.system_prompt`), **A9** (тот же блок в `programs.system_prompt` + `author_chat_system_prompt` — критично для free_chat и тем, т.к. они наследуют programs.system_prompt), **A10** («ёлочки» в конце `free_chat_welcome`/`author_chat_welcome`), **B7** (нет markdown в `welcome_ai_message` — он plain-text), **B8** (нет дублирующего эмодзи+Title в начале `welcome_ai_message`), **B9** (`welcome_replies` как объекты `{text, type}`, последний — `type: "exit"`), **B10** (нет вложенных «ёлочек» и пунктуации снаружи — ломают parseQuickReplies regex). Добавлена ссылка на [`docs/runbooks/chat-message-formatting.md`](../../../docs/runbooks/chat-message-formatting.md) как source of truth. |
 | 1.7 | 2026-05-19 | По итогам аудита borba-za-vnimanie — три невидимых чеклисту проблемы стали правилами линтера. **D7**: `calibration-not-wired` — если есть режим калибровки, его chat_type должен быть в `CALIBRATION_CHAT_TYPES` в `lib/chat/prepare-context.ts`, иначе калибровка декларативная. **D8**: `cross-mode-data-placeholder` — литерал `{{cross_mode_data}}` в system_prompt не обрабатывается в коде, Gemini видит буквально (скопирован из шаблонов 5+ книг). **H7**: `author-photo-equals-cover` — фото автора не должно быть идентично обложке (md5-сравнение); прецедент когда автор на обложке и скопировали тот же файл в `public/authors/`. Все три правила реализованы в `scripts/check-chat-seed.ts` и `scripts/check-author-photos.ts` — следующая книга получит warning из коробки. |
+| 1.8 | 2026-05-19 | По итогам аудита transdiagnostic-cbt — три новых правила. **A4** уточнено: для экзаменационных режимов scaffolding fading и word limit 60-80 неприменимы (другая структура — винетки 200-400 + feedback 100-150 + адаптивная сложность). **A11**: для профильных/клинических программ полный safety-каркас должен быть на программном уровне (`programs.system_prompt`), не только в режимных — иначе free_chat и темы получают урезанную защиту от self-referent. Прецедент: transdiagnostic-cbt — психологи в свободном чате могли «лечиться об AI», AI не реагировал. **C8**: нет дублей `mode_template.icon` внутри одной программы — на хабе две карточки с одной иконкой не различимы. Прецедент: `tdcbt_exam` и `test_tdcbt-mastery` оба с `check`, фикс — `flask` для Экзамена. |
