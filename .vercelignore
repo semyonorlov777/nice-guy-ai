@@ -1,4 +1,5 @@
 public/*.html
 !public/spiral-test.html
+!public/anketa-demo.html
 docs/
 .claude/
