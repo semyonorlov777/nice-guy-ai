@@ -282,7 +282,8 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 | `comparison` | object | ✅ | ComparisonSection | Таблица сравнения (см. ниже) |
 | `how_it_works` | object | ✅ | HowItWorksSection | Шаги работы `{label, title, steps: [{type, title}], summary_text}` |
 | `chat_header` | object | ✅ | ChatSection | CTA для демо-чата `{title, subtitle}` |
-| `price` | object | ✅ | — | Цены `{trial_text, price_text, anchor_text}` |
+| `price` | object | ✅ | — | Длинное описание цен на лендинге программы `{trial_text, price_text, anchor_text}` |
+| `pricing` | object | ⚡ | ProgramCard (`/programs`, главная) | Источник правды для бейджа в каталоге. Для платных: `{is_paid: true, price_rub: 490, price_label?: "490 ₽"}`. Для бесплатных: `{is_paid: false}` или поле отсутствует (UI считает бесплатной). НЕ путать с `price` выше — то для лендинга, это для карточки в каталоге. |
 | `author` | object | ⚡ | AuthorSection | Секция автора, если `features.author_chat=true` |
 | `test` | object | ⚡ | TestSection | Секция теста, если `features.test=true` |
 

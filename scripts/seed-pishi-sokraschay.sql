@@ -165,6 +165,10 @@ INSERT INTO programs (
       "price_text": "от 299 ₽/мес",
       "anchor_text": "Дешевле одной книги — но с разбором твоих текстов"
     },
+    "pricing": {
+      "is_paid": true,
+      "price_rub": 490
+    },
     "test": {
       "emoji": "🧭",
       "title": "Настрой тренажёр под себя",

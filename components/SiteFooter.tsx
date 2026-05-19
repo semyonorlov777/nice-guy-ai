@@ -25,6 +25,7 @@ export function SiteFooter({ variant = "default" }: SiteFooterProps) {
                 )}
               </li>
               <li><Link href="/auth">Войти в аккаунт</Link></li>
+              <li><Link href="/programs">Все программы</Link></li>
               <li><Link href="/tests">Все тесты</Link></li>
               <li><Link href="/balance" target="_blank" rel="noopener noreferrer">Тарифы и цены</Link></li>
             </ul>

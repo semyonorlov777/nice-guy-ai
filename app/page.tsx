@@ -5,7 +5,7 @@ import { PlatformHero } from "@/components/landing/PlatformHero";
 import { SocialProof } from "@/components/landing/SocialProof";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { ProgramCatalogGrid } from "@/components/landing/ProgramCatalogGrid";
+import { ProgramCatalogPreview } from "@/components/programs/ProgramCatalogPreview";
 import { PersonasSection } from "@/components/landing/PersonasSection";
 import { FaqAccordion } from "@/components/landing/FaqAccordion";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -64,7 +64,7 @@ export default async function HomePage() {
         summary_text={platformLanding.how_it_works.summary_text}
       />
 
-      <ProgramCatalogGrid />
+      <ProgramCatalogPreview />
 
       <PersonasSection
         label={platformLanding.personas.label}
