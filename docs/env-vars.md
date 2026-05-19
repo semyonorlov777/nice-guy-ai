@@ -8,7 +8,8 @@
 |-----------|----------|:---:|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase проекта | ✅ | `lib/supabase.ts`, `lib/supabase-server.ts`, `middleware.ts` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный anon key Supabase | ✅ | `lib/supabase.ts`, `lib/supabase-server.ts`, `middleware.ts` |
-| `NEXT_PUBLIC_TELEGRAM_BOT_ID` | Telegram Bot ID для OIDC логина | ✅ | `components/AuthSheet.tsx` |
+| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Username Telegram-бота для legacy login widget (без `@`). Дефолт `skillstrainerai_bot`. См. [runbook](runbooks/telegram-bot-setup.md). | ❌ | `components/AuthSheet.tsx` |
+| `NEXT_PUBLIC_TELEGRAM_BOT_ID` | **deprecated** — был нужен для OIDC SDK (PR #93 переключил на legacy widget). Больше не читается из кода. | ❌ | — |
 | `NEXT_PUBLIC_SITE_URL` | URL сайта (для redirect'ов, OG) | ✅ | `lib/constants.ts`, `app/api/payments/create/route.ts` |
 | `NEXT_PUBLIC_APP_URL` | URL приложения (fallback) | ❌ | `lib/constants.ts` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Sentry DSN для клиентского мониторинга | ❌ | `sentry.client.config.ts` |
@@ -81,7 +82,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 GOOGLE_GEMINI_API_KEY=AIza...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_TELEGRAM_BOT_ID=123456789
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=skillstrainerai_bot
 TELEGRAM_CLIENT_SECRET=123456789:ABC...
 
 # Для OAuth (можно пропустить, используй /api/auth/dev-login):

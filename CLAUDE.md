@@ -45,7 +45,7 @@ npm run new-mini <slug>
 ## Стек
 
 - **Next.js 16** + TypeScript + Tailwind CSS 4
-- **Supabase** — PostgreSQL + Auth (Magic Link, Telegram OIDC, Яндекс OAuth, Google OAuth) + RLS
+- **Supabase** — PostgreSQL + Auth (Magic Link, Telegram Login Widget, Яндекс OAuth, Google OAuth) + RLS
 - **Google Gemini API** — Flash для чата (через Vercel AI SDK, `lib/ai.ts`), Pro для анализа портретов (`lib/gemini-portrait.ts`)
 - **Vercel AI SDK** — стриминг чата (`streamText` + `toUIMessageStreamResponse`)
 - **Vercel** — деплой из GitHub (автоматический)
@@ -416,7 +416,7 @@ Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-из�
 - `default` — «Войти в аккаунт» (страница /auth, middleware redirect)
 
 ### Методы входа
-- **Telegram** — OIDC SDK (`oauth.telegram.org/js/telegram-login.js`), inline popup
+- **Telegram** — legacy Login Widget (`telegram.org/js/telegram-widget.js`), iframe-кнопка прямо в DOM (НЕ OIDC SDK — он не отдавал имя/фото, см. PR #93). Username бота — через env `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`. Привязка домена бота — `@BotFather → /setdomain`, см. [runbook](docs/runbooks/telegram-bot-setup.md).
 - **Яндекс** — OAuth popup через window.open, callback → /auth/popup-success
 - **Google** — OAuth popup через window.open, callback → /auth/popup-success
 - **Email (Magic Link)** — signInWithOtp, поле видно сразу (не за ссылкой), ссылка на почтовый сервис после отправки
@@ -452,8 +452,9 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - `middleware.ts` — защита routes, исключение для popup flow
 
 ### ENV variables (Telegram)
-- `NEXT_PUBLIC_TELEGRAM_BOT_ID` — Bot ID (клиент + audience check)
-- `TELEGRAM_CLIENT_SECRET` — Bot Token (HMAC для генерации пароля Supabase)
+- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` — username бота для widget (дефолт `skillstrainerai_bot`)
+- `TELEGRAM_CLIENT_SECRET` — Bot Token (HMAC для верификации payload + генерации пароля Supabase)
+- `NEXT_PUBLIC_TELEGRAM_BOT_ID` — **deprecated**, был нужен для OIDC SDK; больше не используется
 
 ### Удалено
 - `components/InChatAuth.tsx` — заменён AuthSheet
@@ -462,7 +463,7 @@ calledRef паттерн — onSuccess вызывается ровно один 
 
 ## Важные нюансы
 
-- Telegram Bot ID — через `NEXT_PUBLIC_TELEGRAM_BOT_ID` env variable
+- Telegram bot username — через `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` env variable (дефолт `skillstrainerai_bot`); привязка домена бота — через `@BotFather → /setdomain`
 - Яндекс OAuth Client ID `ce4f585bbcd846d9bc025c28a60ebe6e`
 - Фейковые email для OAuth: `tg_XXX@niceguy.local`, `ya_XXX@niceguy.local` (Google использует реальный email)
 - Баланс токенов — общий для аккаунта, страница `/program/[slug]/balance`
