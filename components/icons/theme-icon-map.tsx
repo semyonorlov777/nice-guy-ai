@@ -76,4 +76,10 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   mp_affirmations: BookOpenIcon,
   mp_appreciation: HeartLoveIcon,
   mp_abundance_mindset: RocketIcon,
+  // transdiagnostic-cbt (Frank & Davidson road map stages = scales)
+  tdcbt_assessment: BookOpenIcon,
+  tdcbt_mechanism: CompassIcon,
+  tdcbt_hypothesis: LightbulbIcon,
+  tdcbt_intervention: TargetIcon,
+  tdcbt_revision: SparklesIcon,
 };
