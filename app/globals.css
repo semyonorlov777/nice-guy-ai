@@ -2112,11 +2112,16 @@
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
   border-radius: 8px;
   background: var(--accent);
   color: var(--bg-main);
   text-decoration: none;
   transition: background 0.2s ease, transform 0.15s ease;
+  max-width: 100%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .tr-zone-cta:hover {
