@@ -51,6 +51,7 @@ INSERT INTO programs (
   slug,
   title,
   description,
+  category,                 -- 'psychology' | 'marketing' (text, не enum)
   system_prompt,            -- Основной промпт для free_chat
   anonymous_system_prompt,  -- Укороченный промпт для лендинга
   free_chat_welcome,        -- Welcome message для free_chat
@@ -67,6 +68,7 @@ INSERT INTO programs (
   '{book-slug}',
   '{Название книги}',
   '{Описание программы}',
+  'psychology',             -- или 'marketing' (default 'psychology', менять явно для маркетинговых книг)
   E'{system_prompt}',       -- E-строка для escape \n
   E'{anonymous_system_prompt}',
   E'{free_chat_welcome}',

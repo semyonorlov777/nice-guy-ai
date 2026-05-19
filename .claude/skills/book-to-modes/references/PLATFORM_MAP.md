@@ -384,6 +384,7 @@ WHERE program_id = (SELECT id FROM programs WHERE slug = 'BOOK_SLUG')
 
 | Поле | Описание | Пример |
 |------|----------|--------|
+| `category` | Высокоуровневый жанр книги (text, не enum — дёшево добавлять новые) | `'psychology'` (default) или `'marketing'` |
 | `anonymous_system_prompt` | Промпт для демо-чата на лендинге | Короткий, зацепить интерес |
 | `anonymous_quick_replies` | Стартовые кнопки демо-чата | `["Вопрос 1?", "Вопрос 2?"]` |
 | `free_chat_welcome` | Welcome-сообщение свободного чата | Используется как fallback на ленде |
