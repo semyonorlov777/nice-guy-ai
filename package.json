@@ -10,7 +10,8 @@
     "lint": "eslint",
     "check": "bash scripts/check-hardcodes.sh && tsx scripts/check-chat-seed.ts --legacy-relaxed && tsx scripts/check-author-photos.ts",
     "check:chats": "tsx scripts/check-chat-seed.ts",
-    "check:author-photos": "tsx scripts/check-author-photos.ts"
+    "check:author-photos": "tsx scripts/check-author-photos.ts",
+    "new-mini": "node scripts/new-mini.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.43",
