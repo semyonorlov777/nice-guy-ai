@@ -4,10 +4,20 @@ import { createServerClient } from "@supabase/ssr";
 import {
   verifyTelegramAuth,
   findOrCreateUser,
+  TelegramAuthError,
+  type TelegramAuthErrorReason,
   type TelegramUser,
   type TelegramAuthData,
 } from "@/lib/telegram-auth";
 import { apiError } from "@/lib/api-helpers";
+
+const USER_MESSAGE_BY_REASON: Record<TelegramAuthErrorReason, string> = {
+  malformed: "Некорректные данные авторизации Telegram",
+  hash_mismatch:
+    "Не удалось проверить подпись от Telegram. Похоже, бот настроен неверно — напиши нам.",
+  expired:
+    "Срок действия подписи Telegram истёк. Открой страницу заново и попробуй ещё раз.",
+};
 
 export async function POST(request: NextRequest) {
   let tgUser: TelegramUser | null = null;
@@ -20,7 +30,16 @@ export async function POST(request: NextRequest) {
       typeof body?.auth_date !== "number" ||
       typeof body?.hash !== "string"
     ) {
-      return apiError("Некорректные данные авторизации Telegram", 400);
+      Sentry.captureMessage("Telegram payload malformed", {
+        level: "warning",
+        tags: { provider: "telegram", step: "verify", reason: "malformed" },
+        extra: {
+          hasId: typeof body?.id === "number",
+          hasAuthDate: typeof body?.auth_date === "number",
+          hasHash: typeof body?.hash === "string",
+        },
+      });
+      return apiError(USER_MESSAGE_BY_REASON.malformed, 400);
     }
 
     const botToken = process.env.TELEGRAM_CLIENT_SECRET!;
@@ -31,12 +50,17 @@ export async function POST(request: NextRequest) {
     if (!session) {
       console.error("[auth/telegram/verify] session_failed", {
         telegramId: tgUser.id,
-        username: tgUser.username,
+        hasUsername: Boolean(tgUser.username),
       });
       Sentry.captureMessage("Telegram session_failed", {
         level: "error",
-        tags: { provider: "telegram", step: "session" },
-        extra: { telegramId: tgUser.id, username: tgUser.username },
+        tags: { provider: "telegram", step: "session", reason: "session_failed" },
+        extra: {
+          telegramId: tgUser.id,
+          hasUsername: Boolean(tgUser.username),
+          hasName: Boolean(tgUser.name),
+          hasPhoto: Boolean(tgUser.picture),
+        },
       });
       return apiError("Не удалось создать сессию", 500);
     }
@@ -70,18 +94,32 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (err) {
+    if (err instanceof TelegramAuthError) {
+      console.error("[auth/telegram/verify] auth_error", {
+        reason: err.reason,
+        message: err.message,
+      });
+      Sentry.captureException(err, {
+        level: err.reason === "expired" ? "warning" : "error",
+        tags: { provider: "telegram", step: "verify", reason: err.reason },
+        extra: { telegramId: tgUser?.id ?? null },
+      });
+      const status = err.reason === "malformed" ? 400 : 401;
+      return apiError(USER_MESSAGE_BY_REASON[err.reason], status);
+    }
+
     console.error("[auth/telegram/verify] error", {
       telegramId: tgUser?.id ?? null,
-      username: tgUser?.username ?? null,
+      hasUsername: Boolean(tgUser?.username),
       error: err instanceof Error ? err.message : String(err),
     });
     Sentry.captureException(err, {
-      tags: { provider: "telegram", step: "verify" },
+      tags: { provider: "telegram", step: "verify", reason: "unknown" },
       extra: {
         telegramId: tgUser?.id ?? null,
-        username: tgUser?.username ?? null,
+        hasUsername: Boolean(tgUser?.username),
       },
     });
-    return apiError(err instanceof Error ? err.message : "Ошибка верификации", 500);
+    return apiError("Ошибка верификации Telegram. Попробуй ещё раз.", 500);
   }
 }

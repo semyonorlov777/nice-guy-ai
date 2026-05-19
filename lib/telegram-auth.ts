@@ -4,6 +4,18 @@ import { findOrCreateOAuthUser } from "@/lib/oauth-common";
 // ---------- Telegram Login Widget (legacy) HMAC verification ----------
 // https://core.telegram.org/widgets/login#checking-authorization
 
+export type TelegramAuthErrorReason =
+  | "malformed"
+  | "hash_mismatch"
+  | "expired";
+
+export class TelegramAuthError extends Error {
+  constructor(public reason: TelegramAuthErrorReason, message: string) {
+    super(message);
+    this.name = "TelegramAuthError";
+  }
+}
+
 export interface TelegramUser {
   id: string;
   name: string;
@@ -29,7 +41,7 @@ export function verifyTelegramAuth(
   botToken: string,
 ): TelegramUser {
   if (!data.hash || typeof data.hash !== "string") {
-    throw new Error("Telegram hash is missing");
+    throw new TelegramAuthError("malformed", "Telegram hash is missing");
   }
 
   const { hash, ...rest } = data;
@@ -53,12 +65,15 @@ export function verifyTelegramAuth(
     provided.length !== expected.length ||
     !crypto.timingSafeEqual(provided, expected)
   ) {
-    throw new Error("Telegram hash verification failed");
+    throw new TelegramAuthError(
+      "hash_mismatch",
+      "Telegram hash verification failed — bot token in env likely doesn't match the bot that signed this payload",
+    );
   }
 
   const now = Math.floor(Date.now() / 1000);
   if (now - data.auth_date > AUTH_MAX_AGE_SECONDS) {
-    throw new Error("Telegram auth_date is too old");
+    throw new TelegramAuthError("expired", "Telegram auth_date is too old");
   }
 
   const fullName = [data.first_name, data.last_name]
@@ -86,8 +101,8 @@ export async function findOrCreateUser(tgUser: TelegramUser) {
     lookupField: "telegram_id",
     lookupValue: Number(tgUser.id),
     existingProfileUpdate: {
-      telegram_username: tgUser.username,
-      avatar_url: tgUser.picture,
+      telegram_username: tgUser.username || undefined,
+      avatar_url: tgUser.picture || undefined,
       name: tgUser.name || undefined,
     },
     newProfileData: {

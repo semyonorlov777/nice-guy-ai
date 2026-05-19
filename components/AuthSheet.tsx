@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
 import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
-const TELEGRAM_BOT_USERNAME = "skillstrainerai_bot";
+const TELEGRAM_BOT_USERNAME =
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "skillstrainerai_bot";
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
 
 interface TelegramAuthData {
@@ -157,6 +158,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   const [tgLoading, setTgLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [scriptReady, setScriptReady] = useState(false);
+  const [widgetFailed, setWidgetFailed] = useState(false);
   const [showMax, setShowMax] = useState(false);
 
   const calledRef = useRef(false);
@@ -184,6 +186,8 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setError("");
       setLoading(false);
       setTgLoading(false);
+      setScriptReady(false);
+      setWidgetFailed(false);
       setShowMax(false);
       if (pollRef.current) {
         clearInterval(pollRef.current);
@@ -302,12 +306,31 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
     script.setAttribute("data-lang", "ru");
-    script.onload = () => setScriptReady(true);
+
+    // Если виджет не загрузился за 6с — обычно из-за того, что домен не
+    // привязан к боту в @BotFather (виджет молча отказывается рендерить
+    // iframe). Показываем пользователю явный fallback и шлём breadcrumb
+    // в Sentry, чтобы диагностировать на проде.
+    const failTimer = setTimeout(() => {
+      setWidgetFailed(true);
+      Sentry.captureMessage("telegram_widget_timeout", {
+        level: "warning",
+        tags: { provider: "telegram", step: "widget_load" },
+        extra: { botUsername: TELEGRAM_BOT_USERNAME },
+      });
+    }, 6000);
+
+    script.onload = () => {
+      clearTimeout(failTimer);
+      setScriptReady(true);
+      setWidgetFailed(false);
+    };
 
     container.innerHTML = "";
     container.appendChild(script);
 
     return () => {
+      clearTimeout(failTimer);
       delete window.onTelegramAuth;
       container.innerHTML = "";
     };
@@ -459,10 +482,22 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
             <div className="auth-sheet-tg-widget">
               <div ref={telegramWidgetRef} aria-hidden={!scriptReady} />
-              {!scriptReady && (
+              {!scriptReady && !widgetFailed && (
                 <div className="auth-sheet-tg-widget-placeholder">
                   <TelegramIcon />
                   <span>Telegram загружается...</span>
+                </div>
+              )}
+              {widgetFailed && (
+                <div
+                  className="auth-sheet-tg-widget-placeholder"
+                  role="status"
+                >
+                  <TelegramIcon />
+                  <span>
+                    Telegram-кнопка не загрузилась. Войди через Яндекс, Google
+                    или email ниже.
+                  </span>
                 </div>
               )}
               {tgLoading && (
