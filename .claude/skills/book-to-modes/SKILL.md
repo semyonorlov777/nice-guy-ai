@@ -494,7 +494,8 @@ WHERE slug = 'BOOK_SLUG';
   - **Внешние URL запрещены** — каждый новый домен требует правки CSP `img-src` в [next.config.ts](../../../next.config.ts) (иначе фото не грузится на проде). Локальные пути не требуют CSP-изменений, не зависят от внешних CDN, не ломаются при смене URL у издательства.
   - Прецедент: eq-2-0 — Бредберри с нового домена `mann-ivanov-ferber.ru` не рендерился из-за CSP-ограничений (бриф #1). Решение — скачать локально.
   - Прецедент: seven-principles — первая итерация загрузила фото Готтмана с Wikipedia thumbnail 38 КБ — мутное, не выглядело как «фото учёного».
-  - **Проверка:** скрипт `npm run check:author-photos` ругается на файлы <100 КБ в `public/authors/`. Запускать перед PR.
+  - **🔴 Никогда не копируй обложку книги в `public/authors/`.** Даже если автор изображён на обложке книги — `public/books/<slug>/cover.jpg` и `public/authors/<slug>.jpg` должны быть РАЗНЫМИ файлами с разным md5. Иначе на лендинге одна и та же картинка в двух местах (секция «О книге» и «Об авторе»). Прецедент: borba-za-vnimanie 2026-05 — обложка Белоусова была скопирована как фото автора, заметили только во время аудита.
+  - **Проверка:** скрипт `npm run check:author-photos` ругается на файлы <100 КБ в `public/authors/` И на md5-совпадение с обложкой книги (правило `author-photo-equals-cover`). Запускать перед PR.
 - `name`, `credentials` (1-2 предложения), `quote` (характерная цитата автора)
 
 **i) Anonymous chat** (вне landing_data, но часть ленда):
@@ -580,6 +581,10 @@ npm run check:chats                    # все книги
 - `program_themes.icon_key` ссылается на несуществующую запись в `THEME_ICON_MAP` (components/icons/theme-icon-map.tsx) — на хабе пустой кружок темы (правило `theme-icon-missing`, error)
 - `mode_templates.icon` использованный в `program_modes` отсутствует в `INSTRUMENT_ICON_MAP` (components/hub/InstrumentList.tsx) — карточка без иконки (правило `mode-icon-missing`, warn)
 - `landing_data.author.photo_url` локальный, но файл не существует в `public/authors/` — broken image (правило `author-photo-file-missing`, warn)
+
+**Cross-mode и калибровка (после ретро borba-za-vnimanie 2026-05):**
+- Литерал `{{cross_mode_data}}` в любом `system_prompt` (programs или program_modes) — placeholder скопирован из шаблонов, не обрабатывается в коде, Gemini видит фигурные скобки буквально (правило `cross-mode-data-placeholder`, warn). Фикс: удалить строку, runtime подмешивает кросс-режимные данные через `appendCalibrationContext` / `appendPortraitContext` / `appendTestScores`.
+- У программы есть `program_modes` с `chat_type` похожим на калибровку (суффикс `_calibration` или имя `calibration`), но этот chat_type не упомянут в массиве `CALIBRATION_CHAT_TYPES` в [lib/chat/prepare-context.ts](../../../scripts/check-chat-seed.ts) — калибровка декларативная: пользователь её проходит, но контекст не подмешивается в следующий режим (правило `calibration-not-wired`, warn). Фикс: добавить chat_type в массив. Backlog: вынести whitelist в БД-флаг.
 
 **Hub и тест-system-prompt:**
 - `programs.hub_messages` пуст или не содержит 3 обязательных ключа (`first`, `returning_test`, `returning_notest`) — на хабе пустой золотой кружок (правило `hub-messages-missing` / `hub-messages-key-missing`)
@@ -672,7 +677,9 @@ npm run dev   # → http://localhost:3000
 - [ ] Файл фото автора реально существует в `public/authors/<slug>.jpg` (помимо `photo_url = /authors/...` пути) — иначе broken image на лендинге (линтер: `author-photo-file-missing`)
 - [ ] Нет запрещённых фраз из `docs/brand-glossary.md` (`AI-тренажёр`, `Nice Guy AI`, `ИИ-<сущ.>`, и т.д.) в seed-полях — линтер парсит словарь и подсвечивает (правило: `brand-banned-phrase`)
 - [ ] **`npm run check:chats -- --book=<slug>` — 0 errors** (без этого книга не считается готовой)
-- [ ] **`npm run check:author-photos` — фото автора ≥100 КБ**
+- [ ] **`npm run check:author-photos` — фото автора ≥100 КБ + md5 фото ≠ md5 обложки книги** (правило `author-photo-equals-cover`)
+- [ ] Нет литерала `{{cross_mode_data}}` ни в одном `system_prompt` (линтер: `cross-mode-data-placeholder`) — placeholder не обрабатывается в коде, надо удалить или заменить runtime-данные
+- [ ] Если есть режим калибровки (chat_type содержит `calibration`) — его chat_type **добавлен в массив `CALIBRATION_CHAT_TYPES` в [lib/chat/prepare-context.ts](../../../lib/chat/prepare-context.ts)** (линтер: `calibration-not-wired`). Иначе пользователь проходит калибровку, но следующий режим её не видит — урок borba-za-vnimanie 2026-05
 
 ## Самопроверка перед сдачей
 
