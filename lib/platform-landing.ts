@@ -43,7 +43,7 @@ export const platformLanding: PlatformLandingData = {
     title: "Тренажёры по книгам по <em>психологии</em>",
     subtitle:
       "От прочитал до применил. Каждая книга — не теория, а тренажёр: тест на ваши паттерны, чат с автором и упражнения, которые приводят к изменениям.",
-    primary_cta: { text: "Выбрать программу", href: "#catalog" },
+    primary_cta: { text: "Выбрать программу", href: "/programs" },
     secondary_cta: { text: "Пройти бесплатный тест", href: "/tests" },
     hint: "Без регистрации. Тесты и первое сообщение в чате — бесплатно.",
   },
@@ -179,7 +179,7 @@ export const platformLanding: PlatformLandingData = {
   final_cta: {
     title: "С чего начать?",
     subtitle: "Выберите программу по книге или пройдите один из бесплатных тестов — карту ваших паттернов или навыков.",
-    primary: { text: "Выбрать программу", href: "#catalog" },
+    primary: { text: "Выбрать программу", href: "/programs" },
     secondary: { text: "Выбрать тест", href: "/tests" },
   },
 };

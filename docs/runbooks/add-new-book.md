@@ -163,9 +163,14 @@ JSONB-поле в `programs` с данными лендинга. Структу�
   },
   "social_proof": [
     { "icon": "users", "main": "15M+", "sub": "копий продано" }
-  ]
+  ],
+  "pricing": {
+    "is_paid": false
+  }
 }
 ```
+
+> 💰 **Платная программа?** В `landing_data.pricing` укажи `{"is_paid": true, "price_rub": 490}` — карточка в каталоге `/programs` получит акцентный бейдж «490 ₽» вместо «Бесплатно». Для бесплатных можно опустить `pricing` или ставить `{"is_paid": false}` — fallback в `lib/queries/programs-catalog.ts` всё равно посчитает бесплатной.
 
 ### 5. Выполнить SQL в Supabase
 

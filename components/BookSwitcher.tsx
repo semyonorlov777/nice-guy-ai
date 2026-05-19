@@ -88,8 +88,8 @@ export function BookSwitcher({
           </Link>
         );
       })}
-      <Link href="/#catalog" className="book-switcher-all-link" onClick={close}>
-        <span>Все книги</span>
+      <Link href="/programs" className="book-switcher-all-link" onClick={close}>
+        <span>Все программы</span>
         <span>›</span>
       </Link>
     </>
