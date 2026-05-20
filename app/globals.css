@@ -4926,6 +4926,12 @@ html:not(.no-transition) .app-main {
   margin: 0 0 16px;
 }
 
+.anketa-field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
 .anketa-textarea {
   width: 100%;
   min-height: 180px;

@@ -37,7 +37,6 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       id: "context_intent",
       type: "hybrid",
       title: "Что привело тебя к этой книге?",
-      help: "Выбери ближе всего или напиши своими словами",
       options: [
         {
           value: "pleasing",

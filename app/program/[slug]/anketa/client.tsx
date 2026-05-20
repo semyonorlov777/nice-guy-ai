@@ -142,6 +142,9 @@ export function AnketaClient({
           <h2 className="anketa-q-title">{currentQ.title}</h2>
           {currentQ.help && <p className="anketa-q-help">{currentQ.help}</p>}
 
+          {hasOptions && (
+            <div className="anketa-field-label">Напиши своими словами</div>
+          )}
           <textarea
             ref={textareaRef}
             className="anketa-textarea"
@@ -152,7 +155,7 @@ export function AnketaClient({
 
           {hasOptions && (
             <>
-              <div className="anketa-chips-label">Часто это про:</div>
+              <div className="anketa-chips-label">Или выбери что ближе всего</div>
               <div className="anketa-chips">
                 {currentQ.options?.map((opt) => (
                   <button
