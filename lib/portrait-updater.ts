@@ -12,6 +12,21 @@ import { createServiceClient } from "@/lib/supabase-server";
 import { analyzeForPortrait } from "@/lib/gemini-portrait";
 import { PORTRAIT_ANALYST_PROMPT } from "@/lib/prompts/portrait-analyst";
 import { createRateLimit } from "@/lib/rate-limit";
+import { getFacts, type IdentityFacts } from "@/lib/personalization";
+
+function formatAnketaForPortrait(facts: IdentityFacts): string {
+  if (Object.keys(facts).length === 0) return "";
+  const lines: string[] = [];
+  if (facts.context_intent)
+    lines.push(`- Что привело к книге: ${facts.context_intent}`);
+  if (facts.problem)
+    lines.push(`- Что не так в жизни/работе: ${facts.problem}`);
+  if (facts.implication)
+    lines.push(`- Что будет, если не менять: ${facts.implication}`);
+  if (facts.need_payoff)
+    lines.push(`- Как поймёт, что программа сработала: ${facts.need_payoff}`);
+  return `\nАНКЕТА ПОЛЬЗОВАТЕЛЯ (его собственный запрос, не путать с наблюдениями из чата):\n${lines.join("\n")}\n`;
+}
 
 // Per-user rate limit: 1 обновление портрета в минуту.
 // updatePortrait вызывает Gemini Pro (дороже Flash), поэтому отдельный жёсткий
@@ -70,6 +85,13 @@ export async function updatePortrait(
   const currentPortrait = portrait?.content || {};
   console.log("[PORTRAIT] Current portrait exists:", !!portrait);
 
+  // 3.5 Load user's anketa (identity facts) — даёт Gemini Pro контекст
+  // того, что пользователь сам сказал о своём запросе, чтобы анализ диалога
+  // учитывал это, а не делал выводы в вакууме.
+  const anketaFacts = await getFacts(supabase, chat.user_id);
+  const anketaBlock = formatAnketaForPortrait(anketaFacts);
+  console.log("[PORTRAIT] Anketa facts loaded:", Object.keys(anketaFacts).length, "fields");
+
   // 4. Load program's portrait_prompt (fallback to file)
   const { data: programRow } = await supabase
     .from("programs")
@@ -101,7 +123,7 @@ export async function updatePortrait(
   const userMessage = `
 ТЕКУЩИЙ ПОРТРЕТ:
 ${JSON.stringify(currentPortrait, null, 2)}
-
+${anketaBlock}
 ИСТОЧНИК: ${sourceLabel}
 ТРИГГЕР: ${trigger}
 ДАТА: ${new Date().toISOString()}

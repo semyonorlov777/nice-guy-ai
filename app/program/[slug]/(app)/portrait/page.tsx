@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { PortraitContent, PortraitSection } from "@/types/portrait";
 import { isLegacyPortrait, convertLegacyPortrait } from "@/types/portrait";
 import { requireProgramFeature } from "@/lib/queries/program";
+import { getFacts, type IdentityFacts } from "@/lib/personalization";
 
 export default async function PortraitPage({
   params,
@@ -20,8 +21,8 @@ export default async function PortraitPage({
 
   const program = await requireProgramFeature(supabase, slug, "portrait");
 
-  // Параллельно: COUNT exercises + portrait load (оба зависят только от program.id).
-  const [exercisesCountRes, portraitRes] = await Promise.all([
+  // Параллельно: COUNT exercises + portrait load + анкета пользователя.
+  const [exercisesCountRes, portraitRes, anketaFacts] = await Promise.all([
     supabase
       .from("exercises")
       .select("id", { count: "exact", head: true })
@@ -32,10 +33,12 @@ export default async function PortraitPage({
       .eq("user_id", user.id)
       .eq("program_id", program.id)
       .maybeSingle(),
+    getFacts(supabase, user.id),
   ]);
 
   const totalExercises = exercisesCountRes.count;
   const portrait = portraitRes.data;
+  const hasAnketa = Object.keys(anketaFacts).length > 0;
 
   const raw = portrait?.content;
   let content: PortraitContent | null = null;
@@ -72,13 +75,16 @@ export default async function PortraitPage({
           )}
         </div>
 
+        {hasAnketa && <AnketaSection facts={anketaFacts} />}
+
         {isEmpty ? (
           /* Empty state */
           <div className="portrait-empty">
             <div className="portrait-empty-icon">&#x25CE;</div>
             <div className="portrait-empty-text">
-              Портрет пока пуст. Пройди несколько упражнений,
-              и Система начнёт собирать твой психологический профиль.
+              {hasAnketa
+                ? "AI-портрет начнёт собираться после нескольких упражнений или свободного чата. Пока что я знаю про тебя только из анкеты — это видно выше."
+                : "Портрет пока пуст. Пройди несколько упражнений, и Система начнёт собирать твой психологический профиль."}
             </div>
             <Link href={`/program/${slug}/exercises`} className="portrait-empty-btn">
               Перейти к упражнениям
@@ -97,6 +103,35 @@ export default async function PortraitPage({
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AnketaSection({ facts }: { facts: IdentityFacts }) {
+  const items: Array<{ label: string; value: string }> = [];
+  if (facts.context_intent)
+    items.push({ label: "Что привело", value: facts.context_intent });
+  if (facts.problem)
+    items.push({ label: "Что не так", value: facts.problem });
+  if (facts.implication)
+    items.push({ label: "Если не менять", value: facts.implication });
+  if (facts.need_payoff)
+    items.push({ label: "Как пойму, что сработало", value: facts.need_payoff });
+
+  return (
+    <div className="portrait-anketa">
+      <div className="portrait-anketa-header">
+        <h2 className="portrait-anketa-title">Твой запрос</h2>
+        <span className="portrait-anketa-tag">из анкеты</span>
+      </div>
+      <div className="portrait-anketa-list">
+        {items.map((it, i) => (
+          <div key={i} className="portrait-anketa-item">
+            <div className="portrait-anketa-label">{it.label}</div>
+            <div className="portrait-anketa-value">{it.value}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
