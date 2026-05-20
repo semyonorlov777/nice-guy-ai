@@ -4843,6 +4843,8 @@ html:not(.no-transition) .app-main {
   color: var(--text-primary);
   font-family: var(--font-body);
   padding: 32px 16px 120px;
+  display: flex;
+  flex-direction: column;
 }
 .anketa-header {
   max-width: 560px;
@@ -4910,10 +4912,12 @@ html:not(.no-transition) .app-main {
 
 .anketa-body {
   max-width: 560px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 40px;
+  flex: 1;
 }
 .anketa-q-title {
   font-family: var(--font-display);
@@ -4995,9 +4999,8 @@ html:not(.no-transition) .app-main {
 
 .anketa-footer {
   max-width: 560px;
+  width: 100%;
   margin: 40px auto 0;
-  position: sticky;
-  bottom: 0;
   padding: 16px 0 8px;
   background: linear-gradient(to top, var(--bg-main) 80%, transparent);
 }
@@ -5056,6 +5059,18 @@ html:not(.no-transition) .app-main {
   font-size: 13px;
   margin-bottom: 12px;
   text-align: center;
+}
+.anketa-saved {
+  color: var(--success);
+  font-size: 12px;
+  margin-bottom: 10px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  animation: anketa-saved-in 0.2s ease;
+}
+@keyframes anketa-saved-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 600px) {
