@@ -29,7 +29,7 @@ export type AnketaQuestion = {
 };
 
 /** Программы, для которых сейчас определена анкета. Расширяется по мере подключения книг. */
-export type AnketaProgramSlug = "nice-guy";
+export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -74,6 +74,51 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что эта программа сработала?",
       help: "Что ты будешь делать или думать иначе?",
       placeholder: "Например: смогу сказать «нет» без чувства вины…",
+    },
+  ],
+  "pishi-sokraschay": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Что у тебя болит с текстами?",
+      help: "Выбери, что ближе всего, или напиши своими словами",
+      options: [
+        {
+          value: "purpose",
+          label: "Не понимаю, для кого и зачем пишу — додумываю в процессе",
+          chipLabel: "не вижу цели",
+        },
+        {
+          value: "thesis",
+          label: "Получается водянисто — главное теряется среди деталей",
+          chipLabel: "много воды",
+        },
+        {
+          value: "structure",
+          label: "Тексты длинные — не дочитывают, нет нормального заголовка",
+          chipLabel: "не дочитывают",
+        },
+        {
+          value: "style",
+          label: "Канцелярит и штампы — хочу писать по-человечески",
+          chipLabel: "канцелярит и штампы",
+        },
+      ],
+      placeholder: "Например: пишу лендинги, но конверсия слабая…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Какие тексты пишешь и что не получается?",
+      help: "Конкретно: кем работаешь, какие тексты, что застревает. Например, «не могу сократить отчёт для CEO» или «начинаю издалека».",
+      placeholder: "Например: пишу письма клиентам, но они не отвечают…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что программа сработала?",
+      help: "Что будешь писать или делать иначе?",
+      placeholder: "Например: смогу написать продающий лендинг за час без воды…",
     },
   ],
 };
