@@ -1,0 +1,2331 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Почему я не понимаю, куда мне идти — тест Карины</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================
+   ТОКЕНЫ (светлая тема Книжного Спарринга)
+   ========================================================== */
+:root {
+  --bg: #FAFAF5;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-soft: #F4F0E8;
+  --bg-warm: #F7F1E5;
+
+  --text-primary: #1A1A1A;
+  --text-secondary: #5C5C5C;
+  --text-muted: #9A9A95;
+
+  --accent: #C9963B;
+  --accent-hover: #B58430;
+  --accent-on: #FFFFFF;
+  --accent-soft: rgba(201, 150, 59, 0.10);
+  --accent-glow: rgba(201, 150, 59, 0.18);
+  --accent-light: rgba(201, 150, 59, 0.04);
+
+  --tg-blue: #2AABEE;
+  --tg-blue-hover: #1E96D4;
+
+  --border-light: #E8E2D5;
+  --border-soft: #F0EBE0;
+  --border-strong: #D8CDB5;
+
+  --success: #4A8B5C;
+  --danger: #C24545;
+
+  --shadow-soft: 0 2px 12px rgba(20, 15, 5, 0.04);
+  --shadow-md: 0 6px 24px rgba(20, 15, 5, 0.08);
+  --shadow-lg: 0 16px 48px rgba(20, 15, 5, 0.10);
+  --shadow-card: 0 12px 32px rgba(20, 15, 5, 0.06);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --font-body: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ==========================================================
+   БАЗА
+   ========================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+a { color: inherit; }
+
+#app {
+  position: relative;
+  min-height: 100vh;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  min-height: 100vh;
+  padding: 32px 20px 64px;
+  animation: screenIn 420ms var(--ease);
+}
+.screen.active { display: block; }
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.container-wide {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+/* ==========================================================
+   WELCOME
+   ========================================================== */
+.welcome-inner {
+  padding-top: 6vh;
+  text-align: center;
+}
+
+.welcome-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  border-radius: 100px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+}
+.welcome-author-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(34px, 6.8vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  margin: 0 0 24px;
+  color: var(--text-primary);
+}
+
+.welcome-lead {
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 560px;
+  margin: 0 auto 36px;
+}
+.welcome-lead p { margin: 0 0 14px; }
+.welcome-lead p:last-child { margin: 0; }
+
+.welcome-pain-list {
+  text-align: left;
+  max-width: 540px;
+  margin: 0 auto 40px;
+  padding: 28px 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+.welcome-pain-list-title {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.welcome-pain-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.welcome-pain-list li {
+  position: relative;
+  padding-left: 28px;
+  font-size: 15.5px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.welcome-pain-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 14px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.welcome-promise {
+  font-size: 15.5px;
+  color: var(--text-secondary);
+  max-width: 520px;
+  margin: 0 auto 36px;
+  padding: 0;
+  line-height: 1.65;
+}
+.welcome-promise strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 40px;
+  background: var(--text-primary);
+  color: #fff;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: transform 200ms var(--ease), background 200ms var(--ease), box-shadow 200ms var(--ease);
+  box-shadow: 0 6px 20px rgba(26, 26, 26, 0.18);
+}
+.btn-primary:hover {
+  background: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(26, 26, 26, 0.25);
+}
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 40px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  transition: transform 200ms var(--ease), background 200ms var(--ease), box-shadow 200ms var(--ease);
+  box-shadow: 0 8px 24px var(--accent-glow);
+}
+.btn-accent:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px var(--accent-glow);
+}
+.btn-accent:active { transform: translateY(0) scale(0.98); }
+
+.welcome-meta {
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================
+   QUESTION
+   ========================================================== */
+.q-shell {
+  padding-top: 24px;
+}
+
+.q-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 44px;
+}
+.q-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.q-progress-bar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.q-seg {
+  height: 4px;
+  background: var(--border-soft);
+  border-radius: 100px;
+  transition: background 400ms var(--ease);
+}
+.q-seg.done { background: var(--accent); }
+.q-seg.current {
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.q-body {
+  animation: qFade 360ms var(--ease);
+}
+@keyframes qFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.q-counter {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.q-text {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(26px, 4.5vw, 36px);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+.q-hint {
+  font-size: 14.5px;
+  color: var(--text-muted);
+  margin: 0 0 36px;
+  line-height: 1.5;
+}
+
+.q-cta-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.q-cta-hint::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.18;
+  animation: pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 0.18; }
+  50%      { transform: scale(1.4); opacity: 0.5; }
+}
+
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  text-align: left;
+  padding: 20px 22px;
+  background: var(--bg-card);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  transition: border-color 180ms var(--ease), background 180ms var(--ease), transform 120ms var(--ease), box-shadow 180ms var(--ease);
+  position: relative;
+}
+.option:hover {
+  border-color: var(--accent);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.option:active { transform: translateY(0) scale(0.99); }
+.option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.option-num {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-warm);
+  border: 2px solid var(--border-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 0;
+  transition: background 180ms var(--ease), color 180ms var(--ease), border-color 180ms var(--ease), transform 180ms var(--ease);
+}
+.option:hover .option-num {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+.option.selected .option-num {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+}
+.option-text {
+  flex: 1;
+  padding: 2px 0;
+}
+
+.q-footer {
+  margin-top: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.q-back {
+  color: var(--text-secondary);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 180ms var(--ease);
+}
+.q-back:hover { background: var(--bg-soft); }
+.q-back[disabled] { opacity: 0.35; pointer-events: none; }
+
+/* ==========================================================
+   AUTH SCREEN (между 5-м и 6-м вопросом)
+   ========================================================== */
+.auth-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: 5vh;
+}
+
+.auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: 36px 32px 32px;
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.auth-progress {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 4.5vw, 32px);
+  line-height: 1.2;
+  margin: 0 0 14px;
+  color: var(--text-primary);
+}
+
+.auth-lead {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 28px;
+}
+
+.auth-tg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 18px 24px;
+  background: var(--tg-blue);
+  color: #fff;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 200ms var(--ease), transform 200ms var(--ease), box-shadow 200ms var(--ease);
+  box-shadow: 0 8px 24px rgba(42, 171, 238, 0.28);
+}
+.auth-tg-btn:hover {
+  background: var(--tg-blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(42, 171, 238, 0.32);
+}
+.auth-tg-btn:active { transform: translateY(0) scale(0.99); }
+.auth-tg-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.auth-tg-btn svg { flex-shrink: 0; }
+
+.auth-error {
+  background: rgba(194, 69, 69, 0.08);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  margin: 0 0 16px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.auth-trust {
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.auth-trust svg { flex-shrink: 0; }
+
+.auth-after {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================
+   ANALYZING
+   ========================================================== */
+.analyzing-shell {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-top: 6vh;
+  text-align: center;
+}
+
+.analyzing-orb-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto 40px;
+}
+.analyzing-orb {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 600ms var(--ease), border-color 600ms var(--ease);
+}
+.analyzing-orb svg {
+  width: 34px;
+  height: 34px;
+  color: var(--accent);
+  animation: orbPulse 3s ease-in-out infinite;
+}
+.analyzing-orb.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.analyzing-orb.done svg {
+  color: var(--accent-on);
+  animation: none;
+}
+.analyzing-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.analyzing-ring circle {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.analyzing-ring .ring-bg { stroke: var(--border-soft); }
+.analyzing-ring .ring-fg {
+  stroke: var(--accent);
+  stroke-dasharray: 308.8;
+  stroke-dashoffset: 308.8;
+  transition: stroke-dashoffset 1.6s var(--ease);
+}
+.analyzing-orb-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+.analyzing-orb-wrap.done .analyzing-orb-glow {
+  animation: orbGlow 1.6s var(--ease) forwards;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+@keyframes orbGlow {
+  0%   { transform: scale(0.8); opacity: 0; }
+  50%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.analyzing-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(24px, 4.2vw, 30px);
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+.analyzing-subtitle {
+  font-size: 14.5px;
+  color: var(--text-muted);
+  margin: 0 0 38px;
+  line-height: 1.55;
+}
+
+.analyzing-stages {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-soft);
+}
+
+.stage { position: relative; }
+.stage-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition: background 300ms var(--ease), box-shadow 300ms var(--ease);
+  flex-shrink: 0;
+}
+.stage.active .stage-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+.stage.done .stage-dot {
+  background: var(--accent);
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 4px var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 8px var(--accent-soft); }
+}
+.stage-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+.substeps {
+  margin-left: 20px;
+  padding-left: 14px;
+  border-left: 1px dashed var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+.substep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 360ms var(--ease), transform 360ms var(--ease), color 360ms var(--ease);
+  padding: 3px 0;
+}
+.substep.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.substep.active { color: var(--text-primary); }
+.substep.done {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+.substep-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 240ms var(--ease);
+}
+.substep.active .substep-dot { background: var(--accent); }
+.substep.done .substep-dot { background: var(--success); }
+
+.analyzing-hint {
+  margin-top: 32px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 600ms var(--ease);
+  font-style: italic;
+}
+.analyzing-hint.visible { opacity: 1; }
+
+/* ==========================================================
+   RESULT
+   ========================================================== */
+.section {
+  padding: 36px 0;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 700ms var(--ease), transform 700ms var(--ease);
+}
+.section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.result-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Hero */
+.result-hero { text-align: center; padding-top: 28px; }
+.result-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.result-archetype {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(38px, 7vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+.highlight { color: var(--accent); }
+.result-tagline {
+  font-size: 18px;
+  color: var(--text-secondary);
+  max-width: 540px;
+  margin: 0 auto 28px;
+  line-height: 1.55;
+}
+.result-divider {
+  width: 60px;
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 auto;
+}
+
+/* Spiral viz */
+.spiral-section { text-align: center; padding-top: 20px; }
+.spiral-label {
+  font-size: 12px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+.spiral-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+}
+.spiral-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.spiral-arc {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.6s var(--ease), stroke-width 600ms var(--ease);
+}
+.spiral-arc.bg {
+  stroke: var(--border-soft);
+  stroke-width: 14;
+}
+.spiral-arc.dim {
+  stroke: var(--accent);
+  stroke-width: 10;
+  opacity: 0.25;
+}
+.spiral-arc.main {
+  stroke: var(--accent);
+  stroke-width: 18;
+  opacity: 1;
+  filter: drop-shadow(0 4px 12px rgba(201, 150, 59, 0.3));
+}
+.spiral-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.spiral-pct {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.spiral-pct-suffix {
+  font-size: 22px;
+  color: var(--accent);
+  vertical-align: top;
+  margin-left: 2px;
+}
+.spiral-pct-label {
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.spiral-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 24px;
+  margin-top: 28px;
+}
+.spiral-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+.spiral-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0.25;
+}
+.spiral-legend-item.main .spiral-legend-dot { opacity: 1; }
+.spiral-legend-name { font-weight: 600; color: var(--text-primary); }
+.spiral-caption {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 22px;
+  max-width: 460px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* Quote */
+.quote-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  text-align: center;
+  position: relative;
+  box-shadow: var(--shadow-soft);
+}
+.quote-block::before {
+  content: "“";
+  font-family: var(--font-display);
+  font-size: 80px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.25;
+  position: absolute;
+  top: 6px;
+  left: 22px;
+}
+.quote-text {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(20px, 3.2vw, 24px);
+  line-height: 1.45;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+.quote-caption {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Section heads */
+.section-label {
+  font-size: 12px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 4.5vw, 34px);
+  line-height: 1.15;
+  margin: 0 0 24px;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Recognition */
+.recognition {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.recognition-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 24px 24px 22px;
+}
+.recognition-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 4px 10px;
+  background: var(--accent-soft);
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+.recognition-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Not yours */
+.not-yours {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.not-yours-card {
+  background: var(--bg-warm);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px 22px 20px;
+}
+.not-yours-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+}
+.strike {
+  text-decoration: line-through;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+}
+.not-yours-text {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Shift */
+.shift-block {
+  background: linear-gradient(135deg, var(--accent-light), var(--bg-card));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  border-left: 4px solid var(--accent);
+}
+.shift-label {
+  font-size: 12px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.shift-text {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(20px, 3.2vw, 24px);
+  line-height: 1.45;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Offers */
+.offers-intro {
+  text-align: center;
+  margin: 0 0 28px;
+}
+.offers-intro h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 4.5vw, 36px);
+  line-height: 1.15;
+  margin: 0 0 14px;
+  color: var(--text-primary);
+}
+.offers-intro p {
+  font-size: 15.5px;
+  color: var(--text-secondary);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+
+.offers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.offer-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px 26px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color 240ms var(--ease), transform 240ms var(--ease), box-shadow 240ms var(--ease);
+}
+.offer-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+.offer-card.featured {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--bg-card), var(--accent-light));
+  box-shadow: var(--shadow-card);
+}
+.offer-card-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.offer-card-tag {
+  font-size: 11.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.offer-card-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+.offer-card-tagline {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 0 0 18px;
+  line-height: 1.5;
+  font-style: italic;
+}
+.offer-card-features {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.offer-card-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.offer-card-features li svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  color: var(--accent);
+}
+.offer-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-soft);
+}
+.offer-card-price-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.offer-card-price-currency {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--accent);
+}
+.offer-card-price-note {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.offer-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  background: var(--text-primary);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 600;
+  transition: background 200ms var(--ease), transform 180ms var(--ease);
+  width: 100%;
+}
+.offer-card-cta:hover {
+  background: #000;
+  transform: translateY(-1px);
+}
+.offer-card.featured .offer-card-cta {
+  background: var(--accent);
+  box-shadow: 0 8px 20px var(--accent-glow);
+}
+.offer-card.featured .offer-card-cta:hover {
+  background: var(--accent-hover);
+}
+
+.result-footer {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border-light);
+  line-height: 1.65;
+  font-style: italic;
+}
+
+/* ==========================================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ
+   ========================================================== */
+@media (max-width: 720px) {
+  .screen { padding: 24px 16px 56px; }
+  .container, .container-wide { max-width: 100%; }
+  .welcome-inner { padding-top: 4vh; }
+  .welcome-pain-list { padding: 22px 18px; }
+
+  .q-shell { padding-top: 12px; }
+  .q-progress { margin-bottom: 32px; }
+  .option { padding: 16px 16px; font-size: 15px; gap: 14px; }
+  .option-num { width: 36px; height: 36px; font-size: 18px; }
+
+  .auth-card { padding: 28px 22px 24px; }
+
+  .analyzing-shell { padding-top: 4vh; }
+  .analyzing-stages { padding: 22px 18px; }
+  .stage-title { font-size: 17px; }
+
+  .quote-block { padding: 26px 22px; }
+  .recognition-item { padding: 22px 22px 20px; }
+
+  .not-yours { grid-template-columns: 1fr; }
+
+  .offers { grid-template-columns: 1fr; }
+  .offer-card { padding: 24px 22px 22px; }
+  .spiral-pct { font-size: 52px; }
+}
+</style>
+</head>
+<body>
+
+<main id="app">
+
+  <!-- ============================================================
+       1. WELCOME
+       ============================================================ -->
+  <section class="screen welcome active" data-screen="welcome">
+    <div class="container welcome-inner">
+      <div class="welcome-author">
+        <span class="welcome-author-dot">К</span>
+        <span>Тест Карины · 50+ глубинных интервью</span>
+      </div>
+
+      <h1 class="welcome-title">Почему я <em>больше не понимаю</em>,<br>куда мне идти</h1>
+
+      <div class="welcome-lead">
+        <p>Раньше что-то горело — теперь тишина. Или горит сразу на десяти направлениях, и ни одно не доводится до конца. Или внутри есть ощущение «своё» — но непонятно, что именно.</p>
+        <p>Это не выгорание. Не лень. Не «ты ещё не нашла себя». Это три разных состояния — и каждое требует своих шагов.</p>
+      </div>
+
+      <div class="welcome-pain-list">
+        <div class="welcome-pain-list-title">Если узнаёшь себя — тест для тебя</div>
+        <ul>
+          <li>«Идеи фонтаном во все стороны, а одного понятного направления нет»</li>
+          <li>«Раньше зажигало, а сейчас как будто всю энергию высосали»</li>
+          <li>«Чувствую, что что-то моё есть — но что именно, не вижу»</li>
+          <li>«Прыгаю от одного к другому, ничего не довожу до конца»</li>
+          <li>«Перепробовала всё — и опять кажется, что не то»</li>
+        </ul>
+      </div>
+
+      <p class="welcome-promise">
+        <strong>7 вопросов · 3 минуты · без правильных ответов.</strong><br>
+        На выходе — название твоего состояния, признаки, по которым ты сама себя в нём узнаёшь, и что с этим делать дальше.
+      </p>
+
+      <button class="btn-primary" id="start-btn">
+        Понять, что со мной
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+
+      <div class="welcome-meta">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Построен на расшифровках интервью с теми, кто проходит это сейчас
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       2. QUESTION
+       ============================================================ -->
+  <section class="screen question" data-screen="question">
+    <div class="container q-shell" id="q-host"></div>
+  </section>
+
+  <!-- ============================================================
+       3. AUTH (Telegram, между 5-м и 6-м вопросом)
+       ============================================================ -->
+  <section class="screen auth" data-screen="auth">
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div class="auth-progress">Прошла 5 из 7 · осталось 2 вопроса</div>
+        <h2 class="auth-title">Прежде чем покажу твой тип —<br>давай не потеряем его</h2>
+        <p class="auth-lead">
+          Привяжи Telegram. На него я пришлю <strong>расширенный разбор</strong> твоего типа и ещё пару писем с подтипами — по одному в день, маленькие, без воды. Если не зайдёт — отписка в одно касание.
+        </p>
+
+        <div id="auth-error-host"></div>
+
+        <button class="auth-tg-btn" id="tg-login-btn" disabled>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+          <span id="tg-login-label">Войти через Telegram</span>
+        </button>
+
+        <div class="auth-trust">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Никаких рассылок без твоего согласия. Только то, о чём договорились
+        </div>
+
+        <div class="auth-after">Сразу после входа — два последних вопроса</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       4. ANALYZING
+       ============================================================ -->
+  <section class="screen analyzing" data-screen="analyzing">
+    <div class="analyzing-shell">
+      <div class="analyzing-orb-wrap" id="orb-wrap">
+        <svg class="analyzing-ring" viewBox="0 0 100 100">
+          <circle class="ring-bg" cx="50" cy="50" r="49"/>
+          <circle class="ring-fg" id="ring-fg" cx="50" cy="50" r="49"/>
+        </svg>
+        <div class="analyzing-orb" id="orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="orb-icon">
+            <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+        </div>
+        <div class="analyzing-orb-glow"></div>
+      </div>
+
+      <h2 class="analyzing-title">Собираю твой профиль</h2>
+      <p class="analyzing-subtitle">Около минуты — сравниваю твои ответы с тремя типами в спирали самоопределения</p>
+
+      <div class="analyzing-stages" id="stages-host"></div>
+
+      <p class="analyzing-hint" id="analyzing-hint">
+        Чистых типов почти не бывает. Точнее всего — когда видно, кого в тебе больше, а кого меньше
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       5. RESULT
+       ============================================================ -->
+  <section class="screen result" data-screen="result">
+    <div class="result-inner" id="result-host"></div>
+  </section>
+
+</main>
+
+<script>
+// =============================================================
+// КОНФИГ: ВОПРОСЫ
+// Каждый вопрос — отдельная сцена жизни, четыре варианта тянут на разные типы.
+// M — «Слишком много жизней», B — «Огонь сел», L — «Слышит, но не видит».
+// =============================================================
+const QUESTIONS = [
+  {
+    text: 'Что у тебя внутри прямо сейчас?',
+    hint: 'Закрой глаза на секунду — какое из этих ощущений знакомее',
+    options: [
+      { text: 'Переполняет. Слишком много всего хочется — голова кипит', weights: { M: 2 } },
+      { text: 'Тишина. Раньше там горело — теперь будто кто-то убавил звук', weights: { B: 2 } },
+      { text: 'Туман. Знаю, что что-то моё есть. Но что — не разглядеть', weights: { L: 2 } },
+      { text: 'Онемение. Я уже не помню, как это — когда чего-то хочешь', weights: { L: 1, B: 1 } },
+    ],
+  },
+  {
+    text: 'Сколько у тебя было реальных рабочих дорог — где ты не училась, а делала?',
+    hint: 'Не «о чём мечтала», а где правда был доход или клиенты',
+    options: [
+      { text: 'Одна. И я в ней давно — это «моё дело»', weights: { B: 2 } },
+      { text: 'Две: первая закончилась, ушла во вторую', weights: { B: 1, M: 1 } },
+      { text: 'Три и больше, в разных сферах. Меня туда правда тянуло', weights: { M: 2 } },
+      { text: 'Ни одной по-настоящему. Только учёба и подходы', weights: { L: 2 } },
+    ],
+  },
+  {
+    text: 'Что у тебя сейчас лежит в заметках или в закладках браузера?',
+    hint: 'Загляни честно — это и есть твой настоящий «список интересов»',
+    options: [
+      { text: 'Двадцать начатых тем — друг с другом не связанные', weights: { M: 2 } },
+      { text: 'Одна-две сферы. Углубляюсь в них уже годами', weights: { B: 2 } },
+      { text: 'Тесты, методики, дневники самопознания — собираю, чтобы найти', weights: { L: 2 } },
+      { text: 'Почти пусто. Я не из тех, кто коллекционирует интересы', weights: { B: 1 } },
+    ],
+  },
+  {
+    text: 'Завтра тебе надо выбрать одно дело на 5 лет. Что внутри?',
+    hint: 'Не «что разумнее» — а как реагирует тело, ещё до головы',
+    options: [
+      { text: 'Протест: «это меня убьёт. Я не могу отказаться от остального»', weights: { M: 3 } },
+      { text: 'Тревога: «вдруг опять выберу не то и потеряю годы»', weights: { B: 2 } },
+      { text: 'Облегчение: «наконец-то кто-то скажет, что делать»', weights: { L: 2 } },
+      { text: 'Тупик: «у меня и так ничего нет, из чего выбирать»', weights: { L: 2 } },
+    ],
+  },
+  {
+    text: 'Конец рабочего дня. Что ты обычно чувствуешь?',
+    hint: 'Не «как должно быть в моём идеале», а как сегодня',
+    options: [
+      { text: 'Сделала много, и тянет ещё. Внутри прёт — устала, но живая', weights: { M: 2 } },
+      { text: 'Отбыла. Всё то же самое, что и год назад. Ни жарко, ни холодно', weights: { B: 3 } },
+      { text: 'Сидела на чужом стуле. Не было ощущения «это моё»', weights: { L: 2, B: 1 } },
+      { text: 'Не работаю сейчас. Или работа такая, что про чувства не думаю', weights: { L: 1, M: 1 } },
+    ],
+  },
+  {
+    text: 'Что про тебя обычно говорят близкие?',
+    hint: 'Не «что они должны были бы сказать» — а что говорят',
+    options: [
+      { text: '«У тебя вечно сто проектов одновременно. Когда ты остановишься?»', weights: { M: 2 } },
+      { text: '«Ты же мастер в этом. Тебе ли жаловаться»', weights: { B: 2 } },
+      { text: '«Ты столько всего перепробовала. Когда-нибудь найдёшь своё»', weights: { L: 2 } },
+      { text: '«Мы вообще не понимаем, что с тобой происходит»', weights: { L: 1, B: 1 } },
+    ],
+  },
+  {
+    text: 'Что ты уже пробовала — и что не сработало?',
+    hint: 'Выбери то, что больше всего откликается из прошлого опыта',
+    options: [
+      { text: 'Выбирала одно дело — через 3–6 месяцев тянуло к остальному', weights: { M: 2 } },
+      { text: 'Отпуск, новая ниша, новые методики — интерес так и не вернулся', weights: { B: 2 } },
+      { text: 'Тесты, профориентация, психологи — никто не назвал «вот твоё»', weights: { L: 2 } },
+      { text: 'Почти ничего. Больше думала и читала, чем делала', weights: { L: 1, M: 1 } },
+    ],
+  },
+];
+
+// =============================================================
+// КОНФИГ: АРХЕТИПЫ
+// =============================================================
+const ARCHETYPES = {
+  M: {
+    key: 'M',
+    title: 'Слишком много жизней',
+    tagline: 'Внутри столько всего, что одна жизнь не вмещает',
+    quote: 'У меня столько всего внутри, что я не понимаю, как сжаться до одного. Я пробовала — и каждый раз внутри что-то протестовало.',
+    recognition: [
+      {
+        tag: 'Сцены жизни',
+        text: 'Открываешь заметки — там двадцать начатых тем, и каждая казалась тем самым. На полке — книги по трём не связанным направлениям. В голове — параллельные жизни, в которых ты стала бы совсем другим человеком, если бы только выбрала. И каждая из них — настоящая, не «для виду».',
+      },
+      {
+        tag: 'Парадокс',
+        text: 'Со стороны кажется, что ты не можешь выбрать. Изнутри всё наоборот: ты выбираешь много раз — все. Поэтому ничего не отбрасывается, ничего не доводится до конца. Это не отсутствие глубины — это другая глубина. Та, что собирается из соединений между темами, а не из одного бесконечного колодца.',
+      },
+      {
+        tag: 'Прошлый опыт',
+        text: 'Ты пробовала сжаться. Выбирала одно дело и говорила себе «всё, теперь только это». Через 3–6 месяцев внутри начинало душить — возвращалась к старому или бралась за новое. И снова искренне верила, что вот теперь точно. Это не про слабость воли. Это про то, как ты сделана.',
+      },
+    ],
+    notYours: [
+      {
+        title: 'Это не выгорание',
+        text: 'У тебя не угас огонь — у тебя слишком много огней. Огонь, который не гаснет, а делится — это не выгорание, это другая физика.',
+      },
+      {
+        title: 'Это не растерянность',
+        text: 'Ты не «не знаешь». Ты знаешь десятки направлений — и каждое настоящее. Та, кто слышит своё, но не видит, — не видит контуров; ты видишь слишком много контуров одновременно.',
+      },
+    ],
+    shift: 'Тебе не нужно лечиться от своей широты. Тебе нужно научиться её собирать — найти ось, на которую все твои «хочу» нанизываются как бусины. Без оси они рассыпаются. С осью — это уже не «много всего», это метод.',
+  },
+
+  B: {
+    key: 'B',
+    title: 'Огонь сел',
+    tagline: 'То, что зажигало раньше, больше не зажигает',
+    quote: 'Я не понимаю, что со мной случилось. Раньше внутри горело само. Сейчас я делаю то же самое — и тишина.',
+    recognition: [
+      {
+        tag: 'Сцены жизни',
+        text: 'Ты строила это дело годами. Был период, когда вставала до будильника — не могла дождаться. Был период, когда тебя узнавали в нише, рекомендовали, обращались за советом. И где-то по дороге — без катастрофы, без точки — это перестало греть. Сначала тише. Потом совсем.',
+      },
+      {
+        tag: 'Парадокс',
+        text: 'Ты лучше всех вокруг знаешь эту тему. И при этом меньше всех уверена, что хочешь ей заниматься дальше. Это очень одинокое состояние: те, кто только начинают, смотрят на тебя как на пример. А ты изнутри чувствуешь, что пример давно пустой.',
+      },
+      {
+        tag: 'Прошлый опыт',
+        text: 'Ты пробовала отпуск — не помогло, после него стало даже хуже, потому что отдых не вернул интерес. Пробовала сменить нишу внутри той же сферы — на полгода зажглось, потом снова. Думала о смене работы — но непонятно, на что менять, если усталость не от работы, а от того, кем ты стала ради неё.',
+      },
+    ],
+    notYours: [
+      {
+        title: 'Это не мультипотенциальность',
+        text: 'У тебя не «слишком много интересов». У тебя был один — и он сел. Это другой механизм: не разлив энергии по десяти руслам, а высыхание основного русла.',
+      },
+      {
+        title: 'Это не растерянность',
+        text: 'Ты знаешь, что умеешь. Ты знаешь, что у тебя получается. Вопрос не «кто я и что моё» — вопрос «что делать, когда то, что точно моё, перестало греть».',
+      },
+    ],
+    shift: 'Ты устала не от дела. Ты устала быть тем человеком, которым тебе пришлось стать ради этого дела. Возвращение огня — это не «найти новое». Это вернуть себя — и заново посмотреть, что из старого ещё твоё, а что было ролью.',
+  },
+
+  L: {
+    key: 'L',
+    title: 'Слышит, но не видит',
+    tagline: 'Что-то своё внутри есть — но что именно, не видно',
+    quote: 'Я знаю, что внутри что-то моё существует. Я просто не вижу его. И я устала искать на ощупь.',
+    recognition: [
+      {
+        tag: 'Сцены жизни',
+        text: 'У тебя есть ощущение «своего» — оно не выдумано, оно реальное. Только без формы. Ты пробовала разное — учёбу, профессии, проекты. Что-то нравилось, что-то нет, но ни одно не дало того щелчка, которого ты ждёшь. Ты много читаешь про самоопределение. Проходишь тесты. Слушаешь подкасты. И каждый раз думаешь: «может, дело в этом? в том?»',
+      },
+      {
+        tag: 'Парадокс',
+        text: 'Чем больше ты ищешь снаружи, тем дальше отдаляешься от того, что внутри. Каждый новый тест, каждая новая методика — ещё один слой между тобой и тем «своим», которое ты пытаешься увидеть. Ответ не «там, где я ещё не искала». Ответ «здесь, но я перестала слышать».',
+      },
+      {
+        tag: 'Прошлый опыт',
+        text: 'Ты пробовала выбирать «как все» — по востребованности, по доходу, по совету разумных людей. Делала честно, не халтурила. Но через какое-то время изнутри возникало «это не оно». Не было сил объяснить, почему — просто не оно. И снова поиск. И снова надежда, что вот теперь точно.',
+      },
+    ],
+    notYours: [
+      {
+        title: 'Это не мультипотенциальность',
+        text: 'У тебя не «много всего, не могу выбрать». У тебя как раз нет — контуры размыты, тяга есть, но безымянная. Тем, у кого слишком много жизней, нужна ось; тебе — голос.',
+      },
+      {
+        title: 'Это не выгорание',
+        text: 'Ты не сгорела — у тебя никогда и не зажигалось по-настоящему. Это разные ситуации: одна про потерю огня, другая про то, что огонь ещё не нашёл, на чём гореть.',
+      },
+    ],
+    shift: 'Тебе не нужно искать ещё больше. Тебе нужно научиться слышать то, что уже есть. Звук «своего» очень тихий — и он заглушается тестами, советами, экспертами. Сначала тишина. Потом голос.',
+  },
+};
+
+const TYPE_NAME_MAP = {
+  M: 'Слишком много жизней',
+  B: 'Огонь сел',
+  L: 'Слышит, но не видит',
+};
+
+// =============================================================
+// КОНФИГ: ОФФЕРЫ (3 карточки)
+// =============================================================
+const OFFERS = [
+  {
+    id: 'lecture',
+    tag: 'Базовый шаг',
+    title: 'Лекция «Спираль самоопределения»',
+    tagline: 'Карта без проводника. Дальше — сама',
+    features: [
+      '5 видео-роликов · 15–20 минут каждый',
+      'Подробный разбор всех трёх типов',
+      'Подтипы внутри типов: классификация Барбары Шер + опыт Карины',
+      'Решение для каждого подтипа: что конкретно делать',
+      'Доступ навсегда',
+    ],
+    price: 990,
+    priceNote: 'разово',
+    cta: 'Взять лекцию',
+    featured: false,
+  },
+  {
+    id: 'voice',
+    tag: 'Самый частый выбор',
+    title: 'Лекция + голосовой разбор',
+    tagline: 'Карта плюс отметка — где именно ты',
+    features: [
+      'Всё из «Лекции»',
+      'Карина голосом разбирает именно твой подтип',
+      'До 15 минут аудио, лично тебе',
+      'Получаешь в Telegram в течение 5 рабочих дней',
+      'Можно слушать сколько угодно раз',
+    ],
+    price: 4990,
+    priceNote: 'разово',
+    cta: 'Лекция + мой разбор',
+    featured: true,
+  },
+  {
+    id: 'consult',
+    tag: 'Глубокий разбор',
+    title: 'Лекция + разбор + личная консультация',
+    tagline: 'Карта, точка и проводник на первом шаге',
+    features: [
+      'Всё из «Лекции» и «Голосового разбора»',
+      'Личная встреча с Кариной (60 минут)',
+      'Видеоконференция, без записи в открытый доступ',
+      'Собранный под тебя план первых шагов',
+      'Текстовая поддержка в Telegram 14 дней после',
+    ],
+    price: 14990,
+    priceNote: 'разово',
+    cta: 'Хочу разобраться лично',
+    featured: false,
+  },
+];
+
+const OFFERS_INTRO = {
+  title: 'Что с этим делать дальше',
+  text: 'Три варианта глубины. Выбирай по тому, насколько ты уже устала идти одна.',
+};
+
+const RESULT_FOOTER = 'Если сейчас не время покупать — я всё равно пришлю в Telegram расширенный разбор твоего типа. Никакого «вы упустите шанс».';
+
+// =============================================================
+// СТАДИИ АНАЛИЗА (≈60 секунд суммарно)
+// =============================================================
+const ANALYZING_STAGES = [
+  {
+    title: 'Считываю твои ответы',
+    substeps: [
+      'Смотрю, что ты выбрала в семи вопросах',
+      'Замечаю, какие фразы откликнулись сильнее',
+      'Соотношу с тремя типами кризиса самоопределения',
+      'Считаю, чего в твоих ответах больше — поиска, усталости или избытка',
+    ],
+  },
+  {
+    title: 'Сравниваю с типологией',
+    substeps: [
+      'Проверяю по классификации Барбары Шер (для мультипотенциалов)',
+      'Сверяю с моей картой выгорания и точкой "огонь сел"',
+      'Прохожу по признакам "знаю что моё, но не вижу"',
+      'Откладываю пограничные сигналы — где видно сразу два типа',
+    ],
+  },
+  {
+    title: 'Собираю профиль под тебя',
+    substeps: [
+      'Подбираю описание именно твоего типа',
+      'Готовлю отделение от двух соседних — чтобы ты не путала',
+      'Подбираю формулировки, в которых ты узнаешь себя',
+      'Подсвечиваю главный сдвиг — куда смотреть',
+    ],
+  },
+];
+
+const SUBSTEP_DELAY = 4200;
+const STAGE_GAP = 2000;
+const HINT_DELAY = 18000;
+
+// =============================================================
+// STATE
+// =============================================================
+const state = {
+  phase: 'welcome',
+  currentQ: 0,
+  answers: [],
+  scores: { M: 0, B: 0, L: 0 },
+  authPassed: false,
+  telegramBotId: null,
+  tgScriptReady: false,
+};
+
+const AUTH_AFTER_QUESTION = 5;
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  const target = document.querySelector(`.screen[data-screen="${name}"]`);
+  if (target) target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+
+// =============================================================
+// WELCOME → QUESTIONS
+// =============================================================
+document.getElementById('start-btn').addEventListener('click', () => {
+  state.phase = 'question';
+  state.currentQ = 0;
+  state.answers = [];
+  state.scores = { M: 0, B: 0, L: 0 };
+  state.authPassed = false;
+  renderQuestion();
+  showScreen('question');
+  preloadTelegramSdk();
+});
+
+// =============================================================
+// AUTH STUB
+// Пока тестируем сценарий — нажатие «Войти через Telegram» сразу
+// продолжает тест. Чтобы вернуть реальную авторизацию, поставь
+// AUTH_STUB = false и убедись, что бот настроен (см. CLAUDE.md).
+// =============================================================
+const AUTH_STUB = true;
+
+// =============================================================
+// TELEGRAM SDK
+// =============================================================
+let tgScriptInjected = false;
+function preloadTelegramSdk() {
+  if (tgScriptInjected) return;
+  tgScriptInjected = true;
+  const s = document.createElement('script');
+  s.src = 'https://oauth.telegram.org/js/telegram-login.js?3';
+  s.async = true;
+  s.onload = () => {
+    state.tgScriptReady = true;
+    syncTelegramButton();
+  };
+  document.head.appendChild(s);
+
+  // параллельно — Bot ID с сервера
+  fetch('/api/spiral-test/config')
+    .then((r) => r.json())
+    .then((data) => {
+      if (data && data.telegramBotId) {
+        state.telegramBotId = data.telegramBotId;
+        syncTelegramButton();
+      }
+    })
+    .catch(() => {
+      // в офлайн-демо без сервера кнопка останется выключенной — это не блокер для просмотра
+    });
+}
+
+function syncTelegramButton() {
+  const btn = document.getElementById('tg-login-btn');
+  const label = document.getElementById('tg-login-label');
+  if (!btn || !label) return;
+  if (AUTH_STUB) {
+    btn.disabled = false;
+    label.textContent = 'Войти через Telegram';
+    return;
+  }
+  if (state.tgScriptReady && state.telegramBotId) {
+    btn.disabled = false;
+    label.textContent = 'Войти через Telegram';
+  } else {
+    btn.disabled = true;
+    label.textContent = 'Загружается…';
+  }
+}
+
+// =============================================================
+// QUESTION RENDER
+// =============================================================
+function renderQuestion() {
+  const q = QUESTIONS[state.currentQ];
+  const host = document.getElementById('q-host');
+  const segs = QUESTIONS.map((_, i) => {
+    if (i < state.currentQ) return '<div class="q-seg done"></div>';
+    if (i === state.currentQ) return '<div class="q-seg current"></div>';
+    return '<div class="q-seg"></div>';
+  }).join('');
+
+  host.innerHTML = `
+    <div class="q-progress">
+      <div class="q-progress-row">
+        <span>Вопрос ${state.currentQ + 1} из ${QUESTIONS.length}</span>
+        <span>${Math.round(((state.currentQ) / QUESTIONS.length) * 100)}%</span>
+      </div>
+      <div class="q-progress-bar">${segs}</div>
+    </div>
+    <div class="q-body">
+      <div class="q-counter">Вопрос ${state.currentQ + 1}</div>
+      <h2 class="q-text">${q.text}</h2>
+      <p class="q-hint">${q.hint}</p>
+      <div class="q-cta-hint">Нажми на свой вариант — мы запомним и пойдём дальше</div>
+      <div class="q-options">
+        ${q.options
+          .map(
+            (opt, i) => `
+          <button class="option" data-idx="${i}">
+            <span class="option-num">${i + 1}</span>
+            <span class="option-text">${opt.text}</span>
+          </button>`
+          )
+          .join('')}
+      </div>
+      <div class="q-footer">
+        <button class="q-back" id="q-back" ${state.currentQ === 0 ? 'disabled' : ''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Назад
+        </button>
+        <span>Без правильных ответов · только твой</span>
+      </div>
+    </div>
+  `;
+
+  host.querySelectorAll('.option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      host.querySelectorAll('.option').forEach((o) => o.classList.remove('selected'));
+      btn.classList.add('selected');
+      setTimeout(() => onAnswer(idx), 320);
+    });
+  });
+
+  const backBtn = document.getElementById('q-back');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      if (state.currentQ === 0) return;
+      const lastIdx = state.answers.pop();
+      if (lastIdx != null) {
+        const prevQ = QUESTIONS[state.currentQ - 1];
+        const prevWeights = prevQ.options[lastIdx].weights;
+        for (const k of Object.keys(prevWeights)) {
+          state.scores[k] -= prevWeights[k];
+        }
+      }
+      state.currentQ -= 1;
+      renderQuestion();
+    });
+  }
+}
+
+function onAnswer(idx) {
+  const q = QUESTIONS[state.currentQ];
+  const weights = q.options[idx].weights;
+  for (const k of Object.keys(weights)) {
+    state.scores[k] = (state.scores[k] || 0) + weights[k];
+  }
+  state.answers[state.currentQ] = idx;
+
+  const answeredQ = state.currentQ + 1; // 1-based индекс пройденного вопроса
+
+  // После 5-го вопроса (если ещё не авторизован) — экран Telegram
+  if (answeredQ === AUTH_AFTER_QUESTION && !state.authPassed) {
+    state.phase = 'auth';
+    state.currentQ += 1; // подготавливаем следующий вопрос на потом
+    showScreen('auth');
+    syncTelegramButton();
+    return;
+  }
+
+  if (state.currentQ < QUESTIONS.length - 1) {
+    state.currentQ += 1;
+    renderQuestion();
+  } else {
+    state.phase = 'analyzing';
+    showScreen('analyzing');
+    runAnalyzing();
+  }
+}
+
+// =============================================================
+// AUTH (Telegram)
+// =============================================================
+function showAuthError(msg) {
+  const host = document.getElementById('auth-error-host');
+  host.innerHTML = msg ? `<div class="auth-error">${msg}</div>` : '';
+}
+
+function continueAfterAuth() {
+  state.authPassed = true;
+  state.phase = 'question';
+  renderQuestion();
+  showScreen('question');
+}
+
+document.getElementById('tg-login-btn').addEventListener('click', () => {
+  showAuthError('');
+
+  if (AUTH_STUB) {
+    const btn = document.getElementById('tg-login-btn');
+    const label = document.getElementById('tg-login-label');
+    btn.disabled = true;
+    label.textContent = 'Подтверждаем вход…';
+    setTimeout(() => continueAfterAuth(), 350);
+    return;
+  }
+
+  if (!state.tgScriptReady || !window.Telegram || !window.Telegram.Login || !window.Telegram.Login.auth) {
+    showAuthError('Telegram ещё загружается. Подожди пару секунд и попробуй ещё раз.');
+    return;
+  }
+  if (!state.telegramBotId) {
+    showAuthError('Не удалось получить настройки. Обнови страницу — мы вернём тебя сюда.');
+    return;
+  }
+
+  const btn = document.getElementById('tg-login-btn');
+  const label = document.getElementById('tg-login-label');
+  btn.disabled = true;
+  label.textContent = 'Подтверди вход в Telegram…';
+
+  window.Telegram.Login.auth(
+    { client_id: state.telegramBotId, request_access: ['write'] },
+    async (result) => {
+      if (!result || result.error || !result.id_token) {
+        btn.disabled = false;
+        label.textContent = 'Войти через Telegram';
+        showAuthError('Не получилось войти. Попробуй ещё раз или открой тест в другом браузере.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/telegram/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_token: result.id_token }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          showAuthError(data.error || 'Не удалось завершить вход. Попробуй ещё раз.');
+          btn.disabled = false;
+          label.textContent = 'Войти через Telegram';
+          return;
+        }
+
+        // Вход подтверждён — идём дальше
+        continueAfterAuth();
+      } catch (err) {
+        showAuthError('Сеть подвела. Попробуй ещё раз.');
+        btn.disabled = false;
+        label.textContent = 'Войти через Telegram';
+      }
+    },
+  );
+});
+
+// =============================================================
+// ANALYZING ANIMATION
+// =============================================================
+function buildStages() {
+  const host = document.getElementById('stages-host');
+  host.innerHTML = ANALYZING_STAGES.map(
+    (st, i) => `
+      <div class="stage" data-stage="${i}">
+        <div class="stage-head">
+          <span class="stage-dot"></span>
+          <span class="stage-title">${st.title}</span>
+        </div>
+        <div class="substeps">
+          ${st.substeps.map((s) => `
+            <div class="substep">
+              <span class="substep-dot"></span>
+              <span>${s}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    `
+  ).join('');
+}
+
+async function runAnalyzing() {
+  buildStages();
+
+  const ring = document.getElementById('ring-fg');
+  const totalLen = 308.8;
+
+  setTimeout(() => {
+    const hint = document.getElementById('analyzing-hint');
+    if (hint) hint.classList.add('visible');
+  }, HINT_DELAY);
+
+  const stages = document.querySelectorAll('.stage');
+  const totalSubsteps = ANALYZING_STAGES.reduce((sum, s) => sum + s.substeps.length, 0);
+  let completedSubsteps = 0;
+
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i];
+    stage.classList.add('active');
+    const substeps = stage.querySelectorAll('.substep');
+
+    for (let j = 0; j < substeps.length; j++) {
+      await sleep(SUBSTEP_DELAY);
+      if (j > 0) substeps[j - 1].classList.add('done');
+      substeps[j].classList.add('visible', 'active');
+      completedSubsteps += 1;
+      const progress = completedSubsteps / totalSubsteps;
+      ring.style.strokeDashoffset = String(totalLen * (1 - progress));
+    }
+    await sleep(SUBSTEP_DELAY * 0.6);
+    substeps[substeps.length - 1].classList.add('done');
+    stage.classList.remove('active');
+    stage.classList.add('done');
+    if (i < stages.length - 1) await sleep(STAGE_GAP);
+  }
+
+  const orbWrap = document.getElementById('orb-wrap');
+  const orb = document.getElementById('orb');
+  const orbIcon = document.getElementById('orb-icon');
+  orbWrap.classList.add('done');
+  orb.classList.add('done');
+  orbIcon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+
+  await sleep(1200);
+
+  renderResult();
+  showScreen('result');
+  triggerScrollReveal();
+  animateSpiral();
+}
+
+function sleep(ms) {
+  return new Promise((res) => setTimeout(res, ms));
+}
+
+// =============================================================
+// RESULT RENDER
+// =============================================================
+function calcResult() {
+  const total = state.scores.M + state.scores.B + state.scores.L || 1;
+  const pcts = {
+    M: Math.round((state.scores.M / total) * 100),
+    B: Math.round((state.scores.B / total) * 100),
+    L: Math.round((state.scores.L / total) * 100),
+  };
+  const diff = 100 - (pcts.M + pcts.B + pcts.L);
+  if (diff !== 0) {
+    const dom = Object.entries(pcts).sort((a, b) => b[1] - a[1])[0][0];
+    pcts[dom] += diff;
+  }
+  const sorted = Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
+  const dominant = sorted[0][0];
+  return { dominant, pcts };
+}
+
+function renderResult() {
+  const { dominant, pcts } = calcResult();
+  const archetype = ARCHETYPES[dominant];
+  const host = document.getElementById('result-host');
+
+  const orderedKeys = [dominant, ...Object.keys(pcts).filter((k) => k !== dominant)];
+  const legendHtml = orderedKeys
+    .map((k, i) => `
+      <div class="spiral-legend-item ${i === 0 ? 'main' : ''}">
+        <span class="spiral-legend-dot"></span>
+        <span class="spiral-legend-name">${TYPE_NAME_MAP[k]}</span>
+        <span>· ${pcts[k]}%</span>
+      </div>
+    `)
+    .join('');
+
+  const recognitionHtml = archetype.recognition
+    .map(
+      (r) => `
+    <div class="recognition-item">
+      <div class="recognition-tag">${r.tag}</div>
+      <p class="recognition-text">${r.text}</p>
+    </div>
+  `
+    )
+    .join('');
+
+  const notYoursHtml = archetype.notYours
+    .map(
+      (n) => `
+    <div class="not-yours-card">
+      <h4 class="not-yours-title"><span class="strike">${n.title.replace('Это не ', '')}</span></h4>
+      <p class="not-yours-text">${n.text}</p>
+    </div>
+  `
+    )
+    .join('');
+
+  const offersHtml = OFFERS.map((o) => {
+    const featsHtml = o.features.map((f) => `
+      <li>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>${f}</span>
+      </li>
+    `).join('');
+    return `
+      <div class="offer-card ${o.featured ? 'featured' : ''}">
+        ${o.featured ? `<div class="offer-card-badge">Чаще берут</div>` : ''}
+        <div class="offer-card-tag">${o.tag}</div>
+        <h3 class="offer-card-title">${o.title}</h3>
+        <p class="offer-card-tagline">${o.tagline}</p>
+        <ul class="offer-card-features">${featsHtml}</ul>
+        <div class="offer-card-price">
+          <span class="offer-card-price-value">${o.price.toLocaleString('ru-RU')}</span>
+          <span class="offer-card-price-currency">₽</span>
+          <span class="offer-card-price-note">${o.priceNote}</span>
+        </div>
+        <button class="offer-card-cta" data-offer="${o.id}">
+          ${o.cta}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  host.innerHTML = `
+    <section class="section result-hero reveal">
+      <div class="result-label">Твой тип</div>
+      <h1 class="result-archetype"><span class="highlight">${archetype.title}</span></h1>
+      <p class="result-tagline">${archetype.tagline}</p>
+      <div class="result-divider"></div>
+    </section>
+
+    <section class="section spiral-section reveal">
+      <div class="spiral-label">Твоя точка на спирали</div>
+      <div class="spiral-wrap">
+        <svg class="spiral-svg" viewBox="0 0 200 200" id="spiral-svg">
+          <circle class="spiral-arc bg" cx="100" cy="100" r="80"/>
+          <circle class="spiral-arc dim" id="arc-2" cx="100" cy="100" r="80" transform="rotate(-90 100 100)"/>
+          <circle class="spiral-arc dim" id="arc-3" cx="100" cy="100" r="80" transform="rotate(-90 100 100)"/>
+          <circle class="spiral-arc main" id="arc-1" cx="100" cy="100" r="80" transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="spiral-center">
+          <div class="spiral-pct">
+            <span id="spiral-pct-value">0</span><span class="spiral-pct-suffix">%</span>
+          </div>
+          <div class="spiral-pct-label">${TYPE_NAME_MAP[dominant]}</div>
+        </div>
+      </div>
+      <div class="spiral-legend">${legendHtml}</div>
+      <p class="spiral-caption">Чистых типов почти не бывает. В тебе доминирует один — но и оттенки других живут рядом, и это нормально.</p>
+    </section>
+
+    <section class="section reveal">
+      <div class="quote-block">
+        <p class="quote-text">${archetype.quote}</p>
+        <div class="quote-caption">Внутренний голос твоего типа</div>
+      </div>
+    </section>
+
+    <section class="section reveal">
+      <div class="section-label">Узнавание</div>
+      <h2 class="section-title">Ты это про себя знаешь</h2>
+      <div class="recognition">${recognitionHtml}</div>
+    </section>
+
+    <section class="section reveal">
+      <div class="section-label">Отделение</div>
+      <h2 class="section-title">А вот это — не про тебя</h2>
+      <div class="not-yours">${notYoursHtml}</div>
+    </section>
+
+    <section class="section reveal">
+      <div class="shift-block">
+        <div class="shift-label">Главный сдвиг</div>
+        <p class="shift-text">${archetype.shift}</p>
+      </div>
+    </section>
+
+    <section class="section reveal">
+      <div class="offers-intro">
+        <h2>${OFFERS_INTRO.title}</h2>
+        <p>${OFFERS_INTRO.text}</p>
+      </div>
+      <div class="offers">${offersHtml}</div>
+    </section>
+
+    <div class="result-footer">
+      ${RESULT_FOOTER}
+    </div>
+  `;
+
+  // данные для анимации спирали
+  const spiral = {
+    pcts,
+    orderedKeys,
+    dominant,
+  };
+  host.dataset.spiralPayload = JSON.stringify(spiral);
+
+  host.querySelectorAll('.offer-card-cta').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.offer;
+      alert(`Здесь будет переход к оплате (${id}).\n\nВ финальной версии — YooKassa или прямая ссылка на лендинг выбранного формата.`);
+    });
+  });
+}
+
+// =============================================================
+// SCROLL REVEAL
+// =============================================================
+function triggerScrollReveal() {
+  const items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window)) {
+    items.forEach((el) => el.classList.add('visible'));
+    return;
+  }
+  const obs = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+  );
+  items.forEach((el) => obs.observe(el));
+}
+
+// =============================================================
+// SPIRAL ANIMATION
+// =============================================================
+function animateSpiral() {
+  const host = document.getElementById('result-host');
+  const payload = host && host.dataset.spiralPayload ? JSON.parse(host.dataset.spiralPayload) : null;
+  if (!payload) return;
+  const { pcts, orderedKeys } = payload;
+
+  const circumference = 2 * Math.PI * 80;
+  const arcs = ['arc-1', 'arc-2', 'arc-3'].map((id) => document.getElementById(id));
+
+  let cumulative = 0;
+  const angles = orderedKeys.map((k) => {
+    const start = cumulative;
+    const length = (pcts[k] / 100) * circumference;
+    cumulative += length;
+    return { key: k, start, length };
+  });
+
+  // стартовое состояние — дуги пустые
+  arcs.forEach((arc) => {
+    if (!arc) return;
+    arc.style.strokeDasharray = '0 ' + circumference;
+    arc.style.strokeDashoffset = '0';
+  });
+
+  // финальная анимация — после короткой паузы, чтобы CSS transition сработал
+  const runFill = () => {
+    arcs.forEach((arc, i) => {
+      if (!arc) return;
+      const ang = angles[i];
+      arc.style.strokeDasharray = `${ang.length} ${circumference - ang.length}`;
+      arc.style.strokeDashoffset = String(-ang.start);
+    });
+    const dominantPct = pcts[orderedKeys[0]];
+    const pctEl = document.getElementById('spiral-pct-value');
+    if (pctEl) countUp(pctEl, 0, dominantPct, 1600);
+  };
+
+  // запускаем сразу — секция всегда в viewport при показе экрана result
+  setTimeout(runFill, 350);
+}
+
+function countUp(el, from, to, duration) {
+  const start = Date.now();
+  const frameMs = 32;
+  const tick = () => {
+    const elapsed = Date.now() - start;
+    const t = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const val = Math.round(from + (to - from) * eased);
+    el.textContent = val;
+    if (t < 1) setTimeout(tick, frameMs);
+  };
+  tick();
+}
+
+// =============================================================
+// DEV-SHORTCUTS
+// #m / #b / #l — сразу показать результат типа
+// #auth — экран Telegram-входа
+// #q3 — начать с 3-го вопроса (1-7)
+// =============================================================
+(function devShortcuts() {
+  const hash = window.location.hash.replace('#', '').toLowerCase();
+  if (!hash) return;
+
+  const setAndShow = (typeKey) => {
+    state.scores = { M: 0, B: 0, L: 0 };
+    state.scores[typeKey] = 10;
+    if (typeKey === 'M') { state.scores.B = 3; state.scores.L = 2; }
+    if (typeKey === 'B') { state.scores.M = 3; state.scores.L = 2; }
+    if (typeKey === 'L') { state.scores.M = 2; state.scores.B = 3; }
+    renderResult();
+    showScreen('result');
+    triggerScrollReveal();
+    animateSpiral();
+  };
+
+  if (hash === 'm') setAndShow('M');
+  else if (hash === 'b') setAndShow('B');
+  else if (hash === 'l') setAndShow('L');
+  else if (hash === 'auth') {
+    state.phase = 'auth';
+    state.currentQ = 5;
+    showScreen('auth');
+    preloadTelegramSdk();
+    syncTelegramButton();
+  } else if (hash === 'analyzing') {
+    showScreen('analyzing');
+    runAnalyzing();
+  } else if (/^q[1-7]$/.test(hash)) {
+    const n = parseInt(hash.slice(1), 10);
+    state.currentQ = n - 1;
+    state.authPassed = true;
+    state.phase = 'question';
+    renderQuestion();
+    showScreen('question');
+  }
+})();
+</script>
+</body>
+</html>
