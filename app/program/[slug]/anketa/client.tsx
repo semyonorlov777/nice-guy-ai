@@ -35,10 +35,21 @@ export function AnketaClient({
     return answers;
   }, [questions, initialFacts]);
 
+  // Стартовая позиция — первый незаполненный вопрос. Это даёт нормальный
+  // resume после reload: если юзер уже сохранил Q1 и Q2, открываемся на Q3.
+  const initialStep = useMemo(() => {
+    for (let i = 0; i < questions.length; i++) {
+      if (!initialAnswers[questions[i].id].trim()) return i;
+    }
+    return 0;
+  }, [questions, initialAnswers]);
+
   const [answers, setAnswers] = useState<AnswersMap>(initialAnswers);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [submitting, setSubmitting] = useState(false);
   const [skipping, setSkipping] = useState(false);
+  const [savingStep, setSavingStep] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Префетчим хаб заранее — Skip/финальная кнопка отрабатывают мгновенно,
@@ -94,35 +105,55 @@ export function AnketaClient({
     if (currentStep > 0) setCurrentStep((s) => s - 1);
   };
 
-  const onNext = () => {
-    if (!currentStepHasAnswer) return;
+  // Сохраняем текущий ответ на сервер. Возвращает true при успехе.
+  // Endpoint принимает partial — шлём только один ответ, остальное
+  // сохранилось на предыдущих шагах.
+  const saveCurrentStep = async (): Promise<boolean> => {
+    const trimmed = currentValue.trim();
+    if (!trimmed) return false;
+    setSavingStep(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/profile/anketa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programSlug: slug,
+          answers: { [currentQ.id]: trimmed },
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Не удалось сохранить");
+      }
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1500);
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка сохранения");
+      return false;
+    } finally {
+      setSavingStep(false);
+    }
+  };
+
+  const onNext = async () => {
+    if (!currentStepHasAnswer || savingStep) return;
+    const ok = await saveCurrentStep();
+    if (!ok) return;
     if (currentStep < total - 1) setCurrentStep((s) => s + 1);
   };
 
   const onSubmit = async () => {
+    if (submitting) return;
     setSubmitting(true);
     setError(null);
-    try {
-      const payload: Record<string, string> = {};
-      for (const [qid, text] of Object.entries(answers)) {
-        const trimmed = (text ?? "").trim();
-        if (trimmed.length > 0) payload[qid] = trimmed;
-      }
-      const res = await fetch("/api/profile/anketa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ programSlug: slug, answers: payload }),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || "Не удалось сохранить ответы");
-      }
-      const data = (await res.json()) as { redirect?: string };
-      router.push(data.redirect || `/program/${slug}/hub`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка");
+    const ok = await saveCurrentStep();
+    if (!ok) {
       setSubmitting(false);
+      return;
     }
+    router.push(`/program/${slug}/hub`);
   };
 
   return (
@@ -191,6 +222,9 @@ export function AnketaClient({
 
       <footer className="anketa-footer">
         {error && <div className="anketa-error">{error}</div>}
+        {savedFlash && !error && (
+          <div className="anketa-saved" role="status">✓ Сохранено</div>
+        )}
         <div className="anketa-nav">
           {currentStep > 0 ? (
             <button type="button" className="anketa-back" onClick={onBack}>
@@ -203,19 +237,19 @@ export function AnketaClient({
             <button
               type="button"
               className="anketa-next"
-              disabled={submitting || !hasAnyAnswer}
+              disabled={submitting || savingStep || !hasAnyAnswer}
               onClick={onSubmit}
             >
-              {submitting ? "Сохраняю…" : "Сохранить и перейти"}
+              {submitting || savingStep ? "Сохраняю…" : "Сохранить и перейти"}
             </button>
           ) : (
             <button
               type="button"
               className="anketa-next"
-              disabled={!currentStepHasAnswer}
+              disabled={!currentStepHasAnswer || savingStep}
               onClick={onNext}
             >
-              Далее →
+              {savingStep ? "Сохраняю…" : "Далее →"}
             </button>
           )}
         </div>
