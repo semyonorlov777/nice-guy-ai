@@ -10,6 +10,12 @@ import { getTestConfigByProgram } from "@/lib/queries/test-config";
 import { getScaleOrder, getScaleNames } from "@/lib/test-config";
 import { normalizeInterpretation } from "@/lib/test-interpretation";
 
+// Запись test_results создаётся асинхронно (after() + Gemini ~30 сек).
+// Первый запрос после теста может получить null → notFound() → 404.
+// Без force-dynamic Vercel edge кэширует 404 по URL и продолжает отдавать
+// его даже после того, как запись стала ready.
+export const dynamic = "force-dynamic";
+
 // UUID v4 regex
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,11 +30,28 @@ export async function generateMetadata({
   const svc = createServiceClient();
   const { data } = await svc
     .from("test_results")
-    .select("total_score, interpretation")
+    .select(
+      "total_score, interpretation, programs!inner(slug, landing_data)"
+    )
     .eq("id", id)
     .single();
 
   if (!data) return { title: "Результат не найден" };
+
+  const rawProgram = (
+    data as unknown as {
+      programs:
+        | { slug: string; landing_data: unknown }
+        | { slug: string; landing_data: unknown }[]
+        | null;
+    }
+  ).programs;
+  const program = Array.isArray(rawProgram) ? rawProgram[0] : rawProgram;
+  const programSlug = program?.slug ?? DEFAULT_PROGRAM_SLUG;
+  const landingData = program?.landing_data as
+    | { test?: { title?: string } }
+    | null;
+  const testTitle = landingData?.test?.title ?? "Результат теста";
 
   const score = data.total_score;
   const levelLabel =
@@ -36,13 +59,12 @@ export async function generateMetadata({
     "Результаты теста";
 
   return {
-    title: `Тест ${score}/100 — ${levelLabel}`,
-    description: `Индекс синдрома славного парня: ${score}/100. Узнай свои паттерны и начни путь к изменениям.`,
+    title: `${testTitle} — ${score}/100 — ${levelLabel}`,
+    description: `${testTitle}: ${score}/100. Узнай свои паттерны и сильные стороны.`,
     openGraph: {
-      title: `Мой Индекс синдрома славного парня — ${score}/100`,
-      description:
-        "Узнай свои паттерны и начни путь к изменениям. Бесплатный тест по книге Роберта Гловера.",
-      url: `${APP_URL}/program/${DEFAULT_PROGRAM_SLUG}/test/results/${id}`,
+      title: `Мой результат: ${testTitle} — ${score}/100`,
+      description: `${testTitle}. Бесплатный тест на платформе.`,
+      url: `${APP_URL}/program/${programSlug}/test/results/${id}`,
       type: "website",
     },
   };
