@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
 import {
   ANKETA_QUESTIONS,
@@ -6,6 +6,7 @@ import {
   type AnketaProgramSlug,
 } from "@/lib/anketa/questions";
 import { IDENTITY_QUESTION_IDS } from "@/lib/personalization";
+import { invalidateThemeRelevance } from "@/lib/anketa/theme-relevance";
 
 const MAX_ANSWER_LENGTH = 4000;
 
@@ -85,6 +86,10 @@ export async function POST(req: Request) {
       return apiError("Не удалось сохранить ответы", 500);
     }
   }
+
+  // Инвалидируем кеш AI-фильтрации тем — при следующем заходе на хаб
+  // релевантность пересчитается с новыми ответами анкеты.
+  await invalidateThemeRelevance(createServiceClient(), user.id);
 
   return Response.json({
     ok: true,

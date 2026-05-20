@@ -7,6 +7,7 @@ import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
 import { getFacts } from "@/lib/personalization";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { isAnketaEmpty } from "@/lib/anketa/questions";
+import { getRelevantThemeKeys } from "@/lib/anketa/theme-relevance";
 
 type HubState = "first" | "returning-test" | "returning-notest";
 
@@ -116,12 +117,39 @@ export default async function HubPage({
     state = override;
   }
 
-  // Sort themes by test scores
-  const testScores = testResult?.scores_by_scale as Record<string, number> | null;
-  const orderedThemes = getThemesOrdered(themes, testScores);
+  // Анкета фильтрует ЧТО релевантно (запрос пользователя — точка Б),
+  // тест упорядочивает В КАКОМ ПОРЯДКЕ давать (диагностика — точка А).
+  // Анкеты нет → все темы релевантны; теста нет → фильтр-порядок остаётся.
+  const relevantKeys = await getRelevantThemeKeys(
+    supabase,
+    user.id,
+    program.id,
+    facts,
+    themes,
+  );
 
-  // Top 2 scales are recommended
-  const recommendedKeys = hasTestResult ? orderedThemes.slice(0, 2).map((t) => t.key) : [];
+  const testScores = testResult?.scores_by_scale as Record<string, number> | null;
+  const filteredThemes = themes.filter((t) => relevantKeys.includes(t.key));
+  const themesToOrder = filteredThemes.length > 0 ? filteredThemes : themes;
+
+  let orderedThemes: typeof themes;
+  if (testScores) {
+    orderedThemes = getThemesOrdered(themesToOrder, testScores);
+  } else if (filteredThemes.length > 0) {
+    const keyOrder = new Map(relevantKeys.map((k, i) => [k, i]));
+    orderedThemes = [...themesToOrder].sort(
+      (a, b) =>
+        (keyOrder.get(a.key) ?? Infinity) - (keyOrder.get(b.key) ?? Infinity),
+    );
+  } else {
+    orderedThemes = themesToOrder;
+  }
+
+  // Top 2 — рекомендованные (есть и тест, и анкета → дают рекомендацию;
+  // нет ничего → не подсвечиваем).
+  const hasAnketa = Object.keys(facts).length > 0;
+  const recommendedKeys =
+    hasTestResult || hasAnketa ? orderedThemes.slice(0, 2).map((t) => t.key) : [];
 
   // TODO: determine engaged keys from chat data (future)
   const engagedKeys: string[] = [];
