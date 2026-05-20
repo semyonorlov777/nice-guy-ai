@@ -84,6 +84,18 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   tdcbt_hypothesis: LightbulbIcon,
   tdcbt_intervention: TargetIcon,
   tdcbt_revision: SparklesIcon,
+  // the-choice (Eger — 5 шкал внутренней тюрьмы)
+  "tc-prison": ShieldIcon,
+  "tc-victimhood": CompassIcon,
+  "tc-unforgiveness": HeartLoveIcon,
+  "tc-hunger": ApprovalIcon,
+  "tc-reactivity": TargetIcon,
+  // Alias under scale-key form (test_results page reads by scale.key)
+  tc_prison: ShieldIcon,
+  tc_victimhood: CompassIcon,
+  tc_unforgiveness: HeartLoveIcon,
+  tc_hunger: ApprovalIcon,
+  tc_reactivity: TargetIcon,
   // seven-habits (Covey — концепции 7 навыков)
   paradigm_shift: SparklesIcon,
   circle_of_influence: CompassIcon,
