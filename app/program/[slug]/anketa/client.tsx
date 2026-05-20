@@ -38,7 +38,14 @@ export function AnketaClient({
   const [answers, setAnswers] = useState<AnswersMap>(initialAnswers);
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Префетчим хаб заранее — Skip/финальная кнопка отрабатывают мгновенно,
+  // юзер не успевает повторно нажать пока сервер собирает страницу.
+  useEffect(() => {
+    router.prefetch(`/program/${slug}/hub`);
+  }, [router, slug]);
 
   const total = questions.length;
   const isLastStep = currentStep === total - 1;
@@ -78,6 +85,8 @@ export function AnketaClient({
   };
 
   const onSkip = () => {
+    if (skipping) return;
+    setSkipping(true);
     router.push(`/program/${slug}/hub`);
   };
 
@@ -121,8 +130,13 @@ export function AnketaClient({
       <header className="anketa-header">
         <div className="anketa-meta">{total} вопроса · ~2 минуты</div>
         <h1 className="anketa-title">Расскажи о себе</h1>
-        <button type="button" className="anketa-skip" onClick={onSkip}>
-          Пропустить →
+        <button
+          type="button"
+          className="anketa-skip"
+          onClick={onSkip}
+          disabled={skipping}
+        >
+          {skipping ? "Перехожу…" : "Пропустить →"}
         </button>
         <div className="anketa-progress">
           <div className="anketa-progress-bar">
