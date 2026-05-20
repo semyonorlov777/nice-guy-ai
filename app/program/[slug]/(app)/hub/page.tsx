@@ -7,6 +7,7 @@ import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
 import { getFacts } from "@/lib/personalization";
 import { isAnketaEmpty, isAnketaProgram } from "@/lib/anketa/questions";
 import { getRelevantThemeKeys } from "@/lib/anketa/theme-relevance";
+import { getTestConfigByProgram } from "@/lib/queries/test-config";
 
 type HubState =
   | "first"
@@ -21,6 +22,32 @@ function truncatePhrase(text: string, max = 60): string {
   const cut = trimmed.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
   return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut) + "…";
+}
+
+// scores_by_scale может быть {key: number} (старый формат) или
+// {key: {pct, raw, max, level}} (новый — Гловер/Герой). Достаём pct/raw, либо
+// само значение, если это число. Возвращает топ-N имён шкал в порядке убывания.
+function getTopScaleNames(
+  scores: Record<string, unknown> | null,
+  scales: Array<{ key: string; name: string }>,
+  topN: number,
+): string[] {
+  if (!scores || scales.length === 0) return [];
+  const nameByKey = new Map(scales.map((s) => [s.key, s.name]));
+  const ranked = Object.entries(scores)
+    .map(([key, raw]) => {
+      let value: number = 0;
+      if (typeof raw === "number") value = raw;
+      else if (raw && typeof raw === "object") {
+        const o = raw as Record<string, unknown>;
+        if (typeof o.pct === "number") value = o.pct;
+        else if (typeof o.raw === "number") value = o.raw;
+      }
+      return { key, value, name: nameByKey.get(key) };
+    })
+    .filter((e): e is { key: string; value: number; name: string } => !!e.name)
+    .sort((a, b) => b.value - a.value);
+  return ranked.slice(0, topN).map((e) => e.name);
 }
 
 export default async function HubPage({
@@ -68,6 +95,7 @@ export default async function HubPage({
     { data: profile },
     themes,
     facts,
+    testConfig,
   ] = await Promise.all([
     supabase
       .from("exercises")
@@ -97,6 +125,7 @@ export default async function HubPage({
       .single(),
     getProgramThemes(supabase, program.id),
     getFacts(supabase, user.id),
+    getTestConfigByProgram(slug),
   ]);
 
   const anketaEmpty = isAnketaProgram(slug) && isAnketaEmpty(facts);
@@ -209,10 +238,27 @@ export default async function HubPage({
     );
   }
 
+  // Топ-2 архетипа из теста (книги с многомерной диагностикой — heroes-and-outlaws
+  // и т.п.). Подставляются в welcome если задано в hub_messages; для книг без
+  // теста или без подходящего test_config — плейсхолдеры стрипаются в fallback.
+  const topScaleNames = getTopScaleNames(
+    testResult?.scores_by_scale as Record<string, unknown> | null,
+    (testConfig?.scales as Array<{ key: string; name: string }> | undefined) ?? [],
+    2,
+  );
+  if (topScaleNames[0]) {
+    aiMessage = aiMessage.replace("{top1_archetype}", topScaleNames[0]);
+  }
+  if (topScaleNames[1]) {
+    aiMessage = aiMessage.replace("{top2_archetype}", topScaleNames[1]);
+  }
+
   // Если остались неразрешённые плейсхолдеры — чистим и падаем в fallback.
-  if (/\{(theme\d+|problem|context_intent)\}/.test(aiMessage)) {
+  if (
+    /\{(theme\d+|problem|context_intent|top\d+_archetype)\}/.test(aiMessage)
+  ) {
     aiMessage = aiMessage
-      .replace(/\{(theme\d+|problem|context_intent)\}/g, "")
+      .replace(/\{(theme\d+|problem|context_intent|top\d+_archetype)\}/g, "")
       .replace(/\s{2,}/g, " ")
       .trim();
     if (!aiMessage) aiMessage = hubMessages["returning_notest"] ?? "";

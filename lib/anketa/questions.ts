@@ -29,7 +29,10 @@ export type AnketaQuestion = {
 };
 
 /** Программы, для которых сейчас определена анкета. Расширяется по мере подключения книг. */
-export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay";
+export type AnketaProgramSlug =
+  | "nice-guy"
+  | "pishi-sokraschay"
+  | "heroes-and-outlaws";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -119,6 +122,51 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что программа сработала?",
       help: "Что будешь писать или делать иначе?",
       placeholder: "Например: смогу написать продающий лендинг за час без воды…",
+    },
+  ],
+  "heroes-and-outlaws": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Зачем тебе разбираться в архетипах?",
+      help: "Выбери, что ближе всего, или напиши своими словами",
+      options: [
+        {
+          value: "own_brand",
+          label: "Разбираюсь в архетипах для своего бренда или бизнеса",
+          chipLabel: "свой бренд",
+        },
+        {
+          value: "client_brand",
+          label: "Работаю с клиентскими брендами — агентство или фриланс",
+          chipLabel: "клиентский брендинг",
+        },
+        {
+          value: "personal_brand",
+          label: "Строю личный бренд и хочу найти свой архетип",
+          chipLabel: "личный бренд",
+        },
+        {
+          value: "understand_clients",
+          label: "Хочу понимать клиентов и аудиторию через архетипы",
+          chipLabel: "понимать клиентов",
+        },
+      ],
+      placeholder: "Например: у меня студия дизайна, хочу выделиться из массы…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Что сейчас не получается с архетипами?",
+      help: "Конкретная боль: «бренд звучит как все», «не могу выбрать между двумя», «не знаю как применить на сайте». Пиши своими словами.",
+      placeholder: "Например: студия дизайна, коммуникации сухие, без характера…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что программа сработала?",
+      help: "Что будешь делать или думать иначе?",
+      placeholder: "Например: смогу написать манифест бренда за час без воды…",
     },
   ],
 };
