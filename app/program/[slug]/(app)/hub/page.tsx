@@ -9,7 +9,20 @@ import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import { isAnketaEmpty } from "@/lib/anketa/questions";
 import { getRelevantThemeKeys } from "@/lib/anketa/theme-relevance";
 
-type HubState = "first" | "returning-test" | "returning-notest";
+type HubState =
+  | "first"
+  | "returning-test"
+  | "returning-notest"
+  | "anketa-only"
+  | "anketa-and-test";
+
+function truncatePhrase(text: string, max = 60): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  const cut = trimmed.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut) + "…";
+}
 
 export default async function HubPage({
   params,
@@ -104,16 +117,32 @@ export default async function HubPage({
 
   // Determine hub state
   const hasTestResult = !!testResult;
-  const isFirstVisit = (chatCount ?? 0) === 0 && !hasTestResult;
-  let state: HubState = isFirstVisit
-    ? "first"
-    : hasTestResult
-      ? "returning-test"
-      : "returning-notest";
+  const hasAnketaFacts = Object.keys(facts).length > 0;
+  const isFirstVisit =
+    (chatCount ?? 0) === 0 && !hasTestResult && !hasAnketaFacts;
+
+  let state: HubState;
+  if (isFirstVisit) {
+    state = "first";
+  } else if (hasAnketaFacts && hasTestResult) {
+    state = "anketa-and-test";
+  } else if (hasAnketaFacts) {
+    state = "anketa-only";
+  } else if (hasTestResult) {
+    state = "returning-test";
+  } else {
+    state = "returning-notest";
+  }
 
   // Override via query param (works in all environments)
   const override = query.hub_state;
-  if (override === "first" || override === "returning-test" || override === "returning-notest") {
+  if (
+    override === "first" ||
+    override === "returning-test" ||
+    override === "returning-notest" ||
+    override === "anketa-only" ||
+    override === "anketa-and-test"
+  ) {
     state = override;
   }
 
@@ -154,18 +183,39 @@ export default async function HubPage({
   // TODO: determine engaged keys from chat data (future)
   const engagedKeys: string[] = [];
 
-  // Resolve AI message from hub_messages with {theme1}/{theme2} placeholders
+  // Resolve AI message from hub_messages with {theme1}/{theme2}/{problem}/{context_intent}.
   const hubMessages = (program.hub_messages as Record<string, string>) ?? {};
-  const stateKey = state.replace("-", "_"); // "returning-test" → "returning_test"
+  const stateKey = state.replace(/-/g, "_");
   let aiMessage = hubMessages[stateKey] ?? "";
-  if (state === "returning-test" && orderedThemes.length >= 2) {
-    aiMessage = aiMessage
-      .replace("{theme1}", orderedThemes[0].title.toLowerCase())
-      .replace("{theme2}", orderedThemes[1].title.toLowerCase());
+
+  if (orderedThemes.length >= 1) {
+    aiMessage = aiMessage.replace(
+      "{theme1}",
+      orderedThemes[0].title.toLowerCase(),
+    );
   }
-  // Strip unresolved {theme} placeholders for programs without themes
-  if (aiMessage.includes("{theme")) {
-    aiMessage = aiMessage.replace(/\{theme\d+\}/g, "").replace(/\s{2,}/g, " ").trim();
+  if (orderedThemes.length >= 2) {
+    aiMessage = aiMessage.replace(
+      "{theme2}",
+      orderedThemes[1].title.toLowerCase(),
+    );
+  }
+  if (facts.problem) {
+    aiMessage = aiMessage.replace("{problem}", truncatePhrase(facts.problem));
+  }
+  if (facts.context_intent) {
+    aiMessage = aiMessage.replace(
+      "{context_intent}",
+      truncatePhrase(facts.context_intent),
+    );
+  }
+
+  // Если остались неразрешённые плейсхолдеры — чистим и падаем в fallback.
+  if (/\{(theme\d+|problem|context_intent)\}/.test(aiMessage)) {
+    aiMessage = aiMessage
+      .replace(/\{(theme\d+|problem|context_intent)\}/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
     if (!aiMessage) aiMessage = hubMessages["returning_notest"] ?? "";
   }
 
