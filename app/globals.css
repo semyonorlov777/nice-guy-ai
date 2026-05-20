@@ -4879,6 +4879,10 @@ html:not(.no-transition) .app-main {
 .anketa-skip:hover {
   color: var(--accent);
 }
+.anketa-skip:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
 
 .anketa-progress {
   margin-top: 20px;
