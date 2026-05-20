@@ -325,14 +325,37 @@ AI-сообщения рендерятся через два компонент�
 
 ## Дизайн-система
 
-Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-изменениях он подключается автоматически. Содержит:
-- `SKILL.md` — принципы, архитектура CSS, антипаттерны, чеклист
-- `references/tokens.md` — токены (цвета, шрифты, отступы, тени, темы)
-- `references/components.md` — CSS-классы всех компонентов
-- `references/animations.md` — анимации, easing, keyframes
-- `references/patterns.md` — UX-паттерны, ошибки, доступность
+Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-изменениях подключается автоматически по триггерам (UI, тема, цвета, токены, контраст, FOUC, обложки, градиенты). Содержит:
+- `SKILL.md` — три зоны темы, инварианты, антипаттерны, когда обновлять
+- `references/tokens.md` — все CSS-переменные (фоны, текст, акцент, статус, градиенты, тени), архитектурные правила, раздел Theme Switching
 
-При изменениях в дизайн-системе обновляй файлы скилла, не `DESIGN_SYSTEM.md`.
+При изменениях в дизайн-системе обновляй файлы скилла — это единственный source of truth.
+
+### Три зоны темы (важно при любых UI-правках)
+
+| Зона | Поведение | Реализация |
+|------|-----------|------------|
+| **App** (`/program/*`, чаты, balance, profile) | user-driven (light/dark/system) | `[data-theme="dark"]` на `<html>` через `useTheme()` |
+| **Marketing** (`/`, лендинги программ, `/auth`) | **forced light** (намеренно, маркетинг) | `.landing-v3` override + `--auth-*` токены |
+| **Funnel** (`/funnel`, `mini/funnel/*`) | **forced dark** (изолированный мини) | `.funnel-root` локальный snapshot + `color-scheme: dark` + `body:has(.funnel-root)` |
+
+### Базовые инварианты
+
+1. **Все цвета через `var(--*)` токены.** Хардкод хексов разрешён только внутри объявлений токенов (`:root`, `[data-theme="dark"]`, `.landing-v3`, `.funnel-root`) и для брендинговых цветов OAuth (Telegram, Yandex, Google).
+2. **`color: var(--accent-on)`** — единственный правильный текст на `background: var(--accent)`. Не пиши `color: #fff` — в тёмной теме будет белый на жёлтом (плохой контраст).
+3. **Градиенты обложек/орбов** — через `var(--accent-grad-hi/mid/lo)`. Не зашивай `#F0D68A`/`#8B6914`/`#a88a3a`/`#B8860B`.
+4. **Переключение темы** — только через `useTheme()` из `lib/theme.ts`. Не вызывай `document.documentElement.setAttribute("data-theme", ...)` где-либо ещё (включая компоненты, useEffect, popup-flow). Любая попытка → рассинхрон между источниками.
+5. **`public/theme-init.js`** (anti-FOUC inline) и `lib/theme.ts` обязаны давать **идентичный DOM-state**. Меняешь одно — синхронно правь второе. Это два хранилища одной логики.
+6. **Forced-* зоны** (`.landing-v3`, `--auth-*`, `.funnel-root`) намеренно НЕ следуют user-выбору. Не «чини» это — поломаешь маркетинг/изоляцию funnel.
+7. **`data-theme` ставится на `<html>`**, не на `<body>`/`<div>`. Funnel — исключение (изолированный мини), но он компенсирует через CSS `body:has(.funnel-root)` + `html:has(.funnel-root) { color-scheme: dark }`.
+
+### Защита от регресса
+
+`scripts/check-hardcodes.sh` (запускается через `npm run check`) ловит:
+- Хардкод хексов в `radial-gradient`/`linear-gradient` вне объявлений токенов.
+- Snapshot-счётчик `color: #fff|white|#ffffff` в `app/globals.css` (baseline 24, рост → ошибка).
+
+Если добавил новое **легитимное** использование (на `var(--danger)`/`var(--success)`/OAuth-бренде) — обнови `ALLOWED_WHITE_COUNT` в скрипте.
 
 ## Внешние скиллы
 
@@ -355,13 +378,15 @@ Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-из�
 
 ## Дизайн (краткая справка)
 
-- Две цветовые системы через CSS-переменные в `globals.css`:
-  - **Тёмная тема (основная):** фон `--bg-main: #111318`, карточки `--bg-card: #1C1F26`, акцент `--accent: #D4A545` (золотой) — через `[data-theme="dark"]`
-  - **Светлая тема (auth):** `--auth-bg: #FAFAF5`, `--auth-bg-card: #FFFFFF`, `--auth-accent: #C9963B`
-  - Тест-результаты используют CSS-классы (`.test-results-page`, `.tr-hero` и т.д.), а не CSS-переменные
+- **Default тема — светлая.** `:root` в `globals.css` определяет светлые значения (`--bg-main: #FAFAF5`, `--accent: #C9963B`, `color-scheme: light`). `[data-theme="dark"]` накладывает тёмные значения сверху (`--bg-main: #111318`, `--accent: #D4A545`, `color-scheme: dark`).
+- **`--auth-*` переменные** — отдельный набор для auth-зоны (всегда светлые, не реагируют на `data-theme="dark"`). Это намеренно — auth всегда выглядит одинаково.
+- **`.landing-v3`** — class на корне лендингов, переопределяет ВСЕ переменные на светлые значения (forced light).
+- **Тест-результаты** используют CSS-классы (`.test-results-page`, `.tr-hero` и т.д.), а не отдельные переменные.
 - Шрифты: Cormorant Garamond `--font-display` (заголовки), Onest `--font-body` (текст)
 - Стили: в основном в `globals.css` (CSS-переменные), Tailwind для утилит
 - Мобильная адаптация: Sidebar скрывается, MobileTabs внизу
+
+Полная карта токенов и инварианты — в `.claude/skills/niceguy-design/references/tokens.md` (раздел Theme Switching).
 
 ## Как добавить новую страницу в кабинет
 
@@ -504,7 +529,13 @@ calledRef паттерн — onSuccess вызывается ровно один 
   4. Обнови БД точечно через `jsonb_set` (НЕ перезаписывай весь `landing_data`). Шаблон — `scripts/fix-comparison-brand.sql`.
   5. Прогони `npm run check` — линтер должен пройти.
 - **Новая функция, попадающая в шаблон новой книги** (поле в `landing_data`, новый тип режима, новая колонка в `programs`, новая секция лендинга, новый системный промпт для модов): после реализации обязательно проверь скиллс `book-to-modes` (`SKILL.md`, `references/PLATFORM_MAP.md`, `references/REFERENCE.md`) и инструкцию `docs/runbooks/add-new-book.md` — если правило/шаблон поменялось, обнови их в том же коммите. Иначе следующая книга получит старый шаблон.
-- **Проверка**: запусти `npm run check` перед коммитом — ищет типичные хардкоды и устаревшие фразы из `docs/brand-glossary.md`
+- **Цвета — только через токены.** Не пиши hex/rgb прямо в селекторах. Все цвета — через `var(--token-name)` из `app/globals.css`. Хардкод хексов разрешён ТОЛЬКО внутри `:root`, `[data-theme="dark"]`, `.landing-v3`, `.funnel-root` (объявления токенов) и для брендинговых OAuth-цветов в `.auth-sheet-*`.
+- **Текст на accent-кнопках** — `color: var(--accent-on)`, не `color: #fff`. В тёмной теме `--accent-on = #1A1917` (тёмный) — на жёлтом фоне контрастно. `#fff` оставляй только внутри `.landing-v3` (forced light) и на брендовых OAuth кнопках.
+- **Градиенты обложек/орбов** — через `var(--accent-grad-hi/mid/lo)`. Зашитые `#F0D68A`/`#8B6914`/`#a88a3a`/`#B8860B` не пишутся вне объявления токенов.
+- **Переключение темы** — только через `useTheme()` из `lib/theme.ts`. Не вызывай `document.documentElement.setAttribute("data-theme", ...)` в новых компонентах. Если меняешь `lib/theme.ts` (storage key, attribute name, fallback) — синхронно правь `public/theme-init.js`, иначе будет FOUC.
+- **`data-theme` ставится на `<html>`**. Не на `<body>`, не на корневой `<div>` (рассинхрон `color-scheme` → светлый scrollbar на тёмном контенте). Исключение — изолированные мини-проекты с локальным CSS snapshot (см. `mini/funnel/funnel.css` как образец).
+- **Forced-* зоны** (`.landing-v3`, `.auth-sheet-*`, `.funnel-root`) намеренно НЕ следуют user-выбору темы. Не «чини» это — поломаешь маркетинг/изоляцию мини.
+- **Проверка**: запусти `npm run check` перед коммитом — ищет типичные хардкоды (slugs, URLs, brand strings) И хардкод цветов в `app/globals.css` (рост счётчика `color: #fff` или новые hex в градиентах = ошибка).
 
 ## Документация
 
