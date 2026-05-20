@@ -26,6 +26,8 @@ import {
   LightbulbIcon,
   RocketIcon,
   InstrumentLightningIcon,
+  MapIcon,
+  MessageCircleIcon,
 } from "./hub-icons";
 
 export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
@@ -82,4 +84,11 @@ export const THEME_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   tdcbt_hypothesis: LightbulbIcon,
   tdcbt_intervention: TargetIcon,
   tdcbt_revision: SparklesIcon,
+  // seven-habits (Covey — концепции 7 навыков)
+  paradigm_shift: SparklesIcon,
+  circle_of_influence: CompassIcon,
+  personal_mission: MapIcon,
+  quadrants: TargetIcon,
+  emotional_bank: HeartLoveIcon,
+  empathic_listening: MessageCircleIcon,
 };

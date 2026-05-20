@@ -29,7 +29,7 @@ export type AnketaQuestion = {
 };
 
 /** Программы, для которых сейчас определена анкета. Расширяется по мере подключения книг. */
-export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay";
+export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay" | "seven-habits";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -119,6 +119,50 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что программа сработала?",
       help: "Что будешь писать или делать иначе?",
       placeholder: "Например: смогу написать продающий лендинг за час без воды…",
+    },
+  ],
+  "seven-habits": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Что привело тебя к этой книге?",
+      options: [
+        {
+          value: "overwhelm",
+          label: "Я постоянно в авралах — много дел, мало результата",
+          chipLabel: "много дел, мало результата",
+        },
+        {
+          value: "reactive",
+          label: "Меня выбивают из колеи внешние обстоятельства — реагирую, а не действую",
+          chipLabel: "реагирую, а не действую",
+        },
+        {
+          value: "purpose",
+          label: "Делаю много, но не понимаю — зачем; нет ясности целей",
+          chipLabel: "нет ясности целей",
+        },
+        {
+          value: "relationships",
+          label: "В близких отношениях или на работе мы не понимаем друг друга",
+          chipLabel: "не понимаем друг друга",
+        },
+      ],
+      placeholder: "Например: устал тушить пожары и хочу планомерности…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Что в твоей жизни сейчас идёт не так?",
+      help: "Конкретная ситуация, в которой ты узнаёшь паттерн неэффективности. Без оценок, как факт.",
+      placeholder: "Например: на работе всё горит, а дома не могу остановиться…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что эта программа сработала?",
+      help: "Что ты будешь делать или решать иначе через 4–6 недель?",
+      placeholder: "Например: смогу планировать неделю заранее, а не реагировать день за днём…",
     },
   ],
 };
