@@ -130,6 +130,42 @@ if [ -z "$BRAND_AS_FORMAT_HITS" ] && [ -z "$AI_PREFIX_HITS" ] && [ -z "$SOLO_AI_
 fi
 
 echo ""
+echo "=== Checking for hardcoded theme colors in CSS ==="
+# Допускается hex только внутри объявлений токенов (--*: #...;) и
+# определённых allowlisted блоков (.landing-v3 = forced light marketing,
+# .auth-sheet-* = forced light auth, .funnel-root = forced dark funnel).
+# В остальных местах все цвета — через CSS-переменные.
+
+# 1. Запретить hardcoded хексы в gradient stops (radial/linear) вне объявлений токенов.
+GRAD_HEX_HITS=$(grep -nE '(radial-gradient|linear-gradient)\([^)]*#[0-9a-fA-F]{3,6}' app/globals.css 2>/dev/null \
+  | grep -vE ':\s+--[a-zA-Z-]+:' \
+  | grep -vE '\.landing-v3|\.auth-sheet|\.funnel-')
+
+if [ -n "$GRAD_HEX_HITS" ]; then
+  echo "$GRAD_HEX_HITS"
+  echo "  ↳ Используй var(--accent-grad-hi/mid/lo) или var(--accent-hover) вместо hardcoded hex"
+  FOUND=1
+fi
+
+# 2. Snapshot-чек: число `color: #fff|white|#ffffff` в globals.css не должно расти.
+# Текущее значение — 21 (все в forced-light зонах, на var(--danger)/var(--success),
+# на брендинговых цветах OAuth, или поверх жёлтых градиентов).
+# Любые новые `background: var(--accent); color: #fff;` ловятся ростом счётчика.
+CURRENT_WHITE_COUNT=$(grep -cE 'color:\s*(#fff|#ffffff|white)\b' app/globals.css 2>/dev/null)
+ALLOWED_WHITE_COUNT=21
+if [ "$CURRENT_WHITE_COUNT" -gt "$ALLOWED_WHITE_COUNT" ]; then
+  echo "  ✗ color: #fff count = $CURRENT_WHITE_COUNT, allowed ≤ $ALLOWED_WHITE_COUNT"
+  echo "  ↳ Если фон = var(--accent), используй color: var(--accent-on)."
+  echo "  ↳ Если новое использование легитимно (на var(--danger), бренд OAuth, и т.д.),"
+  echo "     обнови ALLOWED_WHITE_COUNT в scripts/check-hardcodes.sh."
+  FOUND=1
+fi
+
+if [ -z "$GRAD_HEX_HITS" ] && [ "$CURRENT_WHITE_COUNT" -le "$ALLOWED_WHITE_COUNT" ]; then
+  echo "  No hardcoded theme colors found"
+fi
+
+echo ""
 if [ "$FOUND" -eq 0 ]; then
   echo "Clean ✅"
 else
