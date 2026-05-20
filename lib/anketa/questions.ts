@@ -13,7 +13,10 @@ export type AnketaQuestionType = "hybrid" | "open_text";
 
 export type AnketaQuestionOption = {
   value: string;
+  /** Полный текст, который попадает в textarea и сохраняется в БД. */
   label: string;
+  /** Короткий текст для чипа в UI; fallback к label если не задан. */
+  chipLabel?: string;
 };
 
 export type AnketaQuestion = {
@@ -39,18 +42,22 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
         {
           value: "pleasing",
           label: "Я часто угождаю в отношениях, а потом коплю обиду",
+          chipLabel: "угождаю и коплю обиду",
         },
         {
           value: "needs",
           label: "Мне сложно открыто заявлять о своих потребностях",
+          chipLabel: "сложно говорить о потребностях",
         },
         {
           value: "authenticity",
           label: "Хочу научиться быть собой, а не «удобной версией»",
+          chipLabel: "хочу быть собой",
         },
         {
           value: "boundaries",
           label: "Готовлюсь к разговору с партнёром / семьёй про границы",
+          chipLabel: "готовлюсь к разговору про границы",
         },
       ],
       placeholder: "Например: устал быть «удобным» для всех…",
