@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { getProgramModes, getLastActiveMode } from "@/lib/queries/modes";
 import { HubScreen } from "@/components/hub/HubScreen";
 import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
+import { getFacts } from "@/lib/personalization";
+import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
+import { isAnketaEmpty } from "@/lib/anketa/questions";
 
 type HubState = "first" | "returning-test" | "returning-notest";
 
@@ -50,6 +53,7 @@ export default async function HubPage({
     { count: chatCount },
     { data: profile },
     themes,
+    facts,
   ] = await Promise.all([
     supabase
       .from("exercises")
@@ -78,7 +82,10 @@ export default async function HubPage({
       .eq("id", user.id)
       .single(),
     getProgramThemes(supabase, program.id),
+    getFacts(supabase, user.id),
   ]);
+
+  const showAnketaCta = slug === DEFAULT_PROGRAM_SLUG && isAnketaEmpty(facts);
 
   // Determine hub state
   const hasTestResult = !!testResult;
@@ -138,6 +145,7 @@ export default async function HubPage({
       hasTestResult={hasTestResult}
       balance={profile?.balance_tokens ?? 0}
       aiMessage={aiMessage}
+      showAnketaCta={showAnketaCta}
     />
   );
 }

@@ -4834,4 +4834,251 @@ html:not(.no-transition) .app-main {
   }
 }
 
+/* ==========================================================================
+   ANKETA — User-level анкета (пилот: nice-guy). Светлая тема через --auth-*.
+   ========================================================================== */
+.anketa-page {
+  min-height: 100%;
+  background: var(--auth-bg);
+  color: var(--auth-text);
+  font-family: var(--font-body);
+  padding: 32px 16px 120px;
+}
+.anketa-header {
+  max-width: 560px;
+  margin: 0 auto 32px;
+  position: relative;
+  padding-right: 96px;
+}
+.anketa-meta {
+  font-size: 12px;
+  color: var(--auth-text-muted);
+  letter-spacing: 0.04em;
+}
+.anketa-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.1;
+  margin: 8px 0 0;
+  color: var(--auth-text);
+  font-weight: 500;
+}
+.anketa-skip {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--auth-text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 8px;
+  transition: color 0.15s;
+}
+.anketa-skip:hover {
+  color: var(--auth-accent);
+}
+
+.anketa-body {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.anketa-q-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--auth-text-muted);
+}
+.anketa-q-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.25;
+  margin: 6px 0 4px;
+  color: var(--auth-text);
+  font-weight: 500;
+}
+.anketa-q-help {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--auth-text-secondary);
+  margin: 0 0 16px;
+}
+
+.anketa-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anketa-option {
+  text-align: left;
+  padding: 14px 18px;
+  background: var(--auth-bg-card);
+  color: var(--auth-text);
+  border: 1.5px solid var(--auth-border);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.anketa-option:hover {
+  border-color: var(--auth-accent-border);
+}
+.anketa-option.selected {
+  border-color: var(--auth-accent);
+  background: var(--auth-accent-soft);
+  box-shadow: 0 0 0 3px var(--auth-accent-glow);
+}
+.anketa-option-other {
+  font-style: italic;
+  color: var(--auth-text-secondary);
+}
+.anketa-option-other.selected {
+  font-style: normal;
+  color: var(--auth-text);
+}
+
+.anketa-textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-bg-card);
+  color: var(--auth-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.anketa-textarea::placeholder {
+  color: var(--auth-text-hint);
+}
+.anketa-textarea:focus {
+  outline: none;
+  border-color: var(--auth-accent);
+  box-shadow: 0 0 0 3px var(--auth-accent-glow);
+}
+
+.anketa-footer {
+  max-width: 560px;
+  margin: 40px auto 0;
+  position: sticky;
+  bottom: 0;
+  padding: 16px 0 8px;
+  background: linear-gradient(to top, var(--auth-bg) 80%, transparent);
+}
+.anketa-submit {
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--auth-accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+}
+.anketa-submit:hover:not(:disabled) {
+  background: #B98430;
+}
+.anketa-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.anketa-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.anketa-error {
+  color: var(--auth-ya-red);
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .anketa-header {
+    padding-right: 0;
+  }
+  .anketa-skip {
+    position: static;
+    display: block;
+    margin-top: 12px;
+    padding: 0;
+    font-size: 13px;
+  }
+  .anketa-title {
+    font-size: 26px;
+  }
+  .anketa-q-title {
+    font-size: 19px;
+  }
+}
+
+/* CTA-карточка «Расскажи о себе» на хабе (тёмная тема). */
+.hub-anketa-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 12px;
+  padding: 16px 18px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.hub-anketa-cta:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.hub-anketa-cta-content {
+  flex: 1;
+  min-width: 0;
+}
+.hub-anketa-cta-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  color: var(--text-primary);
+}
+.hub-anketa-cta-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.hub-anketa-cta-action {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .hub-anketa-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .hub-anketa-cta-action {
+    text-align: center;
+  }
+}
+
 } /* end @layer components (part 2) */

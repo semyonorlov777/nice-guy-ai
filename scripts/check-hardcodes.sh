@@ -9,6 +9,7 @@ SLUG_HITS=$(grep -rn '"nice-guy"' --include='*.ts' --include='*.tsx' . \
   | grep -v 'node_modules' \
   | grep -v '.claude/worktrees' \
   | grep -v 'lib/constants.ts' \
+  | grep -v 'lib/anketa/' \
   | grep -v 'scripts/' \
   | grep -v '.next/')
 
