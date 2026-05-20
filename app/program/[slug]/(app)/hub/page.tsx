@@ -5,8 +5,7 @@ import { getProgramModes, getLastActiveMode } from "@/lib/queries/modes";
 import { HubScreen } from "@/components/hub/HubScreen";
 import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
 import { getFacts } from "@/lib/personalization";
-import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
-import { isAnketaEmpty } from "@/lib/anketa/questions";
+import { isAnketaEmpty, isAnketaProgram } from "@/lib/anketa/questions";
 import { getRelevantThemeKeys } from "@/lib/anketa/theme-relevance";
 
 type HubState =
@@ -100,7 +99,7 @@ export default async function HubPage({
     getFacts(supabase, user.id),
   ]);
 
-  const anketaEmpty = slug === DEFAULT_PROGRAM_SLUG && isAnketaEmpty(facts);
+  const anketaEmpty = isAnketaProgram(slug) && isAnketaEmpty(facts);
 
   // Первый заход в программу с пустой анкетой → редирект на /api/anketa/offer,
   // который set'нет cookie и сразу редиректнет на /anketa. Server Component
