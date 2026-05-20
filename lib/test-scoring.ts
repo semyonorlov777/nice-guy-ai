@@ -22,7 +22,8 @@ export interface TestResult {
   totalRaw: number;
   scoresByScale: Record<string, ScaleResult>;
   topScales: string[];
-  recommendedExercises: number[];
+  // Числа (nice-guy) — номера упражнений; строки (mind-power и др. навыковые) — slug режимов.
+  recommendedExercises: (number | string)[];
 }
 
 /**

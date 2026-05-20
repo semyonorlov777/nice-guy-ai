@@ -37,7 +37,8 @@ export interface TestResultsProps {
   totalScore: number;
   scoresByScale: Record<string, ScaleResult>;
   topScales: string[];
-  recommendedExercises: number[];
+  // Числа для nice-guy (номера упражнений), строки для mind-power (slug режимов).
+  recommendedExercises: (number | string)[];
   interpretation: TestInterpretation | null;
   isOwner: boolean;
   createdAt: string;
@@ -255,7 +256,11 @@ function TopZones({
         {topZones.map((zone, i) => {
           const name = scaleNames[zone.scale_key] ?? zone.scale_key;
           const pct = zone.score ?? scoresByScale[zone.scale_key]?.pct ?? 0;
-          const exercises = scaleExercises[zone.scale_key] ?? [];
+          // Defensive: для mind-power и др. навыковых тестов exercises — slug режимов (строки),
+          // их нельзя подставлять в URL `/exercise/N`. Оставляем только числовые номера.
+          const exercises = (scaleExercises[zone.scale_key] ?? []).filter(
+            (e): e is number => typeof e === "number"
+          );
           const heading = zone.headline || `${name} — ${pct}%`;
           const itemKey = zone.scale_key || `zone-${i}`;
 
