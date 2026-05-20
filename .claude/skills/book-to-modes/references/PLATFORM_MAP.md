@@ -75,6 +75,127 @@ CREATE TABLE program_modes (
    - else → programs.system_prompt
 ```
 
+### Что подмешивается к выбранному system_prompt (порядок)
+
+Поверх выбранного промпта runtime **префиксует** блок персонализации и **дописывает** контекст. Если автор seed не понимает порядок — может задублировать данные или потерять их.
+
+```
+[PersonalizationContext]  ← блок «КТО ПЕРЕД ТОБОЙ» + soft-onboarding (из user_profile_responses)
+---
+[selected system_prompt]
+---
+[Portrait ai_context]     ← КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ (из predыдущих упражнений)
+---
+[Test scores JSON]        ← если тест пройден
+---
+[Calibration context]     ← для книг с pishi_calibration / аналогичными
+---
+[Topic context]           ← КОНТЕКСТ ТЕМЫ (для тематических чатов)
+---
+[QR-reminder]             ← напоминание про формат «ёлочек» (recency)
+```
+
+Все блоки независимы — могут быть все, может не быть ни одного. Анкета пустая → нет блока КТО ПЕРЕД ТОБОЙ. Портрет не собран → нет блока контекста пользователя. Это работает по design'у.
+
+## Анкета пользователя (user_profile_responses)
+
+User-level опросник из 3 вопросов, общий для всех книг (per-book вопросы каталогизируются в `lib/anketa/questions.ts`). Заполняется при первом заходе в программу. Ответы используются в **четырёх** местах одновременно — учти это при добавлении анкеты к новой книге.
+
+### Что нужно знать автору seed
+
+| Где используется | Как работает | Что нужно от seed/конфига |
+|---|---|---|
+| **system_prompt каждого чата** | `buildPersonalizationContext` префиксует блок «КТО ПЕРЕД ТОБОЙ» к выбранному промпту. Test-режимы (chat_type содержит `test`/`exam`/`archetype-test`) пропускаются — там строгий скрипт скоринга. | Ничего. Работает автоматически если slug книги добавлен в `AnketaProgramSlug`. |
+| **Портрет пользователя (Gemini Pro)** | `lib/portrait-updater.ts` подмешивает блок «АНКЕТА ПОЛЬЗОВАТЕЛЯ» в userMessage перед историей чата. AI-аналитик видит запрос пользователя при разборе диалога. | Ничего. Работает автоматически. |
+| **Темы хаба (фильтрация)** | `getRelevantThemeKeys` (lib/anketa/theme-relevance.ts) вызывает Gemini Flash при первом заходе на хаб с анкетой → возвращает 2-4 релевантные темы → результат кешируется в `anketa_theme_relevance`. Кеш инвалидируется при сохранении новых ответов. | Минимум 4 темы в `program_themes` (иначе фильтровать нечего). |
+| **Welcome AI на хабе** | `hub/page.tsx` выбирает welcome по состоянию (5 состояний с анкетой) и подставляет плейсхолдеры `{problem}` / `{context_intent}` (обрезка 60 символов с многоточием). | Ключи `anketa_only` и `anketa_and_test` в `programs.hub_messages` — см. шаблон ниже. |
+
+### Схема таблицы
+
+```
+user_profile_responses
+├── user_id              UUID (FK auth.users, ON DELETE CASCADE)
+├── question_id          TEXT (например: context_intent, problem, need_payoff, implication)
+├── answer_text          TEXT (≤4000 символов после save)
+├── version              INT (per (user_id, question_id), монотонная; getFacts берёт max)
+├── source               TEXT ('anketa' | 'soft_onboarding' | 'manual_edit')
+└── confirmed_at         TIMESTAMPTZ (зарезервирован для cross-book confirmation, пока не используется)
+
+anketa_theme_relevance (кеш AI-фильтра)
+├── user_id              UUID (PK part 1)
+├── program_id           UUID (PK part 2)
+├── relevant_keys        TEXT[] (массив ключей program_themes)
+└── computed_at          TIMESTAMPTZ
+```
+
+### Каталог вопросов (lib/anketa/questions.ts)
+
+```typescript
+export type AnketaProgramSlug = "nice-guy" | "<новая-книга>";
+
+export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
+  "nice-guy": [ /* 3 вопроса для Гловера */ ],
+  "<новая-книга>": [ /* 3 вопроса для новой книги */ ],
+};
+```
+
+Стандарт — 3 вопроса по SPIN-структуре. Подробнее — [SKILL.md → Этап 2.5](../SKILL.md).
+
+`IDENTITY_QUESTION_IDS` в `lib/personalization.ts` — белый список question_id. Если для новой книги хочешь использовать НЕ-стандартный вопрос — расширь массив там. Сейчас допустимы: `context_intent`, `problem`, `implication`, `need_payoff`.
+
+### Шаблон hub_messages с плейсхолдерами анкеты
+
+При добавлении анкеты к книге **обязательно** обнови `programs.hub_messages` — иначе пользователи с заполненной анкетой попадут на старый welcome (`returning_test` или `returning_notest`), и анкета на хаб никак не повлияет.
+
+```sql
+UPDATE programs SET hub_messages = COALESCE(hub_messages, '{}'::jsonb) || jsonb_build_object(
+  'anketa_only',
+    'Помню что ты пришёл с запросом: <strong>{problem}</strong>. Самое близкое в программе — <strong>{theme1}</strong>. Пройди тест (7 минут) — подскажу точнее.',
+  'anketa_and_test',
+    'Помню твой запрос — <strong>{problem}</strong>. По тесту сейчас самое горячее — <strong>{theme1}</strong>. Начнём оттуда?'
+) WHERE slug = 'BOOK_SLUG';
+```
+
+Эти 2 ключа добавляются к существующим 3 (`first`, `returning_test`, `returning_notest`) → итого 5 состояний.
+
+### Поддерживаемые плейсхолдеры в hub_messages
+
+| Плейсхолдер | Источник | Поведение |
+|---|---|---|
+| `{theme1}` / `{theme2}` | Топ-2 темы после фильтра анкетой + сортировки тестом | Подставляется `title.toLowerCase()`. Если тем меньше — fallback на `returning_notest`. |
+| `{problem}` | `facts.problem` из анкеты | Обрезка 60 символов по последнему пробелу + `…`. |
+| `{context_intent}` | `facts.context_intent` из анкеты | Тот же truncate. |
+
+Если в строке остался неразрешённый плейсхолдер (например, `{problem}` без анкеты) — он автоматически стрипается + fallback на `returning_notest`.
+
+### Состояния хаба (полный список)
+
+```
+hasAnketa = есть ≥1 ответ в user_profile_responses
+hasTestResult = есть test_results.status='ready'
+isFirstVisit = chatCount=0 && !hasTestResult && !hasAnketa
+
+if isFirstVisit → "first"
+elif hasAnketa && hasTestResult → "anketa-and-test"
+elif hasAnketa → "anketa-only"
+elif hasTestResult → "returning-test"
+else → "returning-notest"
+```
+
+Можно проверить вручную через `?hub_state=anketa-only` (и другие) на dev-сервере.
+
+### Когда НЕ делать анкету для книги
+
+- Marketing/копирайтинг-книги — у пользователя нет «личной боли» которую можно вынести в SPIN-вопросы.
+- Книга с одной центральной темой (нечего фильтровать).
+- Книга с собственным калибровочным чат-режимом (Ильяхов `pishi_calibration`) — он уже играет роль анкеты, плюс ещё анкета = дубль.
+
+Определитель из 4 критериев — [SKILL.md → Этап 2.5](../SKILL.md#когда-применять).
+
+### Линтер
+
+Для пилота (май 2026) `npm run check:chats` **не** проверяет анкету — правила добавятся когда анкета будет на 2-3 книгах. До этого ручная сверка по чеклисту из SKILL.md.
+
 ## Шаблон SQL для новой книги
 
 ### 1. Создать mode_templates (если key ещё не существует)
