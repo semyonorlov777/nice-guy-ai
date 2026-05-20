@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { useTheme, type ThemeMode } from "@/lib/theme";
 import {
   CreditCardIcon,
   LightningIcon,
@@ -26,16 +27,8 @@ interface ProfileMenuProps {
 export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  type ThemeMode = "light" | "dark" | "system";
-  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+  const { mode: themeMode, setMode: applyTheme, mounted } = useTheme();
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("theme") as ThemeMode | null;
-    if (saved) setThemeMode(saved);
-  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -48,37 +41,6 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
-
-  const applyTheme = useCallback((mode: ThemeMode) => {
-    setThemeMode(mode);
-    localStorage.setItem("theme", mode);
-    if (mode === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else if (mode === "light") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    }
-  }, []);
-
-  // React to system theme changes in real time
-  useEffect(() => {
-    if (themeMode !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, [themeMode]);
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();

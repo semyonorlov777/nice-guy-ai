@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
+import { useTheme, type ThemeMode } from "@/lib/theme";
 import {
   LightningIcon,
   SunIcon,
@@ -54,47 +55,7 @@ export function ProfileScreen({
   const router = useRouter();
   const debugMode = !!debugState;
   const [imgError, setImgError] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  type ThemeMode = "light" | "dark" | "system";
-  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
-
-  useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("theme") as ThemeMode | null;
-    if (saved) setThemeMode(saved);
-  }, []);
-
-  const applyTheme = useCallback((mode: ThemeMode) => {
-    setThemeMode(mode);
-    localStorage.setItem("theme", mode);
-    if (mode === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else if (mode === "light") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    }
-  }, []);
-
-  // React to system theme changes in real time
-  useEffect(() => {
-    if (themeMode !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, [themeMode]);
+  const { mode: themeMode, setMode: applyTheme, mounted } = useTheme();
 
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
