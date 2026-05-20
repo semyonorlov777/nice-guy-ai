@@ -31,6 +31,7 @@ interface HubScreenProps {
   hasTestResult: boolean;
   balance?: number;
   aiMessage: string;
+  showAnketaCta?: boolean;
 }
 
 export function HubScreen({
@@ -44,6 +45,7 @@ export function HubScreen({
   hasTestResult,
   balance,
   aiMessage,
+  showAnketaCta = false,
 }: HubScreenProps) {
   const router = useRouter();
   const isFirst = state === "first";
@@ -74,6 +76,18 @@ export function HubScreen({
           )}
 
           <AIMessage text={aiMessage} />
+
+          {showAnketaCta && (
+            <a href={`/program/${program.slug}/anketa`} className="hub-anketa-cta">
+              <div className="hub-anketa-cta-content">
+                <div className="hub-anketa-cta-title">Расскажи о себе</div>
+                <div className="hub-anketa-cta-body">
+                  Подскажи в чём ты — Система настроится под тебя за 2 минуты
+                </div>
+              </div>
+              <span className="hub-anketa-cta-action">Начать</span>
+            </a>
+          )}
 
           {showTestCta && (
             <>
