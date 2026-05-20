@@ -148,11 +148,12 @@ if [ -n "$GRAD_HEX_HITS" ]; then
 fi
 
 # 2. Snapshot-чек: число `color: #fff|white|#ffffff` в globals.css не должно расти.
-# Текущее значение — 21 (все в forced-light зонах, на var(--danger)/var(--success),
-# на брендинговых цветах OAuth, или поверх жёлтых градиентов).
-# Любые новые `background: var(--accent); color: #fff;` ловятся ростом счётчика.
+# Текущее значение — 24 (все в forced-light зонах: .landing-v3, .auth-sheet-*,
+# на var(--danger)/var(--success): .ib-action-btn states, .tc-error-toast,
+# на брендинговых цветах OAuth, или поверх жёлтых градиентов обложек).
+# Любые новые `background: var(--accent); color: #fff;` в app-зоне ловятся ростом счётчика.
 CURRENT_WHITE_COUNT=$(grep -cE 'color:\s*(#fff|#ffffff|white)\b' app/globals.css 2>/dev/null)
-ALLOWED_WHITE_COUNT=21
+ALLOWED_WHITE_COUNT=24
 if [ "$CURRENT_WHITE_COUNT" -gt "$ALLOWED_WHITE_COUNT" ]; then
   echo "  ✗ color: #fff count = $CURRENT_WHITE_COUNT, allowed ≤ $ALLOWED_WHITE_COUNT"
   echo "  ↳ Если фон = var(--accent), используй color: var(--accent-on)."
