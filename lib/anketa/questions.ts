@@ -63,13 +63,6 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       placeholder: "Например: соглашаюсь на дополнительные задачи, потом злюсь…",
     },
     {
-      id: "implication",
-      type: "open_text",
-      title: "Если ничего не менять — что произойдёт через полгода-год?",
-      help: "Что копится? К чему это приведёт?",
-      placeholder: "Например: жена устанет, я выгорю, начнётся скандал…",
-    },
-    {
       id: "need_payoff",
       type: "open_text",
       title: "Как ты поймёшь, что эта программа сработала?",
