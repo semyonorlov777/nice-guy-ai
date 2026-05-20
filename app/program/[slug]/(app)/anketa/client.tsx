@@ -51,12 +51,32 @@ export function AnketaClient({
 
   const [answers, setAnswers] = useState<AnswersMap>(initialAnswers);
   const [selected, setSelected] = useState<SelectedMap>(initialSelected);
+  const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const total = questions.length;
+  const isLastStep = currentStep === total - 1;
+  const currentQ = questions[currentStep];
+  const currentValue = answers[currentQ.id] ?? "";
+  const isHybrid = currentQ.type === "hybrid";
+  const otherActive = isHybrid && selected[currentQ.id] === "other";
 
   const hasAnyAnswer = Object.values(answers).some(
     (text) => typeof text === "string" && text.trim().length > 0,
   );
+
+  const currentStepHasAnswer = (() => {
+    const trimmed = currentValue.trim();
+    if (isHybrid) {
+      const sel = selected[currentQ.id];
+      if (sel !== null && sel !== "other") return true;
+      return trimmed.length > 0;
+    }
+    return trimmed.length > 0;
+  })();
+
+  const progressPct = ((currentStep + 1) / total) * 100;
 
   const onPickOption = (q: AnketaQuestion, optValue: string, optLabel: string) => {
     setSelected((prev) => ({ ...prev, [q.id]: optValue }));
@@ -79,6 +99,15 @@ export function AnketaClient({
 
   const onSkip = () => {
     router.push(`/program/${slug}/hub`);
+  };
+
+  const onBack = () => {
+    if (currentStep > 0) setCurrentStep((s) => s - 1);
+  };
+
+  const onNext = () => {
+    if (!currentStepHasAnswer) return;
+    if (currentStep < total - 1) setCurrentStep((s) => s + 1);
   };
 
   const onSubmit = async () => {
@@ -110,83 +139,104 @@ export function AnketaClient({
   return (
     <div className="anketa-page">
       <header className="anketa-header">
-        <div className="anketa-meta">{questions.length} вопроса · ~2 минуты</div>
+        <div className="anketa-meta">{total} вопроса · ~2 минуты</div>
         <h1 className="anketa-title">Расскажи о себе</h1>
         <button type="button" className="anketa-skip" onClick={onSkip}>
           Пропустить →
         </button>
+        <div className="anketa-progress">
+          <div className="anketa-progress-bar">
+            <div
+              className="anketa-progress-fill"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <div className="anketa-progress-text">
+            Вопрос {currentStep + 1} из {total}
+          </div>
+        </div>
       </header>
 
       <div className="anketa-body">
-        {questions.map((q, index) => {
-          const value = answers[q.id] ?? "";
-          const isHybrid = q.type === "hybrid";
-          const otherActive = isHybrid && selected[q.id] === "other";
-          return (
-            <section className="anketa-q" key={q.id}>
-              <div className="anketa-q-eyebrow">
-                Вопрос {index + 1} из {questions.length}
-              </div>
-              <h2 className="anketa-q-title">{q.title}</h2>
-              {q.help && <p className="anketa-q-help">{q.help}</p>}
+        <section className="anketa-q" key={currentQ.id}>
+          <h2 className="anketa-q-title">{currentQ.title}</h2>
+          {currentQ.help && <p className="anketa-q-help">{currentQ.help}</p>}
 
-              {isHybrid ? (
-                <>
-                  <div className="anketa-options">
-                    {q.options?.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={`anketa-option ${
-                          selected[q.id] === opt.value ? "selected" : ""
-                        }`}
-                        onClick={() => onPickOption(q, opt.value, opt.label)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className={`anketa-option anketa-option-other ${
-                        otherActive ? "selected" : ""
-                      }`}
-                      onClick={() => onPickOther(q)}
-                    >
-                      Другое (напишу сам)
-                    </button>
-                  </div>
-                  {otherActive && (
-                    <textarea
-                      className="anketa-textarea"
-                      placeholder={q.placeholder}
-                      value={value}
-                      onChange={(e) => onChangeOpen(q, e.target.value)}
-                    />
-                  )}
-                </>
-              ) : (
+          {isHybrid ? (
+            <>
+              <div className="anketa-options">
+                {currentQ.options?.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`anketa-option ${
+                      selected[currentQ.id] === opt.value ? "selected" : ""
+                    }`}
+                    onClick={() => onPickOption(currentQ, opt.value, opt.label)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`anketa-option anketa-option-other ${
+                    otherActive ? "selected" : ""
+                  }`}
+                  onClick={() => onPickOther(currentQ)}
+                >
+                  Другое (напишу сам)
+                </button>
+              </div>
+              {otherActive && (
                 <textarea
                   className="anketa-textarea"
-                  placeholder={q.placeholder}
-                  value={value}
-                  onChange={(e) => onChangeOpen(q, e.target.value)}
+                  placeholder={currentQ.placeholder}
+                  value={currentValue}
+                  onChange={(e) => onChangeOpen(currentQ, e.target.value)}
                 />
               )}
-            </section>
-          );
-        })}
+            </>
+          ) : (
+            <textarea
+              className="anketa-textarea"
+              placeholder={currentQ.placeholder}
+              value={currentValue}
+              onChange={(e) => onChangeOpen(currentQ, e.target.value)}
+            />
+          )}
+        </section>
       </div>
 
       <footer className="anketa-footer">
         {error && <div className="anketa-error">{error}</div>}
-        <button
-          type="button"
-          className="anketa-submit"
-          disabled={submitting || !hasAnyAnswer}
-          onClick={onSubmit}
-        >
-          {submitting ? "Сохраняю…" : "Сохранить и перейти к программе"}
-        </button>
+        <div className="anketa-nav">
+          {currentStep > 0 ? (
+            <button type="button" className="anketa-back" onClick={onBack}>
+              ← Назад
+            </button>
+          ) : (
+            <span className="anketa-back-spacer" aria-hidden="true" />
+          )}
+          {isLastStep ? (
+            <button
+              type="button"
+              className="anketa-next"
+              disabled={submitting || !hasAnyAnswer}
+              onClick={onSubmit}
+            >
+              {submitting ? "Сохраняю…" : "Сохранить и перейти"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="anketa-next"
+              disabled={!currentStepHasAnswer}
+              onClick={onNext}
+            >
+              Далее →
+            </button>
+          )}
+        </div>
       </footer>
     </div>
   );
