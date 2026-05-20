@@ -164,7 +164,14 @@ export function RadarChart({
             const pct = scoresByScale[key]?.pct ?? 0;
             const angle = (360 / N) * i;
             const lp = polarToCart(angle, MAX_R + 32);
-            const lines = radarLabels[key] || [key];
+            // Defensive: server page нормализует radar_label, но если в проп пришла
+            // строка (старые/внешние вызовы) — разбиваем по переводу строки.
+            const raw = radarLabels[key] as unknown;
+            const lines: string[] = Array.isArray(raw)
+              ? raw
+              : typeof raw === "string"
+                ? raw.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+                : [key];
 
             return (
               <g key={`label-${i}`}>

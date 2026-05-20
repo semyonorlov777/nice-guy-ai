@@ -12,8 +12,10 @@ export interface TestScale {
   key: string;
   name: string;
   order: number;
-  exercises?: number[];
-  radar_label?: string[];
+  // Числа — номера упражнений (nice-guy), строки — slug-и режимов (mind-power и другие навыковые тесты).
+  exercises?: (number | string)[];
+  // Массив — готовые строки подписи радара. Строка (с \n) — нормализуется в массив на server page.
+  radar_label?: string | string[];
 }
 
 export interface TestScoringConfig {

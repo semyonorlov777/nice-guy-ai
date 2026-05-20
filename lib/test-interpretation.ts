@@ -64,10 +64,29 @@ export function normalizeInterpretation(
     }
     return item;
   };
+  // Некоторые промпты (mind-power и др. навыковые тесты) выдают top_zones в формате
+  // { label, recommendation } вместо { headline, body, action_text }. Мапим, чтобы
+  // TopZones получил привычные поля без потери текста.
+  type LooseZone = Loose & {
+    label?: string;
+    recommendation?: string;
+    headline?: string;
+    body?: string;
+    action_text?: string;
+  };
+  const fixZone = (zone: LooseZone): LooseZone => {
+    const withKey = fixKey(zone);
+    const headline = withKey.headline ?? withKey.label;
+    const body = withKey.body ?? withKey.recommendation;
+    const action_text = withKey.action_text ?? withKey.recommendation;
+    return { ...withKey, headline, body, action_text };
+  };
   return {
     ...interp,
     scales: Array.isArray(interp.scales) ? interp.scales.map(fixKey) : [],
-    top_zones: Array.isArray(interp.top_zones) ? interp.top_zones.map(fixKey) : [],
+    top_zones: Array.isArray(interp.top_zones)
+      ? (interp.top_zones as LooseZone[]).map(fixZone) as TestInterpretation["top_zones"]
+      : [],
   };
 }
 

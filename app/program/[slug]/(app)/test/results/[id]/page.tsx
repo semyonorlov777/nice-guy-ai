@@ -131,9 +131,26 @@ export default async function TestResultPage({
   const radarLabels: Record<string, string[]> = {};
   if (testConfig) {
     for (const s of testConfig.scales) {
-      if (s.exercises) scaleExercises[s.key] = s.exercises;
-      if (s.radar_label) radarLabels[s.key] = s.radar_label;
-      else radarLabels[s.key] = [s.name];
+      if (s.exercises) {
+        // mind-power и др. навыковые тесты используют slug режимов (строки) — для UI с
+        // карточками упражнений оставляем только числовые номера.
+        scaleExercises[s.key] = s.exercises.filter(
+          (e): e is number => typeof e === "number"
+        );
+      }
+      // radar_label может приходить строкой с \n (mind-power) — нормализуем в массив.
+      const rl = s.radar_label;
+      if (Array.isArray(rl)) {
+        radarLabels[s.key] = rl;
+      } else if (typeof rl === "string") {
+        const parts = rl
+          .split(/\r?\n/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+        radarLabels[s.key] = parts.length > 0 ? parts : [s.name];
+      } else {
+        radarLabels[s.key] = [s.name];
+      }
     }
   }
 
@@ -142,7 +159,7 @@ export default async function TestResultPage({
     totalScore: result.total_score,
     scoresByScale: result.scores_by_scale as TestResultsProps["scoresByScale"],
     topScales: (result.top_scales as string[]) ?? [],
-    recommendedExercises: (result.recommended_exercises as number[]) ?? [],
+    recommendedExercises: (result.recommended_exercises as TestResultsProps["recommendedExercises"]) ?? [],
     interpretation: normalizeInterpretation(
       result.interpretation as TestResultsProps["interpretation"],
       scaleNameMap
