@@ -71,8 +71,15 @@ Layered system: higher element = lighter in dark mode.
 | `--accent-glow` | `rgba(201,150,59, 0.12)` | `rgba(212,165,69, 0.15)` | Glow (cover shadow, pulse) |
 | `--accent-medium` | `rgba(201,150,59, 0.15)` | `rgba(212,165,69, 0.18)` | Intermediate transparency |
 | `--accent-on` | `#FFFFFF` | `#1A1917` | Text ON accent button (inverted!) |
+| `--accent-grad-hi` | `#F0D68A` | `#E6C57A` | Light stop of radial gradients (book covers, orbs, sidebar logo) |
+| `--accent-grad-mid` | `#a88a3a` | `#A07A2E` | Mid stop of linear gradients (logo icons, hub-header-book) |
+| `--accent-grad-lo` | `#8B6914` | `#5C4A18` | Dark stop of radial gradients |
 
-> **`--accent-on`** is ONLY used on test buttons (`.tc-btn-primary`). Chat/landing/balance buttons use hardcoded `color: #fff` — don't change.
+> **`--accent-on`** is the canonical text color on any element with `background: var(--accent)`. Light = `#FFFFFF`, dark = `#1A1917` — handles contrast in both themes automatically. Don't write `color: #fff` on accent buttons.
+>
+> **`--accent-grad-*`** replace hardcoded gradient stops (formerly `#F0D68A`/`#8B6914`/`#a88a3a`/`#B8860B`). Use them in `radial-gradient(...)` and `linear-gradient(...)` so covers/orbs adapt to dark mode.
+>
+> Forced-light zones (`.landing-v3`, `.auth-sheet-*`) retain `color: #fff` on accent buttons — that's correct because their `--accent` is always the light value.
 
 ---
 
@@ -321,8 +328,37 @@ Rule: minimum 15° separation on color wheel between books in the same cluster.
 
 1. **Three levels:** primitive → semantic → component. Only semantic changes per book.
 2. **No private tokens.** Override globals, don't create new.
-3. **All colors via `var(--token-name)`**, never hex directly.
-4. **`data-theme="dark"`** attribute on `<body>` for dark mode.
-5. **`next-themes`** library for switching.
+3. **All colors via `var(--token-name)`**, never hex directly (except inside token-declaration blocks or forced-zone overrides — see Theme Switching below).
+4. **`data-theme="dark"`** attribute on `<html>` for dark mode (NOT `<body>`).
+5. **Manual theme switching** via `lib/theme.ts` (`useTheme` hook) + `public/theme-init.js` (anti-FOUC inline script). No `next-themes` library.
 6. **Accent palette generation:** From a single hex using `@material/material-color-utilities`.
 7. **Role-based naming:** `--accent`, `--surface-brand` — not `--primary`, `--secondary`.
+
+---
+
+## Theme Switching {#theme-switching}
+
+**Three zones with different rules:**
+
+| Zone | Default | Override mechanism |
+|------|---------|-------------------|
+| **App** (`/program/*`, `/balance`, `/profile`, chats) | User-driven (light/dark/system) | `[data-theme="dark"]` on `<html>` |
+| **Marketing** (`/`, landings, `/auth`) | Forced light | `.landing-v3` class override + `--auth-*` token set |
+| **Funnel** (`/funnel`, `mini/funnel/*`) | Forced dark | `.funnel-root` local token snapshot + `color-scheme: dark` |
+
+**Invariants:**
+
+- All programmatic theme changes go through `useTheme()` from `lib/theme.ts`. Do **not** call `document.documentElement.setAttribute("data-theme", ...)` directly anywhere else.
+- `public/theme-init.js` and `lib/theme.ts` must produce identical DOM state (read same `localStorage.theme` key, set same `data-theme` attribute, same `(prefers-color-scheme: dark)` fallback). If you change one, change the other.
+- Forced-light zones (`.landing-v3`, `--auth-*`) override CSS variables — they intentionally do NOT follow `[data-theme="dark"]`. This is a marketing decision; keep it.
+- Forced-dark funnel uses CSS-only isolation (`.funnel-root` snapshot + `body:has(.funnel-root)` background + `color-scheme: dark`). No JS theme switching inside the funnel.
+
+**Hardcode hex allowed only inside:**
+- Token-declaration blocks: `:root { ... }`, `[data-theme="dark"] { ... }`, `.landing-v3 { ... }`, `.funnel-root { ... }`.
+- Brand colors on OAuth providers (Telegram blue `#2AABEE`, Yandex red `#FC3F1D`, MAX blue `#1c3d7a`, Google `#dadce0`).
+- Text on red/green status backgrounds (`var(--danger)` / `var(--success)`) — `color: white` is fine.
+- Text on yellow gradient overlays (book cover titles).
+
+Everywhere else: `var(--token-name)`. `scripts/check-hardcodes.sh` enforces this via grep + snapshot count of `color: #fff`.
+
+**SVG `stopColor` limitation:** Most browsers don't resolve CSS variables in `<stop stop-color="...">`. RadarChart in `components/test-results/RadarChart.tsx` uses inline hex — known issue, out of scope for this audit.
