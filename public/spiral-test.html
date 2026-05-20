@@ -1720,6 +1720,14 @@ document.getElementById('start-btn').addEventListener('click', () => {
 });
 
 // =============================================================
+// AUTH STUB
+// Пока тестируем сценарий — нажатие «Войти через Telegram» сразу
+// продолжает тест. Чтобы вернуть реальную авторизацию, поставь
+// AUTH_STUB = false и убедись, что бот настроен (см. CLAUDE.md).
+// =============================================================
+const AUTH_STUB = true;
+
+// =============================================================
 // TELEGRAM SDK
 // =============================================================
 let tgScriptInjected = false;
@@ -1753,6 +1761,11 @@ function syncTelegramButton() {
   const btn = document.getElementById('tg-login-btn');
   const label = document.getElementById('tg-login-label');
   if (!btn || !label) return;
+  if (AUTH_STUB) {
+    btn.disabled = false;
+    label.textContent = 'Войти через Telegram';
+    return;
+  }
   if (state.tgScriptReady && state.telegramBotId) {
     btn.disabled = false;
     label.textContent = 'Войти через Telegram';
@@ -1881,6 +1894,16 @@ function continueAfterAuth() {
 
 document.getElementById('tg-login-btn').addEventListener('click', () => {
   showAuthError('');
+
+  if (AUTH_STUB) {
+    const btn = document.getElementById('tg-login-btn');
+    const label = document.getElementById('tg-login-label');
+    btn.disabled = true;
+    label.textContent = 'Подтверждаем вход…';
+    setTimeout(() => continueAfterAuth(), 350);
+    return;
+  }
+
   if (!state.tgScriptReady || !window.Telegram || !window.Telegram.Login || !window.Telegram.Login.auth) {
     showAuthError('Telegram ещё загружается. Подожди пару секунд и попробуй ещё раз.');
     return;
