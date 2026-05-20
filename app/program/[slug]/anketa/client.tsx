@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
   AnketaProgramSlug,
@@ -11,7 +11,6 @@ import type {
   IdentityQuestionId,
 } from "@/lib/personalization";
 
-type SelectedMap = Record<IdentityQuestionId, string | "other" | null>;
 type AnswersMap = Record<IdentityQuestionId, string>;
 
 interface AnketaClientProps {
@@ -26,31 +25,17 @@ export function AnketaClient({
   initialFacts,
 }: AnketaClientProps) {
   const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const { initialAnswers, initialSelected } = useMemo(() => {
+  const initialAnswers = useMemo(() => {
     const answers = {} as AnswersMap;
-    const selected = {} as SelectedMap;
     for (const q of questions) {
-      const fact = initialFacts[q.id]?.trim() ?? "";
-      answers[q.id] = fact;
-      if (q.type !== "hybrid") {
-        selected[q.id] = null;
-        continue;
-      }
-      const match = q.options?.find((opt) => opt.label === fact);
-      if (match) {
-        selected[q.id] = match.value;
-      } else if (fact.length > 0) {
-        selected[q.id] = "other";
-      } else {
-        selected[q.id] = null;
-      }
+      answers[q.id] = initialFacts[q.id]?.trim() ?? "";
     }
-    return { initialAnswers: answers, initialSelected: selected };
+    return answers;
   }, [questions, initialFacts]);
 
   const [answers, setAnswers] = useState<AnswersMap>(initialAnswers);
-  const [selected, setSelected] = useState<SelectedMap>(initialSelected);
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,42 +44,37 @@ export function AnketaClient({
   const isLastStep = currentStep === total - 1;
   const currentQ = questions[currentStep];
   const currentValue = answers[currentQ.id] ?? "";
-  const isHybrid = currentQ.type === "hybrid";
-  const otherActive = isHybrid && selected[currentQ.id] === "other";
+  const hasOptions = (currentQ.options?.length ?? 0) > 0;
 
   const hasAnyAnswer = Object.values(answers).some(
     (text) => typeof text === "string" && text.trim().length > 0,
   );
-
-  const currentStepHasAnswer = (() => {
-    const trimmed = currentValue.trim();
-    if (isHybrid) {
-      const sel = selected[currentQ.id];
-      if (sel !== null && sel !== "other") return true;
-      return trimmed.length > 0;
-    }
-    return trimmed.length > 0;
-  })();
-
+  const currentStepHasAnswer = currentValue.trim().length > 0;
   const progressPct = ((currentStep + 1) / total) * 100;
 
-  const onPickOption = (q: AnketaQuestion, optValue: string, optLabel: string) => {
-    setSelected((prev) => ({ ...prev, [q.id]: optValue }));
-    setAnswers((prev) => ({ ...prev, [q.id]: optLabel }));
-  };
+  // Autofocus при заходе и при смене шага — поле всегда готово принять ввод.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
+  }, [currentStep]);
 
-  const onPickOther = (q: AnketaQuestion) => {
-    setSelected((prev) => ({ ...prev, [q.id]: "other" }));
-    // если предыдущий ответ был label опции — очищаем, чтобы пользователь написал своё.
-    const prev = answers[q.id]?.trim() ?? "";
-    const wasOptionLabel = q.options?.some((o) => o.label === prev);
-    if (wasOptionLabel) {
-      setAnswers((cur) => ({ ...cur, [q.id]: "" }));
+  const onPickChip = (label: string) => {
+    setAnswers((prev) => ({ ...prev, [currentQ.id]: label }));
+    const el = textareaRef.current;
+    if (el) {
+      el.focus({ preventScroll: true });
+      // курсор в конец вставленного текста — сразу можно дописывать
+      requestAnimationFrame(() => {
+        el.setSelectionRange(label.length, label.length);
+      });
     }
   };
 
-  const onChangeOpen = (q: AnketaQuestion, text: string) => {
-    setAnswers((prev) => ({ ...prev, [q.id]: text }));
+  const onChangeOpen = (text: string) => {
+    setAnswers((prev) => ({ ...prev, [currentQ.id]: text }));
   };
 
   const onSkip = () => {
@@ -162,47 +142,32 @@ export function AnketaClient({
           <h2 className="anketa-q-title">{currentQ.title}</h2>
           {currentQ.help && <p className="anketa-q-help">{currentQ.help}</p>}
 
-          {isHybrid ? (
+          <textarea
+            ref={textareaRef}
+            className="anketa-textarea"
+            placeholder={currentQ.placeholder}
+            value={currentValue}
+            onChange={(e) => onChangeOpen(e.target.value)}
+          />
+
+          {hasOptions && (
             <>
-              <div className="anketa-options">
+              <div className="anketa-chips-label">Часто это про:</div>
+              <div className="anketa-chips">
                 {currentQ.options?.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
-                    className={`anketa-option ${
-                      selected[currentQ.id] === opt.value ? "selected" : ""
+                    className={`anketa-chip ${
+                      currentValue.trim() === opt.label ? "selected" : ""
                     }`}
-                    onClick={() => onPickOption(currentQ, opt.value, opt.label)}
+                    onClick={() => onPickChip(opt.label)}
                   >
-                    {opt.label}
+                    {opt.chipLabel ?? opt.label}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  className={`anketa-option anketa-option-other ${
-                    otherActive ? "selected" : ""
-                  }`}
-                  onClick={() => onPickOther(currentQ)}
-                >
-                  Другое (напишу сам)
-                </button>
               </div>
-              {otherActive && (
-                <textarea
-                  className="anketa-textarea"
-                  placeholder={currentQ.placeholder}
-                  value={currentValue}
-                  onChange={(e) => onChangeOpen(currentQ, e.target.value)}
-                />
-              )}
             </>
-          ) : (
-            <textarea
-              className="anketa-textarea"
-              placeholder={currentQ.placeholder}
-              value={currentValue}
-              onChange={(e) => onChangeOpen(currentQ, e.target.value)}
-            />
           )}
         </section>
       </div>
