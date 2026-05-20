@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FunnelQuestion } from "@/lib/funnel/types";
+import type { FunnelQuestion } from "@mini/funnel/lib/types";
 
 const DEFAULT_SCALE_LABELS: [string, string, string, string, string] = [
   "Почти никогда",

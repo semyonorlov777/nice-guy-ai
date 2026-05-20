@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./funnel.css";
+import "@mini/funnel/funnel.css";
 
 export const metadata: Metadata = {
   title: "Глубинный разбор — узнайте свой главный паттерн",

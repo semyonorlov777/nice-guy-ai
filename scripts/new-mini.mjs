@@ -42,7 +42,6 @@ const RESERVED_SLUGS = new Set([
   "exercises",
   "portrait",
   "hub",
-  "funnel", // уже занят существующим мини (см. CLAUDE.md, миграция отдельной задачей)
 ]);
 
 const SLUG_PATTERN = /^[a-z][a-z0-9-]{2,30}$/;

@@ -1,5 +1,1 @@
-import { ResultScreen } from "@/components/funnel/ResultScreen";
-
-export default function FunnelResultPage() {
-  return <ResultScreen />;
-}
+export { default } from "@mini/funnel/pages/ResultPage";

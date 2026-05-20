@@ -1,5 +1,1 @@
-import { TestFlow } from "@/components/funnel/TestFlow";
-
-export default function FunnelTestPage() {
-  return <TestFlow />;
-}
+export { default } from "@mini/funnel/pages/TestPage";
