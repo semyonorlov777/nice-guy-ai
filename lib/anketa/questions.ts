@@ -29,7 +29,7 @@ export type AnketaQuestion = {
 };
 
 /** Программы, для которых сейчас определена анкета. Расширяется по мере подключения книг. */
-export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay";
+export type AnketaProgramSlug = "nice-guy" | "pishi-sokraschay" | "the-choice";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -119,6 +119,50 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что программа сработала?",
       help: "Что будешь писать или делать иначе?",
       placeholder: "Например: смогу написать продающий лендинг за час без воды…",
+    },
+  ],
+  "the-choice": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Что привело тебя к этой книге?",
+      options: [
+        {
+          value: "trauma",
+          label: "Меня держит что-то из прошлого, не могу отпустить",
+          chipLabel: "прошлое не отпускает",
+        },
+        {
+          value: "forgiveness",
+          label: "Не могу простить — себя или кого-то близкого",
+          chipLabel: "не могу простить",
+        },
+        {
+          value: "stuck",
+          label: "Чувствую что застрял(а) и не могу двинуться дальше",
+          chipLabel: "застрял(а), не двигаюсь",
+        },
+        {
+          value: "loss",
+          label: "Переживаю потерю или тяжёлый период — нужна опора",
+          chipLabel: "потеря, тяжёлый период",
+        },
+      ],
+      placeholder: "Например: не могу простить отца за слова в детстве…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Что в твоей жизни сейчас идёт не так, как ты хочешь?",
+      help: "Без оценок, как факт. Что болит чаще всего?",
+      placeholder: "Например: возвращаюсь мыслями к одной ситуации годами…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что эта программа сработала?",
+      help: "Что ты будешь делать или думать иначе?",
+      placeholder: "Например: смогу думать о ней без боли…",
     },
   ],
 };
