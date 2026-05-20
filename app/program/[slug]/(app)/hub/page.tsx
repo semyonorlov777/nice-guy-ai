@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase-server";
 import { getProgramModes, getLastActiveMode } from "@/lib/queries/modes";
 import { HubScreen } from "@/components/hub/HubScreen";
 import { getProgramThemes, getThemesOrdered } from "@/lib/queries/themes";
@@ -85,7 +86,20 @@ export default async function HubPage({
     getFacts(supabase, user.id),
   ]);
 
-  const showAnketaCta = slug === DEFAULT_PROGRAM_SLUG && isAnketaEmpty(facts);
+  const anketaEmpty = slug === DEFAULT_PROGRAM_SLUG && isAnketaEmpty(facts);
+
+  // Первый заход в программу с пустой анкетой → редирект на /api/anketa/offer,
+  // который set'нет cookie и сразу редиректнет на /anketa. Server Component
+  // не может писать cookies сам.
+  if (anketaEmpty) {
+    const cookieStore = await cookies();
+    const offeredKey = `anketa_offered_${slug}`;
+    if (cookieStore.get(offeredKey)?.value !== "1") {
+      redirect(`/api/anketa/offer?slug=${slug}`);
+    }
+  }
+
+  const showAnketaCta = anketaEmpty;
 
   // Determine hub state
   const hasTestResult = !!testResult;
