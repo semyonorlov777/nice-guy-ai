@@ -226,12 +226,10 @@ export function AnketaClient({
           <div className="anketa-saved" role="status">✓ Сохранено</div>
         )}
         <div className="anketa-nav">
-          {currentStep > 0 ? (
+          {currentStep > 0 && (
             <button type="button" className="anketa-back" onClick={onBack}>
               ← Назад
             </button>
-          ) : (
-            <span className="anketa-back-spacer" aria-hidden="true" />
           )}
           {isLastStep ? (
             <button
