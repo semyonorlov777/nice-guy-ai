@@ -642,6 +642,16 @@
   .portrait-empty-btn { display: inline-block; padding: 10px 24px; background: var(--accent); color: var(--accent-on); border-radius: 24px; font-family: var(--font-body); font-size: 14px; font-weight: 500; text-decoration: none; transition: opacity 0.15s; }
   .portrait-empty-btn:active { opacity: 0.85; }
 
+  /* ── PORTRAIT — ANKETA (user-stated request, separate from AI observations) ── */
+  .portrait-anketa { background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); padding: 16px 18px; margin-bottom: 24px; }
+  .portrait-anketa-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .portrait-anketa-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0; }
+  .portrait-anketa-tag { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-light); text-transform: lowercase; letter-spacing: 0.2px; }
+  .portrait-anketa-list { display: flex; flex-direction: column; gap: 10px; }
+  .portrait-anketa-item { display: flex; flex-direction: column; gap: 2px; }
+  .portrait-anketa-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 500; }
+  .portrait-anketa-value { font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+
   /* ── BALANCE PAGE ── */
   .balance-container { width: 100%; max-width: var(--content-w); margin: 0 auto; padding-bottom: 80px; animation: fadeIn 0.3s ease-out; }
   .balance-header { margin-bottom: 24px; }
