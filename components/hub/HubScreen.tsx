@@ -12,7 +12,12 @@ import { useRouter } from "next/navigation";
 import InputBar from "@/components/InputBar/InputBar";
 import { LockIcon } from "@/components/icons/hub-icons";
 
-type HubState = "first" | "returning-test" | "returning-notest";
+type HubState =
+  | "first"
+  | "returning-test"
+  | "returning-notest"
+  | "anketa-only"
+  | "anketa-and-test";
 
 interface HubScreenProps {
   state: HubState;
@@ -50,7 +55,10 @@ export function HubScreen({
   const router = useRouter();
   const isFirst = state === "first";
   const isReturning = state !== "first";
-  const showTestCta = state === "first" || state === "returning-notest";
+  const showTestCta =
+    state === "first" ||
+    state === "returning-notest" ||
+    state === "anketa-only";
   const subtitle = `${program.author}${program.exerciseCount ? ` · ${program.exerciseCount} упражнений` : ""}`;
 
   return (
