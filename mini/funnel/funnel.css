@@ -3,14 +3,44 @@
    Все классы с префиксом funnel- чтобы не пересекаться.
    ============================================ */
 
+/* Funnel theme isolation: forced dark independent of root [data-theme].
+   Self-contained — does not depend on globals.css token values being dark.
+   color-scheme is set so native scrollbar/form controls follow dark.
+   body:has selector ensures background extends past .funnel-root edges. */
 .funnel-root {
+  color-scheme: dark;
+  --bg-main: #111318;
+  --bg-card: #1C1F26;
+  --bg-elevated: #22262D;
+  --bg-input: #1C1F26;
+  --bg-chat-zone: #111318;
+  --border: #2A2D33;
+  --border-light: #232629;
+  --text-primary: #E8E6E1;
+  --text: #E8E6E1;
+  --text-secondary: #9A978F;
+  --text-muted: #5F5D57;
+  --text-hint: #4A4843;
+  --accent: #D4A545;
+  --accent-soft: rgba(212, 165, 69, 0.10);
+  --accent-border: rgba(212, 165, 69, 0.22);
+  --accent-hover: #d4b35a;
+  --accent-on: #1A1917;
+  --accent-glow: rgba(212, 165, 69, 0.15);
+  --accent-medium: rgba(212, 165, 69, 0.18);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+
   min-height: 100vh;
-  background: var(--bg-main, #111318);
-  color: var(--text-primary, #E8E6E1);
+  background: var(--bg-main);
+  color: var(--text-primary);
   font-family: var(--font-onest), system-ui, sans-serif;
   display: flex;
   flex-direction: column;
 }
+
+body:has(.funnel-root) { background: #111318; }
+html:has(.funnel-root) { color-scheme: dark; }
 
 .funnel-screen {
   min-height: 100vh;
