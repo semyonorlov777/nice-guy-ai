@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnalyzingScreen } from "./AnalyzingScreen";
-import { AIBubble } from "@/components/chat/ChatMessage";
-import { loadSession, saveSession } from "@/lib/funnel/session";
-import type { AnalyzeResponse, FunnelSession } from "@/lib/funnel/types";
+import { AIBubble } from "./AIBubble";
+import { loadSession, saveSession } from "@mini/funnel/lib/session";
+import type { AnalyzeResponse, FunnelSession } from "@mini/funnel/lib/types";
 
 const MIN_ANALYZE_TIME_MS = 70_000;
 

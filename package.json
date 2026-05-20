@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/build-canon.mjs",
+    "prebuild": "node mini/funnel/scripts/build-canon.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",

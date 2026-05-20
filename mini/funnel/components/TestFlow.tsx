@@ -8,15 +8,15 @@ import {
   getNextSeedQuestion,
   loadSession,
   saveSession,
-} from "@/lib/funnel/session";
-import { SEED_QUESTIONS } from "@/lib/funnel/seed-questions";
+} from "@mini/funnel/lib/session";
+import { SEED_QUESTIONS } from "@mini/funnel/lib/seed-questions";
 import {
   MAX_QUESTIONS,
   type FunnelAnswer,
   type FunnelQuestion,
   type FunnelSession,
   type NextQuestionResponse,
-} from "@/lib/funnel/types";
+} from "@mini/funnel/lib/types";
 
 const ESTIMATED_TOTAL = 17;
 
