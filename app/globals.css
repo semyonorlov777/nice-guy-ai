@@ -5027,10 +5027,6 @@ html:not(.no-transition) .app-main {
 .anketa-back:hover {
   color: var(--accent);
 }
-.anketa-back-spacer {
-  display: block;
-  width: 1px;
-}
 .anketa-next,
 .anketa-submit {
   flex: 1;
