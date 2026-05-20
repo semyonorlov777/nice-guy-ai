@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Анкета — UX-прототип</title>
+  <style>
+    :root {
+      /* light (auth) */
+      --bg: #FAFAF5;
+      --card: #FFFFFF;
+      --elev: #F5F3EE;
+      --text: #1A1917;
+      --text-2: #6B6860;
+      --muted: #9E9B93;
+      --hint: #B5B2AA;
+      --border: #E0DDD2;
+      --accent: #C9963B;
+      --accent-soft: #F5EBD4;
+      --accent-glow: rgba(201, 150, 59, 0.18);
+    }
+    html[data-theme="dark"] {
+      --bg: #111318;
+      --card: #1C1F26;
+      --elev: #232730;
+      --text: #F5F2E8;
+      --text-2: #ADA89A;
+      --muted: #7B7768;
+      --hint: #5E5B52;
+      --border: #2E323B;
+      --accent: #D4A545;
+      --accent-soft: rgba(212, 165, 69, 0.12);
+      --accent-glow: rgba(212, 165, 69, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro", Inter, system-ui, sans-serif;
+      min-height: 100dvh;
+      transition: background 200ms ease, color 200ms ease;
+    }
+
+    /* Top toolbar — переключатель тем + ноут от автора */
+    .toolbar {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap;
+    }
+    .toolbar h1 {
+      margin: 0; font-size: 18px; font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .toolbar .spacer { flex: 1; }
+    .tab-row { display: flex; gap: 4px; background: var(--elev); padding: 4px; border-radius: 10px; }
+    .tab-row button {
+      background: transparent; border: none; padding: 6px 14px; border-radius: 7px;
+      color: var(--text-2); font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: background 150ms, color 150ms;
+    }
+    .tab-row button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .intro {
+      max-width: 720px;
+      margin: 0 0 40px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-2);
+    }
+    .intro strong { color: var(--text); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; }
+    }
+
+    .variant {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .variant-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .variant-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 6px;
+    }
+    .variant-name {
+      font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0;
+    }
+    .variant-summary {
+      font-size: 13px; color: var(--text-2); line-height: 1.5; margin: 0;
+    }
+    .variant-pros {
+      font-size: 12px; color: var(--text-2); line-height: 1.55;
+      padding-left: 16px; margin: 0;
+    }
+    .variant-pros li { margin-bottom: 4px; }
+
+    /* Mockup base */
+    .mock {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 18px;
+      min-height: 360px;
+      display: flex; flex-direction: column;
+    }
+    .mock-eyebrow {
+      font-size: 11px; color: var(--muted); letter-spacing: 0.06em;
+    }
+    .mock-title {
+      font-size: 18px; font-weight: 500; line-height: 1.25;
+      margin: 6px 0 0; color: var(--text);
+      font-family: "Cormorant Garamond", serif;
+    }
+    .mock-help {
+      font-size: 13px; color: var(--text-2); line-height: 1.45; margin: 8px 0 16px;
+    }
+
+    /* ──────── Variant A: поле первым, чипы-подсказки под ним ──────── */
+    .v-a .field {
+      position: relative;
+    }
+    .v-a textarea {
+      width: 100%;
+      min-height: 130px;
+      resize: vertical;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .v-a textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .v-a textarea::placeholder { color: var(--hint); }
+    .v-a .chips-label {
+      font-size: 12px; color: var(--muted); margin: 14px 0 8px;
+    }
+    .v-a .chips {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .v-a .chip {
+      padding: 8px 14px;
+      background: transparent;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 150ms, color 150ms, border-color 150ms;
+    }
+    .v-a .chip:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .v-a .chip.selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* ──────── Variant B: поле + типы как "карточки выбора" над ним ──────── */
+    .v-b .picker-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .v-b .picker-card {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.3;
+      cursor: pointer;
+      transition: border-color 150ms, background 150ms;
+    }
+    .v-b .picker-card:hover { border-color: var(--accent); }
+    .v-b .picker-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .v-b textarea {
+      width: 100%;
+      min-height: 110px;
+      resize: vertical;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .v-b textarea::placeholder { color: var(--hint); }
+    .v-b textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .v-b .v-b-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 2px 0;
+    }
+
+    /* ──────── Variant C: одно поле + auto-ротация примеров в placeholder ──────── */
+    .v-c .field-large {
+      position: relative;
+    }
+    .v-c textarea {
+      width: 100%;
+      min-height: 200px;
+      resize: vertical;
+      padding: 18px 18px 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .v-c textarea::placeholder { color: var(--hint); }
+    .v-c textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .v-c .below-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 12px;
+    }
+    .v-c .below-hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .v-c .example-btn {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--text-2);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: border-color 150ms, color 150ms;
+    }
+    .v-c .example-btn:hover {
+      border-color: var(--accent);
+      border-style: solid;
+      color: var(--text);
+    }
+
+    /* Footer (same in all) */
+    .mock-footer {
+      margin-top: 22px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end;
+    }
+    .mock-footer button {
+      background: var(--accent);
+      color: #1A1917;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mock-footer button:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    /* Recommendation block */
+    .reco {
+      margin-top: 56px;
+      padding: 24px 28px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      max-width: 980px;
+    }
+    .reco h2 { margin: 0 0 8px; font-size: 18px; font-weight: 600; color: var(--text); }
+    .reco p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: var(--text); }
+    .reco p:last-child { margin-bottom: 0; }
+    .reco em { color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <h1>Анкета — UX-редизайн</h1>
+    <span class="spacer"></span>
+    <div class="tab-row" role="tablist">
+      <button id="theme-light" class="active" type="button">☀ Светлая</button>
+      <button id="theme-dark" type="button">🌙 Тёмная</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <p class="intro">
+      <strong>Проблема:</strong> в текущей анкете гибридный вопрос показывает кнопки опций и под ними отдельный <code>textarea</code>
+      только после клика на «Другое». Появляется двойной контрол, фокус не на нужном элементе, на касание промахиваешься.
+      <br/><br/>
+      <strong>Цель:</strong> один контрол, поле всегда видно, опции — подсказки. Клик по подсказке = автозаполнение
+      поля + фокус остаётся в поле для дописывания. Можно сразу начать печатать (autofocus).
+      <br/><br/>
+      Ниже 3 варианта. Переключи тёмную тему сверху чтобы увидеть оба режима. После согласования — переношу выбранный
+      вариант в production-код.
+    </p>
+
+    <div class="grid">
+      <!-- ──────────────── VARIANT A ──────────────── -->
+      <section class="variant v-a">
+        <div class="variant-head">
+          <h2 class="variant-name">A · Поле + чипы</h2>
+          <span class="variant-tag">Рекомендую</span>
+        </div>
+        <p class="variant-summary">Поле ввода первое и активное (autofocus). Под ним — компактные «чипы» с готовыми
+          вариантами. Тап = текст копируется в поле, можно дописать или стереть. Кнопки «Другое» нет — она не нужна.</p>
+        <ul class="variant-pros">
+          <li>Нулевой барьер: открыл — печатай</li>
+          <li>Готовый ответ за один тап</li>
+          <li>Нет «двух полей», нет дубля</li>
+          <li>Чипы помещаются в 1–2 ряда даже на 360px</li>
+        </ul>
+
+        <div class="mock">
+          <div class="mock-eyebrow">ВОПРОС 1 ИЗ 3</div>
+          <h3 class="mock-title">Что привело тебя к этой книге?</h3>
+          <p class="mock-help">Можешь выбрать готовый вариант или написать своими словами.</p>
+
+          <div class="field">
+            <textarea id="va-text" placeholder="Например: устал быть «удобным» для всех…" rows="4"></textarea>
+          </div>
+
+          <div class="chips-label">Часто это про:</div>
+          <div class="chips" id="va-chips">
+            <button class="chip" data-text="Я часто угождаю в отношениях, а потом коплю обиду" type="button">угождаю и коплю обиду</button>
+            <button class="chip" data-text="Мне сложно открыто заявлять о своих потребностях" type="button">сложно говорить о потребностях</button>
+            <button class="chip" data-text="Хочу научиться быть собой, а не «удобной версией»" type="button">хочу быть собой</button>
+            <button class="chip" data-text="Готовлюсь к разговору с партнёром / семьёй про границы" type="button">готовлюсь к разговору про границы</button>
+          </div>
+
+          <div class="mock-footer">
+            <button id="va-next" type="button" disabled>Далее →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ──────────────── VARIANT B ──────────────── -->
+      <section class="variant v-b">
+        <div class="variant-head">
+          <h2 class="variant-name">B · Выбор + поле</h2>
+          <span class="variant-tag" style="background: var(--elev); color: var(--text-2);">Альтернатива</span>
+        </div>
+        <p class="variant-summary">Сверху — компактные карточки выбора (сетка 2×2). Любая выбранная → её текст падает в
+          поле снизу, можно править. Это ближе к текущему, но без отдельной кнопки «Другое» — поле всегда видно.</p>
+        <ul class="variant-pros">
+          <li>Привычная «анкета»: сначала выбор, потом уточнение</li>
+          <li>Опции читаются полнее (2 строки)</li>
+          <li>Поле всегда доступно — нет двойного клика</li>
+        </ul>
+
+        <div class="mock">
+          <div class="mock-eyebrow">ВОПРОС 1 ИЗ 3</div>
+          <h3 class="mock-title">Что привело тебя к этой книге?</h3>
+          <p class="mock-help">Выбери ближе всего и дополни своими словами — или сразу пиши в поле.</p>
+
+          <div class="picker-grid" id="vb-grid">
+            <button class="picker-card" data-text="Я часто угождаю в отношениях, а потом коплю обиду" type="button">Угождаю в отношениях, потом коплю обиду</button>
+            <button class="picker-card" data-text="Мне сложно открыто заявлять о своих потребностях" type="button">Сложно заявлять о своих потребностях</button>
+            <button class="picker-card" data-text="Хочу научиться быть собой, а не «удобной версией»" type="button">Хочу быть собой, а не «удобной версией»</button>
+            <button class="picker-card" data-text="Готовлюсь к разговору с партнёром / семьёй про границы" type="button">Готовлюсь к разговору про границы</button>
+          </div>
+          <textarea id="vb-text" placeholder="…или напиши своими словами"></textarea>
+          <div class="v-b-hint">Можно править после выбора — это твой ответ.</div>
+
+          <div class="mock-footer">
+            <button id="vb-next" type="button" disabled>Далее →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ──────────────── VARIANT C ──────────────── -->
+      <section class="variant v-c">
+        <div class="variant-head">
+          <h2 class="variant-name">C · Только поле</h2>
+          <span class="variant-tag" style="background: var(--elev); color: var(--text-2);">Минимализм</span>
+        </div>
+        <p class="variant-summary">Большое поле и ничего больше. Кнопка «💡 Пример» рядом — клик показывает один из
+          вариантов в placeholder (ротация). Если идей нет — нажал и вдохновился.</p>
+        <ul class="variant-pros">
+          <li>Самое короткое и быстрое</li>
+          <li>Не давит выбором — ты сам пишешь</li>
+          <li>Минус: меньше discoverability готовых ответов</li>
+        </ul>
+
+        <div class="mock">
+          <div class="mock-eyebrow">ВОПРОС 1 ИЗ 3</div>
+          <h3 class="mock-title">Что привело тебя к этой книге?</h3>
+          <p class="mock-help">Напиши пару предложений — или нажми «Пример» если нужна подсказка.</p>
+
+          <div class="field-large">
+            <textarea id="vc-text" placeholder="Например: устал быть «удобным» для всех…"></textarea>
+          </div>
+          <div class="below-actions">
+            <span class="below-hint">~30 секунд</span>
+            <button type="button" class="example-btn" id="vc-example">💡 Пример</button>
+          </div>
+
+          <div class="mock-footer">
+            <button id="vc-next" type="button" disabled>Далее →</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="reco">
+      <h2>UX-рекомендация: вариант A</h2>
+      <p>
+        <strong>Почему A</strong> — он одновременно решает три проблемы текущей анкеты:
+        дубль полей (один контрол вместо двух), низкий старт (autofocus, можно сразу печатать)
+        и discoverability (чипы видны как ненавязчивая подсказка идей).
+      </p>
+      <p>
+        <em>Паттерн знаком пользователю</em> — это Notion AI prompts, Linear quick filters, Gmail/Slack smart replies.
+        Чипы воспринимаются как «можно начать с этого», а не как «выбери одно из четырёх».
+      </p>
+      <p>
+        <em>На мобильном</em> — чипы перетекают на 2 строки и не отжимают поле. Тап по чипу не отнимает фокус у поля —
+        курсор сразу в конце вставленного текста, и можно дополнять.
+      </p>
+      <p>
+        <em>Тёмная/светлая тема</em> — оба макета адаптируются автоматически через CSS-переменные (переключи кнопку сверху).
+        В production-коде анкета будет следовать активной теме приложения, без визуального скачка между хабом и анкетой.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    // theme toggle
+    const $ = (id) => document.getElementById(id);
+    const html = document.documentElement;
+    function setTheme(t) {
+      html.setAttribute('data-theme', t);
+      $('theme-light').classList.toggle('active', t === 'light');
+      $('theme-dark').classList.toggle('active', t === 'dark');
+    }
+    $('theme-light').addEventListener('click', () => setTheme('light'));
+    $('theme-dark').addEventListener('click', () => setTheme('dark'));
+
+    // ── Variant A: поле + chips ──
+    const vaText = $('va-text');
+    const vaChips = $('va-chips');
+    const vaNext = $('va-next');
+    function vaSync() {
+      const has = vaText.value.trim().length > 0;
+      vaNext.disabled = !has;
+      const txt = vaText.value.trim();
+      vaChips.querySelectorAll('.chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.text === txt);
+      });
+    }
+    vaText.addEventListener('input', vaSync);
+    vaChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      vaText.value = btn.dataset.text;
+      vaText.focus();
+      // курсор в конец
+      vaText.setSelectionRange(vaText.value.length, vaText.value.length);
+      vaSync();
+    });
+    vaSync();
+
+    // ── Variant B: выбор + поле ──
+    const vbGrid = $('vb-grid');
+    const vbText = $('vb-text');
+    const vbNext = $('vb-next');
+    function vbSync() {
+      const has = vbText.value.trim().length > 0;
+      vbNext.disabled = !has;
+      const txt = vbText.value.trim();
+      vbGrid.querySelectorAll('.picker-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.text === txt);
+      });
+    }
+    vbText.addEventListener('input', vbSync);
+    vbGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.picker-card');
+      if (!btn) return;
+      vbText.value = btn.dataset.text;
+      vbText.focus();
+      vbText.setSelectionRange(vbText.value.length, vbText.value.length);
+      vbSync();
+    });
+    vbSync();
+
+    // ── Variant C: пример + ротация ──
+    const vcText = $('vc-text');
+    const vcNext = $('vc-next');
+    const vcExampleBtn = $('vc-example');
+    const vcExamples = [
+      "Например: устал быть «удобным» для всех…",
+      "Например: соглашаюсь на лишние задачи и потом злюсь…",
+      "Например: хочу научиться говорить «нет» без чувства вины…",
+      "Например: готовлюсь к сложному разговору с партнёром…",
+    ];
+    let vcIdx = 0;
+    vcText.placeholder = vcExamples[0];
+    vcExampleBtn.addEventListener('click', () => {
+      vcIdx = (vcIdx + 1) % vcExamples.length;
+      vcText.placeholder = vcExamples[vcIdx];
+      vcText.focus();
+    });
+    function vcSync() { vcNext.disabled = vcText.value.trim().length === 0; }
+    vcText.addEventListener('input', vcSync);
+    vcSync();
+
+    // autofocus в A — самый рекомендованный
+    setTimeout(() => vaText.focus({ preventScroll: true }), 50);
+  </script>
+</body>
+</html>
