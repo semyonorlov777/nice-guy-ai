@@ -1,13 +1,16 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Fragment, useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
+import { useStickToBottom } from "use-stick-to-bottom";
 import type { WelcomeConfig } from "@/types/welcome";
 import { ArrowRightIcon } from "@/components/icons/hub-icons";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { useTelegramMiniApp } from "@/hooks/useTelegramMiniApp";
 import InputBar from "@/components/InputBar/InputBar";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
@@ -39,8 +42,15 @@ export function NewChatScreen({
   const chatIdRef = useRef<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [retryText, setRetryText] = useState<string | null>(null);
-  const messagesRef = useRef<HTMLDivElement>(null);
   const initialMessageSent = useRef(false);
+
+  // Stick-to-bottom + поддержка iOS клавиатуры + Telegram Mini App.
+  const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
+    resize: "smooth",
+    initial: "instant",
+  });
+  useKeyboardInset();
+  useTelegramMiniApp(scrollRef);
 
   const chatType = welcome.chatType || "free";
   const topicContext = topic
@@ -97,17 +107,6 @@ export function NewChatScreen({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  // Scroll to bottom on new messages
-  const scrollToBottom = useCallback(() => {
-    if (messagesRef.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
   // Auto-send initial message from Hub input bar
   useEffect(() => {
     if (initialMessage && !initialMessageSent.current) {
@@ -116,6 +115,17 @@ export function NewChatScreen({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessage]);
+
+  function scrollAfterSend() {
+    // useStickToBottom сам следит через ResizeObserver, но Safari иногда
+    // теряет первый rAF — явный вызов через double rAF страхует прыжок
+    // user-message к верху viewport (через spacer-паттерн в CSS).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom({ animation: "smooth" });
+      });
+    });
+  }
 
   function handleFirstMessage(text: string) {
     if (isStreaming) return;
@@ -127,6 +137,7 @@ export function NewChatScreen({
 
     // Отправить через useChat — стриминг автоматический
     sendMessage({ text: text.trim() });
+    scrollAfterSend();
   }
 
   function handleSend(text: string) {
@@ -138,6 +149,7 @@ export function NewChatScreen({
     } else {
       setErrorText(null);
       sendMessage({ text: trimmed });
+      scrollAfterSend();
     }
   }
 
@@ -175,7 +187,8 @@ export function NewChatScreen({
       </div>
 
       {/* Scrollable content */}
-      <div className="nc-scroll" ref={messagesRef}>
+      <div className="nc-scroll" ref={scrollRef} role="log" aria-live="polite">
+        <div className="nc-scroll-inner" ref={contentRef}>
         {/* Welcome card — fades out */}
         <div className={`wc${showWelcome ? "" : " wc-exit"}`}>
           {coverUrl && (
@@ -276,6 +289,7 @@ export function NewChatScreen({
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Input bar */}

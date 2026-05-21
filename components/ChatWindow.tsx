@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { useRouter } from "next/navigation";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { DEFAULT_PROGRAM_SLUG } from "@/lib/constants";
 import InputBar from "@/components/InputBar/InputBar";
 import { ChatHeader } from "@/components/ChatHeader";
 import { useChatListRefresh } from "@/contexts/ChatListContext";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
-import { isTelegramWebView } from "@/lib/detect-browser";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { useTelegramMiniApp } from "@/hooks/useTelegramMiniApp";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import {
@@ -82,9 +84,16 @@ export function ChatWindow({
   const [showQuickReplies, setShowQuickReplies] = useState(initialMessages.length === 0);
   const chatZoneRef = useRef<HTMLDivElement>(null);
   const [validationHint, setValidationHint] = useState<string | null>(null);
-  const [showScrollFab, setShowScrollFab] = useState(false);
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const isUserScrolledUp = useRef(false);
+
+  // Stick-to-bottom + поддержка iOS клавиатуры + Telegram Mini App.
+  // scrollRef навешивается на .chat-messages, contentRef — на .chat-inner.
+  // isAtBottom = false → показываем FAB; scrollToBottom() — вызов библиотеки.
+  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
+    resize: "smooth",
+    initial: "instant",
+  });
+  useKeyboardInset();
+  useTelegramMiniApp(scrollRef);
 
   // Мемоизируем transport — иначе useChat реинициализируется на каждом render
   // (даже на keystroke в InputBar). body — функция, читает свежий chatIdRef через closure.
@@ -138,34 +147,6 @@ export function ChatWindow({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  // --- Scroll logic ---
-  const scrollToBottom = useCallback(() => {
-    if (messagesRef.current && !isUserScrolledUp.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  function handleScroll() {
-    const el = messagesRef.current;
-    if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const atBottom = distanceFromBottom < 50;
-    isUserScrolledUp.current = !atBottom;
-    setShowScrollFab(distanceFromBottom > 200);
-  }
-
-  function scrollToBottomForced() {
-    if (messagesRef.current) {
-      messagesRef.current.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
-      isUserScrolledUp.current = false;
-      setShowScrollFab(false);
-    }
-  }
-
   // --- Send ---
   function handleSend(text: string) {
     const msgText = text.trim();
@@ -174,10 +155,19 @@ export function ChatWindow({
     if (animActive) skipWelcome();
     setValidationHint(null);
     setShowQuickReplies(false);
-    isUserScrolledUp.current = false;
 
     sendMessage({
       text: msgText,
+    });
+
+    // Сбрасываем escape-from-lock и прыгаем к низу (через spacer-паттерн
+    // это положит user-message в верх viewport). useStickToBottom сам
+    // подцепит ResizeObserver, но Safari иногда теряет первый rAF —
+    // явный вызов через double rAF страхует.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom({ animation: "smooth" });
+      });
     });
   }
 
@@ -279,16 +269,6 @@ export function ChatWindow({
     return () => el.classList.remove("input-pulse");
   }, [inputPulseActive]);
 
-  // Telegram WebView на iOS неправильно позиционирует scroll — сбрасываем
-  useEffect(() => {
-    if (isTelegramWebView()) {
-      window.scrollTo(0, 0);
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-      });
-    }
-  }, []);
-
   const animActive = shouldAnimate && welcomePhase !== "done";
 
   return (
@@ -304,8 +284,8 @@ export function ChatWindow({
           slug={slug}
         />
       )}
-      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll} role="log" aria-live="polite">
-        <div className="chat-inner">
+      <div className="chat-messages" ref={scrollRef} role="log" aria-live="polite">
+        <div className="chat-inner" ref={contentRef}>
           {children}
 
           {/* Thinking indicator during welcome animation */}
@@ -444,8 +424,8 @@ export function ChatWindow({
 
       <div className="chat-input-wrap" onFocusCapture={animActive ? skipWelcome : undefined}>
         <button
-          className={`scroll-fab ${showScrollFab ? "visible" : ""}`}
-          onClick={scrollToBottomForced}
+          className={`scroll-fab ${!isAtBottom ? "visible" : ""}`}
+          onClick={() => scrollToBottom({ animation: "smooth" })}
           aria-label="Прокрутить вниз"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

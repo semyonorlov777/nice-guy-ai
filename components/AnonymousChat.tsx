@@ -3,6 +3,7 @@
 import { Fragment, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { AIBubble, QuickReplyBar } from "@/components/chat/ChatMessage";
 import { parseQuickReplies } from "@/lib/chat/parse-quick-replies";
 import {
@@ -13,7 +14,8 @@ import { AuthSheet } from "@/components/AuthSheet";
 import type { UIMessage } from "ai";
 import InputBar from "@/components/InputBar/InputBar";
 import { useWelcomeAnimation } from "@/hooks/useWelcomeAnimation";
-import { isTelegramWebView } from "@/lib/detect-browser";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { useTelegramMiniApp } from "@/hooks/useTelegramMiniApp";
 
 interface AnonymousChatProps {
   programSlug: string;
@@ -39,9 +41,17 @@ export function AnonymousChat({
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [chatZoneEl, setChatZoneEl] = useState<HTMLDivElement | null>(null);
-  const messagesRef = useRef<HTMLDivElement>(null);
-  const isUserScrolledUp = useRef(false);
   const sessionIdRef = useRef<string>("");
+
+  // Stick-to-bottom для AnonymousChat. Spacer-паттерн отключён через
+  // .landing-v3 { --chat-spacer-h: 0px }, потому что чат живёт в карточке
+  // лендинга (clamp(620px, 78vh, 760px)), а не на весь экран.
+  const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
+    resize: "smooth",
+    initial: "instant",
+  });
+  useKeyboardInset();
+  useTelegramMiniApp(scrollRef);
 
   const storageKeyMessages = `anon_chat_${programSlug}_messages`;
   const storageKeySession = `anon_chat_${programSlug}_session_id`;
@@ -104,6 +114,16 @@ export function AnonymousChat({
     el.classList.add("input-pulse");
     return () => el.classList.remove("input-pulse");
   }, [inputPulseActive, chatZoneEl]);
+
+  // При открытом AuthSheet блокируем скролл body (iOS rubber-band не двигает лендинг).
+  useEffect(() => {
+    if (!authSheetOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [authSheetOpen]);
 
   // Мемоизируем transport — иначе useChat реинициализируется на каждом render.
   // sessionIdRef.current стабилен после mount (инициализация выше синхронно),
@@ -193,14 +213,10 @@ export function AnonymousChat({
   const isStreaming = status === "streaming" || status === "submitted";
   const hasScrolledToSection = useRef(false);
 
-  // --- Scroll: chat-level only (no page scroll here) ---
-  const scrollToBottom = useCallback(() => {
-    if (messagesRef.current && !isUserScrolledUp.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    }
-  }, []);
-
-  // Page-level scroll к секции чата — только при первом взаимодействии
+  // Page-level scroll к секции чата — только при первом взаимодействии.
+  // Это отдельная от chat-level скроллинга логика: страница лендинга
+  // прокручивается до карточки чата, а stick-to-bottom продолжает работать
+  // внутри неё.
   const scrollToSection = useCallback(() => {
     if (scrollToSectionId && !hasScrolledToSection.current) {
       hasScrolledToSection.current = true;
@@ -210,27 +226,6 @@ export function AnonymousChat({
       });
     }
   }, [scrollToSectionId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // Telegram WebView на iOS неправильно позиционирует scroll — сбрасываем
-  useEffect(() => {
-    if (isTelegramWebView()) {
-      window.scrollTo(0, 0);
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-      });
-    }
-  }, []);
-
-  function handleScroll() {
-    const el = messagesRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-    isUserScrolledUp.current = !atBottom;
-  }
 
   function handleSend(text: string) {
     const msgText = text.trim();
@@ -242,8 +237,14 @@ export function AnonymousChat({
     scrollToSection();
 
     setShowQuickReplies(false);
-    isUserScrolledUp.current = false;
     sendMessage({ text: msgText });
+
+    // Принудительный chat-level scroll после Send (Safari иногда теряет первый rAF).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom({ animation: "smooth" });
+      });
+    });
   }
 
   function getMessageText(msg: UIMessage): string {
@@ -297,10 +298,11 @@ export function AnonymousChat({
     <div className="chat-zone" ref={setChatZoneEl}>
       <div
         className="chat-messages"
-        ref={messagesRef}
-        onScroll={handleScroll}
+        ref={scrollRef}
+        role="log"
+        aria-live="polite"
       >
-        <div className="chat-inner">
+        <div className="chat-inner" ref={contentRef}>
           {headerTitle && (
             <div className="chat-section-header">
               <h2>{headerTitle}</h2>

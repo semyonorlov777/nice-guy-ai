@@ -88,6 +88,17 @@
     --content-w: 720px;
     --chat-w: 640px;
 
+    /* Высота виртуальной клавиатуры. Обновляется хуком useKeyboardInset
+       через VisualViewport API на iOS. На Chromium/Firefox 132+ остаётся 0,
+       клавиатуру обрабатывает interactive-widget=resizes-content из meta. */
+    --kb-inset: 0px;
+
+    /* Spacer-паттерн: высота которую получает последнее сообщение в чате,
+       чтобы при scroll-to-bottom оно прыгало к верху viewport. Используется
+       в .chat-inner > :last-child и .nc-scroll > :last-child. Отключается
+       внутри .landing-v3 (AnonymousChat в карточке лендинга). */
+    --chat-spacer-h: calc(100dvh - 220px);
+
     /* Auth Sheet — светлая тема */
     --auth-bg: #FAFAF5;
     --auth-bg-card: #FFFFFF;
@@ -431,9 +442,16 @@
 
   /* ── CHAT ZONE ── */
   .chat-zone { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat-zone); min-height: 0; position: relative; }
-  .chat-messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; }
+  .chat-messages { flex: 1; overflow-y: auto; overflow-anchor: none; -webkit-overflow-scrolling: touch; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; scroll-padding-top: 16px; }
   .chat-inner { width: 100%; max-width: var(--chat-w); display: flex; flex-direction: column; gap: 14px; }
-  .chat-input-wrap { padding: 8px 16px 10px; background: transparent; border-top: none; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 30; }
+  /* Spacer-паттерн: последнее сообщение/группа кнопок растягивается до высоты экрана,
+     чтобы при scroll-to-bottom user-message прыгал к верху viewport. Внутри лендинга
+     (.landing-v3 .chat-inner) отключается через --chat-spacer-h: 0. */
+  .chat-inner > .msg:last-of-type,
+  .chat-inner > .quick-replies:last-of-type,
+  .chat-inner > .thinking-indicator:last-of-type,
+  .chat-inner > .error-card:last-of-type { min-height: var(--chat-spacer-h); }
+  .chat-input-wrap { padding: 8px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom), var(--kb-inset)); background: transparent; border-top: none; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 30; }
   .chat-input-inner { width: 100%; max-width: var(--chat-w); }
   .anon-chat-auth-prompt { display: block; margin: 8px auto; padding: 10px 20px; background: none; border: 1px solid var(--auth-accent, #C9963B); border-radius: 20px; color: var(--auth-accent, #C9963B); font-family: inherit; font-size: 13px; cursor: pointer; transition: background 0.15s; }
   .anon-chat-auth-prompt:hover { background: rgba(201, 150, 59, 0.08); }
@@ -449,6 +467,13 @@
   .send-btn:disabled { opacity: 0.4; cursor: default; }
   .input-validation-hint { text-align: center; font-size: 12px; color: #e8a545; margin-top: 6px; }
   .input-privacy { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* Telegram Mini App: блокировка vertical swipes которые закрывают приложение.
+     Хук useTelegramMiniApp вешает класс swipe-y-off на <html> при mount внутри
+     Telegram, и swipe-y-on на ref scroll-контейнера. На обычных браузерах правила
+     ничего не делают (классы не добавляются). */
+  html.swipe-y-off { overscroll-behavior-y: contain; }
+  .swipe-y-on { overscroll-behavior-y: contain; }
 
   /* ── WELCOME ── */
   .welcome-card { text-align: center; padding: 24px 16px 16px; margin-bottom: var(--space-2xs); }
@@ -1037,6 +1062,7 @@
   }
 
   /* ── CHAT OVERRIDES (AnonymousChat inside v3) ── */
+  .landing-v3 { --chat-spacer-h: 0px; }  /* spacer-паттерн отключён: чат живёт в карточке, не на всю страницу */
   .landing-v3 .chat-zone { background: transparent; }
   .landing-v3 .chat-messages { background: transparent; padding-bottom: 20px; min-height: 320px; }
   .landing-v3 .chat-input-wrap {
@@ -4691,8 +4717,14 @@ html:not(.no-transition) .app-main {
 .nc-header-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: block; }
 .nc-header-sub { font-size: 10px; color: var(--text-muted); display: block; }
 
-/* Scroll */
-.nc-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 12px; display: flex; flex-direction: column; gap: var(--space-sm); }
+/* Scroll: контейнер с overflow. Layout (flex/gap/padding) — на .nc-scroll-inner,
+   чтобы useStickToBottom мог измерять контент отдельным ref (contentRef). */
+.nc-scroll { flex: 1; overflow-y: auto; overflow-anchor: none; -webkit-overflow-scrolling: touch; scroll-padding-top: 16px; }
+.nc-scroll-inner { padding: 16px 12px; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 100%; }
+/* Spacer-паттерн: последний элемент растягивается до высоты экрана. */
+.nc-scroll-inner > .nc-msg:last-of-type,
+.nc-scroll-inner > .nc-replies:last-of-type,
+.nc-scroll-inner > .nc-error:last-of-type { min-height: var(--chat-spacer-h); }
 
 /* Welcome card + exit animation */
 .wc { text-align: center; padding: 14px 16px 8px; transition: opacity 300ms var(--ease), transform 300ms var(--ease); }
@@ -4742,7 +4774,7 @@ html:not(.no-transition) .app-main {
 .nc-error-btn:hover { border-color: var(--accent-border); color: var(--accent); }
 
 /* Input */
-.nc-input-wrap { padding: 8px 12px; flex-shrink: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+.nc-input-wrap { padding: 8px 12px; flex-shrink: 0; padding-bottom: max(8px, env(safe-area-inset-bottom), var(--kb-inset)); }
 .nc-input-bar { display: flex; align-items: center; gap: var(--space-xs); background: var(--bg-input, var(--bg-card)); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
 .nc-input-bar input { flex: 1; border: none; outline: none; background: transparent; font-family: var(--font-body); font-size: 14px; color: var(--text-primary); }
 .nc-input-bar input::placeholder { color: var(--text-hint); }
@@ -4751,7 +4783,7 @@ html:not(.no-transition) .app-main {
 
 /* Desktop */
 @media (min-width: 769px) {
-  .nc-scroll { padding: 24px 32px; max-width: var(--content-w); margin: 0 auto; width: 100%; }
+  .nc-scroll-inner { padding: 24px 32px; max-width: var(--content-w); margin: 0 auto; width: 100%; }
   .nc-input-wrap { max-width: var(--chat-w); margin: 0 auto; width: 100%; }
 }
 
