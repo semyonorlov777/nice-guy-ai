@@ -12,19 +12,21 @@ import { createServiceClient } from "@/lib/supabase-server";
 import { analyzeForPortrait } from "@/lib/gemini-portrait";
 import { PORTRAIT_ANALYST_PROMPT } from "@/lib/prompts/portrait-analyst";
 import { createRateLimit } from "@/lib/rate-limit";
-import { getFacts, type IdentityFacts } from "@/lib/personalization";
+import {
+  getFacts,
+  IDENTITY_QUESTION_IDS,
+  type IdentityFacts,
+} from "@/lib/personalization";
+import { IDENTITY_FACT_LABELS } from "@/lib/anketa/questions";
 
 function formatAnketaForPortrait(facts: IdentityFacts): string {
   if (Object.keys(facts).length === 0) return "";
   const lines: string[] = [];
-  if (facts.context_intent)
-    lines.push(`- Что привело к книге: ${facts.context_intent}`);
-  if (facts.problem)
-    lines.push(`- Что не так в жизни/работе: ${facts.problem}`);
-  if (facts.implication)
-    lines.push(`- Что будет, если не менять: ${facts.implication}`);
-  if (facts.need_payoff)
-    lines.push(`- Как поймёт, что программа сработала: ${facts.need_payoff}`);
+  for (const qid of IDENTITY_QUESTION_IDS) {
+    const value = facts[qid]?.trim();
+    if (!value) continue;
+    lines.push(`- ${IDENTITY_FACT_LABELS[qid]}: ${value}`);
+  }
   return `\nАНКЕТА ПОЛЬЗОВАТЕЛЯ (его собственный запрос, не путать с наблюдениями из чата):\n${lines.join("\n")}\n`;
 }
 

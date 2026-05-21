@@ -5,6 +5,12 @@ import type { PortraitContent, PortraitSection } from "@/types/portrait";
 import { isLegacyPortrait, convertLegacyPortrait } from "@/types/portrait";
 import { requireProgramFeature } from "@/lib/queries/program";
 import { getFacts, type IdentityFacts } from "@/lib/personalization";
+import {
+  ANKETA_QUESTIONS,
+  IDENTITY_FACT_LABELS,
+  isAnketaComplete,
+  isAnketaProgram,
+} from "@/lib/anketa/questions";
 
 export default async function PortraitPage({
   params,
@@ -39,6 +45,9 @@ export default async function PortraitPage({
   const totalExercises = exercisesCountRes.count;
   const portrait = portraitRes.data;
   const hasAnketa = Object.keys(anketaFacts).length > 0;
+  const isAnketaSupported = isAnketaProgram(slug);
+  const anketaPartial =
+    isAnketaSupported && !isAnketaComplete(anketaFacts, slug);
 
   const raw = portrait?.content;
   let content: PortraitContent | null = null;
@@ -75,7 +84,13 @@ export default async function PortraitPage({
           )}
         </div>
 
-        {hasAnketa && <AnketaSection facts={anketaFacts} />}
+        {isAnketaSupported && (
+          <AnketaSection
+            facts={anketaFacts}
+            slug={slug}
+            showCompleteCta={anketaPartial}
+          />
+        )}
 
         {isEmpty ? (
           /* Empty state */
@@ -108,16 +123,28 @@ export default async function PortraitPage({
   );
 }
 
-function AnketaSection({ facts }: { facts: IdentityFacts }) {
-  const items: Array<{ label: string; value: string }> = [];
-  if (facts.context_intent)
-    items.push({ label: "Что привело", value: facts.context_intent });
-  if (facts.problem)
-    items.push({ label: "Что не так", value: facts.problem });
-  if (facts.implication)
-    items.push({ label: "Если не менять", value: facts.implication });
-  if (facts.need_payoff)
-    items.push({ label: "Как пойму, что сработало", value: facts.need_payoff });
+function AnketaSection({
+  facts,
+  slug,
+  showCompleteCta,
+}: {
+  facts: IdentityFacts;
+  slug: string;
+  showCompleteCta: boolean;
+}) {
+  // Идём в порядке вопросов программы — у разных книг тройка одна (без
+  // implication), но порядок может отличаться. Так подписи и порядок блоков
+  // совпадают с тем, как пользователь видел анкету.
+  const programQuestions = isAnketaProgram(slug) ? ANKETA_QUESTIONS[slug] : [];
+  const items = programQuestions
+    .map((q) => {
+      const value = facts[q.id]?.trim();
+      if (!value) return null;
+      return { label: IDENTITY_FACT_LABELS[q.id], value };
+    })
+    .filter((x): x is { label: string; value: string } => x !== null);
+
+  const isEmpty = items.length === 0;
 
   return (
     <div className="portrait-anketa">
@@ -125,14 +152,28 @@ function AnketaSection({ facts }: { facts: IdentityFacts }) {
         <h2 className="portrait-anketa-title">Твой запрос</h2>
         <span className="portrait-anketa-tag">из анкеты</span>
       </div>
-      <div className="portrait-anketa-list">
-        {items.map((it, i) => (
-          <div key={i} className="portrait-anketa-item">
-            <div className="portrait-anketa-label">{it.label}</div>
-            <div className="portrait-anketa-value">{it.value}</div>
-          </div>
-        ))}
-      </div>
+      {isEmpty ? (
+        <p className="portrait-anketa-empty">
+          Анкета пока не заполнена — расскажи Системе, что привело тебя сюда.
+        </p>
+      ) : (
+        <div className="portrait-anketa-list">
+          {items.map((it, i) => (
+            <div key={i} className="portrait-anketa-item">
+              <div className="portrait-anketa-label">{it.label}</div>
+              <div className="portrait-anketa-value">{it.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {showCompleteCta && (
+        <Link
+          href={`/program/${slug}/anketa`}
+          className="portrait-anketa-cta"
+        >
+          {isEmpty ? "Заполнить анкету →" : "Дополнить анкету →"}
+        </Link>
+      )}
     </div>
   );
 }
