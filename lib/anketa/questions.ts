@@ -34,7 +34,8 @@ export type AnketaProgramSlug =
   | "pishi-sokraschay"
   | "the-choice"
   | "heroes-and-outlaws"
-  | "seven-habits";
+  | "seven-habits"
+  | "borba-za-vnimanie";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -257,6 +258,51 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что эта программа сработала?",
       help: "Что ты будешь делать или решать иначе через 4–6 недель?",
       placeholder: "Например: смогу планировать неделю заранее, а не реагировать день за днём…",
+    },
+  ],
+  "borba-za-vnimanie": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Зачем ты пришёл к этой книге?",
+      help: "Выбери, что ближе всего, или скажи своими словами",
+      options: [
+        {
+          value: "income",
+          label: "Хочу пробить потолок дохода — буксую на одном уровне",
+          chipLabel: "пробить потолок дохода",
+        },
+        {
+          value: "drive",
+          label: "Делаю много, но без огня — нет драйва от того, чем занимаюсь",
+          chipLabel: "нет драйва",
+        },
+        {
+          value: "point_b",
+          label: "Не вижу свою точку Б — куда расти и зачем",
+          chipLabel: "не вижу точку Б",
+        },
+        {
+          value: "reading_people",
+          label: "Хочу читать людей — для переговоров, продаж, разговоров",
+          chipLabel: "читать людей",
+        },
+      ],
+      placeholder: "Например: маркетолог, хочу выйти на свою практику…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Где сейчас застрял?",
+      help: "Конкретно: доход / отношения / здоровье / работа. Без оценок, как факт — что есть.",
+      placeholder: "Например: беру проекты, которые меня не драйвят, но не отказываюсь — страшно…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что программа сработала?",
+      help: "Что будешь делать или думать иначе через 3–6 месяцев?",
+      placeholder: "Например: отказываюсь от клиентов, которые меня тянут вниз — без вины…",
     },
   ],
 };
