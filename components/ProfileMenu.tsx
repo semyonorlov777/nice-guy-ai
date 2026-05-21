@@ -53,10 +53,8 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
     ? user.username ? `@${user.username}` : user.name || "Пользователь"
     : "Пользователь";
 
-  const secondaryLine =
-    user?.identifier && user.identifier !== displayName
-      ? user.identifier
-      : "Свободный";
+  const identifierLine =
+    user?.identifier && user.identifier !== displayName ? user.identifier : null;
 
   const initial = (user?.name || "?")[0].toUpperCase();
 
@@ -81,7 +79,6 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
         )}
         <div className="sidebar-user-info">
           <div className="sidebar-user-name">{displayName}</div>
-          <div className="sidebar-user-plan" title={secondaryLine}>{secondaryLine}</div>
         </div>
         {balance !== undefined && (
           <span className="sidebar-balance"><LightningIcon size={14} /> {balance}</span>
@@ -90,6 +87,17 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
 
       {/* Dropdown */}
       <div className={`profile-dropdown${open ? " open" : ""}`}>
+        {user && (
+          <>
+            <div className="pd-header">
+              <div className="pd-header-name">{displayName}</div>
+              {identifierLine && (
+                <div className="pd-header-id" title={identifierLine}>{identifierLine}</div>
+              )}
+            </div>
+            <div className="pd-divider" />
+          </>
+        )}
         <button
           className="pd-item"
           onClick={() => { setOpen(false); router.push(`/program/${slug}/balance`); }}
