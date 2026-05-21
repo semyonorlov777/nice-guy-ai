@@ -19,6 +19,8 @@ const BUILD_TIME = new Date().toISOString();
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
   // Не блокируем zoom — WCAG 2.1 SC 1.4.4 «Resize Text» требует возможности
   // увеличить контент до 200%. maximumScale=1 + userScalable=false ломали это
   // для слабовидящих.
