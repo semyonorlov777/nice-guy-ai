@@ -3,7 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' oauth.telegram.org",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' telegram.org oauth.telegram.org",
   "style-src 'self' 'unsafe-inline'",
   // Author photos are hosted locally in /public/authors/ (see book-to-modes skill); external photo-hosts removed.
   // Remaining: 'self' + data/blob (local); cdn.litres.ru (main book covers); imo10.labirint.ru (100-notes cover only — TODO mirror to cdn.litres.ru); OAuth avatar CDNs (Yandex/Google/Telegram).

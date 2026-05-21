@@ -69,7 +69,8 @@ Telegram Login Widget (`telegram.org/js/telegram-widget.js`) **молча отк
 Если виджет всё ещё не рендерится:
 
 - Открой DevTools → **Network**: запрашивается ли `https://telegram.org/js/telegram-widget.js?22`? Статус 200?
-- **Console**: есть ли ошибки `Bot domain invalid`, CSP-блокировок, CORS?
+- **Console**: есть ли ошибки `Bot domain invalid`, CSP-блокировок (`Refused to load the script ... violates the following Content Security Policy directive`), CORS?
+  - Если CSP блокирует `telegram.org` — проверь `script-src` в [next.config.ts](../../next.config.ts). Там должен быть `telegram.org` (для скрипта виджета) и `oauth.telegram.org` (для iframe внутри виджета). Это разные домены.
 - **Sentry** (тег `telegram_widget_timeout`) — должна появляться запись с `botUsername`.
 - Проверь шаг 1: домен в BotFather точно тот, на котором открываешь сайт. Vercel preview-домен (например, `nice-guy-ai-git-feature-branch.vercel.app`) НЕ совпадает с production и под него нужен отдельный бот.
 
