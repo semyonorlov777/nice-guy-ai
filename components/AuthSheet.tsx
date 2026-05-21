@@ -1,28 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Script from "next/script";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
 import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
-const TELEGRAM_BOT_USERNAME =
-  process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "skillstrainerai_bot";
+const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
-
-interface TelegramAuthData {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
 
 declare global {
   interface Window {
-    onTelegramAuth?: (user: TelegramAuthData) => void;
+    Telegram?: {
+      Login: {
+        auth: (
+          options: { client_id: string; request_access?: string[]; lang?: string },
+          callback: (result: { id_token?: string; error?: string } | null) => void,
+        ) => void;
+      };
+    };
   }
 }
 
@@ -158,7 +155,6 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   const [tgLoading, setTgLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [scriptReady, setScriptReady] = useState(false);
-  const [widgetFailed, setWidgetFailed] = useState(false);
   const [showMax, setShowMax] = useState(false);
 
   const calledRef = useRef(false);
@@ -187,7 +183,6 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setLoading(false);
       setTgLoading(false);
       setScriptReady(false);
-      setWidgetFailed(false);
       setShowMax(false);
       if (pollRef.current) {
         clearInterval(pollRef.current);
@@ -263,78 +258,49 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     };
   }, []);
 
-  // Telegram auth via official login widget. The widget renders its own
-  // iframe button (legacy widget has no programmatic JS API), and calls
-  // window.onTelegramAuth with real user data (id, first_name, last_name,
-  // username, photo_url, auth_date, hash).
-  const telegramWidgetRef = useRef<HTMLDivElement | null>(null);
+  // Telegram OIDC login — после загрузки SDK `oauth.telegram.org/js/telegram-login.js`
+  // вызываем `window.Telegram.Login.auth(...)`, он открывает popup на oauth.telegram.org,
+  // юзер подтверждает в Telegram, callback возвращает id_token (JWT) → серверная
+  // верификация через JWKS. Legacy widget с iframe-кнопкой отключён Telegram в 2026.
+  const handleTelegram = useCallback(() => {
+    if (!window.Telegram?.Login?.auth) {
+      setError("Telegram ещё загружается, подожди секунду...");
+      return;
+    }
 
-  useEffect(() => {
-    if (!open) return;
-    const container = telegramWidgetRef.current;
-    if (!container) return;
+    setError("");
+    setTgLoading(true);
 
-    window.onTelegramAuth = async (data: TelegramAuthData) => {
-      setError("");
-      setTgLoading(true);
-      try {
-        const res = await fetch("/api/auth/telegram/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (res.ok) {
-          handleSuccess();
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          setError(errData.error || "Ошибка авторизации");
+    window.Telegram.Login.auth(
+      { client_id: TELEGRAM_BOT_ID, request_access: ["write"], lang: "ru" },
+      async (result) => {
+        if (!result || result.error || !result.id_token) {
+          setTgLoading(false);
+          setError("Не удалось войти через Telegram. Попробуй ещё раз.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/auth/telegram/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_token: result.id_token }),
+          });
+
+          if (res.ok) {
+            handleSuccess();
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            setError(errData.error || "Ошибка авторизации");
+            setTgLoading(false);
+          }
+        } catch {
+          setError("Ошибка сети. Попробуй ещё раз.");
           setTgLoading(false);
         }
-      } catch {
-        setError("Ошибка сети. Попробуй ещё раз.");
-        setTgLoading(false);
-      }
-    };
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-radius", "12");
-    script.setAttribute("data-userpic", "false");
-    script.setAttribute("data-request-access", "write");
-    script.setAttribute("data-onauth", "onTelegramAuth(user)");
-    script.setAttribute("data-lang", "ru");
-
-    // Если виджет не загрузился за 6с — обычно из-за того, что домен не
-    // привязан к боту в @BotFather (виджет молча отказывается рендерить
-    // iframe). Показываем пользователю явный fallback и шлём breadcrumb
-    // в Sentry, чтобы диагностировать на проде.
-    const failTimer = setTimeout(() => {
-      setWidgetFailed(true);
-      Sentry.captureMessage("telegram_widget_timeout", {
-        level: "warning",
-        tags: { provider: "telegram", step: "widget_load" },
-        extra: { botUsername: TELEGRAM_BOT_USERNAME },
-      });
-    }, 6000);
-
-    script.onload = () => {
-      clearTimeout(failTimer);
-      setScriptReady(true);
-      setWidgetFailed(false);
-    };
-
-    container.innerHTML = "";
-    container.appendChild(script);
-
-    return () => {
-      clearTimeout(failTimer);
-      delete window.onTelegramAuth;
-      container.innerHTML = "";
-    };
-  }, [open, handleSuccess]);
+      },
+    );
+  }, [handleSuccess]);
 
   // Open OAuth popup (shared logic for Yandex and Google)
   const openOAuthPopup = useCallback((providerPath: string) => {
@@ -480,32 +446,18 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               Войти через Google
             </button>
 
-            <div className="auth-sheet-tg-widget">
-              <div ref={telegramWidgetRef} aria-hidden={!scriptReady} />
-              {!scriptReady && !widgetFailed && (
-                <div className="auth-sheet-tg-widget-placeholder">
-                  <TelegramIcon />
-                  <span>Telegram загружается...</span>
-                </div>
-              )}
-              {widgetFailed && (
-                <div
-                  className="auth-sheet-tg-widget-placeholder"
-                  role="status"
-                >
-                  <TelegramIcon />
-                  <span>
-                    Telegram-кнопка не загрузилась. Войди через Яндекс, Google
-                    или email ниже.
-                  </span>
-                </div>
-              )}
-              {tgLoading && (
-                <div className="auth-sheet-tg-widget-loading">
-                  Подтверди вход в Telegram...
-                </div>
-              )}
-            </div>
+            <button
+              className="auth-sheet-btn tg"
+              onClick={handleTelegram}
+              disabled={!scriptReady || tgLoading}
+            >
+              <TelegramIcon />
+              {tgLoading
+                ? "Подтверди вход в Telegram..."
+                : !scriptReady
+                  ? "Telegram загружается..."
+                  : "Войти через Telegram"}
+            </button>
 
             {MAX_TROLL_ENABLED && (
               <button
@@ -615,6 +567,13 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   if (mode === "fullscreen") {
     return (
       <>
+        {open && (
+          <Script
+            src="https://oauth.telegram.org/js/telegram-login.js?3"
+            strategy="afterInteractive"
+            onLoad={() => setScriptReady(true)}
+          />
+        )}
         <div className="auth-sheet-fullscreen-wrap">
           <div className="auth-sheet-logo">
             <div className="auth-sheet-logo-icon">К</div>
@@ -633,6 +592,14 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   // Sheet mode
   return (
     <>
+      {open && (
+        <Script
+          src="https://oauth.telegram.org/js/telegram-login.js?3"
+          strategy="afterInteractive"
+          onLoad={() => setScriptReady(true)}
+        />
+      )}
+
       {open && (
         <button
           type="button"
