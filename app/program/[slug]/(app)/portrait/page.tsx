@@ -46,8 +46,6 @@ export default async function PortraitPage({
   const portrait = portraitRes.data;
   const hasAnketa = Object.keys(anketaFacts).length > 0;
   const isAnketaSupported = isAnketaProgram(slug);
-  const anketaPartial =
-    isAnketaSupported && !isAnketaComplete(anketaFacts, slug);
 
   const raw = portrait?.content;
   let content: PortraitContent | null = null;
@@ -84,13 +82,7 @@ export default async function PortraitPage({
           )}
         </div>
 
-        {isAnketaSupported && (
-          <AnketaSection
-            facts={anketaFacts}
-            slug={slug}
-            showCompleteCta={anketaPartial}
-          />
-        )}
+        {isAnketaSupported && <AnketaSection facts={anketaFacts} slug={slug} />}
 
         {isEmpty ? (
           /* Empty state */
@@ -126,11 +118,9 @@ export default async function PortraitPage({
 function AnketaSection({
   facts,
   slug,
-  showCompleteCta,
 }: {
   facts: IdentityFacts;
   slug: string;
-  showCompleteCta: boolean;
 }) {
   // Идём в порядке вопросов программы — у разных книг тройка одна (без
   // implication), но порядок может отличаться. Так подписи и порядок блоков
@@ -145,6 +135,19 @@ function AnketaSection({
     .filter((x): x is { label: string; value: string } => x !== null);
 
   const isEmpty = items.length === 0;
+  const isFull = isAnketaProgram(slug) && isAnketaComplete(facts, slug);
+
+  // На полной анкете CTA ведёт на /anketa?edit=1 — иначе серверный редирект
+  // отправит назад на хаб. На частичной/пустой query-параметр не нужен:
+  // /anketa сам открывается на первом незаполненном вопросе.
+  const ctaHref = isFull
+    ? `/program/${slug}/anketa?edit=1`
+    : `/program/${slug}/anketa`;
+  const ctaText = isEmpty
+    ? "Заполнить анкету →"
+    : isFull
+      ? "Изменить ответы →"
+      : "Дополнить анкету →";
 
   return (
     <div className="portrait-anketa">
@@ -166,14 +169,9 @@ function AnketaSection({
           ))}
         </div>
       )}
-      {showCompleteCta && (
-        <Link
-          href={`/program/${slug}/anketa`}
-          className="portrait-anketa-cta"
-        >
-          {isEmpty ? "Заполнить анкету →" : "Дополнить анкету →"}
-        </Link>
-      )}
+      <Link href={ctaHref} className="portrait-anketa-cta">
+        {ctaText}
+      </Link>
     </div>
   );
 }
