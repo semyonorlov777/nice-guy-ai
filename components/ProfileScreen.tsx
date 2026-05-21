@@ -31,6 +31,7 @@ export interface ProfileScreenProps {
   slug: string;
   isAuthed: boolean;
   name: string;
+  identifier?: string | null;
   avatarUrl: string | null;
   balance: number;
   planLabel: string;
@@ -44,6 +45,7 @@ export function ProfileScreen({
   slug,
   isAuthed,
   name,
+  identifier,
   avatarUrl,
   balance,
   planLabel,
@@ -115,6 +117,11 @@ export function ProfileScreen({
           )}
           <div className="profile-info">
             <div className="profile-name">{name}</div>
+            {identifier && (
+              <div className="profile-identifier" title={identifier}>
+                {identifier}
+              </div>
+            )}
             <div className="profile-plan">{planLabel}</div>
           </div>
         </div>
