@@ -302,12 +302,14 @@
   .sidebar-avatar-initial { background: var(--bg-elevated); border-color: var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text-muted); }
   .sidebar-user-info { flex: 1; min-width: 0; overflow: hidden; }
   .sidebar-user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-user-plan { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-balance { font-size: 12px; font-weight: 600; color: var(--accent); margin-left: auto; flex-shrink: 0; }
 
   /* Profile dropdown */
   .profile-dropdown { position: absolute; bottom: calc(100% + 8px); left: 12px; right: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-elevated); padding: var(--space-xs); opacity: 0; pointer-events: none; transform: translateY(4px); transition: all var(--transition-fast); z-index: var(--z-dropdown); }
   .profile-dropdown.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .pd-header { padding: 10px 12px 8px; min-width: 0; }
+  .pd-header-name { font-size: 13px; font-weight: 600; color: var(--text-primary); font-family: var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-header-id { font-size: 12px; color: var(--text-muted); font-family: var(--font-body); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pd-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; width: 100%; font-size: 13px; color: var(--text-secondary); font-family: var(--font-body); text-align: left; transition: background 0.1s; }
   .pd-item:hover { background: var(--bg-elevated); }
   .pd-item-icon { width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
