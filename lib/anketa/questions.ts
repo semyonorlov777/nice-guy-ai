@@ -9,6 +9,19 @@
 
 import type { IdentityFacts, IdentityQuestionId } from "@/lib/personalization";
 
+/**
+ * Подписи для identity-фактов в UI (портрет, будущие точки отображения
+ * анкеты). Один источник истины — чтобы заголовки блоков не расходились
+ * между portrait-страницей и portrait-updater'ом, который форматирует
+ * анкету в текстовый блок для Gemini Pro.
+ */
+export const IDENTITY_FACT_LABELS: Record<IdentityQuestionId, string> = {
+  context_intent: "Что привело",
+  problem: "Что сейчас не так",
+  implication: "Если не менять",
+  need_payoff: "К чему идём",
+};
+
 export type AnketaQuestionType = "hybrid" | "open_text";
 
 export type AnketaQuestionOption = {
