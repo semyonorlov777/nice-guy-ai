@@ -49,14 +49,16 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
     router.push("/auth");
   }, [router]);
 
+  // Приоритет на name (реальное имя из Telegram/Google), а не на @username —
+  // identifier (@username, email, Telegram ID) уходит в подзаголовок dropdown'а.
   const displayName = user
-    ? user.username ? `@${user.username}` : user.name || "Пользователь"
+    ? user.name || (user.username ? `@${user.username}` : "Пользователь")
     : "Пользователь";
 
   const identifierLine =
     user?.identifier && user.identifier !== displayName ? user.identifier : null;
 
-  const initial = (user?.name || "?")[0].toUpperCase();
+  const initial = (user?.name || user?.username || "?")[0].toUpperCase();
 
   const themeOptions: { mode: ThemeMode; icon: typeof SunIcon; tooltip: string }[] = [
     { mode: "light", icon: SunIcon, tooltip: "Светлая" },
