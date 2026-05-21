@@ -203,6 +203,37 @@ else
 fi
 
 echo ""
+echo "=== Checking for legacy 100vh in chat CSS ==="
+# После перехода на контейнерный скролл (PR scroll-refactor 2026-05) все
+# высоты на странице чата используют 100dvh. 100vh ломает layout на iOS Safari
+# с виртуальной клавиатурой и сворачивающейся address bar.
+VH_HITS=$(grep -nE '\b100vh\b' app/globals.css 2>/dev/null)
+if [ -n "$VH_HITS" ]; then
+  echo "$VH_HITS"
+  echo "  ↳ Используй 100dvh (Baseline 2025) вместо 100vh."
+  FOUND=1
+else
+  echo "  No 100vh in globals.css"
+fi
+
+echo ""
+echo "=== Checking for manual scrollTop assignment in chat code ==="
+# Использовать useStickToBottom (use-stick-to-bottom) вместо ручного
+# el.scrollTop = el.scrollHeight. См. components/ChatWindow.tsx как образец.
+SCROLL_HITS=$(grep -rnE '\.scrollTop\s*=\s*[^;]*scrollHeight' \
+  --include='*.ts' --include='*.tsx' \
+  components/ hooks/ app/ 2>/dev/null \
+  | grep -v 'node_modules' \
+  | grep -v '.next/')
+if [ -n "$SCROLL_HITS" ]; then
+  echo "$SCROLL_HITS"
+  echo "  ↳ Используй useStickToBottom из use-stick-to-bottom вместо ручного scrollTop."
+  FOUND=1
+else
+  echo "  No manual scrollTop assignments"
+fi
+
+echo ""
 if [ "$FOUND" -eq 0 ]; then
   echo "Clean ✅"
 else
