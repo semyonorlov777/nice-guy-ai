@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import {
   confirmLoginCode,
-  fetchTelegramUserPhotoUrl,
+  downloadAndUploadAvatar,
   sendBotMessage,
   type TelegramFromUser,
 } from "@/lib/telegram-login";
@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Параллельно: получаем URL фото (опционально, может вернуть null).
-    const [confirmed, photoUrl] = await Promise.all([
-      confirmLoginCode(code, from, null),
-      fetchTelegramUserPhotoUrl(from.id),
-    ]);
+    // Скачиваем аватар (может вернуться null — нет фото / приватность / ошибка),
+    // потом одним UPDATE пишем код+telegram_id+name+avatar_url, чтобы polling
+    // не увидел status=confirmed без avatar.
+    const avatarUrl = await downloadAndUploadAvatar(from.id);
+    const confirmed = await confirmLoginCode(code, from, avatarUrl);
 
     if (!confirmed) {
       await sendBotMessage(
@@ -73,18 +73,6 @@ export async function POST(request: NextRequest) {
         "Эта ссылка входа уже использована или истекла. Открой страницу <b>Войти</b> на сайте заново.",
       );
       return NextResponse.json({ ok: true });
-    }
-
-    // Если получили URL фото — обновляем код с avatar_url.
-    // Avatar_url из Telegram содержит bot token, его нельзя раздавать клиенту —
-    // сохраним позже после загрузки в Storage. Пока — null в profiles.
-    // TODO: download to Supabase Storage и сохранить публичный URL.
-    if (photoUrl) {
-      Sentry.addBreadcrumb({
-        category: "telegram",
-        message: "User photo available but not yet stored",
-        data: { telegramId: from.id },
-      });
     }
 
     const fullName = [from.first_name, from.last_name]
