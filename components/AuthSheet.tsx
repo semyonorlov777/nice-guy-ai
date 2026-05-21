@@ -1,27 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Script from "next/script";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
 import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
-const TELEGRAM_BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
-
-declare global {
-  interface Window {
-    Telegram?: {
-      Login: {
-        auth: (
-          options: { client_id: string; request_access?: string[]; lang?: string },
-          callback: (result: { id_token?: string; error?: string } | null) => void,
-        ) => void;
-      };
-    };
-  }
-}
 
 interface AuthSheetProps {
   mode: "sheet" | "fullscreen";
@@ -154,11 +139,11 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   const [loading, setLoading] = useState(false);
   const [tgLoading, setTgLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
-  const [scriptReady, setScriptReady] = useState(false);
   const [showMax, setShowMax] = useState(false);
 
   const calledRef = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tgPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const { title, subtitle } = CONTEXT_TITLES[context] || CONTEXT_TITLES.default;
@@ -182,11 +167,14 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       setError("");
       setLoading(false);
       setTgLoading(false);
-      setScriptReady(false);
       setShowMax(false);
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
+      }
+      if (tgPollRef.current) {
+        clearInterval(tgPollRef.current);
+        tgPollRef.current = null;
       }
     }
   }, [open]);
@@ -258,48 +246,106 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     };
   }, []);
 
-  // Telegram OIDC login — после загрузки SDK `oauth.telegram.org/js/telegram-login.js`
-  // вызываем `window.Telegram.Login.auth(...)`, он открывает popup на oauth.telegram.org,
-  // юзер подтверждает в Telegram, callback возвращает id_token (JWT) → серверная
-  // верификация через JWKS. Legacy widget с iframe-кнопкой отключён Telegram в 2026.
-  const handleTelegram = useCallback(() => {
-    if (!window.Telegram?.Login?.auth) {
-      setError("Telegram ещё загружается, подожди секунду...");
-      return;
-    }
-
+  // Вход через Telegram-бот с одноразовым кодом:
+  // 1) POST /api/auth/telegram/start → получаем code + ссылку t.me/<bot>?start=<code>
+  // 2) window.open ссылки в новой вкладке (откроется Telegram-приложение или web.telegram.org)
+  // 3) Юзер жмёт START у бота → наш webhook ставит status=confirmed для этого кода
+  // 4) Параллельно сайт polls /api/auth/telegram/poll?code= каждые 2 секунды
+  // 5) Когда status=confirmed → endpoint возвращает access/refresh_token → setSession → handleSuccess.
+  const handleTelegram = useCallback(async () => {
     setError("");
     setTgLoading(true);
 
-    window.Telegram.Login.auth(
-      { client_id: TELEGRAM_BOT_ID, request_access: ["write"], lang: "ru" },
-      async (result) => {
-        if (!result || result.error || !result.id_token) {
-          setTgLoading(false);
-          setError("Не удалось войти через Telegram. Попробуй ещё раз.");
-          return;
-        }
+    try {
+      const startRes = await fetch("/api/auth/telegram/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!startRes.ok) {
+        const data = await startRes.json().catch(() => ({}));
+        setError(data.error || "Не удалось создать вход через Telegram");
+        setTgLoading(false);
+        return;
+      }
+      const { code, botUrl } = (await startRes.json()) as {
+        code: string;
+        botUrl: string;
+      };
 
+      // Открываем чат с ботом. Если браузер заблокирует popup —
+      // юзер увидит ссылку под кнопкой и сможет открыть вручную.
+      const popup = window.open(botUrl, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        setError(
+          `Браузер заблокировал переход в Telegram. Открой ссылку вручную: ${botUrl}`,
+        );
+      }
+
+      if (tgPollRef.current) {
+        clearInterval(tgPollRef.current);
+      }
+      const supabase = createClient();
+
+      tgPollRef.current = setInterval(async () => {
         try {
-          const res = await fetch("/api/auth/telegram/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id_token: result.id_token }),
-          });
+          const pollRes = await fetch(
+            `/api/auth/telegram/poll?code=${encodeURIComponent(code)}`,
+          );
 
-          if (res.ok) {
-            handleSuccess();
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            setError(errData.error || "Ошибка авторизации");
+          if (pollRes.status === 410 || pollRes.status === 404) {
+            if (tgPollRef.current) {
+              clearInterval(tgPollRef.current);
+              tgPollRef.current = null;
+            }
             setTgLoading(false);
+            setError("Ссылка входа истекла. Попробуй ещё раз.");
+            return;
           }
-        } catch {
-          setError("Ошибка сети. Попробуй ещё раз.");
+
+          if (!pollRes.ok) return; // не падаем на сетевых сбоях, попробуем снова
+
+          const data = (await pollRes.json()) as {
+            status: string;
+            access_token?: string;
+            refresh_token?: string;
+          };
+
+          if (data.status === "confirmed" && data.access_token && data.refresh_token) {
+            if (tgPollRef.current) {
+              clearInterval(tgPollRef.current);
+              tgPollRef.current = null;
+            }
+            const { error: sessionErr } = await supabase.auth.setSession({
+              access_token: data.access_token,
+              refresh_token: data.refresh_token,
+            });
+            if (sessionErr) {
+              setError(`Не удалось сохранить сессию: ${sessionErr.message}`);
+              setTgLoading(false);
+              return;
+            }
+            handleSuccess();
+          }
+        } catch (e) {
+          console.error("[telegram poll]", e);
+        }
+      }, 2000);
+
+      // 10 минут на ввод — потом самоочистка polling.
+      setTimeout(() => {
+        if (tgPollRef.current) {
+          clearInterval(tgPollRef.current);
+          tgPollRef.current = null;
           setTgLoading(false);
         }
-      },
-    );
+      }, 10 * 60 * 1000);
+    } catch (err) {
+      setError("Ошибка сети. Попробуй ещё раз.");
+      setTgLoading(false);
+      Sentry.captureException(err, {
+        tags: { provider: "telegram", step: "start" },
+      });
+    }
   }, [handleSuccess]);
 
   // Open OAuth popup (shared logic for Yandex and Google)
@@ -449,14 +495,10 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
             <button
               className="auth-sheet-btn tg"
               onClick={handleTelegram}
-              disabled={!scriptReady || tgLoading}
+              disabled={tgLoading}
             >
               <TelegramIcon />
-              {tgLoading
-                ? "Подтверди вход в Telegram..."
-                : !scriptReady
-                  ? "Telegram загружается..."
-                  : "Войти через Telegram"}
+              {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
             </button>
 
             {MAX_TROLL_ENABLED && (
@@ -566,40 +608,23 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
   if (mode === "fullscreen") {
     return (
-      <>
-        {open && (
-          <Script
-            src="https://oauth.telegram.org/js/telegram-login.js?3"
-            strategy="afterInteractive"
-            onLoad={() => setScriptReady(true)}
-          />
-        )}
-        <div className="auth-sheet-fullscreen-wrap">
-          <div className="auth-sheet-logo">
-            <div className="auth-sheet-logo-icon">К</div>
-            <div className="auth-sheet-logo-text">
-              Книжный <span>Спарринг</span>
-            </div>
-          </div>
-          <div className="auth-sheet mode-full">
-            {cardContent}
+      <div className="auth-sheet-fullscreen-wrap">
+        <div className="auth-sheet-logo">
+          <div className="auth-sheet-logo-icon">К</div>
+          <div className="auth-sheet-logo-text">
+            Книжный <span>Спарринг</span>
           </div>
         </div>
-      </>
+        <div className="auth-sheet mode-full">
+          {cardContent}
+        </div>
+      </div>
     );
   }
 
   // Sheet mode
   return (
     <>
-      {open && (
-        <Script
-          src="https://oauth.telegram.org/js/telegram-login.js?3"
-          strategy="afterInteractive"
-          onLoad={() => setScriptReady(true)}
-        />
-      )}
-
       {open && (
         <button
           type="button"

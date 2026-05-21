@@ -442,7 +442,7 @@ Source of truth — скилл `.claude/skills/niceguy-design/`. При UI-из�
 - `default` — «Войти в аккаунт» (страница /auth, middleware redirect)
 
 ### Методы входа
-- **Telegram** — OpenID Connect SDK (`oauth.telegram.org/js/telegram-login.js`), `window.Telegram.Login.auth({client_id})` открывает popup, callback возвращает id_token (JWT) → JWKS-верификация через `jose`. Legacy widget отключён самим Telegram в 2026 (отдаёт `deprecated`). Bot ID — через env `NEXT_PUBLIC_TELEGRAM_BOT_ID`. Привязка домена бота — `@BotFather → /setdomain`, см. [runbook](docs/runbooks/telegram-bot-setup.md).
+- **Telegram** — через бота с одноразовым кодом. Клик на кнопку → `POST /api/auth/telegram/start` генерит код → редирект в `t.me/<bot>?start=<code>` → юзер жмёт START у бота → webhook (`POST /api/telegram/webhook`) сохраняет telegram_id+name → сайт polls `GET /api/auth/telegram/poll?code=` каждые 2с → получает Supabase сессию. Legacy widget и OIDC SDK отключены самим Telegram в 2026 (отдают `deprecated`); см. [runbook](docs/runbooks/telegram-bot-setup.md).
 - **Яндекс** — OAuth popup через window.open, callback → /auth/popup-success
 - **Google** — OAuth popup через window.open, callback → /auth/popup-success
 - **Email (Magic Link)** — signInWithOtp, поле видно сразу (не за ссылкой), ссылка на почтовый сервис после отправки
@@ -469,18 +469,21 @@ calledRef паттерн — onSuccess вызывается ровно один 
 - `app/auth/callback/route.ts` — обработка Magic Link callback
 - `app/api/auth/yandex/route.ts` — инициация Яндекс OAuth
 - `app/api/auth/yandex/callback/route.ts` — обработка Яндекс callback
-- `app/api/auth/telegram/verify/route.ts` — верификация Telegram JWT
+- `app/api/auth/telegram/start/route.ts` — генерация login code и ссылки на бота
+- `app/api/auth/telegram/poll/route.ts` — проверка статуса кода (используется на клиенте)
+- `app/api/telegram/webhook/route.ts` — webhook от Telegram (бот ловит /start CODE)
 - `app/api/auth/google/route.ts` — инициация Google OAuth
 - `app/api/auth/google/callback/route.ts` — обработка Google callback
-- `lib/telegram-auth.ts` — Telegram OIDC верификация
+- `lib/telegram-login.ts` — создание/подтверждение login codes, Bot API helpers
 - `lib/google-auth.ts` — Google OAuth логика
 - `lib/oauth-common.ts` — общая OAuth логика (findOrCreateUser с fallback)
 - `middleware.ts` — защита routes, исключение для popup flow
 
 ### ENV variables (Telegram)
-- `NEXT_PUBLIC_TELEGRAM_BOT_ID` — bot ID (числовая часть до `:` в bot token), используется как `client_id` в Telegram OIDC SDK и `audience` при JWKS-проверке
-- `TELEGRAM_CLIENT_SECRET` — Bot Token (используется как HMAC-ключ для пароля Supabase)
-- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` — **больше не нужно** (был для legacy widget; deprecated с возвратом на OIDC)
+- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` — username бота для login link `t.me/<bot>?start=<code>` (без `@`)
+- `TELEGRAM_CLIENT_SECRET` — Bot Token (для Bot API запросов + HMAC-ключ пароля Supabase)
+- `TELEGRAM_WEBHOOK_SECRET` — случайный секрет (32+ байт hex). Telegram передаёт его в header `X-Telegram-Bot-Api-Secret-Token` при каждом вызове webhook — защищает от поддельных запросов
+- `NEXT_PUBLIC_TELEGRAM_BOT_ID` — bot ID, в текущем коде не используется (был для OIDC), оставлен в env для возможной будущей логики
 
 ### Удалено
 - `components/InChatAuth.tsx` — заменён AuthSheet
@@ -489,7 +492,7 @@ calledRef паттерн — onSuccess вызывается ровно один 
 
 ## Важные нюансы
 
-- Telegram bot ID — через `NEXT_PUBLIC_TELEGRAM_BOT_ID` env variable; привязка домена бота — через `@BotFather → /setdomain`
+- Telegram bot username — через `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` env variable; webhook регистрируется через Bot API (см. runbook), `/setdomain` НЕ нужен (это было для legacy widget)
 - Яндекс OAuth Client ID `ce4f585bbcd846d9bc025c28a60ebe6e`
 - Фейковые email для OAuth: `tg_XXX@niceguy.local`, `ya_XXX@niceguy.local` (Google использует реальный email)
 - Баланс токенов — общий для аккаунта, страница `/program/[slug]/balance`

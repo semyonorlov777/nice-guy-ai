@@ -8,8 +8,8 @@
 |-----------|----------|:---:|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL Supabase проекта | ✅ | `lib/supabase.ts`, `lib/supabase-server.ts`, `middleware.ts` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Публичный anon key Supabase | ✅ | `lib/supabase.ts`, `lib/supabase-server.ts`, `middleware.ts` |
-| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Username Telegram-бота для legacy login widget (без `@`). Дефолт `skillstrainerai_bot`. См. [runbook](runbooks/telegram-bot-setup.md). | ❌ | `components/AuthSheet.tsx` |
-| `NEXT_PUBLIC_TELEGRAM_BOT_ID` | **deprecated** — был нужен для OIDC SDK (PR #93 переключил на legacy widget). Больше не читается из кода. | ❌ | — |
+| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | Username Telegram-бота для login link `t.me/<bot>?start=<code>` (без `@`). См. [runbook](runbooks/telegram-bot-setup.md). | ✅ | `lib/telegram-login.ts` |
+| `NEXT_PUBLIC_TELEGRAM_BOT_ID` | Bot ID (числовая часть до `:` в bot token). Сейчас в коде не используется — оставлен в env для возможной будущей логики. | ❌ | — |
 | `NEXT_PUBLIC_SITE_URL` | URL сайта (для redirect'ов, OG) | ✅ | `lib/constants.ts`, `app/api/payments/create/route.ts` |
 | `NEXT_PUBLIC_APP_URL` | URL приложения (fallback) | ❌ | `lib/constants.ts` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Sentry DSN для клиентского мониторинга | ❌ | `sentry.client.config.ts` |
@@ -38,7 +38,8 @@
 
 | Переменная | Описание | Обязательная |
 |-----------|----------|:---:|
-| `TELEGRAM_CLIENT_SECRET` | Telegram Bot Token (HMAC для паролей) | ✅ |
+| `TELEGRAM_CLIENT_SECRET` | Telegram Bot Token (для Bot API запросов + HMAC-паролей Supabase) | ✅ |
+| `TELEGRAM_WEBHOOK_SECRET` | Случайный секрет, передаваемый в `setWebhook?secret_token=...`. Telegram шлёт его в header `X-Telegram-Bot-Api-Secret-Token` при каждом вызове webhook — защищает от поддельных запросов. См. [runbook](runbooks/telegram-bot-setup.md). | ✅ |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID | ✅ |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | ✅ |
 | `YANDEX_CLIENT_ID` | Яндекс OAuth Client ID | ✅ |
@@ -82,8 +83,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 GOOGLE_GEMINI_API_KEY=AIza...
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=skillstrainerai_bot
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=knizhny_sparringbot
 TELEGRAM_CLIENT_SECRET=123456789:ABC...
+TELEGRAM_WEBHOOK_SECRET=$(openssl rand -hex 32)
 
 # Для OAuth (можно пропустить, используй /api/auth/dev-login):
 GOOGLE_CLIENT_ID=...
