@@ -132,12 +132,10 @@ export async function createOrUpdateUserFromLogin(login: TelegramLoginCode) {
   });
 }
 
-// Опционально: получить URL фото профиля юзера из Telegram.
-// Возвращает null если фото нет или ошибка. URL содержит bot token,
-// поэтому используется только серверно — фото скачивается и кешируется
-// отдельным механизмом (TODO: загрузка в Supabase Storage), в этом
-// возврате это для server-side fetch, не для сохранения в profiles.avatar_url.
-export async function fetchTelegramUserPhotoUrl(userId: number): Promise<string | null> {
+// Получает URL фото профиля юзера из Telegram. ВНУТРЕННИЙ метод —
+// URL содержит bot token, нельзя отдавать клиенту. Используется только
+// как промежуточный шаг в downloadAndUploadAvatar.
+async function getTelegramPhotoSourceUrl(userId: number): Promise<string | null> {
   try {
     const photosResp = await fetch(
       `https://api.telegram.org/bot${BOT_TOKEN}/getUserProfilePhotos?user_id=${userId}&limit=1`,
@@ -158,7 +156,50 @@ export async function fetchTelegramUserPhotoUrl(userId: number): Promise<string 
 
     return `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
   } catch (err) {
-    console.error("[telegram-login] Failed to fetch user photo:", err);
+    console.error("[telegram-login] Failed to fetch user photo URL:", err);
+    return null;
+  }
+}
+
+// Скачивает фото юзера из Telegram и загружает в Supabase Storage bucket
+// `avatars`. Возвращает публичный URL или null. URL содержит cache-bust
+// `?v={ts}`, чтобы при смене фото в Telegram браузер обновил картинку.
+export async function downloadAndUploadAvatar(userId: number): Promise<string | null> {
+  const sourceUrl = await getTelegramPhotoSourceUrl(userId);
+  if (!sourceUrl) return null;
+
+  try {
+    const photoResp = await fetch(sourceUrl);
+    if (!photoResp.ok) {
+      console.error("[telegram-login] Failed to download photo:", photoResp.status);
+      return null;
+    }
+
+    const arrayBuffer = await photoResp.arrayBuffer();
+    const contentType = photoResp.headers.get("content-type") || "image/jpeg";
+
+    const supabase = createServiceClient();
+    const filename = `telegram-${userId}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filename, new Uint8Array(arrayBuffer), {
+        contentType,
+        upsert: true,
+        cacheControl: "3600",
+      });
+
+    if (uploadError) {
+      console.error("[telegram-login] Storage upload failed:", uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(filename);
+    // Cache-bust: при смене фото публичный URL остаётся тем же, поэтому
+    // добавляем ?v=timestamp — иначе браузер покажет старую кешированную копию.
+    return `${data.publicUrl}?v=${Date.now()}`;
+  } catch (err) {
+    console.error("[telegram-login] downloadAndUploadAvatar error:", err);
     return null;
   }
 }
