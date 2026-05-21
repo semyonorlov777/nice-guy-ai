@@ -19,8 +19,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for OAuth endpoints (they manage their own auth)
+  // и для Telegram webhook (вызывается Telegram'ом, без cookies — secret в header).
   if (
     pathname.startsWith("/api/auth/telegram") ||
+    pathname.startsWith("/api/telegram/") ||
     pathname.startsWith("/api/auth/yandex") ||
     pathname.startsWith("/api/auth/google") ||
     pathname.startsWith("/api/auth/confirm") ||
