@@ -2,48 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createServerClient } from "@supabase/ssr";
 import {
-  verifyTelegramAuth,
+  verifyTelegramToken,
   findOrCreateUser,
   TelegramAuthError,
   type TelegramAuthErrorReason,
   type TelegramUser,
-  type TelegramAuthData,
 } from "@/lib/telegram-auth";
 import { apiError } from "@/lib/api-helpers";
 
 const USER_MESSAGE_BY_REASON: Record<TelegramAuthErrorReason, string> = {
-  malformed: "Некорректные данные авторизации Telegram",
-  hash_mismatch:
-    "Не удалось проверить подпись от Telegram. Похоже, бот настроен неверно — напиши нам.",
-  expired:
-    "Срок действия подписи Telegram истёк. Открой страницу заново и попробуй ещё раз.",
+  missing_token: "Не удалось получить токен от Telegram",
+  invalid_token:
+    "Не удалось проверить ответ Telegram. Открой страницу заново и попробуй ещё раз.",
 };
 
 export async function POST(request: NextRequest) {
   let tgUser: TelegramUser | null = null;
 
   try {
-    const body = (await request.json()) as Partial<TelegramAuthData>;
+    const { id_token } = (await request.json()) as { id_token?: string };
 
-    if (
-      typeof body?.id !== "number" ||
-      typeof body?.auth_date !== "number" ||
-      typeof body?.hash !== "string"
-    ) {
-      Sentry.captureMessage("Telegram payload malformed", {
+    if (!id_token || typeof id_token !== "string") {
+      Sentry.captureMessage("Telegram missing id_token", {
         level: "warning",
-        tags: { provider: "telegram", step: "verify", reason: "malformed" },
-        extra: {
-          hasId: typeof body?.id === "number",
-          hasAuthDate: typeof body?.auth_date === "number",
-          hasHash: typeof body?.hash === "string",
-        },
+        tags: { provider: "telegram", step: "verify", reason: "missing_token" },
       });
-      return apiError(USER_MESSAGE_BY_REASON.malformed, 400);
+      return apiError(USER_MESSAGE_BY_REASON.missing_token, 400);
     }
 
-    const botToken = process.env.TELEGRAM_CLIENT_SECRET!;
-    tgUser = verifyTelegramAuth(body as TelegramAuthData, botToken);
+    const clientId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID!;
+    tgUser = await verifyTelegramToken(id_token, clientId);
 
     const session = await findOrCreateUser(tgUser);
 
@@ -100,11 +88,11 @@ export async function POST(request: NextRequest) {
         message: err.message,
       });
       Sentry.captureException(err, {
-        level: err.reason === "expired" ? "warning" : "error",
+        level: "error",
         tags: { provider: "telegram", step: "verify", reason: err.reason },
         extra: { telegramId: tgUser?.id ?? null },
       });
-      const status = err.reason === "malformed" ? 400 : 401;
+      const status = err.reason === "missing_token" ? 400 : 401;
       return apiError(USER_MESSAGE_BY_REASON[err.reason], status);
     }
 

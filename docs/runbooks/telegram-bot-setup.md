@@ -1,60 +1,53 @@
 # Настройка Telegram-бота для входа на платформу
 
-Telegram Login Widget (`telegram.org/js/telegram-widget.js`) **молча отказывается рендериться**, если домен сайта не привязан к боту через `@BotFather → /setdomain`. Если на проде/превью кнопка «Войти через Telegram» висит «Telegram загружается...» и нет ни одной записи `POST /api/auth/telegram/verify` в логах — почти всегда дело именно в этом.
-
-Эта инструкция — что нужно сделать в BotFather и Vercel, чтобы Telegram-вход заработал.
+В 2026 Telegram **закрыли legacy widget** (`telegram.org/js/telegram-widget.js`) — запрос на `oauth.telegram.org/auth?bot_id=...` теперь отдаёт голое слово `deprecated` вместо страницы авторизации. Используем Telegram OpenID Connect (OIDC) через SDK `oauth.telegram.org/js/telegram-login.js`. Это путь, который сам Telegram сейчас рекомендует.
 
 ## 0. Что у нас сейчас в коде
 
-- Используется **legacy widget** (НЕ Telegram OIDC SDK). Он отдаёт `id, first_name, last_name, username, photo_url, auth_date, hash`. Источник: [components/AuthSheet.tsx](../../components/AuthSheet.tsx).
-- HMAC верификация подписи: [lib/telegram-auth.ts](../../lib/telegram-auth.ts).
-- Сохранение имени и фото в `profiles.name` / `profiles.avatar_url`: [lib/oauth-common.ts](../../lib/oauth-common.ts).
-- Username бота — через env `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (дефолт `skillstrainerai_bot`).
-- Bot token — через env `TELEGRAM_CLIENT_SECRET`.
+- **Telegram OIDC SDK** загружается через Next.js `<Script>` из `https://oauth.telegram.org/js/telegram-login.js?3` — [components/AuthSheet.tsx](../../components/AuthSheet.tsx). Клик по кнопке вызывает `window.Telegram.Login.auth({ client_id, ... }, callback)`, открывается popup на oauth.telegram.org, после подтверждения callback возвращает `id_token` (JWT).
+- **Серверная JWKS-верификация** через `jose`: [lib/telegram-auth.ts](../../lib/telegram-auth.ts) проверяет подпись JWT по `https://oauth.telegram.org/.well-known/jwks.json`, валидирует `issuer` и `audience` (= `NEXT_PUBLIC_TELEGRAM_BOT_ID`), извлекает `sub`, `name`, `preferred_username`, `picture` из payload.
+- **Создание/обновление пользователя** в `profiles`: [lib/oauth-common.ts](../../lib/oauth-common.ts) через `findOrCreateOAuthUser` (fake email `tg_{id}@niceguy.local`, пароль = HMAC от telegram_id с `TELEGRAM_CLIENT_SECRET`).
+- **Bot ID** на клиенте: env `NEXT_PUBLIC_TELEGRAM_BOT_ID` (например `8544302305`).
+- **Bot token** на сервере: env `TELEGRAM_CLIENT_SECRET` (формат `BOT_ID:HEX-строка`) — нужен только для HMAC-пароля Supabase, не для OIDC.
 
 ## 1. Привязать домен в BotFather
 
+Telegram проверяет что `origin` страницы (= домен сайта) совпадает с настроенным в боте. Если нет — popup не открывается / закрывается без вернувшегося id_token.
+
 1. Открой `@BotFather` в Telegram.
-2. `/mybots` → выбери нужного бота (по умолчанию у нас `@skillstrainerai_bot`).
+2. `/mybots` → выбери нужного бота (по умолчанию `@skillstrainerai_bot`).
 3. **Bot Settings → Domain → Edit** (или команда `/setdomain`).
 4. Введи прод-домен **БЕЗ протокола и слэшей**:
    ```
    nice-guy-ai.vercel.app
    ```
-5. Если нужны превью-деплои Vercel — добавь их по одному той же командой (Telegram хранит только один домен на бота; для нескольких — заведи второго бота для preview-окружения).
-6. Для локальной разработки — Telegram не принимает `localhost`. Варианты:
-   - Использовать ngrok-домен и временно поставить его через `/setdomain`.
-   - Тестировать Telegram-вход только на превью / проде.
-   - Для остальной работы — `GET /api/auth/dev-login` (создаёт `dev_test@niceguy.local`).
+5. Для preview-деплоев Vercel — один бот = один домен. Для отдельного preview-окружения заведи второго бота.
+6. Локальная разработка — Telegram не принимает `localhost`. Варианты: ngrok-домен + временный `/setdomain`, тест на проде/превью, или dev-логин `GET /api/auth/dev-login`.
 
-## 2. Проверить bot token на Vercel
+## 2. Bot ID и токен на Vercel
 
-1. В BotFather: `/mybots` → бот → **API Token** → скопируй токен (формат `123456789:AAH...HEX-строка`).
-2. Vercel → Project `nice-guy-ai` → **Settings → Environment Variables**.
-3. Проверь `TELEGRAM_CLIENT_SECRET` для Production: значение должно совпадать в точности (включая `BOT_ID:` префикс).
-4. Если меняли — `Redeploy` последнего успешного деплоя.
+1. В BotFather: `/mybots` → бот → **API Token** → скопируй (формат `BOT_ID:HEX-строка`).
+2. Bot ID — это числовая часть до `:` (например, в `8544302305:AAGGGmqs...` это `8544302305`).
+3. Vercel → Project `nice-guy-ai` → **Settings → Environment Variables**:
+   - `NEXT_PUBLIC_TELEGRAM_BOT_ID` = bot ID (только цифры).
+   - `TELEGRAM_CLIENT_SECRET` = полный токен `BOT_ID:HEX-строка` (используется для HMAC-пароля Supabase).
+4. Если меняли — `Redeploy` последнего успешного деплоя без use existing build cache.
 
 ## 3. Если меняешь бота
 
-Например, отдельный бот для preview или новый production-бот после ребрендинга:
-
-1. В BotFather создай нового бота (`/newbot`), запомни username и token.
+1. В BotFather создай нового бота (`/newbot`), запомни bot ID и token.
 2. У нового бота: `/setdomain nice-guy-ai.vercel.app`.
-3. На Vercel обнови ОБЕ переменные:
-   - `TELEGRAM_CLIENT_SECRET` = новый token.
-   - `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` = новый username (без `@`).
+3. На Vercel обнови:
+   - `NEXT_PUBLIC_TELEGRAM_BOT_ID` = новый bot ID.
+   - `TELEGRAM_CLIENT_SECRET` = новый токен.
 4. `Redeploy`.
-
-Менять `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` можно через Vercel UI без коммита — `components/AuthSheet.tsx` читает её на клиенте (`NEXT_PUBLIC_` всегда подставляется во время билда; Vercel автоматически делает rebuild при изменении такой переменной).
 
 ## 4. Чек-проверка после настройки
 
-После всех шагов:
-
 1. Открой https://nice-guy-ai.vercel.app/auth в **incognito**.
-2. На месте Telegram должна появиться синяя кнопка «Войти как <твоё имя>» (iframe от Telegram). Если через 6 секунд её нет — появится плашка «Telegram-кнопка не загрузилась» (см. fallback в `AuthSheet.tsx`).
-3. Клик → подтверждение в Telegram → редирект в кабинет программы.
-4. Проверь сохранение в БД (Supabase SQL editor или MCP):
+2. Кнопка «Войти через Telegram» должна быть **активна** (синяя, того же размера что и Яндекс/Google) через 1–2 секунды после загрузки страницы. Если стоит «Telegram загружается...» — SDK ещё не загрузился, подожди.
+3. Клик → открывается popup на `oauth.telegram.org` → юзер подтверждает в Telegram → popup закрывается → редирект в кабинет.
+4. Проверь сохранение в БД:
    ```sql
    SELECT id, name, avatar_url, telegram_id, telegram_username, created_at
    FROM profiles
@@ -62,26 +55,22 @@ Telegram Login Widget (`telegram.org/js/telegram-widget.js`) **молча отк
    ORDER BY created_at DESC
    LIMIT 5;
    ```
-   У свежей записи должны быть заполнены `name` и `avatar_url`.
 
-## 5. Диагностика: «Кнопка не появляется»
+**Важно про имя и фото.** Telegram OIDC возвращает `name` и `picture` в id_token **не всегда** — зависит от настроек приватности пользователя и от того, взаимодействовал ли он раньше с ботом. Если у нового юзера `name` и `avatar_url` пустые — это норма для OIDC. План: обогащать профиль через webhook бота, когда юзер первый раз шлёт `/start`.
 
-Если виджет всё ещё не рендерится:
+## 5. Диагностика: «Кнопка не активна»
 
-- Открой DevTools → **Network**: запрашивается ли `https://telegram.org/js/telegram-widget.js?22`? Статус 200?
-- **Console**: есть ли ошибки `Bot domain invalid`, CSP-блокировок (`Refused to load the script ... violates the following Content Security Policy directive`), CORS?
-  - Если CSP блокирует `telegram.org` — проверь `script-src` в [next.config.ts](../../next.config.ts). Там должен быть `telegram.org` (для скрипта виджета) и `oauth.telegram.org` (для iframe внутри виджета). Это разные домены.
-- **Sentry** (тег `telegram_widget_timeout`) — должна появляться запись с `botUsername`.
-- Проверь шаг 1: домен в BotFather точно тот, на котором открываешь сайт. Vercel preview-домен (например, `nice-guy-ai-git-feature-branch.vercel.app`) НЕ совпадает с production и под него нужен отдельный бот.
+- DevTools → **Network**: запрашивается ли `https://oauth.telegram.org/js/telegram-login.js?3`? Статус 200?
+- **Console**: ошибки CSP (`Refused to load the script ... violates the following Content Security Policy directive`)? Проверь `script-src` в [next.config.ts](../../next.config.ts) — должен содержать `oauth.telegram.org`.
+- Проверь что `NEXT_PUBLIC_TELEGRAM_BOT_ID` задан на Vercel и попадает в клиентский билд (открой DevTools → Sources → найди bundle, проверь что строка `client_id: ...` содержит твой bot ID).
 
-## 6. Диагностика: «Кнопка кликается, но вход не проходит»
+## 6. Диагностика: «Кнопка кликается, popup открывается, но вход не проходит»
 
-В `Sentry` (или серверных логах `[auth/telegram/verify]`) ищи `tags.reason`:
+В `Sentry` или серверных логах `[auth/telegram/verify]` ищи `tags.reason`:
 
 | `reason` | Что значит | Что делать |
 |---|---|---|
-| `malformed` | Виджет прислал неполный payload (нет `id` / `auth_date` / `hash`) | Скорее баг на стороне Telegram — повторить попытку. Если воспроизводится — issue. |
-| `hash_mismatch` | HMAC не сошёлся: `TELEGRAM_CLIENT_SECRET` не от того бота, что подписал payload | Сверь токен на Vercel с тем, что в BotFather. После смены — Redeploy. |
-| `expired` | `auth_date` старше 24 часов | Пользователь открыл вкладку и долго не входил. Просто открыть `/auth` заново. |
-| `session_failed` | HMAC ок, но Supabase не дал сессию | Проверь `SUPABASE_SERVICE_ROLE_KEY` (он создаёт пользователя через admin API). |
+| `missing_token` | Popup закрылся без id_token (юзер отменил, или Telegram отказал) | Норма, не баг. Если воспроизводится у разных юзеров — проверь шаг 1. |
+| `invalid_token` | JWT не прошёл проверку через JWKS (подпись/issuer/audience не сошлись) | `NEXT_PUBLIC_TELEGRAM_BOT_ID` на Vercel не совпадает с реальным bot ID. Сверь, обнови, redeploy. |
+| `session_failed` | JWT ок, но Supabase не дал сессию | Проверь `SUPABASE_SERVICE_ROLE_KEY` (он создаёт пользователя через admin API). |
 | `unknown` | Что-то иное (БД, сеть) | Смотри `extra.error` в Sentry. |

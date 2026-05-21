@@ -1,13 +1,18 @@
-import crypto from "crypto";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { findOrCreateOAuthUser } from "@/lib/oauth-common";
 
-// ---------- Telegram Login Widget (legacy) HMAC verification ----------
-// https://core.telegram.org/widgets/login#checking-authorization
+// Telegram OIDC (OpenID Connect) — https://core.telegram.org/widgets/login
+// Legacy iframe widget closed by Telegram in early 2026 ("deprecated"
+// response from oauth.telegram.org/auth). OIDC через oauth.telegram.org
+// supports standard Authorization Code Flow with PKCE; SDK
+// `oauth.telegram.org/js/telegram-login.js` returns an id_token (JWT).
+
+const TELEGRAM_JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json";
+const TELEGRAM_ISSUER = "https://oauth.telegram.org";
 
 export type TelegramAuthErrorReason =
-  | "malformed"
-  | "hash_mismatch"
-  | "expired";
+  | "missing_token"
+  | "invalid_token";
 
 export class TelegramAuthError extends Error {
   constructor(public reason: TelegramAuthErrorReason, message: string) {
@@ -24,73 +29,36 @@ export interface TelegramUser {
   phone: string | null;
 }
 
-export interface TelegramAuthData {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
+const jwks = createRemoteJWKSet(new URL(TELEGRAM_JWKS_URL));
 
-const AUTH_MAX_AGE_SECONDS = 24 * 60 * 60;
-
-export function verifyTelegramAuth(
-  data: TelegramAuthData,
-  botToken: string,
-): TelegramUser {
-  if (!data.hash || typeof data.hash !== "string") {
-    throw new TelegramAuthError("malformed", "Telegram hash is missing");
-  }
-
-  const { hash, ...rest } = data;
-
-  const dataCheckString = Object.entries(rest)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(([k, v]) => [k, String(v)] as const)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("\n");
-
-  const secretKey = crypto.createHash("sha256").update(botToken).digest();
-  const calculatedHash = crypto
-    .createHmac("sha256", secretKey)
-    .update(dataCheckString)
-    .digest("hex");
-
-  const provided = Buffer.from(hash, "hex");
-  const expected = Buffer.from(calculatedHash, "hex");
-  if (
-    provided.length !== expected.length ||
-    !crypto.timingSafeEqual(provided, expected)
-  ) {
+export async function verifyTelegramToken(
+  idToken: string,
+  clientId: string,
+): Promise<TelegramUser> {
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(idToken, jwks, {
+      issuer: TELEGRAM_ISSUER,
+      audience: clientId,
+    }));
+  } catch (err) {
     throw new TelegramAuthError(
-      "hash_mismatch",
-      "Telegram hash verification failed — bot token in env likely doesn't match the bot that signed this payload",
+      "invalid_token",
+      err instanceof Error ? err.message : "Telegram id_token verification failed",
     );
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now - data.auth_date > AUTH_MAX_AGE_SECONDS) {
-    throw new TelegramAuthError("expired", "Telegram auth_date is too old");
-  }
-
-  const fullName = [data.first_name, data.last_name]
-    .filter((s): s is string => Boolean(s))
-    .join(" ")
-    .trim();
-
   return {
-    id: String(data.id),
-    name: fullName || data.username || "",
-    username: data.username || null,
-    picture: data.photo_url || null,
-    phone: null,
+    id: String(payload.sub),
+    name:
+      (payload.name as string) ||
+      (payload.preferred_username as string) ||
+      "",
+    username: (payload.preferred_username as string) || null,
+    picture: (payload.picture as string) || null,
+    phone: (payload.phone_number as string) || null,
   };
 }
-
-// ---------- Find or create Supabase user ----------
 
 export async function findOrCreateUser(tgUser: TelegramUser) {
   return findOrCreateOAuthUser({
