@@ -444,13 +444,14 @@
   .chat-zone { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat-zone); min-height: 0; position: relative; }
   .chat-messages { flex: 1; overflow-y: auto; overflow-anchor: none; -webkit-overflow-scrolling: touch; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; scroll-padding-top: 16px; }
   .chat-inner { width: 100%; max-width: var(--chat-w); display: flex; flex-direction: column; gap: 14px; }
-  /* Spacer-паттерн: последнее сообщение/группа кнопок растягивается до высоты экрана,
-     чтобы при scroll-to-bottom user-message прыгал к верху viewport. Внутри лендинга
-     (.landing-v3 .chat-inner) отключается через --chat-spacer-h: 0. */
-  .chat-inner > .msg:last-of-type,
-  .chat-inner > .quick-replies:last-of-type,
-  .chat-inner > .thinking-indicator:last-of-type,
-  .chat-inner > .error-card:last-of-type { min-height: var(--chat-spacer-h); }
+  /* Spacer-паттерн: user-сообщение прыгает к верху viewport ТОЛЬКО пока AI ещё
+     не начал отвечать. Как только AI появляется (thinking → AI bubble), его
+     контейнер становится :last-child и spacer выключается — AI-bubble растёт
+     естественной высотой, без растяжения на весь экран. Это поведение
+     ChatGPT/Claude: turn-anchor "top" пары (user + AI), а не отдельной bubble.
+     Внутри лендинга (.landing-v3) отключается через --chat-spacer-h: 0. */
+  .chat-inner > .msg-user:last-child,
+  .chat-inner > .thinking-indicator:last-child { min-height: var(--chat-spacer-h); }
   .chat-input-wrap { padding: 8px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom), var(--kb-inset)); background: transparent; border-top: none; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 30; }
   .chat-input-inner { width: 100%; max-width: var(--chat-w); }
   .anon-chat-auth-prompt { display: block; margin: 8px auto; padding: 10px 20px; background: none; border: 1px solid var(--auth-accent, #C9963B); border-radius: 20px; color: var(--auth-accent, #C9963B); font-family: inherit; font-size: 13px; cursor: pointer; transition: background 0.15s; }
@@ -4721,10 +4722,9 @@ html:not(.no-transition) .app-main {
    чтобы useStickToBottom мог измерять контент отдельным ref (contentRef). */
 .nc-scroll { flex: 1; overflow-y: auto; overflow-anchor: none; -webkit-overflow-scrolling: touch; scroll-padding-top: 16px; }
 .nc-scroll-inner { padding: 16px 12px; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 100%; }
-/* Spacer-паттерн: последний элемент растягивается до высоты экрана. */
-.nc-scroll-inner > .nc-msg:last-of-type,
-.nc-scroll-inner > .nc-replies:last-of-type,
-.nc-scroll-inner > .nc-error:last-of-type { min-height: var(--chat-spacer-h); }
+/* Spacer-паттерн: только пока AI ещё не ответил. Когда AI bubble появляется,
+   она становится :last-child и spacer выключается — bubble растёт естественно. */
+.nc-scroll-inner > .nc-msg-user:last-child { min-height: var(--chat-spacer-h); }
 
 /* Welcome card + exit animation */
 .wc { text-align: center; padding: 14px 16px 8px; transition: opacity 300ms var(--ease), transform 300ms var(--ease); }
