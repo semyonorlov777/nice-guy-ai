@@ -27,6 +27,9 @@ description: Дизайн-система Nice Guy AI — токены, темы 
 4. **Переключение темы** — только через `useTheme()` из `lib/theme.ts`. Не вызывай `document.documentElement.setAttribute("data-theme", ...)` где-либо ещё.
 5. **`public/theme-init.js`** (anti-FOUC inline) и `lib/theme.ts` обязаны давать идентичный DOM state. Меняешь одно — меняй второе.
 6. **Forced-light зоны** (`.landing-v3`, `.auth-sheet-*`) намеренно НЕ следуют `[data-theme="dark"]`. Это маркетинговое решение. Не «чини» это.
+7. **Spacing — через `var(--space-*)`.** `padding`/`margin`/`gap` для значений из шкалы (4/8/12/16/20/24/32/48px) — через токены. Прочие специфичные значения (border-width, height иконок, точечные позиционные смещения) можно хардкодить. Шкала описана в `tokens.md` → раздел Spacing.
+8. **Z-index — через `var(--z-*)`.** Шкала: `--z-base/sticky/overlay/dropdown/sheet/modal/toast`. Не пиши сырое число (особенно не `9999` — это перекроет даже модальное окно). Локальные слои внутри одного кластера (например, scrim/header/panel в чате) могут оставаться с числами, но новые слои добавляй через токены.
+9. **Transitions — через `var(--transition-fast/normal/slow)`.** Эти токены раскрываются в `0.15s/0.2s/0.3s var(--ease)` — единый easing для всего UI. Нестандартные timings (250ms, 400ms, cubic-bezier Material и т.п.) — оставляй прямые значения.
 
 ## Антипаттерны (как ловится)
 
@@ -34,6 +37,9 @@ description: Дизайн-система Nice Guy AI — токены, темы 
 - `radial-gradient(... #F0D68A ...)` вне объявлений токенов → grep-чек в `scripts/check-hardcodes.sh`.
 - Установка `data-theme` на `<body>` или `<div>` (вместо `<html>` или изолированной зоны) → визуально проявляется как рассинхрон `color-scheme` (светлый scrollbar на тёмном контенте).
 - Дублирование логики `applyTheme(mode)` в новых компонентах → используй `useTheme()` хук из `lib/theme.ts`.
+- **`z-index: <число>`** в новом коде вне локального кластера → используй `var(--z-*)`. `scripts/check-hardcodes.sh` ловит рост счётчика.
+- **`transition: <prop> 0.15s/0.2s/0.3s`** в новом коде → используй `var(--transition-fast/normal/slow)`. `scripts/check-hardcodes.sh` ловит рост счётчика.
+- **`padding: 16px`** в новом коде (или 4/8/12/20/24/32/48) → используй `var(--space-md)` и т.п. Snapshot-чека нет (слишком шумно), но при ревью требуем токены.
 
 ## SVG `stopColor` — известное ограничение
 
@@ -48,7 +54,8 @@ description: Дизайн-система Nice Guy AI — токены, темы 
 - [ ] **Градиенты** — через `var(--accent-grad-{hi,mid,lo})`. Не зашитые `#F0D68A` и т.п.
 - [ ] **Переключение темы** — через `useTheme()` из `lib/theme.ts`. Нет прямых вызовов `documentElement.setAttribute('data-theme', ...)`.
 - [ ] **Если правил `lib/theme.ts`** — синхронно обнови `public/theme-init.js` (anti-FOUC inline). Они обязаны давать идентичный DOM-state.
-- [ ] **`npm run check`** проходит. Если намеренно добавил легитимное `color: #fff` (на `var(--danger)`/OAuth-бренде) — обнови `ALLOWED_WHITE_COUNT` в `scripts/check-hardcodes.sh` в том же коммите.
+- [ ] **`npm run check`** проходит. Если намеренно добавил легитимное `color: #fff` (на `var(--danger)`/OAuth-бренде) — обнови `ALLOWED_WHITE_COUNT` в `scripts/check-hardcodes.sh` в том же коммите. То же про `ALLOWED_ZINDEX_COUNT` и `ALLOWED_TRANS_COUNT` для z-index и transitions.
+- [ ] **Spacing/z-index/transition** в новом коде — через `var(--space-*)`, `var(--z-*)`, `var(--transition-*)`.
 - [ ] **Визуально проверил обе темы** (через ProfileMenu → переключатель темы или `localStorage.theme='dark'/'light'` в DevTools):
   - App-страницы (`/program/.../balance`, чат, портрет, профиль) меняются.
   - Лендинги (`/`, `/program/[slug]`) остаются светлыми.

@@ -167,6 +167,42 @@ if [ -z "$GRAD_HEX_HITS" ] && [ "$CURRENT_WHITE_COUNT" -le "$ALLOWED_WHITE_COUNT
 fi
 
 echo ""
+echo "=== Checking for hardcoded z-index in CSS ==="
+# Snapshot-чек: число `z-index: <digit>` (числовой литерал) не должно расти.
+# Все НОВЫЕ z-index должны идти через var(--z-base/sticky/overlay/dropdown/sheet/modal/toast).
+# Текущее значение — 13 (локальные слои внутри chat-кластера: scrim/header/panel/input,
+# tooltip в sidebar, низкие 1/2/10 у псевдоэлементов).
+CURRENT_ZINDEX_COUNT=$(grep -cE 'z-index:\s*[0-9]+' app/globals.css 2>/dev/null)
+ALLOWED_ZINDEX_COUNT=13
+if [ "$CURRENT_ZINDEX_COUNT" -gt "$ALLOWED_ZINDEX_COUNT" ]; then
+  echo "  ✗ z-index hardcode count = $CURRENT_ZINDEX_COUNT, allowed ≤ $ALLOWED_ZINDEX_COUNT"
+  echo "  ↳ Используй var(--z-base/sticky/overlay/dropdown/sheet/modal/toast) вместо числа."
+  echo "  ↳ Если новое использование легитимно (локальный слой внутри кластера),"
+  echo "     обнови ALLOWED_ZINDEX_COUNT в scripts/check-hardcodes.sh."
+  FOUND=1
+else
+  echo "  z-index OK (≤ $ALLOWED_ZINDEX_COUNT)"
+fi
+
+echo ""
+echo "=== Checking for hardcoded transition timings in CSS ==="
+# Snapshot-чек: число `transition: ... 0.15s|0.2s|0.3s` не должно расти.
+# Все НОВЫЕ transitions должны идти через var(--transition-fast/normal/slow).
+# Текущее значение — 80 (legacy transitions без var(--ease), оставлены как есть,
+# т.к. default browser easing визуально неотличим от --ease).
+CURRENT_TRANS_COUNT=$(grep -cE 'transition:[^;]*\b0\.(15|2|3)s\b' app/globals.css 2>/dev/null)
+ALLOWED_TRANS_COUNT=80
+if [ "$CURRENT_TRANS_COUNT" -gt "$ALLOWED_TRANS_COUNT" ]; then
+  echo "  ✗ transition hardcode count = $CURRENT_TRANS_COUNT, allowed ≤ $ALLOWED_TRANS_COUNT"
+  echo "  ↳ Используй var(--transition-fast/normal/slow) вместо 0.15s/0.2s/0.3s."
+  echo "  ↳ Если новое использование легитимно (нестандартный easing/duration),"
+  echo "     обнови ALLOWED_TRANS_COUNT в scripts/check-hardcodes.sh."
+  FOUND=1
+else
+  echo "  transitions OK (≤ $ALLOWED_TRANS_COUNT)"
+fi
+
+echo ""
 if [ "$FOUND" -eq 0 ]; then
   echo "Clean ✅"
 else

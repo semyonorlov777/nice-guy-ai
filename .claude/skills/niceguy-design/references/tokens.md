@@ -12,13 +12,15 @@
 7. [Chat Message Tokens](#chat-messages)
 8. [Radii](#radii)
 9. [Layout Tokens](#layout)
-10. [Auth Theme](#auth-theme)
-11. [Test Results Theme](#test-results-theme)
-12. [Typography Scale](#typography)
-13. [Spacing](#spacing)
-14. [Per-Book Theming](#per-book)
-15. [Forbidden Colors](#forbidden)
-16. [Token Architecture Rules](#rules)
+10. [Z-Index Scale](#z-index)
+11. [Transition Tokens](#transitions)
+12. [Auth Theme](#auth-theme)
+13. [Test Results Theme](#test-results-theme)
+14. [Typography Scale](#typography)
+15. [Spacing](#spacing)
+16. [Per-Book Theming](#per-book)
+17. [Forbidden Colors](#forbidden)
+18. [Token Architecture Rules](#rules)
 
 ---
 
@@ -187,6 +189,34 @@ box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 
 ---
 
+## Z-Index Scale {#z-index}
+
+| Token | Value | Usage |
+|---|---|---|
+| `--z-base` | `1` | Псевдоэлементы поверх своего контекста (`::before`, `::after`) |
+| `--z-sticky` | `50` | Sticky overlays внутри страницы (`.tc-auth-overlay`, `.tc-auth-soft-prompt`) |
+| `--z-overlay` | `100` | Fixed-элементы поверх контента: mobile-tabs, sticky header вне sidebar |
+| `--z-dropdown` | `200` | Dropdowns: profile-dropdown, book-switcher-dropdown |
+| `--z-sheet` | `500` | Bottom-sheet content (если есть; auth-sheet использует modal-уровень) |
+| `--z-modal` | `1000` | Модальные диалоги, scrim'ы модалок, top-level toasts: balance-toast, auth-sheet-scrim |
+| `--z-toast` | `1100` | Error toasts поверх модалок (`.tc-error-toast`) |
+
+> AuthSheet content использует `calc(var(--z-modal) + 1)` чтобы перекрыть свой scrim. Локальные слои внутри одного фичи (например, scrim/header/panel в чате — 15/20/25) могут использовать сырые числа, потому что между ними важна точная относительная разница.
+
+---
+
+## Transition Tokens {#transitions}
+
+| Token | Value | Usage |
+|---|---|---|
+| `--transition-fast` | `0.15s var(--ease)` | Hover-эффекты, focus state, opacity toggle |
+| `--transition-normal` | `0.2s var(--ease)` | Дефолтная плавность для UI: background, border-color, transform |
+| `--transition-slow` | `0.3s var(--ease)` | Сложные изменения: layout, opacity для крупных блоков |
+
+> Easing — единый `var(--ease) = cubic-bezier(0.25, 0.1, 0.25, 1.0)`. Для нестандартных длительностей (250ms, 400ms) и нестандартных easings (Material `cubic-bezier(0.4, 0, 0.2, 1)`, `ease-out` для toast) — оставляй прямые значения, токены не натягивай.
+
+---
+
 ## Auth Theme (AuthSheet) {#auth-theme}
 
 Separate light theme for auth component. Prefix `--auth-*`.
@@ -267,6 +297,21 @@ Loading: `next/font/google`.
 ---
 
 ## Spacing {#spacing}
+
+### Spacing tokens
+
+| Token | Value | Typical usage |
+|---|---|---|
+| `--space-2xs` | `4px` | gap между мелкими inline-элементами, тонкие margin-top для микро-разделения |
+| `--space-xs` | `8px` | gap в строках кнопок, padding мелких чипов, отступы внутри icon-button |
+| `--space-sm` | `12px` | gap в плотных списках (sidebar items, list rows), padding кнопок |
+| `--space-md` | `16px` | дефолтный отступ карточки/секции, padding контента на мобилке |
+| `--space-lg` | `20px` | расширенный отступ карточки, padding hub-секций |
+| `--space-xl` | `24px` | padding контента на десктопе, padding больших карточек |
+| `--space-2xl` | `32px` | gap между крупными блоками лендинга, padding верхнего хедера экрана |
+| `--space-3xl` | `48px` | вертикальный gap между секциями лендинга, отступы heading'ов |
+
+> Применяется к `padding`/`margin`/`gap`. НЕ применять к `border-width`, `width/height` иконок, точечным позиционным смещениям (`top: 1px`), `letter-spacing`. Multi-value shorthand типа `padding: var(--space-md) var(--space-xl)` поддерживается.
 
 ### Padding Philosophy
 "Resonant Stark Effect" — minimalism with emotional depth. "Air" is an active element, not emptiness.
