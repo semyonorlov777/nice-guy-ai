@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { ProfileScreen } from "@/components/ProfileScreen";
 import { isLegacyPortrait } from "@/types/portrait";
+import { resolveUserIdentifier } from "@/lib/user-identifier";
 
 const PLAN_NAMES: Record<string, string> = {
   sub_pro: "Про",
@@ -13,6 +14,7 @@ const DEBUG_STATES: Record<string, Omit<import("@/components/ProfileScreen").Pro
   auth: {
     isAuthed: true,
     name: "Семён",
+    identifier: "semyon@example.com",
     avatarUrl: "https://randomuser.me/api/portraits/men/32.jpg",
     balance: 847,
     planLabel: "Свободный тариф",
@@ -23,6 +25,7 @@ const DEBUG_STATES: Record<string, Omit<import("@/components/ProfileScreen").Pro
   empty: {
     isAuthed: true,
     name: "Семён",
+    identifier: "@semyon_tg",
     avatarUrl: "https://randomuser.me/api/portraits/men/32.jpg",
     balance: 847,
     planLabel: "Свободный тариф",
@@ -33,6 +36,7 @@ const DEBUG_STATES: Record<string, Omit<import("@/components/ProfileScreen").Pro
   anon: {
     isAuthed: false,
     name: "Аноним",
+    identifier: null,
     avatarUrl: null,
     balance: 50,
     planLabel: "Гостевой доступ",
@@ -43,6 +47,7 @@ const DEBUG_STATES: Record<string, Omit<import("@/components/ProfileScreen").Pro
   sub: {
     isAuthed: true,
     name: "Семён",
+    identifier: "semyon@example.com",
     avatarUrl: "https://randomuser.me/api/portraits/men/32.jpg",
     balance: 2000,
     planLabel: "Макс",
@@ -87,6 +92,7 @@ export default async function ProfilePage({
         slug={slug}
         isAuthed={false}
         name="Аноним"
+        identifier={null}
         avatarUrl={null}
         balance={0}
         planLabel="Гостевой доступ"
@@ -102,7 +108,7 @@ export default async function ProfilePage({
     supabase
       .from("profiles")
       .select(
-        "name, avatar_url, balance_tokens, subscription_plan, telegram_username, subscription_expires_at",
+        "name, email, avatar_url, balance_tokens, subscription_plan, telegram_id, telegram_username, subscription_expires_at",
       )
       .eq("id", user.id)
       .single(),
@@ -121,6 +127,11 @@ export default async function ProfilePage({
   const planLabel = subscriptionPlan
     ? PLAN_NAMES[subscriptionPlan] || "Свободный тариф"
     : "Свободный тариф";
+  const identifier = resolveUserIdentifier({
+    telegramUsername: profile?.telegram_username,
+    email: profile?.email ?? user.email ?? null,
+    telegramId: profile?.telegram_id ?? null,
+  });
 
   // Fetch portrait if program found
   let hasPortrait = false;
@@ -155,6 +166,7 @@ export default async function ProfilePage({
       slug={slug}
       isAuthed={true}
       name={name}
+      identifier={identifier}
       avatarUrl={avatarUrl}
       balance={balance}
       planLabel={planLabel}

@@ -21,6 +21,7 @@ import { formatChatTime } from "@/lib/time";
 interface UserInfo {
   name: string;
   username: string | null;
+  identifier: string | null;
   avatarUrl: string | null;
 }
 

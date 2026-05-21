@@ -8,6 +8,7 @@ import { getChatPreviews } from "@/lib/queries/chat-previews";
 import { getExerciseNumberMap } from "@/lib/queries/exercise-map";
 import { getProgramModes } from "@/lib/queries/modes";
 import { getAllPrograms, type ProgramSwitcherItem } from "@/lib/queries/all-programs";
+import { resolveUserIdentifier } from "@/lib/user-identifier";
 import type { ProgramFeatures } from "@/types/program";
 
 export default async function ProgramLayout({
@@ -30,7 +31,7 @@ export default async function ProgramLayout({
   let sidebarProps: {
     slug: string;
     programId: string;
-    user: { name: string; username: string | null; avatarUrl: string | null } | null;
+    user: { name: string; username: string | null; identifier: string | null; avatarUrl: string | null } | null;
     features: ProgramFeatures | null;
     initialChats: { id: string; title: string; chatType: string; exerciseNumber: number | null; preview: string; lastMessageAt: string }[];
     exerciseCount: number;
@@ -51,7 +52,7 @@ export default async function ProgramLayout({
       getAllPrograms(supabase),
       supabase
         .from("profiles")
-        .select("name, telegram_username, avatar_url, balance_tokens")
+        .select("name, email, telegram_id, telegram_username, avatar_url, balance_tokens")
         .eq("id", user.id)
         .single(),
     ]);
@@ -64,6 +65,11 @@ export default async function ProgramLayout({
       ? {
           name: profile.name || "",
           username: profile.telegram_username || null,
+          identifier: resolveUserIdentifier({
+            telegramUsername: profile.telegram_username,
+            email: profile.email ?? user.email ?? null,
+            telegramId: profile.telegram_id ?? null,
+          }),
           avatarUrl: profile.avatar_url || null,
         }
       : null;

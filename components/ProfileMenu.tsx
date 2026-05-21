@@ -17,6 +17,7 @@ interface ProfileMenuProps {
   user: {
     name: string;
     username: string | null;
+    identifier: string | null;
     avatarUrl: string | null;
   } | null;
   slug: string;
@@ -52,6 +53,11 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
     ? user.username ? `@${user.username}` : user.name || "Пользователь"
     : "Пользователь";
 
+  const secondaryLine =
+    user?.identifier && user.identifier !== displayName
+      ? user.identifier
+      : "Свободный";
+
   const initial = (user?.name || "?")[0].toUpperCase();
 
   const themeOptions: { mode: ThemeMode; icon: typeof SunIcon; tooltip: string }[] = [
@@ -75,7 +81,7 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
         )}
         <div className="sidebar-user-info">
           <div className="sidebar-user-name">{displayName}</div>
-          <div className="sidebar-user-plan">Свободный</div>
+          <div className="sidebar-user-plan" title={secondaryLine}>{secondaryLine}</div>
         </div>
         {balance !== undefined && (
           <span className="sidebar-balance"><LightningIcon size={14} /> {balance}</span>
