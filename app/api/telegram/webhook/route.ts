@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import {
   confirmLoginCode,
   downloadAndUploadAvatar,
+  normalizeName,
   sendBotMessage,
   type TelegramFromUser,
 } from "@/lib/telegram-login";
@@ -75,14 +76,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const fullName = [from.first_name, from.last_name]
-      .filter((s): s is string => Boolean(s))
-      .join(" ")
-      .trim();
-    const greeting = fullName ? `Привет, ${fullName}!` : "Привет!";
+    // Только first_name в приветствии — короче и теплее, чем "Семён Орлов".
+    // Нормализуем регистр: "СЕМЁН" → "Семён".
+    const firstName = normalizeName((from.first_name || "").trim());
+    const greeting = firstName ? `Готово, ${firstName} 👋` : "Готово 👋";
+    const avatarLine = avatarUrl
+      ? "Твоё фото из Telegram уже подтянулось в профиль."
+      : "Если поставишь фото в Telegram — оно подтянется в твой профиль на сайте.";
     await sendBotMessage(
       chatId,
-      `${greeting} Ты залогинен на <b>Книжный Спарринг</b>. Возвращайся на вкладку с сайтом.`,
+      `${greeting}\n\nВозвращайся на вкладку с сайтом — я уже тебя пропустил.\n\n${avatarLine}`,
     );
 
     return NextResponse.json({ ok: true });

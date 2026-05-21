@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase-server";
 import { findOrCreateOAuthUser } from "@/lib/oauth-common";
 
@@ -28,6 +29,20 @@ export interface TelegramFromUser {
 
 export function generateLoginCode(): string {
   return crypto.randomBytes(24).toString("base64url");
+}
+
+// Если юзер в Telegram записал имя ЦЕЛИКОМ КАПСОМ ("СЕМЁН ОРЛОВ") — приводим
+// к Title Case ("Семён Орлов"). Если регистр смешанный (есть строчные) —
+// оставляем как есть, доверяем юзеру.
+export function normalizeName(name: string): string {
+  if (!name) return name;
+  const hasLower = /\p{Ll}/u.test(name);
+  if (hasLower) return name;
+  return name
+    .toLocaleLowerCase("ru-RU")
+    .split(/\s+/)
+    .map((word) => (word ? word[0].toLocaleUpperCase("ru-RU") + word.slice(1) : word))
+    .join(" ");
 }
 
 export async function createLoginCode(): Promise<{ code: string; botUrl: string }> {
@@ -70,10 +85,11 @@ export async function confirmLoginCode(
   avatarUrl: string | null,
 ): Promise<boolean> {
   const supabase = createServiceClient();
-  const fullName = [user.first_name, user.last_name]
+  const rawName = [user.first_name, user.last_name]
     .filter((s): s is string => Boolean(s))
     .join(" ")
     .trim();
+  const fullName = normalizeName(rawName);
 
   const { data, error } = await supabase
     .from("telegram_login_codes")
@@ -181,9 +197,15 @@ export async function downloadAndUploadAvatar(userId: number): Promise<string | 
     const supabase = createServiceClient();
     const filename = `telegram-${userId}.jpg`;
 
+    // ВАЖНО: используем Blob, а не Uint8Array. supabase-js storage v2 при POST
+    // с не-Blob/FormData body отправляет raw bytes, а storage-server для POST
+    // ожидает multipart/form-data — возвращает 400. Blob → автоматически
+    // оборачивается в FormData.
+    const blob = new Blob([arrayBuffer], { type: contentType });
+
     const { error: uploadError } = await supabase.storage
       .from("avatars")
-      .upload(filename, new Uint8Array(arrayBuffer), {
+      .upload(filename, blob, {
         contentType,
         upsert: true,
         cacheControl: "3600",
@@ -191,6 +213,10 @@ export async function downloadAndUploadAvatar(userId: number): Promise<string | 
 
     if (uploadError) {
       console.error("[telegram-login] Storage upload failed:", uploadError);
+      Sentry.captureException(uploadError, {
+        tags: { provider: "telegram", step: "avatar_upload" },
+        extra: { userId, filename, contentType, byteLength: arrayBuffer.byteLength },
+      });
       return null;
     }
 
