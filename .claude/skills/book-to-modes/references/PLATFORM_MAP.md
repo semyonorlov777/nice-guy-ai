@@ -131,15 +131,23 @@ anketa_theme_relevance (кеш AI-фильтра)
 ### Каталог вопросов (lib/anketa/questions.ts)
 
 ```typescript
-export type AnketaProgramSlug = "nice-guy" | "<новая-книга>";
+export type AnketaProgramSlug =
+  | "nice-guy"
+  | "pishi-sokraschay"
+  | "the-choice"
+  | "heroes-and-outlaws"
+  | "seven-habits"
+  | "borba-za-vnimanie"
+  | "<новая-книга>";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [ /* 3 вопроса для Гловера */ ],
+  // ... + 5 готовых конфигов в файле под разные типы книг
   "<новая-книга>": [ /* 3 вопроса для новой книги */ ],
 };
 ```
 
-Стандарт — 3 вопроса по SPIN-структуре. Подробнее — [SKILL.md → Этап 2.5](../SKILL.md).
+Стандарт — 3 вопроса по SPIN-структуре. Формулировки и тон зависят от типа книги — см. таблицы в [SKILL.md → Этап 2.5 → «Формулы 3 вопросов под разные типы книг» и «Тон вопросов = тон автора»](../SKILL.md).
 
 `IDENTITY_QUESTION_IDS` в `lib/personalization.ts` — белый список question_id. Если для новой книги хочешь использовать НЕ-стандартный вопрос — расширь массив там. Сейчас допустимы: `context_intent`, `problem`, `implication`, `need_payoff`.
 
@@ -147,26 +155,33 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
 
 При добавлении анкеты к книге **обязательно** обнови `programs.hub_messages` — иначе пользователи с заполненной анкетой попадут на старый welcome (`returning_test` или `returning_notest`), и анкета на хаб никак не повлияет.
 
+Два варианта шаблона — выбирай под тип книги (с тестом / без теста). Полные SQL-шаблоны — в [SKILL.md → Этап 2.5 → «Шаблон hub_messages — выбери под тип книги»](../SKILL.md). Минимальная вставка только анкетных ключей:
+
 ```sql
 UPDATE programs SET hub_messages = COALESCE(hub_messages, '{}'::jsonb) || jsonb_build_object(
   'anketa_only',
-    'Помню что ты пришёл с запросом: <strong>{problem}</strong>. Самое близкое в программе — <strong>{theme1}</strong>. Пройди тест (7 минут) — подскажу точнее.',
+    'Помню твой запрос — <strong>{problem}</strong>. [Предложение конкретных инструментов]',
   'anketa_and_test',
-    'Помню твой запрос — <strong>{problem}</strong>. По тесту сейчас самое горячее — <strong>{theme1}</strong>. Начнём оттуда?'
+    'Помню твой запрос — <strong>{problem}</strong>. По тесту — <strong>{theme1}</strong>. Начнём оттуда?'
 ) WHERE slug = 'BOOK_SLUG';
 ```
 
-Эти 2 ключа добавляются к существующим 3 (`first`, `returning_test`, `returning_notest`) → итого 5 состояний.
+Эти 2 ключа добавляются к существующим 3 (`first`, `returning_test`, `returning_notest`) → итого 5 состояний. Для книг без теста `returning_test` и `anketa_and_test` остаются как safe fallback с тем же `{problem}`.
 
 ### Поддерживаемые плейсхолдеры в hub_messages
 
-| Плейсхолдер | Источник | Поведение |
-|---|---|---|
-| `{theme1}` / `{theme2}` | Топ-2 темы после фильтра анкетой + сортировки тестом | Подставляется `title.toLowerCase()`. Если тем меньше — fallback на `returning_notest`. |
-| `{problem}` | `facts.problem` из анкеты | Обрезка 60 символов по последнему пробелу + `…`. |
-| `{context_intent}` | `facts.context_intent` из анкеты | Тот же truncate. |
+Все плейсхолдеры обрабатываются в [hub/page.tsx](../../../../app/program/[slug]/(app)/hub/page.tsx) (helper `getTopScaleNames` для архетипных тестов универсален — работает со старым форматом `scores_by_scale: Record<key, number>` и новым `{max, pct, raw, level}`, берёт `pct` → `raw`).
 
-Если в строке остался неразрешённый плейсхолдер (например, `{problem}` без анкеты) — он автоматически стрипается + fallback на `returning_notest`.
+| Плейсхолдер | Источник | Поведение | Когда применять |
+|---|---|---|---|
+| `{problem}` | `facts.problem` из анкеты | Truncate ~60 символов по последнему пробелу + `…` | Почти всегда — самый универсальный |
+| `{context_intent}` | `facts.context_intent` из анкеты (label выбранного чипа или текст из textarea) | Тот же truncate | Когда нужна короткая формулировка без описания боли |
+| `{theme1}` / `{theme2}` | Топ-2 темы после AI-фильтра анкеты + сортировки тестом. `title.toLowerCase()` | Если тем меньше 2 → стрипается → fallback на `returning_notest` | Только если у программы есть `program_themes` (≥2 темы) |
+| `{top1_archetype}` / `{top2_archetype}` | `getTopScaleNames(scores, scales, n)` — топ-N имён шкал теста (из `test_configs.scales[*].name`) | Если теста нет — стрипается → fallback | Только для книг с **тестом-типологией** (heroes-and-outlaws). Имя плейсхолдера можно адаптировать под домен (`{top1_technique}` и т.п.), но потребуется расширить regex в hub/page.tsx |
+
+Regex fallback'а в [hub/page.tsx](../../../../app/program/[slug]/(app)/hub/page.tsx): `/\{(theme\d+|problem|context_intent|top\d+_archetype)\}/g`. Если в строке остался неразрешённый плейсхолдер — стрипается; если результат пустой — fallback на `returning_notest`.
+
+**Грамматическое правило (важно):** анкета сохраняет ответ как фразу от первого лица — «Я строю личный бренд». Подставка через «Помню, ты {context_intent}» даёт «Помню, ты Я строю…» — ломается. Используй формулы без согласования с местоимением: ✅ «Твой запрос — {context_intent}» / ✅ «Помню твой запрос — {problem}» / ❌ «Помню, что ты {problem}».
 
 ### Состояния хаба (полный список)
 
@@ -184,24 +199,66 @@ else → "returning-notest"
 
 Можно проверить вручную через `?hub_state=anketa-only` (и другие) на dev-сервере.
 
+#### Достижимость состояний по типу книги (опыт 6 книг)
+
+| Состояние | Книга с тестом + темами<br/>(nice-guy, the-choice) | Книга с тестом-типологией<br/>(heroes-and-outlaws) | Книга без теста + с темами<br/>(seven-habits) | Книга без теста и без тем<br/>(pishi-sokraschay, borba-za-vnimanie) |
+|---|---|---|---|---|
+| `first` | ✅ | ✅ | ✅ | ✅ |
+| `anketa_only` | ✅ | ✅ | ✅ | ✅ |
+| `returning_notest` | ✅ | ✅ | ✅ | ✅ |
+| `returning_test` | ✅ | ✅ | safe fallback | safe fallback |
+| `anketa_and_test` | ✅ | ✅ (главное состояние) | safe fallback | safe fallback |
+
+Safe fallback — рекомендуется оставить даже если состояние недостижимо: стоит 2 строки SQL и защищает от регрессий, если когда-нибудь тест добавят. Так сделано у Ильяхова и Белоусова.
+
 ### Когда НЕ делать анкету для книги
 
-- Книга с одной центральной темой (нечего фильтровать).
+- Книга с одной центральной темой (Кехо «Подсознание» — нечего фильтровать, нет разных сценариев запроса).
 
-### Когда анкета **заменяет** chat-based калибровку
+### Когда анкета **заменяет** chat-based калибровку (миграционный паттерн)
 
-Marketing-книги с режимом `*_calibration` (Ильяхов `pishi_calibration` — заменено в мае 2026; Белоусов `belousov_calibration` — заменено в мае 2026). Структурированный фуллскрин побеждает chat-калибратор: ответы доступны всем нижестоящим режимам, плейсхолдеры в welcome работают без парсинга, UX быстрее. Подробности — [SKILL.md → Этап 2.5](../SKILL.md#этап-25-анкета-пользователя-опционально).
+Прецеденты: Ильяхов `pishi_calibration` → анкета (май 2026), Белоусов `belousov_calibration` → анкета (май 2026). Оба сняты с программ; шаблон проверен на двух книгах.
 
-Особенности marketing-книг без теста:
-- `program_themes` могут быть пустыми (темы = режимы пирамиды), AI-фильтр возвращает `[]` — не пытайся «дозаполнить» темы.
+**Почему мигрируем:** структурированный фуллскрин-опрос побеждает chat-калибратор по 4 причинам — идемпотентность (ответ user-level доступен **всем** нижестоящим режимам, без хардкод-whitelist `CALIBRATION_CHAT_TYPES`), структура (плейсхолдеры без парсинга свободного текста), UX (фуллскрин с прогрессом быстрее 3-минутного диалога), один источник истины (стандартизированная схема, не свой формат на каждую книгу). Anti-pattern и обоснование — [SKILL.md → Этап 2.5 → «Anti-pattern: chat-калибровка как отдельный режим тренажёра»](../SKILL.md#этап-25-анкета-пользователя-опционально).
+
+**Стандартная процедура (4 шага):**
+
+1. **Добавить slug книги в `AnketaProgramSlug`** + 3 вопроса в `ANKETA_QUESTIONS` (`lib/anketa/questions.ts`). Тон — авторский (см. SKILL.md таблицу «Тон вопросов = тон автора»).
+2. **Прописать `hub_messages` через MCP**. Минимум: `first`, `anketa_only`, `returning_notest`. Safe fallback (`returning_test`, `anketa_and_test`) — рекомендуется оставить, дёшево.
+3. **Снять старый режим с программы:** `DELETE FROM program_modes WHERE program_id = (SELECT id FROM programs WHERE slug = '<slug>') AND mode_template_id = (SELECT id FROM mode_templates WHERE key = '<book>_calibration')`. **`mode_templates` запись не трогать** — на случай отката.
+4. **Smoke-test 9 пунктов** (anketa flow / welcome / чаты режимов / портрет) — образец в `examples/borba-za-vnimanie.md` и `examples/anketa-migration.md`.
+
+**Что НЕ нужно делать:**
+- ❌ Удалять `mode_templates.key = '<book>_calibration'` — теряешь возможность отката.
+- ❌ Удалять старые чаты с `chat_type='<book>_calibration'` из `messages` — нужны для аудита. Фронт их не отрисует, потому что режима в списке нет.
+- ❌ Удалять `<book>_calibration` из `CALIBRATION_CHAT_TYPES` в [lib/chat/prepare-context.ts](../../../../lib/chat/prepare-context.ts) — старые чаты могут оставаться в БД у пользователей которые не заполнили анкету. Линтер `calibration-not-wired` всё ещё ловит **новые** калибровки если они появятся.
+- ❌ Делать backfill старых калибровочных чатов в `user_profile_responses`. Решили не делать (см. ADR `docs/adr/anketa-cross-mode-integration.md`).
+
+**Особенности marketing-книг без теста (Ильяхов, Белоусов):**
+- `program_themes` могут быть пустыми (темы = режимы пирамиды/контекстов), AI-фильтр возвращает `[]` — не пытайся «дозаполнить» темы.
 - Плейсхолдеры `{theme1}`/`{theme2}` автоматически стрипаются, fallback на `returning_notest`.
-- Состояния `returning-test` / `anketa-and-test` де-факто недостижимы (теста нет), но ключи в `hub_messages` можно оставить как safe fallback.
+- Состояния `returning-test` / `anketa-and-test` де-факто недостижимы (теста нет), но ключи в `hub_messages` лучше оставить как safe fallback.
 
 Определитель из 4 критериев — [SKILL.md → Этап 2.5](../SKILL.md#когда-применять).
 
+### Реестр книг с анкетой (май 2026)
+
+| Книга | Slug | Тест | program_themes | Тип формулы вопросов | Старая калибровка |
+|---|---|---|---|---|---|
+| Гловер «Славные парни» | `nice-guy` | ✅ ISSP (35Q, 7 шкал) | 7 тем (шкалы ISSP) | Психология / отношения | — (пилот) |
+| Эгер «Выбор» | `the-choice` | ✅ Тест-тюрьма (25Q) | ✅ | Психология / трансформация | — |
+| Марк/Пирсон «Герой и Бунтарь» | `heroes-and-outlaws` | ✅ Архетипы (24Q, 12 шкал) | 4 темы (группы архетипов) | Маркетинг / брендинг | — |
+| Ильяхов «Пиши, сокращай» | `pishi-sokraschay` | — | — (пирамида = режимы) | Маркетинг / тексты | ✅ снята `pishi_calibration` |
+| Кови «7 навыков» | `seven-habits` | — | 6 тем (one-shot с анкетой) | Жизненная стратегия | — |
+| Белоусов «Борьба за внимание» | `borba-za-vnimanie` | — | — | Жизненная стратегия / маркетинг-психология | ✅ снята `belousov_calibration` |
+
+Кандидатов на подключение анкеты к остальным 7 книгам платформы на момент мая 2026 нет — план миграции с chat-калибровок завершён.
+
 ### Линтер
 
-Для пилота (май 2026) `npm run check:chats` **не** проверяет анкету — правила добавятся когда анкета будет на 2-3 книгах. До этого ручная сверка по чеклисту из SKILL.md.
+`npm run check:chats` для анкеты пока не имеет специальных правил — структура каталога вопросов и hub_messages валидируется ручной сверкой по чеклисту из SKILL.md. Связанные правила линтера, которые косвенно защищают анкету:
+- `calibration-not-wired` — chat-режим с суффиксом `_calibration` без записи в `CALIBRATION_CHAT_TYPES` (предупреждает что новая калибровка появилась — повод подумать о миграции).
+- `cross-mode-data-placeholder` — литерал `{{cross_mode_data}}` в любом промпте (warn). Анкета подмешивается runtime'ом, placeholder в seed не нужен.
 
 ## Шаблон SQL для новой книги
 
