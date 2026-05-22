@@ -36,7 +36,8 @@ AI-платформа тренажёров по книгам. 13 програм�
 - `mini/funnel/` (маршрут `/funnel`) — тест-воронка Волынского
 - `mini/project-plan/` (маршрут `/project-plan`) — личный трекер задач (приватная страница, noindex)
 - `mini/voice/` (маршрут `/voice`) — голосовые заметки с транскрипцией, single-user, +Telegram-бот (приватная страница, noindex)
-- `public/spiral-test.html` (маршрут `/spiral-test.html`) — тест Карины (статичный HTML, не Next.js)
+- `mini/travel/` (маршрут `/travel`) — *в разработке, скелет*
+- `public/spiral-test.html` (маршрут `/spiral-test.html`) — тест Карины (статичный HTML, не Next.js, живёт в `public/`)
 
 ### Создание нового мини
 ```bash
