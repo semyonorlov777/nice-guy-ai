@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1031 873" width="1031" height="873">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+      .title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 700; font-size: 28px; fill: #1a1a1a; }
+      .brand { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 14px; fill: #666666; }
+      .cell-text { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 9px; }
+      .cell-text-small { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 7px; }
+      .stat-big { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 22px; fill: #1a1a1a; }
+      .stat-desc { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 11px; fill: #666666; }
+      .legend-text { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 11px; fill: #1a1a1a; }
+      .note { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 9px; fill: #999999; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1031" height="873" fill="#faf9f7"/>
+  
+  <!-- Title -->
+  <text x="40" y="45" class="title">Посещённые регионы России</text>
+  <text x="991" y="45" class="brand" text-anchor="end">Моя карта</text>
+  <rect x="93" y="70" width="50" height="50" fill="#2d8a4e"/>
+  <text x="118.0" y="98.0" class="cell-text" fill="#ffffff" text-anchor="middle">СПб</text>
+  <rect x="252" y="70" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="98.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Мурм</text>
+  <rect x="835" y="70" width="50" height="50" fill="#c4b5a5"/>
+  <text x="860.0" y="98.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Чукот</text>
+  <rect x="888" y="70" width="50" height="50" fill="#c4b5a5"/>
+  <text x="913.0" y="98.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Камч</text>
+  <rect x="40" y="123" width="50" height="50" fill="#2d8a4e"/>
+  <text x="65.0" y="151.0" class="cell-text" fill="#ffffff" text-anchor="middle">Москва</text>
+  <rect x="782" y="123" width="50" height="50" fill="#2d8a4e"/>
+  <text x="807.0" y="151.0" class="cell-text" fill="#ffffff" text-anchor="middle">Крск</text>
+  <rect x="888" y="123" width="50" height="50" fill="#c4b5a5"/>
+  <text x="913.0" y="151.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Магад</text>
+  <rect x="199" y="176" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="204.0" class="cell-text" fill="#ffffff" text-anchor="middle">Карел</text>
+  <rect x="517" y="176" width="50" height="50" fill="#c4b5a5"/>
+  <text x="542.0" y="204.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">НАО</text>
+  <rect x="570" y="176" width="50" height="50" fill="#c4b5a5"/>
+  <text x="595.0" y="204.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">ЯНАО</text>
+  <rect x="729" y="176" width="50" height="50" fill="#c4b5a5"/>
+  <text x="754.0" y="204.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Томск</text>
+  <rect x="782" y="176" width="50" height="50" fill="#c4b5a5"/>
+  <text x="807.0" y="204.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Кузбас</text>
+  <rect x="40" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="65.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Клнгрд</text>
+  <rect x="146" y="229" width="50" height="50" fill="#2d8a4e"/>
+  <text x="171.0" y="257.0" class="cell-text-small" fill="#ffffff" text-anchor="middle">Лен обл</text>
+  <rect x="252" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Новг</text>
+  <rect x="305" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Влгда</text>
+  <rect x="464" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="489.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Архнгл</text>
+  <rect x="517" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="542.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Коми</text>
+  <rect x="570" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="595.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">ХМАО</text>
+  <rect x="623" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="648.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Тюмень</text>
+  <rect x="782" y="229" width="50" height="50" fill="#2d8a4e"/>
+  <text x="807.0" y="257.0" class="cell-text" fill="#ffffff" text-anchor="middle">Ирк</text>
+  <rect x="835" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="860.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Якутия</text>
+  <rect x="888" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="913.0" y="257.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Хбрвск</text>
+  <rect x="941" y="229" width="50" height="50" fill="#c4b5a5"/>
+  <text x="966.0" y="257.0" class="cell-text-small" fill="#5a4d3f" text-anchor="middle">Сах обл</text>
+  <rect x="146" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="171.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Псков</text>
+  <rect x="199" y="282" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="310.0" class="cell-text" fill="#ffffff" text-anchor="middle">Тверь</text>
+  <rect x="252" y="282" width="50" height="50" fill="#2d8a4e"/>
+  <text x="277.0" y="310.0" class="cell-text" fill="#ffffff" text-anchor="middle">Ярсвл</text>
+  <rect x="305" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Ивнво</text>
+  <rect x="358" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="383.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Кстрма</text>
+  <rect x="411" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="436.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Мар Эл</text>
+  <rect x="464" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="489.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Киров</text>
+  <rect x="517" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="542.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Пермь</text>
+  <rect x="570" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="595.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Екб</text>
+  <rect x="623" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="648.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Курган</text>
+  <rect x="676" y="282" width="50" height="50" fill="#2d8a4e"/>
+  <text x="701.0" y="310.0" class="cell-text" fill="#ffffff" text-anchor="middle">Нск</text>
+  <rect x="729" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="754.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Хакас</text>
+  <rect x="782" y="282" width="50" height="50" fill="#2d8a4e"/>
+  <text x="807.0" y="310.0" class="cell-text" fill="#ffffff" text-anchor="middle">Бурят</text>
+  <rect x="835" y="282" width="50" height="50" fill="#c4b5a5"/>
+  <text x="860.0" y="310.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Амур</text>
+  <rect x="93" y="335" width="50" height="50" fill="#2d8a4e"/>
+  <text x="118.0" y="363.0" class="cell-text" fill="#ffffff" text-anchor="middle">Смлнск</text>
+  <rect x="146" y="335" width="50" height="50" fill="#2d8a4e"/>
+  <text x="171.0" y="363.0" class="cell-text" fill="#ffffff" text-anchor="middle">Калуга</text>
+  <rect x="199" y="335" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="363.0" class="cell-text" fill="#ffffff" text-anchor="middle">Мск об</text>
+  <rect x="252" y="335" width="50" height="50" fill="#2d8a4e"/>
+  <text x="277.0" y="363.0" class="cell-text" fill="#ffffff" text-anchor="middle">Влдмр</text>
+  <rect x="305" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Нижний</text>
+  <rect x="358" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="383.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Чуваш</text>
+  <rect x="411" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="436.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Татар</text>
+  <rect x="464" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="489.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Удмрт</text>
+  <rect x="517" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="542.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Члбнск</text>
+  <rect x="570" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="595.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Омск</text>
+  <rect x="623" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="648.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Алт кр</text>
+  <rect x="676" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="701.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Тыва</text>
+  <rect x="729" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="754.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Збйкл</text>
+  <rect x="835" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="860.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">ЕАО</text>
+  <rect x="888" y="335" width="50" height="50" fill="#c4b5a5"/>
+  <text x="913.0" y="363.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Прмрск</text>
+  <rect x="93" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="118.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Брянск</text>
+  <rect x="146" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="171.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Орел</text>
+  <rect x="199" y="388" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="416.0" class="cell-text" fill="#ffffff" text-anchor="middle">Тула</text>
+  <rect x="252" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Рязань</text>
+  <rect x="305" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Мрдв</text>
+  <rect x="358" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="383.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Ульнск</text>
+  <rect x="411" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="436.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Самара</text>
+  <rect x="464" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="489.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Бшкр</text>
+  <rect x="623" y="388" width="50" height="50" fill="#c4b5a5"/>
+  <text x="648.0" y="416.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Алтай</text>
+  <rect x="146" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="171.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Курск</text>
+  <rect x="199" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="224.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Липецк</text>
+  <rect x="252" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Тамбов</text>
+  <rect x="305" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Пенза</text>
+  <rect x="358" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="383.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Сртв</text>
+  <rect x="411" y="441" width="50" height="50" fill="#c4b5a5"/>
+  <text x="436.0" y="469.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Орнбрг</text>
+  <rect x="146" y="494" width="50" height="50" fill="#c4b5a5"/>
+  <text x="171.0" y="522.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Белг</text>
+  <rect x="199" y="494" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="522.0" class="cell-text" fill="#ffffff" text-anchor="middle">Врнж</text>
+  <rect x="252" y="494" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="522.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Влггрд</text>
+  <rect x="146" y="547" width="50" height="50" fill="#2d8a4e"/>
+  <text x="171.0" y="575.0" class="cell-text" fill="#ffffff" text-anchor="middle">Адыгея</text>
+  <rect x="199" y="547" width="50" height="50" fill="#2d8a4e"/>
+  <text x="224.0" y="575.0" class="cell-text" fill="#ffffff" text-anchor="middle">Кубань</text>
+  <rect x="252" y="547" width="50" height="50" fill="#2d8a4e"/>
+  <text x="277.0" y="575.0" class="cell-text" fill="#ffffff" text-anchor="middle">Ростов</text>
+  <rect x="305" y="547" width="50" height="50" fill="#c4b5a5"/>
+  <text x="330.0" y="575.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Клмк</text>
+  <rect x="358" y="547" width="50" height="50" fill="#c4b5a5"/>
+  <text x="383.0" y="575.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Астрхн</text>
+  <rect x="199" y="600" width="50" height="50" fill="#c4b5a5"/>
+  <text x="224.0" y="628.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">КЧР</text>
+  <rect x="252" y="600" width="50" height="50" fill="#c4b5a5"/>
+  <text x="277.0" y="628.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">Ставр</text>
+  <rect x="305" y="600" width="50" height="50" fill="#2d8a4e"/>
+  <text x="330.0" y="628.0" class="cell-text" fill="#ffffff" text-anchor="middle">Чечня</text>
+  <rect x="358" y="600" width="50" height="50" fill="#2d8a4e"/>
+  <text x="383.0" y="628.0" class="cell-text" fill="#ffffff" text-anchor="middle">Дгстн</text>
+  <rect x="199" y="653" width="50" height="50" fill="#c4b5a5"/>
+  <text x="224.0" y="681.0" class="cell-text" fill="#5a4d3f" text-anchor="middle">КБР</text>
+  <rect x="252" y="653" width="50" height="50" fill="#2d8a4e"/>
+  <text x="277.0" y="681.0" class="cell-text" fill="#ffffff" text-anchor="middle">Алания</text>
+  <rect x="305" y="653" width="50" height="50" fill="#2d8a4e"/>
+  <text x="330.0" y="681.0" class="cell-text" fill="#ffffff" text-anchor="middle">Ингуш</text>
+
+  <!-- Stats -->
+  <text x="40" y="738" class="stat-big">23 из 85 регионов</text>
+  <text x="40" y="758" class="stat-desc">Посещено примерно 27% субъектов</text>
+  <text x="40" y="773" class="stat-desc">Российской Федерации</text>
+  
+  <!-- Legend -->
+  <rect x="40" y="788" width="16" height="16" fill="#2d8a4e"/>
+  <text x="62" y="800" class="legend-text">Был</text>
+  <rect x="110" y="788" width="16" height="16" fill="#c4b5a5"/>
+  <text x="132" y="800" class="legend-text">Не был</text>
+  
+  <!-- Description -->
+  <text x="545.5" y="738" class="stat-desc">Карта показывает субъекты Российской Федерации,</text>
+  <text x="545.5" y="753" class="stat-desc">в которых я побывал. Каждый квадрат — один регион,</text>
+  <text x="545.5" y="768" class="stat-desc">расположение примерно соответствует географии.</text>
+</svg>
