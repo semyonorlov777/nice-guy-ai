@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Мои путешествия — Интерактивная карта</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-green: #22c55e;
+            --accent-green-light: #4ade80;
+            --accent-green-dark: #16a34a;
+            --accent-gold: #f59e0b;
+            --accent-gold-light: #fbbf24;
+            --unvisited: #64748b;
+            --unvisited-light: #94a3b8;
+            --border-color: #475569;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 360px;
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                max-height: 45vh;
+            }
+        }
+
+        .map-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 600px;
+            background: var(--bg-primary);
+        }
+
+        /* Leaflet custom styles */
+        .leaflet-container {
+            background: var(--bg-primary) !important;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card);
+        }
+
+        .leaflet-popup-content {
+            margin: 1rem;
+        }
+
+        .leaflet-control-zoom a {
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: var(--accent-green) !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(30, 41, 59, 0.9) !important;
+            color: var(--text-secondary) !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: var(--accent-green-light) !important;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.7rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Country Switcher */
+        .country-switcher {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .country-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .country-btn:hover {
+            border-color: var(--accent-gold);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .country-btn.active {
+            background: linear-gradient(135deg, var(--accent-green-dark), var(--accent-green));
+            border-color: var(--accent-green);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .country-btn .flag {
+            font-size: 1.2rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent-gold-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+
+        .stat-number {
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-number.visited { color: var(--accent-green-light); }
+        .stat-number.remaining { color: var(--unvisited-light); }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .progress-container {
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: var(--bg-secondary);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green-dark), var(--accent-green-light));
+            border-radius: 5px;
+            width: 0%;
+            transition: width 1s ease-out;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-green-light);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-color.visited { background: var(--accent-green); }
+        .legend-color.not-visited { background: var(--unvisited); }
+        .legend-color.capital {
+            background: var(--accent-green);
+            border: 2px solid var(--accent-gold);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-dot.city { 
+            background: var(--accent-gold); 
+            border: 2px solid #fff;
+        }
+        
+        .legend-dot.capital-city { 
+            background: #ef4444; 
+            border: 2px solid var(--accent-gold);
+        }
+
+        /* Regions */
+        .region-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .region-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .region-item:last-child { border-bottom: none; }
+
+        .region-name { font-weight: 600; }
+
+        .region-count {
+            color: var(--text-secondary);
+        }
+
+        .region-count .visited-count {
+            color: var(--accent-green-light);
+            font-weight: 700;
+        }
+
+        /* Visited list */
+        .visited-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+
+        .visited-item {
+            padding: 0.35rem 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .visited-item:last-child { border-bottom: none; }
+
+        .visited-item::before {
+            content: '✓';
+            color: var(--accent-green-light);
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        /* Info text */
+        .info-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .info-text strong {
+            color: var(--text-primary);
+        }
+
+        /* Popup styles */
+        .popup-content {
+            min-width: 180px;
+        }
+
+        .popup-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .popup-name-en {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .popup-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .popup-status.visited {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-green-light);
+        }
+
+        .popup-status.not-visited {
+            background: rgba(100, 116, 139, 0.2);
+            color: var(--unvisited-light);
+        }
+
+        .popup-region {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .popup-capital {
+            font-size: 0.75rem;
+            color: var(--accent-gold-light);
+            margin-top: 0.25rem;
+        }
+
+        /* City markers */
+        .city-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .city-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .city-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-gold);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .city-dot.capital {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border: 3px solid var(--accent-gold);
+        }
+
+        .city-dot.visited {
+            background: var(--accent-green);
+        }
+
+        .city-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 
+                1px 1px 2px rgba(0,0,0,0.8),
+                -1px -1px 2px rgba(0,0,0,0.8),
+                1px -1px 2px rgba(0,0,0,0.8),
+                -1px 1px 2px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            margin-top: 4px;
+        }
+
+        .city-name.capital {
+            font-size: 13px;
+            color: var(--accent-gold-light);
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            gap: 1rem;
+            transition: opacity 0.5s;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Zoom indicator */
+        .zoom-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.95);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            z-index: 500;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            border: 1px solid var(--border-color);
+        }
+
+        .zoom-hint.hidden {
+            opacity: 0;
+        }
+
+        .zoom-level {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            background: rgba(30, 41, 59, 0.9);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            z-index: 500;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Global stats badge */
+        .global-stats {
+            background: linear-gradient(135deg, #1e3a5f, var(--bg-card));
+            border: 1px solid var(--accent-gold);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .global-stats .big-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-gold-light);
+            line-height: 1;
+        }
+
+        .global-stats .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <header>
+                <h1>🌍 Мои путешествия</h1>
+                <p class="subtitle">Интерактивная карта регионов</p>
+            </header>
+
+            <!-- Country Switcher -->
+            <div class="country-switcher" id="countrySwitcher">
+                <button class="country-btn active" data-country="russia">
+                    <span class="flag">🇷🇺</span>
+                    <span>Россия</span>
+                </button>
+                <button class="country-btn" data-country="thailand">
+                    <span class="flag">🇹🇭</span>
+                    <span>Таиланд</span>
+                </button>
+                <button class="country-btn" data-country="georgia">
+                    <span class="flag">🇬🇪</span>
+                    <span>Грузия</span>
+                </button>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="card">
+                <h3>📊 Прогресс</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number visited" id="visitedCount">22</div>
+                        <div class="stat-label">Посещено</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number remaining" id="remainingCount">67</div>
+                        <div class="stat-label">Осталось</div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">24.7% исследовано</p>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="card">
+                <h3>🗺️ Легенда</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color capital"></div>
+                        <span id="capitalLabel">Москва (столица)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color visited"></div>
+                        <span>Посещённые регионы</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color not-visited"></div>
+                        <span>Не посещённые регионы</span>
+                    </div>
+                    <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0; padding-top: 0.5rem;">
+                        <div class="legend-item">
+                            <div class="legend-dot capital-city"></div>
+                            <span>Столица страны</span>
+                        </div>
+                        <div class="legend-item" style="margin-top: 0.4rem;">
+                            <div class="legend-dot city"></div>
+                            <span>Центр региона</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regions -->
+            <div class="card">
+                <h3>📍 По регионам</h3>
+                <div class="region-list" id="regionsList"></div>
+            </div>
+
+            <!-- Visited List -->
+            <div class="card">
+                <h3>✅ Посещённые</h3>
+                <div class="visited-list" id="visitedList"></div>
+            </div>
+
+            <!-- Tips -->
+            <div class="card">
+                <h3>💡 Подсказки</h3>
+                <p class="info-text">
+                    <strong>Выбор страны</strong> — кнопки выше<br>
+                    <strong>Приблизьте</strong> — увидите города<br>
+                    <strong>Клик</strong> на регион — информация
+                </p>
+            </div>
+        </div>
+
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <div>Загружаем карту...</div>
+            </div>
+            <div class="zoom-level" id="zoomLevel">Zoom: 4</div>
+            <div class="zoom-hint" id="zoomHint">🔍 Приблизьте для отображения городов</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ============================================
+        // COUNTRIES DATA - легко добавлять новые страны
+        // ============================================
+        const countriesData = {
+            russia: {
+                name: 'Россия',
+                flag: '🇷🇺',
+                capital: 'Москва',
+                capitalLabel: 'Москва (столица)',
+                totalRegions: 89,
+                center: [64, 100],
+                zoom: 3,
+                minZoom: 2,
+                maxZoom: 10,
+                cityShowZoom: 4,
+                geojsonSources: [
+                    'https://raw.githubusercontent.com/imsha/russia_geojson_regions_2021/main/ru.json',
+                    'https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/russia.geojson',
+                    'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/russia.geojson'
+                ],
+                visitedRegions: [
+                    'Республика Адыгея', 'Адыгея',
+                    'Владимирская область',
+                    'Воронежская область',
+                    'Республика Дагестан', 'Дагестан',
+                    'Республика Ингушетия', 'Ингушетия',
+                    'Иркутская область',
+                    'Республика Карелия', 'Карелия',
+                    'Калужская область',
+                    'Краснодарский край',
+                    'Красноярский край',
+                    'Ленинградская область',
+                    'Москва', 'город Москва',
+                    'Московская область',
+                    'Новосибирская область',
+                    'Ростовская область',
+                    'Санкт-Петербург', 'город Санкт-Петербург',
+                    'Республика Северная Осетия', 'Северная Осетия', 'Северная Осетия - Алания', 'Алания',
+                    'Смоленская область',
+                    'Тверская область',
+                    'Тульская область',
+                    'Чеченская Республика', 'Чечня',
+                    'Ярославская область'
+                ],
+                regions: {
+                    'Центральный': { total: 18, visited: ['Владимирская область', 'Воронежская область', 'Калужская область', 'Москва', 'Московская область', 'Смоленская область', 'Тверская область', 'Тульская область', 'Ярославская область'] },
+                    'Северо-Западный': { total: 11, visited: ['Республика Карелия', 'Ленинградская область', 'Санкт-Петербург'] },
+                    'Южный': { total: 8, visited: ['Республика Адыгея', 'Краснодарский край', 'Ростовская область'] },
+                    'Северо-Кавказский': { total: 7, visited: ['Республика Дагестан', 'Республика Ингушетия', 'Республика Северная Осетия', 'Чеченская Республика'] },
+                    'Приволжский': { total: 14, visited: [] },
+                    'Уральский': { total: 6, visited: [] },
+                    'Сибирский': { total: 10, visited: ['Иркутская область', 'Красноярский край', 'Новосибирская область'] },
+                    'Дальневосточный': { total: 11, visited: [] }
+                },
+                visitedRegionsDisplay: [
+                    'Адыгея', 'Владимирская обл.', 'Воронежская обл.', 'Дагестан', 'Ингушетия',
+                    'Иркутская обл.', 'Карелия', 'Калужская обл.', 'Краснодарский край',
+                    'Красноярский край', 'Ленинградская обл.', 'Москва', 'Московская обл.',
+                    'Новосибирская обл.', 'Ростовская обл.', 'Санкт-Петербург',
+                    'Северная Осетия', 'Смоленская обл.', 'Тверская обл.', 'Тульская обл.',
+                    'Чечня', 'Ярославская обл.'
+                ],
+                cities: [
+                    { name: 'Москва', nameEn: 'Moscow', lat: 55.7558, lng: 37.6173, isCapital: true, visited: true },
+                    { name: 'Санкт-Петербург', nameEn: 'Saint Petersburg', lat: 59.9343, lng: 30.3351, visited: true },
+                    { name: 'Воронеж', nameEn: 'Voronezh', lat: 51.6720, lng: 39.1843, visited: true },
+                    { name: 'Краснодар', nameEn: 'Krasnodar', lat: 45.0355, lng: 38.9753, visited: true },
+                    { name: 'Красноярск', nameEn: 'Krasnoyarsk', lat: 56.0153, lng: 92.8932, visited: true },
+                    { name: 'Новосибирск', nameEn: 'Novosibirsk', lat: 55.0084, lng: 82.9357, visited: true },
+                    { name: 'Ростов-на-Дону', nameEn: 'Rostov-on-Don', lat: 47.2357, lng: 39.7015, visited: true },
+                    { name: 'Иркутск', nameEn: 'Irkutsk', lat: 52.2870, lng: 104.3050, visited: true },
+                    { name: 'Махачкала', nameEn: 'Makhachkala', lat: 42.9849, lng: 47.5047, visited: true },
+                    { name: 'Владикавказ', nameEn: 'Vladikavkaz', lat: 43.0205, lng: 44.6819, visited: true },
+                    { name: 'Грозный', nameEn: 'Grozny', lat: 43.3180, lng: 45.6980, visited: true },
+                    { name: 'Магас', nameEn: 'Magas', lat: 43.1680, lng: 44.8130, visited: true },
+                    { name: 'Майкоп', nameEn: 'Maykop', lat: 44.6098, lng: 40.1006, visited: true },
+                    { name: 'Петрозаводск', nameEn: 'Petrozavodsk', lat: 61.7891, lng: 34.3596, visited: false },
+                    { name: 'Калуга', nameEn: 'Kaluga', lat: 54.5293, lng: 36.2754, visited: true },
+                    { name: 'Тверь', nameEn: 'Tver', lat: 56.8587, lng: 35.9176, visited: true },
+                    { name: 'Тула', nameEn: 'Tula', lat: 54.1961, lng: 37.6182, visited: true },
+                    { name: 'Ярославль', nameEn: 'Yaroslavl', lat: 57.6261, lng: 39.8845, visited: true },
+                    { name: 'Владимир', nameEn: 'Vladimir', lat: 56.1290, lng: 40.4070, visited: true },
+                    { name: 'Сочи', nameEn: 'Sochi', lat: 43.6028, lng: 39.7342, visited: true },
+                    { name: 'Дербент', nameEn: 'Derbent', lat: 42.0678, lng: 48.2894, visited: true }
+                ],
+                getRegionName: (feature) => feature.properties.name || feature.properties.NAME || feature.properties.NAME_1 || ''
+            },
+
+            thailand: {
+                name: 'Таиланд',
+                flag: '🇹🇭',
+                capital: 'Бангкок',
+                capitalLabel: 'Бангкок (столица)',
+                totalRegions: 77,
+                center: [13.5, 101],
+                zoom: 6,
+                minZoom: 5,
+                maxZoom: 12,
+                cityShowZoom: 7,
+                geojsonSources: [
+                    'https://cdn.jsdelivr.net/gh/cvibhagool/thailand-map@master/thailand-provinces.geojson',
+                    'https://raw.githubusercontent.com/cvibhagool/thailand-map/master/thailand-provinces.geojson',
+                    'https://gist.githubusercontent.com/jeepkd/4e31e6a10f8297b9de50c62856927ecf/raw/thailand.json'
+                ],
+                visitedRegions: [
+                    'Bangkok', 'Krung Thep Maha Nakhon', 'Chon Buri', 'Chonburi', 'Samut Prakan',
+                    'Nong Khai', 'Udon Thani', 'Sa Kaeo', 'Chachoengsao', 'Prachuap Khiri Khan',
+                    'Phetchaburi', 'Samut Songkhram', 'Chiang Rai', 'Phayao', 'Lampang',
+                    'Lamphun', 'Mae Hong Son', 'Chiang Mai', 'Chanthaburi', 'Trat', 'Ubon Ratchathani'
+                ],
+                regions: {
+                    'Северный': { total: 17, visited: ['Chiang Mai', 'Chiang Rai', 'Mae Hong Son', 'Lampang', 'Lamphun', 'Phayao'] },
+                    'Северо-Восточный': { total: 20, visited: ['Nong Khai', 'Udon Thani', 'Ubon Ratchathani'] },
+                    'Центральный': { total: 26, visited: ['Bangkok', 'Chon Buri', 'Samut Prakan', 'Sa Kaeo', 'Chachoengsao', 'Prachuap Khiri Khan', 'Phetchaburi', 'Samut Songkhram', 'Chanthaburi', 'Trat'] },
+                    'Южный': { total: 14, visited: [] }
+                },
+                visitedRegionsDisplay: [
+                    'Бангкок', 'Чиангмай', 'Чианграй', 'Мэхонгсон', 'Лампанг', 'Лампхун',
+                    'Пхаяу', 'Чонбури', 'Самутпракан', 'Чачоенсау', 'Сакэу', 'Чантхабури',
+                    'Трат', 'Пхетчабури', 'Прачуапкхирикхан', 'Самутсонкхрам', 'Нонгкхай',
+                    'Удонтхани', 'Убонратчатхани'
+                ],
+                provinceNamesRu: {
+                    'Chiang Mai': 'Чиангмай', 'Chiang Rai': 'Чианграй', 'Mae Hong Son': 'Мэхонгсон',
+                    'Lampang': 'Лампанг', 'Lamphun': 'Лампхун', 'Phrae': 'Пхрэ', 'Nan': 'Нан',
+                    'Phayao': 'Пхаяу', 'Uttaradit': 'Уттарадит', 'Sukhothai': 'Сукхотхай',
+                    'Bangkok': 'Бангкок', 'Krung Thep Maha Nakhon': 'Бангкок',
+                    'Nonthaburi': 'Нонтхабури', 'Pathum Thani': 'Патхумтхани',
+                    'Samut Prakan': 'Самутпракан', 'Chon Buri': 'Чонбури', 'Chonburi': 'Чонбури',
+                    'Nong Khai': 'Нонгкхай', 'Udon Thani': 'Удонтхани', 'Ubon Ratchathani': 'Убонратчатхани',
+                    'Sa Kaeo': 'Сакэу', 'Chachoengsao': 'Чачоенсау', 'Chanthaburi': 'Чантхабури',
+                    'Trat': 'Трат', 'Phetchaburi': 'Пхетчабури', 'Prachuap Khiri Khan': 'Прачуапкхирикхан',
+                    'Samut Songkhram': 'Самутсонкхрам', 'Phuket': 'Пхукет', 'Krabi': 'Краби',
+                    'Surat Thani': 'Сураттхани'
+                },
+                cities: [
+                    { name: 'Бангкок', nameEn: 'Bangkok', lat: 13.7563, lng: 100.5018, province: 'Bangkok', visited: true, isCapital: true },
+                    { name: 'Чиангмай', nameEn: 'Chiang Mai', lat: 18.7883, lng: 98.9853, province: 'Chiang Mai', visited: true },
+                    { name: 'Чианграй', nameEn: 'Chiang Rai', lat: 19.9071, lng: 99.8305, province: 'Chiang Rai', visited: true },
+                    { name: 'Мэхонгсон', nameEn: 'Mae Hong Son', lat: 19.2990, lng: 97.9654, province: 'Mae Hong Son', visited: true },
+                    { name: 'Лампанг', nameEn: 'Lampang', lat: 18.2888, lng: 99.4909, province: 'Lampang', visited: true },
+                    { name: 'Лампхун', nameEn: 'Lamphun', lat: 18.5744, lng: 99.0087, province: 'Lamphun', visited: true },
+                    { name: 'Пхаяу', nameEn: 'Phayao', lat: 19.1664, lng: 99.9019, province: 'Phayao', visited: true },
+                    { name: 'Чонбури', nameEn: 'Chonburi', lat: 13.3611, lng: 100.9847, province: 'Chon Buri', visited: true },
+                    { name: 'Самутпракан', nameEn: 'Samut Prakan', lat: 13.5990, lng: 100.5998, province: 'Samut Prakan', visited: true },
+                    { name: 'Сакэу', nameEn: 'Sa Kaeo', lat: 13.8141, lng: 102.0647, province: 'Sa Kaeo', visited: true },
+                    { name: 'Чачоенсау', nameEn: 'Chachoengsao', lat: 13.6904, lng: 101.0779, province: 'Chachoengsao', visited: true },
+                    { name: 'Чантхабури', nameEn: 'Chanthaburi', lat: 12.6103, lng: 102.1028, province: 'Chanthaburi', visited: true },
+                    { name: 'Трат', nameEn: 'Trat', lat: 12.2427, lng: 102.5177, province: 'Trat', visited: true },
+                    { name: 'Пхетчабури', nameEn: 'Phetchaburi', lat: 13.1119, lng: 99.9398, province: 'Phetchaburi', visited: true },
+                    { name: 'Прачуапкхирикхан', nameEn: 'Prachuap Khiri Khan', lat: 11.8126, lng: 99.7957, province: 'Prachuap Khiri Khan', visited: true },
+                    { name: 'Самутсонкхрам', nameEn: 'Samut Songkhram', lat: 13.4098, lng: 100.0022, province: 'Samut Songkhram', visited: true },
+                    { name: 'Нонгкхай', nameEn: 'Nong Khai', lat: 17.8783, lng: 102.7420, province: 'Nong Khai', visited: true },
+                    { name: 'Удонтхани', nameEn: 'Udon Thani', lat: 17.4156, lng: 102.7872, province: 'Udon Thani', visited: true },
+                    { name: 'Убонратчатхани', nameEn: 'Ubon Ratchathani', lat: 15.2286, lng: 104.8564, province: 'Ubon Ratchathani', visited: true },
+                    { name: 'Пхукет', nameEn: 'Phuket', lat: 7.8804, lng: 98.3923, province: 'Phuket', visited: false },
+                    { name: 'Краби', nameEn: 'Krabi', lat: 8.0863, lng: 98.9063, province: 'Krabi', visited: false }
+                ],
+                getRegionName: (feature) => feature.properties.NAME_1 || feature.properties.name || feature.properties.PROVINCE || ''
+            },
+
+            georgia: {
+                name: 'Грузия',
+                flag: '🇬🇪',
+                capital: 'Тбилиси',
+                capitalLabel: 'Тбилиси (столица)',
+                totalRegions: 12,
+                center: [42.3, 43.5],
+                zoom: 7,
+                minZoom: 6,
+                maxZoom: 12,
+                cityShowZoom: 8,
+                geojsonSources: [
+                    'https://cdn.jsdelivr.net/gh/bumbeishvili/geojson-georgian-regions@master/regions.geojson',
+                    'https://raw.githubusercontent.com/bumbeishvili/geojson-georgian-regions/master/regions.geojson',
+                    'https://code.highcharts.com/mapdata/countries/ge/ge-all.geo.json'
+                ],
+                // Fallback не нужен - используем реальные источники
+                fallbackGeoJSON: null,
+                visitedRegions: [
+                    'Tbilisi', 'თბილისი', 'Тбилиси',
+                    'Adjara', 'Ajaria', 'აჭარა', 'Аджария', 'Autonomous Republic of Ajara',
+                    'Guria', 'გურია', 'Гурия',
+                    'Imereti', 'იმერეთი', 'Имеретия',
+                    'Kakheti', 'კახეთი', 'Кахетия',
+                    'Kvemo Kartli', 'ქვემო ქართლი', 'Квемо-Картли',
+                    'Mtskheta-Mtianeti', 'მცხეთა-მთიანეთი', 'Мцхета-Мтианети',
+                    'Samtskhe-Javakheti', 'სამცხე-ჯავახეთი', 'Самцхе-Джавахети',
+                    'Shida Kartli', 'შიდა ქართლი', 'Шида-Картли',
+                    'Abkhazia', 'აფხაზეთი', 'Абхазия', 'Autonomous Republic of Abkhazia'
+                ],
+                regions: {
+                    'Тбилиси': { total: 1, visited: ['Tbilisi'] },
+                    'Аджария': { total: 1, visited: ['Adjara'] },
+                    'Гурия': { total: 1, visited: ['Guria'] },
+                    'Имеретия': { total: 1, visited: ['Imereti'] },
+                    'Кахетия': { total: 1, visited: ['Kakheti'] },
+                    'Квемо-Картли': { total: 1, visited: ['Kvemo Kartli'] },
+                    'Мцхета-Мтианети': { total: 1, visited: ['Mtskheta-Mtianeti'] },
+                    'Самцхе-Джавахети': { total: 1, visited: ['Samtskhe-Javakheti'] },
+                    'Шида-Картли': { total: 1, visited: ['Shida Kartli'] },
+                    'Абхазия': { total: 1, visited: ['Abkhazia'] },
+                    'Рача-Лечхуми': { total: 1, visited: [] },
+                    'Самегрело-Земо-Сванети': { total: 1, visited: [] }
+                },
+                visitedRegionsDisplay: [
+                    'Тбилиси', 'Аджария', 'Гурия', 'Имеретия', 'Кахетия',
+                    'Квемо-Картли', 'Мцхета-Мтианети', 'Самцхе-Джавахети',
+                    'Шида-Картли', 'Абхазия'
+                ],
+                regionNamesRu: {
+                    'Tbilisi': 'Тбилиси', 'თბილისი': 'Тбилиси',
+                    'Adjara': 'Аджария', 'Ajaria': 'Аджария', 'აჭარა': 'Аджария', 'Autonomous Republic of Ajara': 'Аджария',
+                    'Guria': 'Гурия', 'გურია': 'Гурия',
+                    'Imereti': 'Имеретия', 'იმერეთი': 'Имеретия',
+                    'Kakheti': 'Кахетия', 'კახეთი': 'Кахетия',
+                    'Kvemo Kartli': 'Квемо-Картли', 'ქვემო ქართლი': 'Квемо-Картли',
+                    'Mtskheta-Mtianeti': 'Мцхета-Мтианети', 'მცხეთა-მთიანეთი': 'Мцхета-Мтианети',
+                    'Racha-Lechkhumi and Kvemo Svaneti': 'Рача-Лечхуми', 'Racha-Lechkhumi-Kvemo Svaneti': 'Рача-Лечхуми', 'Racha-Lechkhumi': 'Рача-Лечхуми',
+                    'Samegrelo-Zemo Svaneti': 'Самегрело-Земо-Сванети', 'სამეგრელო-ზემო სვანეთი': 'Самегрело-Земо-Сванети', 'Samegrelo and Zemo Svaneti': 'Самегрело-Земо-Сванети',
+                    'Samtskhe-Javakheti': 'Самцхе-Джавахети', 'სამცხე-ჯავახეთი': 'Самцхе-Джавахети',
+                    'Shida Kartli': 'Шида-Картли', 'შიდა ქართლი': 'Шида-Картли',
+                    'Abkhazia': 'Абхазия', 'აფხაზეთი': 'Абхазия', 'Autonomous Republic of Abkhazia': 'Абхазия'
+                },
+                cities: [
+                    { name: 'Тбилиси', nameEn: 'Tbilisi', lat: 41.7151, lng: 44.8271, isCapital: true, visited: true },
+                    { name: 'Батуми', nameEn: 'Batumi', lat: 41.6168, lng: 41.6367, visited: true },
+                    { name: 'Кобулети', nameEn: 'Kobuleti', lat: 41.8214, lng: 41.7761, visited: true },
+                    { name: 'Кутаиси', nameEn: 'Kutaisi', lat: 42.2679, lng: 42.6946, visited: true },
+                    { name: 'Цхалтубо', nameEn: 'Tskaltubo', lat: 42.3419, lng: 42.5992, visited: true },
+                    { name: 'Зестафони', nameEn: 'Zestafoni', lat: 42.1100, lng: 43.0500, visited: true },
+                    { name: 'Гори', nameEn: 'Gori', lat: 41.9833, lng: 44.1000, visited: true },
+                    { name: 'Каспи', nameEn: 'Kaspi', lat: 41.9267, lng: 44.4233, visited: true },
+                    { name: 'Хашури', nameEn: 'Khashuri', lat: 41.9833, lng: 43.6000, visited: true },
+                    { name: 'Мцхета', nameEn: 'Mtskheta', lat: 41.8500, lng: 44.7167, visited: true },
+                    { name: 'Телави', nameEn: 'Telavi', lat: 41.9167, lng: 45.4833, visited: true },
+                    { name: 'Сигнахи', nameEn: 'Sighnaghi', lat: 41.6167, lng: 45.9167, visited: true },
+                    { name: 'Рустави', nameEn: 'Rustavi', lat: 41.5494, lng: 44.9939, visited: true },
+                    { name: 'Марнеули', nameEn: 'Marneuli', lat: 41.4833, lng: 44.8000, visited: true },
+                    { name: 'Ахалцихе', nameEn: 'Akhaltsikhe', lat: 41.6333, lng: 42.9833, visited: true },
+                    { name: 'Боржоми', nameEn: 'Borjomi', lat: 41.8500, lng: 43.4000, visited: true },
+                    { name: 'Озургети', nameEn: 'Ozurgeti', lat: 41.9167, lng: 42.0167, visited: true },
+                    { name: 'Сухуми', nameEn: 'Sukhumi', lat: 43.0000, lng: 41.0167, visited: true },
+                    { name: 'Гагра', nameEn: 'Gagra', lat: 43.2667, lng: 40.2667, visited: true },
+                    { name: 'Новый Афон', nameEn: 'New Athos', lat: 43.0833, lng: 40.8167, visited: true }
+                ],
+                getRegionName: (feature) => feature.properties.name || feature.properties.shapeName || feature.properties.NAME_1 || feature.properties.NAME || ''
+            }
+        };
+
+        // ============================================
+        // APP STATE
+        // ============================================
+        let currentCountry = 'russia';
+        let map;
+        let geojsonLayer;
+        let citiesLayer;
+
+        // ============================================
+        // FUNCTIONS
+        // ============================================
+
+        function isVisited(name, country) {
+            const data = countriesData[country];
+            return data.visitedRegions.some(v => 
+                name.toLowerCase().includes(v.toLowerCase()) || 
+                v.toLowerCase().includes(name.toLowerCase()) ||
+                name === v
+            );
+        }
+
+        function getRegionStyle(feature) {
+            const data = countriesData[currentCountry];
+            const name = data.getRegionName(feature);
+            const visited = isVisited(name, currentCountry);
+            const isCapitalRegion = name.toLowerCase().includes(data.capital.toLowerCase()) || 
+                                    data.capital.toLowerCase().includes(name.toLowerCase());
+            
+            return {
+                fillColor: visited ? '#22c55e' : '#64748b',
+                weight: isCapitalRegion ? 3 : 1,
+                opacity: 1,
+                color: isCapitalRegion ? '#f59e0b' : '#1e293b',
+                fillOpacity: 0.75
+            };
+        }
+
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 3,
+                color: '#f8fafc',
+                fillOpacity: 0.9
+            });
+            layer.bringToFront();
+        }
+
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+        }
+
+        function createCityMarker(city) {
+            const dotClass = city.isCapital ? 'city-dot capital' : (city.visited ? 'city-dot visited' : 'city-dot');
+            const nameClass = city.isCapital ? 'city-name capital' : 'city-name';
+            
+            const icon = L.divIcon({
+                className: 'city-marker',
+                html: `
+                    <div class="city-label">
+                        <div class="${dotClass}"></div>
+                        <div class="${nameClass}">${city.name}</div>
+                    </div>
+                `,
+                iconSize: [100, 40],
+                iconAnchor: [50, 10]
+            });
+
+            const marker = L.marker([city.lat, city.lng], { icon: icon });
+            
+            marker.bindPopup(`
+                <div class="popup-content">
+                    <div class="popup-name">${city.name}${city.isCapital ? ' 🏛️' : ''}</div>
+                    <div class="popup-name-en">${city.nameEn}</div>
+                    <div class="popup-status ${city.visited ? 'visited' : 'not-visited'}">
+                        ${city.visited ? '✓ Посещено' : '○ Не посещено'}
+                    </div>
+                    ${city.isCapital ? '<div class="popup-capital">Столица</div>' : '<div class="popup-region">Центр региона</div>'}
+                </div>
+            `);
+
+            return marker;
+        }
+
+        function updateCitiesVisibility() {
+            const data = countriesData[currentCountry];
+            const currentZoom = map.getZoom();
+            const zoomLevel = document.getElementById('zoomLevel');
+            const zoomHint = document.getElementById('zoomHint');
+            
+            zoomLevel.textContent = `Zoom: ${currentZoom}`;
+            
+            if (currentZoom >= data.cityShowZoom) {
+                if (!map.hasLayer(citiesLayer)) {
+                    map.addLayer(citiesLayer);
+                }
+                zoomHint.classList.add('hidden');
+            } else {
+                if (map.hasLayer(citiesLayer)) {
+                    map.removeLayer(citiesLayer);
+                }
+                zoomHint.classList.remove('hidden');
+            }
+        }
+
+        function updateSidebar() {
+            const data = countriesData[currentCountry];
+            const visitedCount = data.visitedRegionsDisplay.length;
+            const remaining = data.totalRegions - visitedCount;
+            const percentage = ((visitedCount / data.totalRegions) * 100).toFixed(2);
+
+            document.getElementById('visitedCount').textContent = visitedCount;
+            document.getElementById('remainingCount').textContent = remaining;
+            document.getElementById('progressText').textContent = `${percentage}% исследовано`;
+            document.getElementById('capitalLabel').textContent = data.capitalLabel;
+            
+            setTimeout(() => {
+                document.getElementById('progressFill').style.width = `${percentage}%`;
+            }, 100);
+
+            // Update regions list
+            const regionsList = document.getElementById('regionsList');
+            regionsList.innerHTML = '';
+            for (const [name, info] of Object.entries(data.regions)) {
+                const visitedInRegion = info.visited.length;
+                regionsList.innerHTML += `
+                    <div class="region-item">
+                        <span class="region-name">${name}</span>
+                        <span class="region-count"><span class="visited-count">${visitedInRegion}</span> / ${info.total}</span>
+                    </div>
+                `;
+            }
+
+            // Update visited list
+            const visitedList = document.getElementById('visitedList');
+            visitedList.innerHTML = '';
+            data.visitedRegionsDisplay.forEach(region => {
+                visitedList.innerHTML += `<div class="visited-item">${region}</div>`;
+            });
+        }
+
+        async function loadCountryMap(country) {
+            const data = countriesData[country];
+            
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            // Clear existing layers
+            if (geojsonLayer) {
+                map.removeLayer(geojsonLayer);
+            }
+            if (citiesLayer) {
+                map.removeLayer(citiesLayer);
+            }
+
+            // Update map view
+            map.setView(data.center, data.zoom);
+            map.setMinZoom(data.minZoom);
+            map.setMaxZoom(data.maxZoom);
+
+            // Load GeoJSON
+            let geoData = null;
+            for (const source of data.geojsonSources) {
+                try {
+                    const response = await fetch(source);
+                    if (response.ok) {
+                        geoData = await response.json();
+                        console.log('Loaded from:', source);
+                        break;
+                    }
+                } catch (e) {
+                    console.log('Failed:', source);
+                }
+            }
+
+            // Use fallback if available and no data loaded
+            if (!geoData && data.fallbackGeoJSON) {
+                geoData = data.fallbackGeoJSON;
+                console.log('Using fallback GeoJSON');
+            }
+
+            if (!geoData) {
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h3>Ошибка загрузки</h3>
+                        <p style="color: var(--text-secondary);">Не удалось загрузить данные карты</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Create GeoJSON layer
+            geojsonLayer = L.geoJSON(geoData, {
+                style: getRegionStyle,
+                onEachFeature: function(feature, layer) {
+                    const name = data.getRegionName(feature);
+                    const visited = isVisited(name, country);
+                    
+                    // Get Russian name for Thailand
+                    let displayName = name;
+                    if (country === 'thailand' && data.provinceNamesRu && data.provinceNamesRu[name]) {
+                        displayName = data.provinceNamesRu[name];
+                    }
+                    if (country === 'georgia' && data.regionNamesRu && data.regionNamesRu[name]) {
+                        displayName = data.regionNamesRu[name];
+                    }
+
+                    const popupContent = `
+                        <div class="popup-content">
+                            <div class="popup-name">${displayName}</div>
+                            ${(country === 'thailand' || country === 'georgia') ? `<div class="popup-name-en">${name}</div>` : ''}
+                            <div class="popup-status ${visited ? 'visited' : 'not-visited'}">
+                                ${visited ? '✓ Посещено' : '○ Не посещено'}
+                            </div>
+                        </div>
+                    `;
+
+                    layer.bindPopup(popupContent);
+                    
+                    layer.on({
+                        mouseover: highlightFeature,
+                        mouseout: resetHighlight,
+                        click: function(e) {
+                            map.fitBounds(e.target.getBounds(), { padding: [50, 50], maxZoom: country === 'russia' ? 6 : 9 });
+                        }
+                    });
+                }
+            }).addTo(map);
+
+            // Create cities layer
+            citiesLayer = L.layerGroup();
+            data.cities.forEach(city => {
+                const marker = createCityMarker(city);
+                citiesLayer.addLayer(marker);
+            });
+
+            updateCitiesVisibility();
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        async function switchCountry(country) {
+            if (country === currentCountry) return;
+            
+            currentCountry = country;
+            
+            // Update buttons
+            document.querySelectorAll('.country-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.country === country) {
+                    btn.classList.add('active');
+                }
+            });
+
+            updateSidebar();
+            await loadCountryMap(country);
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        async function init() {
+            // Initialize map
+            map = L.map('map', {
+                center: countriesData[currentCountry].center,
+                zoom: countriesData[currentCountry].zoom,
+                zoomControl: true
+            });
+
+            // Dark tiles
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            // Zoom event
+            map.on('zoomend', updateCitiesVisibility);
+
+            // Country switcher
+            document.querySelectorAll('.country-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchCountry(btn.dataset.country));
+            });
+
+            // Initial load
+            updateSidebar();
+            await loadCountryMap(currentCountry);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
