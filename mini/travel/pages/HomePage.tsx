@@ -18,12 +18,22 @@ export default function HomePage() {
             <span className="travel-card-cta">Открыть →</span>
           </a>
 
-          <a className="travel-card travel-card--secondary" href="/travel/map.svg">
-            <span className="travel-card-badge">Альтернативная</span>
-            <span className="travel-card-title">SVG-версия</span>
+          <a className="travel-card travel-card--secondary" href="/travel/russia-regions.svg">
+            <span className="travel-card-badge">SVG</span>
+            <span className="travel-card-title">Регионы России</span>
             <span className="travel-card-desc">
-              Статичная векторная карта — лёгкая, без внешних библиотек. Файл ожидается:
-              <code>public/travel/map.svg</code>.
+              Лёгкая векторная карта-сетка: квадрат на каждый субъект РФ, посещённые
+              подсвечены зелёным.
+            </span>
+            <span className="travel-card-cta">Открыть →</span>
+          </a>
+
+          <a className="travel-card travel-card--secondary" href="/travel/russia-regions.html">
+            <span className="travel-card-badge">HTML</span>
+            <span className="travel-card-title">Регионы России</span>
+            <span className="travel-card-desc">
+              Тот же waffle-грид в HTML — адаптивная сетка с подсветкой при наведении
+              и подписями к каждому региону.
             </span>
             <span className="travel-card-cta">Открыть →</span>
           </a>
