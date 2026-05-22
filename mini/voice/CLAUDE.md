@@ -37,9 +37,10 @@ mini/voice/
 │   ├── MessageBubble.tsx       # карточка сообщения + copy
 │   └── ChatListItem.tsx        # превью заметки в списке
 ├── lib/
+│   ├── ai.ts                   # обёртка Gemini через @ai-sdk/google
 │   ├── db.ts                   # Supabase service client + TABLES константы
 │   ├── repo.ts                 # CRUD на voice_chats / voice_messages
-│   ├── transcribe.ts           # OpenAI gpt-4o-mini-transcribe
+│   ├── transcribe.ts           # Gemini Flash транскрипция аудио
 │   ├── telegram.ts             # Bot API helpers под VOICE_BOT_TOKEN
 │   ├── useVoiceRecorder.ts     # клиентский хук записи (адаптация useVoiceInput)
 │   └── types.ts
@@ -67,8 +68,9 @@ mini/voice/
 
 | Переменная | Где | Назначение |
 |---|---|---|
-| `OPENAI_API_KEY` | server | OpenAI gpt-4o-mini-transcribe. Уже есть в .env.local. |
+| `GOOGLE_GEMINI_API_KEY` | server | Gemini Flash для транскрипции (бесплатный free tier). Уже есть в .env.local. |
 | `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | server | Supabase service client. Уже есть. |
+| `VOICE_TRANSCRIBE_MODEL` | server | Опционально. Default: `gemini-2.5-flash`. |
 | `VOICE_BOT_TOKEN` | server | Bot Token нового бота от @BotFather. |
 | `VOICE_BOT_WEBHOOK_SECRET` | server | Случайный hex 32+ байт. Telegram передаёт в header. |
 | `VOICE_OWNER_TG_CHAT_ID` | server | Числовой chat_id заказчика. Бот игнорирует voice от других. |
