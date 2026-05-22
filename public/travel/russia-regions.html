@@ -11,8 +11,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #faf9f7;
-    color: #1a1a1a;
+    background: #faf6f0;
+    color: #2a2520;
     min-height: 100vh;
     padding: 40px 24px;
   }
@@ -25,8 +25,8 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  h1 { font-size: 28px; font-weight: 700; }
-  .brand { font-size: 14px; font-weight: 500; color: #666; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand { font-size: 14px; font-weight: 500; color: #8a7a66; }
 
   .grid-wrap { overflow-x: auto; padding-bottom: 8px; }
   .grid {
@@ -47,19 +47,25 @@
     padding: 2px;
     line-height: 1.1;
     cursor: default;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
   }
-  /* ColorBrewer Greens 5-class */
-  .cell.level-0 { background: #c4b5a5; color: #5a4d3f; }
-  .cell.level-1 { background: #c7e9c0; color: #1a5e1a; }
-  .cell.level-2 { background: #74c476; color: #ffffff; }
-  .cell.level-3 { background: #31a354; color: #ffffff; }
-  .cell.level-4 { background: #006d2c; color: #ffffff; }
+  /* Тёплая землистая палитра: бежевый → мёд → охра → терракот → кирпич */
+  .cell.level-0 { background: #e8dccb; color: #8a7a66; }
+  .cell.level-1 { background: #f0c674; color: #4a3520; }
+  .cell.level-2 { background: #e8965e; color: #fff8ee; }
+  .cell.level-3 { background: #c25b2e; color: #fff8ee; }
+  .cell.level-4 { background: #7a2e1b; color: #fff8ee; }
 
-  .cell:hover {
-    transform: scale(1.08);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-    z-index: 2;
+  .cell.clickable { cursor: pointer; }
+  .cell.clickable:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 18px rgba(80, 40, 20, 0.22);
+    z-index: 3;
+  }
+  .cell.active {
+    outline: 2px solid #2a2520;
+    outline-offset: 1px;
+    z-index: 4;
   }
 
   .cell-badge {
@@ -79,7 +85,7 @@
     gap: 32px;
     margin-top: 36px;
     padding-top: 24px;
-    border-top: 1px solid #e5e0d8;
+    border-top: 1px solid #e8dccb;
   }
   @media (max-width: 720px) {
     .footer { grid-template-columns: 1fr; }
@@ -91,7 +97,7 @@
   }
   .stat-desc {
     font-size: 12px;
-    color: #666;
+    color: #8a7a66;
     line-height: 1.5;
   }
   .legend {
@@ -105,19 +111,152 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #1a1a1a;
+    color: #2a2520;
   }
   .legend-swatch {
     width: 16px;
     height: 16px;
     flex-shrink: 0;
-    border-radius: 2px;
+    border-radius: 3px;
   }
-  .legend-swatch.l0 { background: #c4b5a5; }
-  .legend-swatch.l1 { background: #c7e9c0; }
-  .legend-swatch.l2 { background: #74c476; }
-  .legend-swatch.l3 { background: #31a354; }
-  .legend-swatch.l4 { background: #006d2c; }
+  .legend-swatch.l0 { background: #e8dccb; }
+  .legend-swatch.l1 { background: #f0c674; }
+  .legend-swatch.l2 { background: #e8965e; }
+  .legend-swatch.l3 { background: #c25b2e; }
+  .legend-swatch.l4 { background: #7a2e1b; }
+
+  /* Detail panel */
+  .panel-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 37, 32, 0);
+    pointer-events: none;
+    transition: background 0.22s ease;
+    z-index: 10;
+  }
+  .panel-backdrop.open {
+    background: rgba(42, 37, 32, 0.18);
+    pointer-events: auto;
+  }
+  .panel {
+    position: fixed;
+    top: 50%;
+    right: 28px;
+    transform: translate(20px, -50%);
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    max-height: 80vh;
+    background: #fff8ee;
+    border: 1px solid #e8dccb;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(80, 40, 20, 0.18);
+    padding: 24px 24px 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    z-index: 11;
+    overflow-y: auto;
+  }
+  .panel.open {
+    opacity: 1;
+    transform: translate(0, -50%);
+    pointer-events: auto;
+  }
+  @media (max-width: 720px) {
+    .panel {
+      top: auto;
+      right: 0;
+      left: 0;
+      bottom: 0;
+      transform: translateY(20px);
+      width: 100%;
+      max-height: 75vh;
+      border-radius: 16px 16px 0 0;
+    }
+    .panel.open { transform: translateY(0); }
+  }
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .panel-marker {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .panel-marker.l1 { background: #f0c674; color: #4a3520; }
+  .panel-marker.l2 { background: #e8965e; color: #fff8ee; }
+  .panel-marker.l3 { background: #c25b2e; color: #fff8ee; }
+  .panel-marker.l4 { background: #7a2e1b; color: #fff8ee; }
+  .panel-title {
+    flex: 1;
+    min-width: 0;
+  }
+  .panel-region {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #2a2520;
+    margin-bottom: 2px;
+  }
+  .panel-subtitle {
+    font-size: 12px;
+    color: #8a7a66;
+  }
+  .panel-close {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #8a7a66;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+  .panel-close:hover { background: #f0e6d5; color: #2a2520; }
+  .cities {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .city {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #2a2520;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+  .city:hover { background: #f5ead4; }
+  .city-name { font-weight: 500; }
+  .city-note {
+    font-size: 11px;
+    color: #8a7a66;
+    font-style: italic;
+    text-align: right;
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -147,98 +286,217 @@
       <div class="stat-desc">
         Карта показывает субъекты Российской Федерации. Каждый квадрат — один регион,
         расположение примерно соответствует географии. Насыщенность цвета — по числу
-        посещённых городов в регионе.
+        посещённых городов. Клик на цветной квадрат — список городов.
       </div>
     </div>
   </div>
 </div>
 
+<div class="panel-backdrop" id="backdrop"></div>
+<aside class="panel" id="panel" role="dialog" aria-hidden="true">
+  <div class="panel-header">
+    <div class="panel-marker" id="panelMarker">—</div>
+    <div class="panel-title">
+      <div class="panel-region" id="panelRegion">—</div>
+      <div class="panel-subtitle" id="panelSubtitle">—</div>
+    </div>
+    <button class="panel-close" id="panelClose" aria-label="Закрыть">×</button>
+  </div>
+  <ul class="cities" id="cityList"></ul>
+</aside>
+
 <script>
-  // [col, row, name, visits] — visits=0 значит не посещал
+  // [col, row, name, full, visits, cities]
+  // cities: [{name, note?}] для регионов с visits > 0
   const REGIONS = [
-    { col: 2, row: 1, name: "СПб", visits: 5 },
-    { col: 5, row: 1, name: "Мурм", visits: 0 },
-    { col: 16, row: 1, name: "Чукот", visits: 0 },
-    { col: 17, row: 1, name: "Камч", visits: 0 },
-    { col: 1, row: 2, name: "Москва", visits: 2 },
-    { col: 15, row: 2, name: "Крск", visits: 1 },
-    { col: 17, row: 2, name: "Магад", visits: 0 },
-    { col: 4, row: 3, name: "Карел", visits: 1 },
-    { col: 10, row: 3, name: "НАО", visits: 0 },
-    { col: 11, row: 3, name: "ЯНАО", visits: 0 },
-    { col: 14, row: 3, name: "Томск", visits: 0 },
-    { col: 15, row: 3, name: "Кузбас", visits: 0 },
-    { col: 1, row: 4, name: "Клнгрд", visits: 0 },
-    { col: 3, row: 4, name: "Лен обл", visits: 3 },
-    { col: 5, row: 4, name: "Новг", visits: 0 },
-    { col: 6, row: 4, name: "Влгда", visits: 0 },
-    { col: 9, row: 4, name: "Архнгл", visits: 0 },
-    { col: 10, row: 4, name: "Коми", visits: 0 },
-    { col: 11, row: 4, name: "ХМАО", visits: 0 },
-    { col: 12, row: 4, name: "Тюмень", visits: 0 },
-    { col: 15, row: 4, name: "Ирк", visits: 8 },
-    { col: 16, row: 4, name: "Якутия", visits: 0 },
-    { col: 17, row: 4, name: "Хбрвск", visits: 0 },
-    { col: 18, row: 4, name: "Сах обл", visits: 0 },
-    { col: 3, row: 5, name: "Псков", visits: 0 },
-    { col: 4, row: 5, name: "Тверь", visits: 3 },
-    { col: 5, row: 5, name: "Ярсвл", visits: 3 },
-    { col: 6, row: 5, name: "Ивнво", visits: 0 },
-    { col: 7, row: 5, name: "Кстрма", visits: 0 },
-    { col: 8, row: 5, name: "Мар Эл", visits: 0 },
-    { col: 9, row: 5, name: "Киров", visits: 0 },
-    { col: 10, row: 5, name: "Пермь", visits: 0 },
-    { col: 11, row: 5, name: "Екб", visits: 0 },
-    { col: 12, row: 5, name: "Курган", visits: 0 },
-    { col: 13, row: 5, name: "Нск", visits: 1 },
-    { col: 14, row: 5, name: "Хакас", visits: 0 },
-    { col: 15, row: 5, name: "Бурят", visits: 1 },
-    { col: 16, row: 5, name: "Амур", visits: 0 },
-    { col: 2, row: 6, name: "Смлнск", visits: 1 },
-    { col: 3, row: 6, name: "Калуга", visits: 3 },
-    { col: 4, row: 6, name: "Мск об", visits: 24 },
-    { col: 5, row: 6, name: "Влдмр", visits: 2 },
-    { col: 6, row: 6, name: "Нижний", visits: 0 },
-    { col: 7, row: 6, name: "Чуваш", visits: 0 },
-    { col: 8, row: 6, name: "Татар", visits: 0 },
-    { col: 9, row: 6, name: "Удмрт", visits: 0 },
-    { col: 10, row: 6, name: "Члбнск", visits: 0 },
-    { col: 11, row: 6, name: "Омск", visits: 0 },
-    { col: 12, row: 6, name: "Алт кр", visits: 0 },
-    { col: 13, row: 6, name: "Тыва", visits: 0 },
-    { col: 14, row: 6, name: "Збйкл", visits: 0 },
-    { col: 16, row: 6, name: "ЕАО", visits: 0 },
-    { col: 17, row: 6, name: "Прмрск", visits: 0 },
-    { col: 2, row: 7, name: "Брянск", visits: 0 },
-    { col: 3, row: 7, name: "Орел", visits: 0 },
-    { col: 4, row: 7, name: "Тула", visits: 1 },
-    { col: 5, row: 7, name: "Рязань", visits: 0 },
-    { col: 6, row: 7, name: "Мрдв", visits: 0 },
-    { col: 7, row: 7, name: "Ульнск", visits: 0 },
-    { col: 8, row: 7, name: "Самара", visits: 0 },
-    { col: 9, row: 7, name: "Бшкр", visits: 0 },
-    { col: 12, row: 7, name: "Алтай", visits: 0 },
-    { col: 3, row: 8, name: "Курск", visits: 0 },
-    { col: 4, row: 8, name: "Липецк", visits: 0 },
-    { col: 5, row: 8, name: "Тамбов", visits: 0 },
-    { col: 6, row: 8, name: "Пенза", visits: 0 },
-    { col: 7, row: 8, name: "Сртв", visits: 0 },
-    { col: 8, row: 8, name: "Орнбрг", visits: 0 },
-    { col: 3, row: 9, name: "Белг", visits: 0 },
-    { col: 4, row: 9, name: "Врнж", visits: 1 },
-    { col: 5, row: 9, name: "Влггрд", visits: 0 },
-    { col: 3, row: 10, name: "Адыгея", visits: 2 },
-    { col: 4, row: 10, name: "Кубань", visits: 6 },
-    { col: 5, row: 10, name: "Ростов", visits: 2 },
-    { col: 6, row: 10, name: "Клмк", visits: 0 },
-    { col: 7, row: 10, name: "Астрхн", visits: 0 },
-    { col: 4, row: 11, name: "КЧР", visits: 0 },
-    { col: 5, row: 11, name: "Ставр", visits: 0 },
-    { col: 6, row: 11, name: "Чечня", visits: 2 },
-    { col: 7, row: 11, name: "Дгстн", visits: 6 },
-    { col: 4, row: 12, name: "КБР", visits: 0 },
-    { col: 5, row: 12, name: "Алания", visits: 2 },
-    { col: 6, row: 12, name: "Ингуш", visits: 2 }
+    { col: 2, row: 1, name: "СПб", full: "Санкт-Петербург", visits: 5, cities: [
+      { name: "Санкт-Петербург", note: "4 раза" },
+      { name: "Зеленогорск" },
+      { name: "Кронштадт" },
+      { name: "Петергоф" },
+      { name: "Пушкин (Царское село)" }
+    ] },
+    { col: 5, row: 1, name: "Мурм", full: "Мурманская область", visits: 0 },
+    { col: 16, row: 1, name: "Чукот", full: "Чукотский АО", visits: 0 },
+    { col: 17, row: 1, name: "Камч", full: "Камчатский край", visits: 0 },
+    { col: 1, row: 2, name: "Москва", full: "Москва", visits: 2, cities: [
+      { name: "Москва", note: "5 раз + 4 года жил" },
+      { name: "Зеленоград" }
+    ] },
+    { col: 15, row: 2, name: "Крск", full: "Красноярский край", visits: 1, cities: [
+      { name: "Красноярск", note: "2 раза" }
+    ] },
+    { col: 17, row: 2, name: "Магад", full: "Магаданская область", visits: 0 },
+    { col: 4, row: 3, name: "Карел", full: "Республика Карелия", visits: 1, cities: [
+      { name: "Сортавала" }
+    ] },
+    { col: 10, row: 3, name: "НАО", full: "Ненецкий АО", visits: 0 },
+    { col: 11, row: 3, name: "ЯНАО", full: "Ямало-Ненецкий АО", visits: 0 },
+    { col: 14, row: 3, name: "Томск", full: "Томская область", visits: 0 },
+    { col: 15, row: 3, name: "Кузбас", full: "Кемеровская область", visits: 0 },
+    { col: 1, row: 4, name: "Клнгрд", full: "Калининградская область", visits: 0 },
+    { col: 3, row: 4, name: "Лен обл", full: "Ленинградская область", visits: 3, cities: [
+      { name: "Выборг", note: "2 раза" },
+      { name: "Сертолово" },
+      { name: "Шлиссельбург" }
+    ] },
+    { col: 5, row: 4, name: "Новг", full: "Новгородская область", visits: 0 },
+    { col: 6, row: 4, name: "Влгда", full: "Вологодская область", visits: 0 },
+    { col: 9, row: 4, name: "Архнгл", full: "Архангельская область", visits: 0 },
+    { col: 10, row: 4, name: "Коми", full: "Республика Коми", visits: 0 },
+    { col: 11, row: 4, name: "ХМАО", full: "Ханты-Мансийский АО", visits: 0 },
+    { col: 12, row: 4, name: "Тюмень", full: "Тюменская область", visits: 0 },
+    { col: 15, row: 4, name: "Ирк", full: "Иркутская область", visits: 8, cities: [
+      { name: "Иркутск", note: "4 раза + жил 5 лет" },
+      { name: "Усолье-Сибирское", note: "жил 12 лет" },
+      { name: "Слюдянка", note: "3 раза" },
+      { name: "Ангарск" },
+      { name: "Братск" },
+      { name: "Свирск" },
+      { name: "Черемхово" },
+      { name: "Шелехово" }
+    ] },
+    { col: 16, row: 4, name: "Якутия", full: "Республика Саха (Якутия)", visits: 0 },
+    { col: 17, row: 4, name: "Хбрвск", full: "Хабаровский край", visits: 0 },
+    { col: 18, row: 4, name: "Сах обл", full: "Сахалинская область", visits: 0 },
+    { col: 3, row: 5, name: "Псков", full: "Псковская область", visits: 0 },
+    { col: 4, row: 5, name: "Тверь", full: "Тверская область", visits: 3, cities: [
+      { name: "Тверь" },
+      { name: "Калязин" },
+      { name: "Торжок" }
+    ] },
+    { col: 5, row: 5, name: "Ярсвл", full: "Ярославская область", visits: 3, cities: [
+      { name: "Ярославль" },
+      { name: "Переславль-Залесский" },
+      { name: "Углич" }
+    ] },
+    { col: 6, row: 5, name: "Ивнво", full: "Ивановская область", visits: 0 },
+    { col: 7, row: 5, name: "Кстрма", full: "Костромская область", visits: 0 },
+    { col: 8, row: 5, name: "Мар Эл", full: "Республика Марий Эл", visits: 0 },
+    { col: 9, row: 5, name: "Киров", full: "Кировская область", visits: 0 },
+    { col: 10, row: 5, name: "Пермь", full: "Пермский край", visits: 0 },
+    { col: 11, row: 5, name: "Екб", full: "Свердловская область", visits: 0 },
+    { col: 12, row: 5, name: "Курган", full: "Курганская область", visits: 0 },
+    { col: 13, row: 5, name: "Нск", full: "Новосибирская область", visits: 1, cities: [
+      { name: "Новосибирск" }
+    ] },
+    { col: 14, row: 5, name: "Хакас", full: "Республика Хакасия", visits: 0 },
+    { col: 15, row: 5, name: "Бурят", full: "Республика Бурятия", visits: 1, cities: [
+      { name: "—", note: "достопримечательность вне города" }
+    ] },
+    { col: 16, row: 5, name: "Амур", full: "Амурская область", visits: 0 },
+    { col: 2, row: 6, name: "Смлнск", full: "Смоленская область", visits: 1, cities: [
+      { name: "Рудня" }
+    ] },
+    { col: 3, row: 6, name: "Калуга", full: "Калужская область", visits: 3, cities: [
+      { name: "Калуга" },
+      { name: "Малоярославец" },
+      { name: "Обнинск" }
+    ] },
+    { col: 4, row: 6, name: "Мск об", full: "Московская область", visits: 24, cities: [
+      { name: "Жуковский", note: "2 раза, 3 недели" },
+      { name: "Коломна", note: "2 раза" },
+      { name: "Боровск" },
+      { name: "Верея" },
+      { name: "Голицыно" },
+      { name: "Дмитров" },
+      { name: "Долгопрудный" },
+      { name: "Звенигород" },
+      { name: "Истра" },
+      { name: "Кашира" },
+      { name: "Клин" },
+      { name: "Королёв" },
+      { name: "Лобня" },
+      { name: "Люберцы" },
+      { name: "Можайск" },
+      { name: "Наро-Фоминск" },
+      { name: "Одинцово" },
+      { name: "Подольск" },
+      { name: "Раменское" },
+      { name: "Реутов" },
+      { name: "Сергиев Посад" },
+      { name: "Серпухов" },
+      { name: "Солнечногорск" },
+      { name: "Химки" }
+    ] },
+    { col: 5, row: 6, name: "Влдмр", full: "Владимирская область", visits: 2, cities: [
+      { name: "Владимир" },
+      { name: "Суздаль" }
+    ] },
+    { col: 6, row: 6, name: "Нижний", full: "Нижегородская область", visits: 0 },
+    { col: 7, row: 6, name: "Чуваш", full: "Чувашская Республика", visits: 0 },
+    { col: 8, row: 6, name: "Татар", full: "Республика Татарстан", visits: 0 },
+    { col: 9, row: 6, name: "Удмрт", full: "Удмуртская Республика", visits: 0 },
+    { col: 10, row: 6, name: "Члбнск", full: "Челябинская область", visits: 0 },
+    { col: 11, row: 6, name: "Омск", full: "Омская область", visits: 0 },
+    { col: 12, row: 6, name: "Алт кр", full: "Алтайский край", visits: 0 },
+    { col: 13, row: 6, name: "Тыва", full: "Республика Тыва", visits: 0 },
+    { col: 14, row: 6, name: "Збйкл", full: "Забайкальский край", visits: 0 },
+    { col: 16, row: 6, name: "ЕАО", full: "Еврейская АО", visits: 0 },
+    { col: 17, row: 6, name: "Прмрск", full: "Приморский край", visits: 0 },
+    { col: 2, row: 7, name: "Брянск", full: "Брянская область", visits: 0 },
+    { col: 3, row: 7, name: "Орел", full: "Орловская область", visits: 0 },
+    { col: 4, row: 7, name: "Тула", full: "Тульская область", visits: 1, cities: [
+      { name: "Тула", note: "2 раза" }
+    ] },
+    { col: 5, row: 7, name: "Рязань", full: "Рязанская область", visits: 0 },
+    { col: 6, row: 7, name: "Мрдв", full: "Республика Мордовия", visits: 0 },
+    { col: 7, row: 7, name: "Ульнск", full: "Ульяновская область", visits: 0 },
+    { col: 8, row: 7, name: "Самара", full: "Самарская область", visits: 0 },
+    { col: 9, row: 7, name: "Бшкр", full: "Республика Башкортостан", visits: 0 },
+    { col: 12, row: 7, name: "Алтай", full: "Республика Алтай", visits: 0 },
+    { col: 3, row: 8, name: "Курск", full: "Курская область", visits: 0 },
+    { col: 4, row: 8, name: "Липецк", full: "Липецкая область", visits: 0 },
+    { col: 5, row: 8, name: "Тамбов", full: "Тамбовская область", visits: 0 },
+    { col: 6, row: 8, name: "Пенза", full: "Пензенская область", visits: 0 },
+    { col: 7, row: 8, name: "Сртв", full: "Саратовская область", visits: 0 },
+    { col: 8, row: 8, name: "Орнбрг", full: "Оренбургская область", visits: 0 },
+    { col: 3, row: 9, name: "Белг", full: "Белгородская область", visits: 0 },
+    { col: 4, row: 9, name: "Врнж", full: "Воронежская область", visits: 1, cities: [
+      { name: "Воронеж" }
+    ] },
+    { col: 5, row: 9, name: "Влггрд", full: "Волгоградская область", visits: 0 },
+    { col: 3, row: 10, name: "Адыгея", full: "Республика Адыгея", visits: 2, cities: [
+      { name: "Адыгейск" },
+      { name: "Майкоп" }
+    ] },
+    { col: 4, row: 10, name: "Кубань", full: "Краснодарский край", visits: 6, cities: [
+      { name: "Краснодар", note: "жил полгода, 2 раза" },
+      { name: "Сочи" },
+      { name: "Адлер" },
+      { name: "Белореченск" },
+      { name: "Новороссийск" },
+      { name: "Усть-Лабинск" }
+    ] },
+    { col: 5, row: 10, name: "Ростов", full: "Ростовская область", visits: 2, cities: [
+      { name: "Ростов-на-Дону" },
+      { name: "Батайск" }
+    ] },
+    { col: 6, row: 10, name: "Клмк", full: "Республика Калмыкия", visits: 0 },
+    { col: 7, row: 10, name: "Астрхн", full: "Астраханская область", visits: 0 },
+    { col: 4, row: 11, name: "КЧР", full: "Карачаево-Черкесия", visits: 0 },
+    { col: 5, row: 11, name: "Ставр", full: "Ставропольский край", visits: 0 },
+    { col: 6, row: 11, name: "Чечня", full: "Чеченская Республика", visits: 2, cities: [
+      { name: "Грозный" },
+      { name: "Гудермес" }
+    ] },
+    { col: 7, row: 11, name: "Дгстн", full: "Республика Дагестан", visits: 6, cities: [
+      { name: "Махачкала" },
+      { name: "Дербент" },
+      { name: "Каспийск" },
+      { name: "Буйнакск" },
+      { name: "Кизилюрт" },
+      { name: "Хасавюрт" }
+    ] },
+    { col: 4, row: 12, name: "КБР", full: "Кабардино-Балкария", visits: 0 },
+    { col: 5, row: 12, name: "Алания", full: "Северная Осетия — Алания", visits: 2, cities: [
+      { name: "Владикавказ" },
+      { name: "Беслан" }
+    ] },
+    { col: 6, row: 12, name: "Ингуш", full: "Республика Ингушетия", visits: 2, cities: [
+      { name: "Магас" },
+      { name: "Назрань" }
+    ] }
   ];
 
   function levelOf(v) {
@@ -249,15 +507,27 @@
     return 4;
   }
 
+  function pluralCities(n) {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'город';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'города';
+    return 'городов';
+  }
+
+  // Render grid
   const grid = document.getElementById('grid');
-  REGIONS.forEach(r => {
+  const cellByIdx = new Map();
+  REGIONS.forEach((r, idx) => {
     const cell = document.createElement('div');
-    cell.className = 'cell level-' + levelOf(r.visits);
+    const level = levelOf(r.visits);
+    cell.className = 'cell level-' + level + (r.visits > 0 ? ' clickable' : '');
     cell.style.gridColumn = r.col;
     cell.style.gridRow = r.row;
-    cell.title = r.name + (r.visits > 0
+    cell.title = r.full + (r.visits > 0
       ? ' — ' + r.visits + ' ' + pluralCities(r.visits)
       : ' — не был');
+    cell.dataset.idx = idx;
 
     const name = document.createElement('span');
     name.textContent = r.name;
@@ -268,25 +538,76 @@
       badge.className = 'cell-badge';
       badge.textContent = r.visits;
       cell.appendChild(badge);
+      cell.addEventListener('click', () => openPanel(idx));
     }
 
+    cellByIdx.set(idx, cell);
     grid.appendChild(cell);
   });
 
-  function pluralCities(n) {
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'город';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'города';
-    return 'городов';
-  }
-
+  // Stats
   const visitedRegions = REGIONS.filter(r => r.visits > 0).length;
   const totalCities = REGIONS.reduce((s, r) => s + r.visits, 0);
   const pct = Math.round((visitedRegions / 85) * 100);
   document.getElementById('statBig').textContent = visitedRegions + ' из 85 регионов';
   document.getElementById('statPct').textContent = pct;
   document.getElementById('statCities').textContent = totalCities + ' ' + pluralCities(totalCities);
+
+  // Panel
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  const panelRegion = document.getElementById('panelRegion');
+  const panelSubtitle = document.getElementById('panelSubtitle');
+  const panelMarker = document.getElementById('panelMarker');
+  const cityList = document.getElementById('cityList');
+  let activeIdx = null;
+
+  function openPanel(idx) {
+    const r = REGIONS[idx];
+    if (!r.cities) return;
+    if (activeIdx !== null) cellByIdx.get(activeIdx)?.classList.remove('active');
+    activeIdx = idx;
+    cellByIdx.get(idx).classList.add('active');
+
+    const lvl = levelOf(r.visits);
+    panelMarker.textContent = r.visits;
+    panelMarker.className = 'panel-marker l' + lvl;
+    panelRegion.textContent = r.full;
+    panelSubtitle.textContent = r.visits + ' ' + pluralCities(r.visits) + ' посещено';
+
+    cityList.innerHTML = '';
+    r.cities.forEach(city => {
+      const li = document.createElement('li');
+      li.className = 'city';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'city-name';
+      nameSpan.textContent = city.name;
+      li.appendChild(nameSpan);
+      if (city.note) {
+        const noteSpan = document.createElement('span');
+        noteSpan.className = 'city-note';
+        noteSpan.textContent = city.note;
+        li.appendChild(noteSpan);
+      }
+      cityList.appendChild(li);
+    });
+
+    panel.classList.add('open');
+    backdrop.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+  }
+
+  function closePanel() {
+    if (activeIdx !== null) cellByIdx.get(activeIdx)?.classList.remove('active');
+    activeIdx = null;
+    panel.classList.remove('open');
+    backdrop.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+
+  document.getElementById('panelClose').addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 </script>
 </body>
 </html>
