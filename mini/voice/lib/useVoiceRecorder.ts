@@ -83,6 +83,36 @@ function detectBackend(): VoiceBackend {
   return "none";
 }
 
+function hasMediaRecorderFallback(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    typeof navigator.mediaDevices?.getUserMedia === "function" &&
+    typeof MediaRecorder !== "undefined"
+  );
+}
+
+// Понятные тексты для всех SpeechRecognition error codes, которые могут зашатнуть запись.
+// До этого фикса обрабатывались только `not-allowed` и `network` — остальные молча
+// игнорировались, и пользователь видел только что кнопка «не работает» без причины.
+function describeSpeechError(err: string): string {
+  switch (err) {
+    case "not-allowed":
+      return "Нет доступа к микрофону. Разреши в настройках браузера.";
+    case "service-not-allowed":
+      return "Сервис распознавания недоступен. Попробуй ещё раз через минуту.";
+    case "audio-capture":
+      return "Микрофон занят другим приложением. Закрой Zoom/Meet/другие вкладки.";
+    case "network":
+      return "Сервис распознавания не отвечает. Переключаюсь на запасной путь.";
+    case "language-not-supported":
+      return "Русский язык не поддерживается. Переключаюсь на запасной путь.";
+    case "bad-grammar":
+      return "Ошибка распознавания (bad-grammar).";
+    default:
+      return `Ошибка распознавания: ${err}`;
+  }
+}
+
 function getSpeechRecognitionCtor(): (new () => SpeechRecognitionInstance) | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as {
@@ -126,6 +156,10 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions): UseVoiceReco
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const shouldRestartRef = useRef(false);
+
+  // Поздняя ссылка на startMediaRecorder — нужна чтобы из onerror Web Speech
+  // можно было сразу переключиться на запасной путь без forward-reference.
+  const startMediaRecorderRef = useRef<(() => Promise<void>) | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -274,27 +308,99 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions): UseVoiceReco
 
     recognition.onerror = (event) => {
       if (event.error === "aborted" || event.error === "no-speech") return;
+
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          `[useVoiceRecorder] SpeechRecognition error: ${event.error}${event.message ? ` — ${event.message}` : ""}`,
+        );
+      }
+
+      // Фатальные ошибки — нет смысла переключаться на запасной путь.
       if (event.error === "not-allowed") {
-        setErrorMsg("Нет доступа к микрофону");
+        setErrorMsg(describeSpeechError(event.error));
         fullCleanup();
         setState("error");
         stateRef.current = "error";
         return;
       }
+
+      // Network: типичный сценарий «было нормально, потом перестало» — Google
+      // backend перестал отвечать. Сохраняем накопленный текст и переключаемся
+      // на MediaRecorder + Gemini, чтобы запись продолжилась без потери.
       if (event.error === "network") {
         const text = (transcriptRef.current + interimRef.current).trim();
         const dur = durationRef.current;
-        fullCleanup();
-        setDuration(0);
+        cleanupRecognition();
         if (text) {
-          setState("idle");
-          stateRef.current = "idle";
+          // Отдадим уже распознанный кусок как отдельное сообщение, чтобы он
+          // точно сохранился, даже если резервный путь тоже не сработает.
           onTranscriptRef.current(text, dur);
-        } else {
-          setErrorMsg("Ошибка сети");
+          transcriptRef.current = "";
+          interimRef.current = "";
+          setInterimText("");
+        }
+        // Пробуем MediaRecorder, если он доступен. Если нет — показываем ошибку.
+        if (hasMediaRecorderFallback()) {
+          backendRef.current = "media-recorder";
+          setBackend("media-recorder");
+          setErrorMsg(null);
+          // startMediaRecorder сбрасывает duration сам, но мы тут продолжаем сессию.
+          startMediaRecorderRef.current?.();
+        } else if (!text) {
+          setErrorMsg(describeSpeechError(event.error));
+          fullCleanup();
+          setDuration(0);
           setState("error");
           stateRef.current = "error";
+        } else {
+          // Текст уже сохранён, но fallback недоступен — просто завершаем сессию.
+          fullCleanup();
+          setDuration(0);
+          setState("idle");
+          stateRef.current = "idle";
         }
+        return;
+      }
+
+      // Прочие ошибки (audio-capture, service-not-allowed, language-not-supported,
+      // bad-grammar, неизвестные) — раньше молча игнорировались. Теперь:
+      // 1) Показываем причину пользователю.
+      // 2) Если MediaRecorder доступен и есть смысл — переключаемся на него.
+      const text = (transcriptRef.current + interimRef.current).trim();
+      const dur = durationRef.current;
+      cleanupRecognition();
+      if (text) {
+        onTranscriptRef.current(text, dur);
+        transcriptRef.current = "";
+        interimRef.current = "";
+        setInterimText("");
+      }
+
+      const canFallback =
+        hasMediaRecorderFallback() &&
+        (event.error === "audio-capture" ||
+          event.error === "service-not-allowed" ||
+          event.error === "language-not-supported" ||
+          event.error === "bad-grammar" ||
+          // Любая неизвестная ошибка — пробуем резервный путь.
+          ![
+            "not-allowed",
+            "aborted",
+            "no-speech",
+            "network",
+          ].includes(event.error));
+
+      if (canFallback) {
+        backendRef.current = "media-recorder";
+        setBackend("media-recorder");
+        setErrorMsg(null);
+        startMediaRecorderRef.current?.();
+      } else {
+        setErrorMsg(describeSpeechError(event.error));
+        fullCleanup();
+        setDuration(0);
+        setState("error");
+        stateRef.current = "error";
       }
     };
 
@@ -321,7 +427,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions): UseVoiceReco
       setState("error");
       stateRef.current = "error";
     }
-  }, [lang, fullCleanup]);
+  }, [lang, fullCleanup, cleanupRecognition]);
 
   const startMediaRecorder = useCallback(async () => {
     transcriptRef.current = "";
@@ -359,6 +465,10 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions): UseVoiceReco
     };
     recorder.start(5000);
   }, [startWaveformLoop]);
+
+  // Связываем ref с актуальной реализацией — это позволяет вызвать MediaRecorder
+  // из onerror Web Speech (объявленного раньше) без циклической зависимости.
+  startMediaRecorderRef.current = startMediaRecorder;
 
   const stopRecording = useCallback(() => {
     if (stateRef.current !== "recording") return;
