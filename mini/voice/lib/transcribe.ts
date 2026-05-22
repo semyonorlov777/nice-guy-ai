@@ -1,47 +1,54 @@
-import OpenAI from "openai";
+import { generateText } from "ai";
+import { transcribeModel } from "@mini/voice/lib/ai";
 
-// Серверная транскрипция через OpenAI gpt-4o-mini-transcribe.
-// Используется fallback'ом для веб-записи (если Web Speech API недоступен)
+// Серверная транскрипция через Google Gemini Flash.
+// Используется fallback'ом для веб-записи (Safari etc., где нет Web Speech API)
 // и для voice-сообщений из Telegram.
 //
-// Никакого token-биллинга — single-user мини. Расходы вижу по своему OpenAI dashboard.
+// Используется ENV GOOGLE_GEMINI_API_KEY (общий с основным проектом).
+// Платная только в тарифе Pay-as-you-go; на free tier хватает.
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const MAX_DURATION_SEC = 25 * 60;
 
-function getOpenAI() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
-  return new OpenAI({ apiKey });
-}
+const SYSTEM_PROMPT =
+  "Ты — точный транскриптор. Получаешь аудио на русском языке. Верни ТОЛЬКО дословный текст того, что было сказано, на русском, без комментариев, без описания тона, без 'вот текст:' и подобного. Если аудио пустое или неразборчивое — верни пустую строку. Сохраняй абзацы и пунктуацию по смыслу, исправляй явные оговорки, но не пересказывай.";
 
 export interface TranscribeResult {
   text: string;
 }
 
-export async function transcribeFile(file: File): Promise<TranscribeResult> {
-  if (file.size > MAX_AUDIO_BYTES) {
+async function transcribeAudio(buffer: ArrayBuffer, mimeType: string): Promise<TranscribeResult> {
+  if (buffer.byteLength > MAX_AUDIO_BYTES) {
     throw new Error("Файл слишком большой (макс. 25 MB)");
   }
-  const transcription = await getOpenAI().audio.transcriptions.create({
-    file,
-    model: "gpt-4o-mini-transcribe",
-    language: "ru",
+  const result = await generateText({
+    model: transcribeModel(),
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Расшифруй это аудио." },
+          { type: "file", data: new Uint8Array(buffer), mediaType: mimeType },
+        ],
+      },
+    ],
   });
-  return { text: transcription.text };
+  return { text: result.text.trim() };
+}
+
+export async function transcribeFile(file: File): Promise<TranscribeResult> {
+  const buffer = await file.arrayBuffer();
+  return transcribeAudio(buffer, file.type || "audio/webm");
 }
 
 export async function transcribeBuffer(
   buffer: ArrayBuffer,
-  filename: string,
+  _filename: string,
   mimeType: string,
 ): Promise<TranscribeResult> {
-  if (buffer.byteLength > MAX_AUDIO_BYTES) {
-    throw new Error("Файл слишком большой (макс. 25 MB)");
-  }
-  const blob = new Blob([buffer], { type: mimeType });
-  const file = new File([blob], filename, { type: mimeType });
-  return transcribeFile(file);
+  return transcribeAudio(buffer, mimeType);
 }
 
 export const VOICE_LIMITS = {

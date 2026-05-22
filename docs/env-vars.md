@@ -62,17 +62,18 @@
 | `INTERNAL_API_SECRET` | Секрет для внутренних API (портрет) | ✅ |
 | `SENTRY_DSN` | Sentry DSN (серверный) | ❌ |
 | `SENTRY_AUTH_TOKEN` | Sentry token для source map upload | ❌ |
-| `OPENAI_API_KEY` | OpenAI API key для транскрипции (`gpt-4o-mini-transcribe`). Используется голосовым вводом основного чата и мини-проектом `mini/voice/`. | ❌ |
+| `OPENAI_API_KEY` | OpenAI API key для транскрипции (`gpt-4o-mini-transcribe`). Используется голосовым вводом основного чата. | ❌ |
 
 ### Мини-проект voice (mini/voice)
 
-Отдельный Telegram-бот для голосовых заметок. Только в `mini/voice/`.
+Отдельный Telegram-бот для голосовых заметок. Только в `mini/voice/`. Транскрипция идёт через общий `GOOGLE_GEMINI_API_KEY`.
 
 | Переменная | Описание | Обязательная |
 |-----------|----------|:---:|
 | `VOICE_BOT_TOKEN` | Bot Token нового бота (не auth-бота) от @BotFather. | ❌ (нужна если используется Telegram-канал) |
 | `VOICE_BOT_WEBHOOK_SECRET` | Случайный hex 32+ байт. Telegram передаёт в header `X-Telegram-Bot-Api-Secret-Token`. | ❌ |
 | `VOICE_OWNER_TG_CHAT_ID` | Числовой chat_id владельца. Бот игнорирует voice от других. | ❌ |
+| `VOICE_TRANSCRIBE_MODEL` | Модель Gemini для транскрипции. Default: `gemini-2.5-flash`. | ❌ |
 
 ## Системные (автоматические)
 
