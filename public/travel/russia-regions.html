@@ -230,33 +230,96 @@
     transition: background 0.15s ease;
   }
   .panel-close:hover { background: #f0e6d5; color: #2a2520; }
-  .cities {
+
+  /* Cities waffle inside panel */
+  .cities-grid {
     list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+    gap: 3px;
   }
-  .city {
+  .city-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #2a2520;
-    background: transparent;
-    transition: background 0.15s ease;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 2px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.1;
+    cursor: default;
+    overflow: hidden;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
   }
-  .city:hover { background: #f5ead4; }
-  .city-name { font-weight: 500; }
-  .city-note {
-    font-size: 11px;
+  .city-cell.l1 { background: #f0c674; color: #4a3520; }
+  .city-cell.l2 { background: #e8965e; color: #fff8ee; }
+  .city-cell.l3 { background: #c25b2e; color: #fff8ee; }
+  .city-cell.l4 { background: #7a2e1b; color: #fff8ee; }
+  .city-cell:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(80, 40, 20, 0.22);
+    z-index: 1;
+  }
+  .city-name {
+    display: block;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  .city-badge {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    opacity: 0.95;
+  }
+  .city-home {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff8ee;
+    opacity: 0.85;
+  }
+  .empty-note {
+    padding: 16px;
+    text-align: center;
     color: #8a7a66;
+    font-size: 13px;
     font-style: italic;
-    text-align: right;
-    flex-shrink: 0;
+    background: #fef6e6;
+    border-radius: 10px;
   }
+  .panel-legend {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0e6d5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 10px;
+    color: #8a7a66;
+  }
+  .panel-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .panel-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .panel-legend-swatch.l1 { background: #f0c674; }
+  .panel-legend-swatch.l2 { background: #e8965e; }
+  .panel-legend-swatch.l3 { background: #c25b2e; }
+  .panel-legend-swatch.l4 { background: #7a2e1b; }
 </style>
 </head>
 <body>
@@ -302,7 +365,13 @@
     </div>
     <button class="panel-close" id="panelClose" aria-label="Закрыть">×</button>
   </div>
-  <ul class="cities" id="cityList"></ul>
+  <div class="cities-grid" id="cityList" role="list"></div>
+  <div class="panel-legend" id="panelLegend">
+    <div class="panel-legend-item"><span class="panel-legend-swatch l1"></span>был раз</div>
+    <div class="panel-legend-item"><span class="panel-legend-swatch l2"></span>2–3 раза</div>
+    <div class="panel-legend-item"><span class="panel-legend-swatch l3"></span>4+ раз</div>
+    <div class="panel-legend-item"><span class="panel-legend-swatch l4"></span>жил</div>
+  </div>
 </aside>
 
 <script>
@@ -310,7 +379,7 @@
   // cities: [{name, note?}] для регионов с visits > 0
   const REGIONS = [
     { col: 2, row: 1, name: "СПб", full: "Санкт-Петербург", visits: 5, cities: [
-      { name: "Санкт-Петербург", note: "4 раза" },
+      { name: "Санкт-Петербург", count: 4, note: "4 раза" },
       { name: "Зеленогорск" },
       { name: "Кронштадт" },
       { name: "Петергоф" },
@@ -320,11 +389,11 @@
     { col: 16, row: 1, name: "Чукот", full: "Чукотский АО", visits: 0 },
     { col: 17, row: 1, name: "Камч", full: "Камчатский край", visits: 0 },
     { col: 1, row: 2, name: "Москва", full: "Москва", visits: 2, cities: [
-      { name: "Москва", note: "5 раз + 4 года жил" },
+      { name: "Москва", count: 5, lived: true, note: "5 раз + 4 года жил" },
       { name: "Зеленоград" }
     ] },
     { col: 15, row: 2, name: "Крск", full: "Красноярский край", visits: 1, cities: [
-      { name: "Красноярск", note: "2 раза" }
+      { name: "Красноярск", count: 2, note: "2 раза" }
     ] },
     { col: 17, row: 2, name: "Магад", full: "Магаданская область", visits: 0 },
     { col: 4, row: 3, name: "Карел", full: "Республика Карелия", visits: 1, cities: [
@@ -336,7 +405,7 @@
     { col: 15, row: 3, name: "Кузбас", full: "Кемеровская область", visits: 0 },
     { col: 1, row: 4, name: "Клнгрд", full: "Калининградская область", visits: 0 },
     { col: 3, row: 4, name: "Лен обл", full: "Ленинградская область", visits: 3, cities: [
-      { name: "Выборг", note: "2 раза" },
+      { name: "Выборг", count: 2, note: "2 раза" },
       { name: "Сертолово" },
       { name: "Шлиссельбург" }
     ] },
@@ -347,9 +416,9 @@
     { col: 11, row: 4, name: "ХМАО", full: "Ханты-Мансийский АО", visits: 0 },
     { col: 12, row: 4, name: "Тюмень", full: "Тюменская область", visits: 0 },
     { col: 15, row: 4, name: "Ирк", full: "Иркутская область", visits: 8, cities: [
-      { name: "Иркутск", note: "4 раза + жил 5 лет" },
-      { name: "Усолье-Сибирское", note: "жил 12 лет" },
-      { name: "Слюдянка", note: "3 раза" },
+      { name: "Иркутск", count: 4, lived: true, note: "4 раза + жил 5 лет" },
+      { name: "Усолье-Сибирское", lived: true, note: "жил 12 лет" },
+      { name: "Слюдянка", count: 3, note: "3 раза" },
       { name: "Ангарск" },
       { name: "Братск" },
       { name: "Свирск" },
@@ -382,7 +451,7 @@
     ] },
     { col: 14, row: 5, name: "Хакас", full: "Республика Хакасия", visits: 0 },
     { col: 15, row: 5, name: "Бурят", full: "Республика Бурятия", visits: 1, cities: [
-      { name: "—", note: "достопримечательность вне города" }
+      { name: "достопримечательность", note: "вне города" }
     ] },
     { col: 16, row: 5, name: "Амур", full: "Амурская область", visits: 0 },
     { col: 2, row: 6, name: "Смлнск", full: "Смоленская область", visits: 1, cities: [
@@ -394,8 +463,8 @@
       { name: "Обнинск" }
     ] },
     { col: 4, row: 6, name: "Мск об", full: "Московская область", visits: 24, cities: [
-      { name: "Жуковский", note: "2 раза, 3 недели" },
-      { name: "Коломна", note: "2 раза" },
+      { name: "Жуковский", count: 2, note: "2 раза, 3 недели" },
+      { name: "Коломна", count: 2, note: "2 раза" },
       { name: "Боровск" },
       { name: "Верея" },
       { name: "Голицыно" },
@@ -437,7 +506,7 @@
     { col: 2, row: 7, name: "Брянск", full: "Брянская область", visits: 0 },
     { col: 3, row: 7, name: "Орел", full: "Орловская область", visits: 0 },
     { col: 4, row: 7, name: "Тула", full: "Тульская область", visits: 1, cities: [
-      { name: "Тула", note: "2 раза" }
+      { name: "Тула", count: 2, note: "2 раза" }
     ] },
     { col: 5, row: 7, name: "Рязань", full: "Рязанская область", visits: 0 },
     { col: 6, row: 7, name: "Мрдв", full: "Республика Мордовия", visits: 0 },
@@ -461,7 +530,7 @@
       { name: "Майкоп" }
     ] },
     { col: 4, row: 10, name: "Кубань", full: "Краснодарский край", visits: 6, cities: [
-      { name: "Краснодар", note: "жил полгода, 2 раза" },
+      { name: "Краснодар", count: 2, lived: true, note: "жил полгода, 2 раза" },
       { name: "Сочи" },
       { name: "Адлер" },
       { name: "Белореченск" },
@@ -505,6 +574,14 @@
     if (v <= 3) return 2;
     if (v <= 7) return 3;
     return 4;
+  }
+
+  function cityLevel(city) {
+    if (city.lived) return 4;
+    const c = city.count || 1;
+    if (c >= 4) return 3;
+    if (c >= 2) return 2;
+    return 1;
   }
 
   function pluralCities(n) {
@@ -577,19 +654,29 @@
 
     cityList.innerHTML = '';
     r.cities.forEach(city => {
-      const li = document.createElement('li');
-      li.className = 'city';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'city-name';
-      nameSpan.textContent = city.name;
-      li.appendChild(nameSpan);
-      if (city.note) {
-        const noteSpan = document.createElement('span');
-        noteSpan.className = 'city-note';
-        noteSpan.textContent = city.note;
-        li.appendChild(noteSpan);
+      const cell = document.createElement('div');
+      cell.className = 'city-cell l' + cityLevel(city);
+      cell.setAttribute('role', 'listitem');
+      cell.title = city.name + (city.note ? ' — ' + city.note : '');
+
+      const name = document.createElement('span');
+      name.className = 'city-name';
+      name.textContent = city.name;
+      cell.appendChild(name);
+
+      if (city.count && city.count > 1) {
+        const badge = document.createElement('span');
+        badge.className = 'city-badge';
+        badge.textContent = '×' + city.count;
+        cell.appendChild(badge);
       }
-      cityList.appendChild(li);
+      if (city.lived) {
+        const home = document.createElement('span');
+        home.className = 'city-home';
+        home.title = 'Здесь жил';
+        cell.appendChild(home);
+      }
+      cityList.appendChild(cell);
     });
 
     panel.classList.add('open');
