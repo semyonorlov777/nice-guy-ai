@@ -231,21 +231,40 @@
   .shaped-cell.has-city {
     cursor: default;
     transition: transform 0.14s ease, box-shadow 0.14s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+    overflow: hidden;
   }
   .shaped-cell.has-city:hover {
-    transform: scale(1.18);
-    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.25);
-    z-index: 2;
+    transform: scale(1.25);
+    box-shadow: 0 6px 16px rgba(80, 40, 20, 0.28);
+    z-index: 3;
   }
+  .shaped-cell .city-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5px;
+    font-weight: 600;
+    line-height: 1.05;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  .shaped-cell.l1 .city-label { color: #4a3520; }
+  .shaped-cell.l2 .city-label,
+  .shaped-cell.l3 .city-label,
+  .shaped-cell.l4 .city-label { color: #fff8ee; }
+  .shaped-cell.l0.has-city .city-label { color: #8a7a66; }
   .shaped-cell .home-dot {
     position: absolute;
-    bottom: 12%;
-    right: 16%;
-    width: 22%;
-    height: 22%;
+    bottom: 8%;
+    right: 10%;
+    width: 16%;
+    height: 16%;
     border-radius: 50%;
     background: #fff8ee;
-    opacity: 0.9;
+    opacity: 0.95;
   }
   .geo-no-cities {
     text-align: center;
@@ -1161,7 +1180,8 @@
             ? (city.lived ? ' — жил тут' : (city.count ? ' — был ' + city.count + ' раза' : ' — был'))
             : ' — не был')).replace(/"/g, '&quot;');
           const home = visited && city.lived ? '<span class="home-dot"></span>' : '';
-          html += `<div class="shaped-cell has-city l${lvl}" style="grid-column:${col+1};grid-row:${row+1}" title="${tooltip}">${home}</div>`;
+          const safeName = city.name.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+          html += `<div class="shaped-cell has-city l${lvl}" style="grid-column:${col+1};grid-row:${row+1}" title="${tooltip}"><span class="city-label">${safeName}</span>${home}</div>`;
         } else {
           html += `<div class="shaped-cell in" style="grid-column:${col+1};grid-row:${row+1}"></div>`;
         }
