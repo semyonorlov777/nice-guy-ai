@@ -205,53 +205,47 @@
     color: #8a7a66;
   }
 
-  /* Geo map in detail view */
+  /* Shaped waffle: квадратики в форме региона */
   .geo-map {
-    background: #fef9ef;
-    border-radius: 14px;
     padding: 16px;
-    border: 1px solid #f0e6d5;
+    display: flex;
+    justify-content: center;
   }
-  .geo-svg {
-    display: block;
-    width: 100%;
-    max-width: 640px;
-    height: auto;
-    margin: 0 auto;
+  .shaped-grid {
+    display: grid;
+    gap: 2px;
+    max-width: 100%;
   }
-  .geo-region-fill {
-    fill: #f0e6d5;
-    stroke: #c4b5a5;
-    stroke-width: 1.5;
-    stroke-linejoin: round;
+  .shaped-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    background: transparent;
   }
-  .geo-city {
+  .shaped-cell.in { background: #e8dccb; }
+  .shaped-cell.l0 { background: #e8dccb; }
+  .shaped-cell.l1 { background: #f0c674; }
+  .shaped-cell.l2 { background: #e8965e; }
+  .shaped-cell.l3 { background: #c25b2e; }
+  .shaped-cell.l4 { background: #7a2e1b; }
+  .shaped-cell.has-city {
     cursor: default;
-    transition: r 0.14s ease;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
   }
-  .geo-city.l0 { fill: #c4a98a; stroke: #fff8ee; stroke-width: 1; opacity: 0.65; }
-  .geo-city.l1 { fill: #f0c674; stroke: #4a3520; stroke-width: 1; }
-  .geo-city.l2 { fill: #e8965e; stroke: #fff8ee; stroke-width: 1.2; }
-  .geo-city.l3 { fill: #c25b2e; stroke: #fff8ee; stroke-width: 1.4; }
-  .geo-city.l4 { fill: #7a2e1b; stroke: #fff8ee; stroke-width: 1.5; }
-  .geo-city:hover { r: 7; }
-  .geo-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    fill: #2a2520;
-    pointer-events: none;
+  .shaped-cell.has-city:hover {
+    transform: scale(1.18);
+    box-shadow: 0 4px 12px rgba(80, 40, 20, 0.25);
+    z-index: 2;
   }
-  .geo-label-shadow {
-    font-family: 'Inter', sans-serif;
-    font-size: 10px;
-    font-weight: 600;
-    fill: #fff8ee;
-    stroke: #fff8ee;
-    stroke-width: 3;
-    stroke-linejoin: round;
-    paint-order: stroke fill;
-    pointer-events: none;
+  .shaped-cell .home-dot {
+    position: absolute;
+    bottom: 12%;
+    right: 16%;
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: #fff8ee;
+    opacity: 0.9;
   }
   .geo-no-cities {
     text-align: center;
@@ -1076,14 +1070,9 @@
     for (const [name, lat, lng] of COORDS[slug]) COORD_MAP[slug][name] = { lat, lng };
   }
 
-  // Project geo (lat, lng) → SVG (x, y) inside viewBox using region bbox.
-  function geoToSvg(lat, lng, bbox, vb) {
-    const parts = vb.split(' ').map(Number);
-    const vw = parts[2], vh = parts[3];
-    const x = ((lng - bbox.lng_min) / (bbox.lng_max - bbox.lng_min)) * vw;
-    const y = (1 - (lat - bbox.lat_min) / (bbox.lat_max - bbox.lat_min)) * vh;
-    return { x, y };
-  }
+  // Reusable canvas context for Path2D hit-testing
+  const _hitCanvas = document.createElement('canvas');
+  const _hitCtx = _hitCanvas.getContext('2d');
 
   function renderGeoMap(r, cities) {
     const svgInfo = r.slug && SVGS[r.slug];
@@ -1092,49 +1081,95 @@
       return;
     }
 
-    const vb = svgInfo.vb;
+    const vbParts = svgInfo.vb.split(' ').map(Number);
+    const vw = vbParts[2], vh = vbParts[3];
     const bbox = svgInfo.b;
     const coords = COORD_MAP[r.slug] || {};
+    const path = new Path2D(svgInfo.p);
+    _hitCanvas.width = Math.ceil(vw);
+    _hitCanvas.height = Math.ceil(vh);
 
-    // Compute base radius from viewBox size — about 0.6% of width
-    const vbW = parseFloat(vb.split(' ')[2]);
-    const baseR = Math.max(3, Math.round(vbW * 0.006));
-    const labelOffset = baseR + 9;
+    // Grid resolution: keep aspect ratio of the bbox
+    const aspect = vw / vh;
+    const BASE = 16;
+    let nCols, nRows;
+    if (aspect >= 1) { nCols = BASE; nRows = Math.max(6, Math.round(BASE / aspect)); }
+    else { nRows = BASE; nCols = Math.max(6, Math.round(BASE * aspect)); }
+    const cellW = vw / nCols;
+    const cellH = vh / nRows;
 
-    // Sort: not-visited first (drawn below), then visited (on top)
-    const sortedCities = [...cities].sort((a, b) => (a.visited === true) - (b.visited === true));
-
-    let circles = '';
-    let labels = '';
-    let hasAny = false;
-    sortedCities.forEach(city => {
-      const c = coords[city.name];
-      if (!c) return;
-      hasAny = true;
-      const visited = city.visited === true;
-      const lvlClass = visited ? ('l' + cityLevel(city)) : 'l0';
-      const pos = geoToSvg(c.lat, c.lng, bbox, vb);
-      const radius = visited ? baseR + 1 : baseR - 1;
-      const tooltip = (city.name + (visited
-        ? (city.lived ? ' — жил тут' : (city.count ? ' — был ' + city.count + ' раза' : ' — был'))
-        : ' — не был')).replace(/"/g, '&quot;');
-      circles += `<circle class="geo-city ${lvlClass}" cx="${pos.x.toFixed(2)}" cy="${pos.y.toFixed(2)}" r="${radius}"><title>${tooltip}</title></circle>`;
-      // Label only for visited cities to keep the map readable
-      if (visited) {
-        const lx = (pos.x + labelOffset).toFixed(2);
-        const ly = (pos.y + 4).toFixed(2);
-        const safeName = city.name.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-        labels += `<text class="geo-label-shadow" x="${lx}" y="${ly}">${safeName}</text>`;
-        labels += `<text class="geo-label" x="${lx}" y="${ly}">${safeName}</text>`;
+    // 1. Mark which cells are inside the region's silhouette
+    const inside = []; // boolean[nRows][nCols]
+    for (let row = 0; row < nRows; row++) {
+      inside[row] = [];
+      for (let col = 0; col < nCols; col++) {
+        const cx = (col + 0.5) * cellW;
+        const cy = (row + 0.5) * cellH;
+        inside[row][col] = _hitCtx.isPointInPath(path, cx, cy);
       }
-    });
-
-    if (!hasAny && !r.noCityVisit) {
-      cityGrid.innerHTML = '<div class="geo-no-cities">Координаты городов этого региона не собраны.</div>';
-      return;
     }
 
-    cityGrid.innerHTML = `<svg class="geo-svg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet"><path class="geo-region-fill" d="${svgInfo.p}"/>${circles}${labels}</svg>`;
+    // 2. Map each city to a cell using its real coords; on collision pick nearest empty
+    const occupied = {}; // "col,row" → city
+    const sorted = [...cities].sort((a, b) => {
+      // Higher priority first (jiv > frequent > visited > not visited) — they get their natural cell
+      const pa = a.lived ? 3 : (a.count || 0) >= 2 ? 2 : (a.visited ? 1 : 0);
+      const pb = b.lived ? 3 : (b.count || 0) >= 2 ? 2 : (b.visited ? 1 : 0);
+      return pb - pa;
+    });
+
+    sorted.forEach(city => {
+      const c = coords[city.name];
+      if (!c) return;
+      const sx = ((c.lng - bbox.lng_min) / (bbox.lng_max - bbox.lng_min)) * vw;
+      const sy = (1 - (c.lat - bbox.lat_min) / (bbox.lat_max - bbox.lat_min)) * vh;
+      let col = Math.max(0, Math.min(nCols - 1, Math.floor(sx / cellW)));
+      let row = Math.max(0, Math.min(nRows - 1, Math.floor(sy / cellH)));
+      let key = col + ',' + row;
+      if (occupied[key] || !inside[row][col]) {
+        // spiral search nearest free cell that's inside
+        let found = false;
+        for (let radius = 1; radius <= Math.max(nCols, nRows) && !found; radius++) {
+          for (let dr = -radius; dr <= radius && !found; dr++) {
+            for (let dc = -radius; dc <= radius && !found; dc++) {
+              if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue;
+              const nc = col + dc, nr = row + dr;
+              if (nc < 0 || nr < 0 || nc >= nCols || nr >= nRows) continue;
+              if (!inside[nr][nc]) continue;
+              const k = nc + ',' + nr;
+              if (occupied[k]) continue;
+              col = nc; row = nr; key = k; found = true;
+            }
+          }
+        }
+        if (!found) return; // no room
+      }
+      occupied[key] = city;
+    });
+
+    // 3. Render: grid with cells
+    let html = '';
+    for (let row = 0; row < nRows; row++) {
+      for (let col = 0; col < nCols; col++) {
+        const inRegion = inside[row][col];
+        const city = occupied[col + ',' + row];
+        if (!inRegion && !city) continue; // skip empty/outside cells entirely
+        if (city) {
+          const visited = city.visited === true;
+          const lvl = visited ? cityLevel(city) : 0;
+          const tooltip = (city.name + (visited
+            ? (city.lived ? ' — жил тут' : (city.count ? ' — был ' + city.count + ' раза' : ' — был'))
+            : ' — не был')).replace(/"/g, '&quot;');
+          const home = visited && city.lived ? '<span class="home-dot"></span>' : '';
+          html += `<div class="shaped-cell has-city l${lvl}" style="grid-column:${col+1};grid-row:${row+1}" title="${tooltip}">${home}</div>`;
+        } else {
+          html += `<div class="shaped-cell in" style="grid-column:${col+1};grid-row:${row+1}"></div>`;
+        }
+      }
+    }
+    // Adaptive cell size: aim for ~32px on desktop, scale down for big grids
+    const targetWidth = Math.min(600, 32 * nCols);
+    cityGrid.innerHTML = `<div class="shaped-grid" style="grid-template-columns:repeat(${nCols},1fr);grid-template-rows:repeat(${nRows},1fr);width:${targetWidth}px;">${html}</div>`;
   }
 
   function showDetail(idx) {
