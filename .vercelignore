@@ -2,5 +2,6 @@ public/*.html
 !public/spiral-test.html
 !public/anketa-demo.html
 !public/anketa-redesign.html
+!public/spiral-test-analysis.html
 docs/
 .claude/
