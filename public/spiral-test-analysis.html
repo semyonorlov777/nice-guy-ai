@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Разбор теста Карины — для правок</title>
+  <!-- v2 -->
+
+  <style>
+    :root {
+      --bg: #FAFAF5;
+      --bg-card: #FFFFFF;
+      --text: #1A1A1A;
+      --text-secondary: #4A4A4A;
+      --text-muted: #777;
+      --border: #E5E1D5;
+      --accent: #C9963B;
+      --accent-soft: #F5EBD2;
+      --tag-M: #D9534F;
+      --tag-B: #5BA08F;
+      --tag-L: #6B7EB8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      padding: 40px 20px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+
+    h1 {
+      font-size: 32px;
+      line-height: 1.2;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin: 0 0 36px;
+    }
+    h2 {
+      font-size: 24px;
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 {
+      font-size: 19px;
+      margin: 32px 0 12px;
+    }
+    p { margin: 0 0 14px; }
+    ul, ol { margin: 0 0 16px; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    strong { font-weight: 600; }
+    em { font-style: italic; color: var(--text-secondary); }
+    code { background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; font-size: 14px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 0 0 40px;
+    }
+    .toc-title {
+      font-size: 13px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+    .toc ul { columns: 2; column-gap: 24px; margin: 0; padding-left: 18px; }
+    .toc a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--text-muted); }
+    .toc a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .archetype-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin: 0 0 22px;
+    }
+    .archetype-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .archetype-key {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .archetype-key.k-M { background: var(--tag-M); }
+    .archetype-key.k-B { background: var(--tag-B); }
+    .archetype-key.k-L { background: var(--tag-L); }
+    .archetype-title { font-size: 22px; font-weight: 600; }
+    .archetype-tagline { color: var(--text-muted); font-style: italic; margin: 0 0 18px; font-size: 15px; }
+    .archetype-quote {
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
+      padding: 14px 18px;
+      margin: 0 0 18px;
+      font-style: italic;
+      color: var(--text-secondary);
+      border-radius: 0 8px 8px 0;
+    }
+    .sub-tag {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin: 14px 0 4px;
+    }
+    .shift-block {
+      background: #F4F0E0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-top: 14px;
+      font-size: 15px;
+    }
+    .shift-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin: 0 0 6px;
+      display: block;
+    }
+
+    .question-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin: 0 0 28px;
+    }
+    .question-text {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      color: var(--text);
+    }
+    .question-hint {
+      color: var(--text-muted);
+      font-size: 14px;
+      font-style: italic;
+      margin: 0 0 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 18px;
+      font-size: 15px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      background: #F4F0E0;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+    }
+    td.option-text { width: 60%; }
+    td.weights {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      width: 20%;
+    }
+    .arch-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .arch-pill.M { background: var(--tag-M); }
+    .arch-pill.B { background: var(--tag-B); }
+    .arch-pill.L { background: var(--tag-L); }
+    .arch-pill.hybrid { background: #888; }
+
+    .analysis-block {
+      margin-top: 16px;
+    }
+    .analysis-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 16px;
+      padding: 12px 0;
+      border-top: 1px dashed var(--border);
+    }
+    .analysis-label {
+      font-size: 13px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .analysis-text { color: var(--text); }
+
+    .note {
+      background: #FFF6E0;
+      border-left: 3px solid var(--accent);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 0 0 32px;
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .principles {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 28px;
+    }
+    .principles ol { padding-left: 22px; }
+    .principles li { margin-bottom: 10px; }
+
+    @media (max-width: 700px) {
+      body { padding: 24px 14px; font-size: 15.5px; }
+      h1 { font-size: 26px; }
+      h2 { font-size: 20px; }
+      .question-block, .archetype-card, .principles { padding: 18px 18px; }
+      .toc ul { columns: 1; }
+      .analysis-row { grid-template-columns: 1fr; gap: 4px; }
+      table { font-size: 14px; }
+      th, td { padding: 8px 8px; }
+      td.option-text { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <h1>Разбор теста Карины — для правок</h1>
+    <p class="subtitle">7 вопросов, 3 архетипа, веса по архетипам. Внутренняя страница для копирайтерских правок — не для публикации.</p>
+
+    <div class="note">
+      <strong>Дисклеймер:</strong> сами 7 вопросов и архетипы написаны не мной — они в коде с PR #7 (коммит <code>76d3b10a</code>). Ниже — реверс-анализ того, что в коде сейчас, и почему оно скорее всего так устроено. На основе этого удобно давать качественные правки.
+    </div>
+
+    <div class="toc">
+      <div class="toc-title">Содержание</div>
+      <ul>
+        <li><a href="#mechanics">Как устроен тест</a></li>
+        <li><a href="#archetypes">3 архетипа результата</a></li>
+        <li><a href="#q1">Вопрос 1</a></li>
+        <li><a href="#q2">Вопрос 2</a></li>
+        <li><a href="#q3">Вопрос 3</a></li>
+        <li><a href="#q4">Вопрос 4</a></li>
+        <li><a href="#q5">Вопрос 5</a></li>
+        <li><a href="#q6">Вопрос 6</a></li>
+        <li><a href="#q7">Вопрос 7</a></li>
+        <li><a href="#principles">Общий принцип</a></li>
+      </ul>
+    </div>
+
+    <h2 id="mechanics">Как устроен тест</h2>
+    <ul>
+      <li><strong>3 архетипа результата:</strong> M «Слишком много жизней», B «Огонь сел», L «Слышит, но не видит».</li>
+      <li><strong>7 вопросов × 4 варианта.</strong> У каждого варианта — веса по архетипам (например, <code>M+2</code> или гибрид <code>L+1, B+1</code>).</li>
+      <li><strong>Суммирование:</strong> в конце складываются веса по всем 7 вопросам — доминантный архетип становится «названием состояния» пользователя.</li>
+      <li><strong>Подсказка под каждым вопросом</strong> снимает рацио и направляет на честный ответ телом, а не головой.</li>
+    </ul>
+
+    <h2 id="archetypes">3 архетипа результата</h2>
+
+    <!-- ============= M ============= -->
+    <div class="archetype-card">
+      <div class="archetype-head">
+        <span class="archetype-key k-M">M</span>
+        <span class="archetype-title">Слишком много жизней</span>
+      </div>
+      <p class="archetype-tagline">Внутри столько всего, что одна жизнь не вмещает</p>
+      <div class="archetype-quote">
+        «У меня столько всего внутри, что я не понимаю, как сжаться до одного. Я пробовала — и каждый раз внутри что-то протестовало.»
+      </div>
+
+      <div class="sub-tag">Сцены жизни</div>
+      <p>Открываешь заметки — там двадцать начатых тем, и каждая казалась тем самым. На полке — книги по трём не связанным направлениям. В голове — параллельные жизни, в которых ты стала бы совсем другим человеком, если бы только выбрала. И каждая из них — настоящая, не «для виду».</p>
+
+      <div class="sub-tag">Парадокс</div>
+      <p>Со стороны кажется, что ты не можешь выбрать. Изнутри всё наоборот: ты выбираешь много раз — все. Поэтому ничего не отбрасывается, ничего не доводится до конца. Это не отсутствие глубины — это другая глубина. Та, что собирается из соединений между темами, а не из одного бесконечного колодца.</p>
+
+      <div class="sub-tag">Прошлый опыт</div>
+      <p>Ты пробовала сжаться. Выбирала одно дело и говорила себе «всё, теперь только это». Через 3–6 месяцев внутри начинало душить — возвращалась к старому или бралась за новое. И снова искренне верила, что вот теперь точно. Это не про слабость воли. Это про то, как ты сделана.</p>
+
+      <div class="sub-tag">Это не выгорание</div>
+      <p>У тебя не угас огонь — у тебя слишком много огней. Огонь, который не гаснет, а делится — это не выгорание, это другая физика.</p>
+
+      <div class="sub-tag">Это не растерянность</div>
+      <p>Ты не «не знаешь». Ты знаешь десятки направлений — и каждое настоящее. Та, кто слышит своё, но не видит, — не видит контуров; ты видишь слишком много контуров одновременно.</p>
+
+      <div class="shift-block">
+        <span class="shift-label">Сдвиг</span>
+        Тебе не нужно лечиться от своей широты. Тебе нужно научиться её собирать — найти ось, на которую все твои «хочу» нанизываются как бусины. Без оси они рассыпаются. С осью — это уже не «много всего», это метод.
+      </div>
+    </div>
+
+    <!-- ============= B ============= -->
+    <div class="archetype-card">
+      <div class="archetype-head">
+        <span class="archetype-key k-B">B</span>
+        <span class="archetype-title">Огонь сел</span>
+      </div>
+      <p class="archetype-tagline">То, что зажигало раньше, больше не зажигает</p>
+      <div class="archetype-quote">
+        «Я не понимаю, что со мной случилось. Раньше внутри горело само. Сейчас я делаю то же самое — и тишина.»
+      </div>
+
+      <div class="sub-tag">Сцены жизни</div>
+      <p>Ты строила это дело годами. Был период, когда вставала до будильника — не могла дождаться. Был период, когда тебя узнавали в нише, рекомендовали, обращались за советом. И где-то по дороге — без катастрофы, без точки — это перестало греть. Сначала тише. Потом совсем.</p>
+
+      <div class="sub-tag">Парадокс</div>
+      <p>Ты лучше всех вокруг знаешь эту тему. И при этом меньше всех уверена, что хочешь ей заниматься дальше. Это очень одинокое состояние: те, кто только начинают, смотрят на тебя как на пример. А ты изнутри чувствуешь, что пример давно пустой.</p>
+
+      <div class="sub-tag">Прошлый опыт</div>
+      <p>Ты пробовала отпуск — не помогло, после него стало даже хуже, потому что отдых не вернул интерес. Пробовала сменить нишу внутри той же сферы — на полгода зажглось, потом снова. Думала о смене работы — но непонятно, на что менять, если усталость не от работы, а от того, кем ты стала ради неё.</p>
+
+      <div class="sub-tag">Это не мультипотенциальность</div>
+      <p>У тебя не «слишком много интересов». У тебя был один — и он сел. Это другой механизм: не разлив энергии по десяти руслам, а высыхание основного русла.</p>
+
+      <div class="sub-tag">Это не растерянность</div>
+      <p>Ты знаешь, что умеешь. Ты знаешь, что у тебя получается. Вопрос не «кто я и что моё» — вопрос «что делать, когда то, что точно моё, перестало греть».</p>
+
+      <div class="shift-block">
+        <span class="shift-label">Сдвиг</span>
+        Ты устала не от дела. Ты устала быть тем человеком, которым тебе пришлось стать ради этого дела. Возвращение огня — это не «найти новое». Это вернуть себя — и заново посмотреть, что из старого ещё твоё, а что было ролью.
+      </div>
+    </div>
+
+    <!-- ============= L ============= -->
+    <div class="archetype-card">
+      <div class="archetype-head">
+        <span class="archetype-key k-L">L</span>
+        <span class="archetype-title">Слышит, но не видит</span>
+      </div>
+      <p class="archetype-tagline">Что-то своё внутри есть — но что именно, не видно</p>
+      <div class="archetype-quote">
+        «Я знаю, что внутри что-то моё существует. Я просто не вижу его. И я устала искать на ощупь.»
+      </div>
+
+      <div class="sub-tag">Сцены жизни</div>
+      <p>У тебя есть ощущение «своего» — оно не выдумано, оно реальное. Только без формы. Ты пробовала разное — учёбу, профессии, проекты. Что-то нравилось, что-то нет, но ни одно не дало того щелчка, которого ты ждёшь. Ты много читаешь про самоопределение. Проходишь тесты. Слушаешь подкасты. И каждый раз думаешь: «может, дело в этом? в том?»</p>
+
+      <div class="sub-tag">Парадокс</div>
+      <p>Чем больше ты ищешь снаружи, тем дальше отдаляешься от того, что внутри. Каждый новый тест, каждая новая методика — ещё один слой между тобой и тем «своим», которое ты пытаешься увидеть. Ответ не «там, где я ещё не искала». Ответ «здесь, но я перестала слышать».</p>
+
+      <div class="sub-tag">Прошлый опыт</div>
+      <p>Ты пробовала выбирать «как все» — по востребованности, по доходу, по совету разумных людей. Делала честно, не халтурила. Но через какое-то время изнутри возникало «это не оно». Не было сил объяснить, почему — просто не оно. И снова поиск. И снова надежда, что вот теперь точно.</p>
+
+      <div class="sub-tag">Это не мультипотенциальность</div>
+      <p>У тебя не «много всего, не могу выбрать». У тебя как раз нет — контуры размыты, тяга есть, но безымянная. Тем, у кого слишком много жизней, нужна ось; тебе — голос.</p>
+
+      <div class="sub-tag">Это не выгорание</div>
+      <p>Ты не сгорела — у тебя никогда и не зажигалось по-настоящему. Это разные ситуации: одна про потерю огня, другая про то, что огонь ещё не нашёл, на чём гореть.</p>
+
+      <div class="shift-block">
+        <span class="shift-label">Сдвиг</span>
+        Тебе не нужно искать ещё больше. Тебе нужно научиться слышать то, что уже есть. Звук «своего» очень тихий — и он заглушается тестами, советами, экспертами. Сначала тишина. Потом голос.
+      </div>
+    </div>
+
+    <!-- ============= ВОПРОСЫ ============= -->
+
+    <h2 id="q1">Вопрос 1</h2>
+    <div class="question-block">
+      <p class="question-text">Что у тебя внутри прямо сейчас?</p>
+      <p class="question-hint">Подсказка: «Закрой глаза на секунду — какое из этих ощущений знакомее»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Переполняет. Слишком много всего хочется — голова кипит»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«Тишина. Раньше там горело — теперь будто кто-то убавил звук»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«Туман. Знаю, что что-то моё есть. Но что — не разглядеть»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+          <tr><td class="option-text">«Онемение. Я уже не помню, как это — когда чего-то хочешь»</td><td class="weights">L+1, B+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Базовое внутреннее состояние «сейчас». Вопрос-якорь — без него тест не знает точку отсчёта. 4 варианта = 4 типа «внутри»: переполнение / пустота / туман / онемение.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">Метафоры тела (кипит, тишина, туман, онемение) снимают рацио. «Закрой глаза» в подсказке — буквальная инструкция выйти из головы в чувство. Поэтому он и стоит первым — чтобы дальше человек отвечал из тела, а не из «как правильно».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">Прямая 1-к-1. M — переполнение, B — потеря огня, L — поиск формы. 4-й вариант (онемение) — гибрид L+B для тех, кто «между»: и искал и не нашёл, и когда-то было — и угасло.</div></div>
+      </div>
+    </div>
+
+    <h2 id="q2">Вопрос 2</h2>
+    <div class="question-block">
+      <p class="question-text">Сколько у тебя было реальных рабочих дорог — где ты не училась, а делала?</p>
+      <p class="question-hint">Подсказка: «Не „о чём мечтала", а где правда был доход или клиенты»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Одна. И я в ней давно — это „моё дело"»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«Две: первая закончилась, ушла во вторую»</td><td class="weights">B+1, M+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+          <tr><td class="option-text">«Три и больше, в разных сферах. Меня туда правда тянуло»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«Ни одной по-настоящему. Только учёба и подходы»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Реальную биографию деятельности — не «что нравилось», а где была работа за деньги. Это фактологическая проверка: фантазёрство уходит, остаётся реальность.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">Фильтр «не училась, а делала» критически важен. Без него L-тип легко поставит «три и больше», потому что три раза заходил в обучение. Тест отделяет тех, кто реально делал (M, B), от тех, кто только готовился (L).</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">По количеству и характеру дорог. 1 = B (одно дело, в нём давно). 3+ = M (тянуло в разное и шла). 0 = L (только учёба, никогда не было «своего»). 2 = гибрид M+B (одна закончилась, ушла в другую — частый паттерн «огонь сел и перешла в новое»).</div></div>
+      </div>
+    </div>
+
+    <h2 id="q3">Вопрос 3</h2>
+    <div class="question-block">
+      <p class="question-text">Что у тебя сейчас лежит в заметках или в закладках браузера?</p>
+      <p class="question-hint">Подсказка: «Загляни честно — это и есть твой настоящий „список интересов"»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Двадцать начатых тем — друг с другом не связанные»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«Одна-две сферы. Углубляюсь в них уже годами»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«Тесты, методики, дневники самопознания — собираю, чтобы найти»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+          <tr><td class="option-text">«Почти пусто. Я не из тех, кто коллекционирует интересы»</td><td class="weights">B+1</td><td><span class="arch-pill B">B-low</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Поведенческий маркер, а не самоотчёт. Заметки и закладки — это «следы животного»: они есть, даже если человек о них не помнит и не врёт о себе. Это сильный приём — тест ловит правду через поведение, обходя сознательную самопрезентацию.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">«Загляни честно» — прямой призыв проверить, а не вспомнить. Никакой человек не выдержит «20 начатых тем», если их там нет — он обязан выбрать «1–2» или «пусто».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">По содержанию закладок. Много разрозненного = M (мультипотенциал). Углубление в 1–2 = B (был «один колодец»). Тесты и методики = L (ищет себя через инструменты). Пусто = B-low (минимальный балл B, без сильной привязки — для тех, кто живёт не в браузере).</div></div>
+      </div>
+    </div>
+
+    <h2 id="q4">Вопрос 4</h2>
+    <div class="question-block">
+      <p class="question-text">Завтра тебе надо выбрать одно дело на 5 лет. Что внутри?</p>
+      <p class="question-hint">Подсказка: «Не „что разумнее" — а как реагирует тело, ещё до головы»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Протест: „это меня убьёт. Я не могу отказаться от остального"»</td><td class="weights"><strong>M+3</strong></td><td><span class="arch-pill M">M (сильн.)</span></td></tr>
+          <tr><td class="option-text">«Тревога: „вдруг опять выберу не то и потеряю годы"»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«Облегчение: „наконец-то кто-то скажет, что делать"»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+          <tr><td class="option-text">«Тупик: „у меня и так ничего нет, из чего выбирать"»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Реакцию на принуждение к выбору. Диагностический сценарий-стресс: каждый архетип реагирует на необходимость «одно дело на 5 лет» по-своему, и эта реакция выдаёт тип.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">«Как реагирует тело, ещё до головы» — отключение рацио. Главный приём: четыре разных эмоции (протест / тревога / облегчение / тупик) — каждая привязана к своему архетипу.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">Через эмоциональную реакцию. Протест = M (для них «одно» = смерть остальных). Тревога = B (страх повторить потерю). Облегчение = L (выбор снаружи спасает от внутреннего поиска). Тупик = L (нет даже того, из чего выбирать). M здесь даёт <strong>усиленный вес M+3</strong> — это сильнейший маркер мультипотенциальности, ни один другой архетип так не реагирует.</div></div>
+      </div>
+    </div>
+
+    <h2 id="q5">Вопрос 5</h2>
+    <div class="question-block">
+      <p class="question-text">Конец рабочего дня. Что ты обычно чувствуешь?</p>
+      <p class="question-hint">Подсказка: «Не „как должно быть в моём идеале", а как сегодня»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Сделала много, и тянет ещё. Внутри прёт — устала, но живая»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«Отбыла. Всё то же самое, что и год назад. Ни жарко, ни холодно»</td><td class="weights"><strong>B+3</strong></td><td><span class="arch-pill B">B (сильн.)</span></td></tr>
+          <tr><td class="option-text">«Сидела на чужом стуле. Не было ощущения „это моё"»</td><td class="weights">L+2, B+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+          <tr><td class="option-text">«Не работаю сейчас. Или работа такая, что про чувства не думаю»</td><td class="weights">L+1, M+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Энергетический отпечаток работы. Не «нравится / не нравится», а как тело отзывается в конце дня — это самый честный индикатор «своё / не своё».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">«Как сегодня, а не в идеале» — снимает желаемое. «Сегодня» — конкретный недавний день, его легче вспомнить, чем «вообще».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">«Прёт» = M (энергии много, она бьёт). «Отбыла, всё то же» = <strong>B+3</strong> (сильнейший маркер выгорания — повторяемость без живости). «Чужой стул» = L (нет ощущения «моё», но не пустота). «Не работаю» = гибрид L+M (либо ещё не нашла что делать, либо отстранена от чувств о работе).</div></div>
+      </div>
+    </div>
+
+    <h2 id="q6">Вопрос 6</h2>
+    <div class="question-block">
+      <p class="question-text">Что про тебя обычно говорят близкие?</p>
+      <p class="question-hint">Подсказка: «Не „что они должны были бы сказать" — а что говорят»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«„У тебя вечно сто проектов одновременно. Когда ты остановишься?"»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«„Ты же мастер в этом. Тебе ли жаловаться"»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«„Ты столько всего перепробовала. Когда-нибудь найдёшь своё"»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+          <tr><td class="option-text">«„Мы вообще не понимаем, что с тобой происходит"»</td><td class="weights">L+1, B+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Внешнее зеркало. То, как окружающие читают человека — независимый сигнал, который часто противоречит самоописанию.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">Прямые цитаты от близких — это узнавание по интонации. Каждая фраза — не нейтральная характеристика, а с подтекстом раздражения / зависти / снисхождения / растерянности. ЦА сразу слышит «свою» интонацию.</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">По типу социальной жалобы. «Сто проектов» = M (роль «несобранной»). «Мастер, тебе ли жаловаться» = B (роль «успешной», запрет на усталость). «Когда-нибудь найдёшь» = L (роль «вечно ищущей»). «Не понимаем» = гибрид L+B (для тех, кто потерял ясный социальный образ).</div></div>
+      </div>
+    </div>
+
+    <h2 id="q7">Вопрос 7</h2>
+    <div class="question-block">
+      <p class="question-text">Что ты уже пробовала — и что не сработало?</p>
+      <p class="question-hint">Подсказка: «Выбери то, что больше всего откликается из прошлого опыта»</p>
+
+      <table>
+        <thead><tr><th>Вариант</th><th>Веса</th><th>Архетип</th></tr></thead>
+        <tbody>
+          <tr><td class="option-text">«Выбирала одно дело — через 3–6 месяцев тянуло к остальному»</td><td class="weights">M+2</td><td><span class="arch-pill M">M</span></td></tr>
+          <tr><td class="option-text">«Отпуск, новая ниша, новые методики — интерес так и не вернулся»</td><td class="weights">B+2</td><td><span class="arch-pill B">B</span></td></tr>
+          <tr><td class="option-text">«Тесты, профориентация, психологи — никто не назвал „вот твоё"»</td><td class="weights">L+2</td><td><span class="arch-pill L">L</span></td></tr>
+          <tr><td class="option-text">«Почти ничего. Больше думала и читала, чем делала»</td><td class="weights">L+1, M+1</td><td><span class="arch-pill hybrid">Гибрид</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="analysis-block">
+        <div class="analysis-row"><div class="analysis-label">Что ловит</div><div class="analysis-text">Историю неудачных решений. Каждый архетип уже пытался решить своё состояние стандартным способом — и стандартный способ не сработал. Этот вопрос финальный, он подтверждает диагноз через «что я уже сделала и почему это не помогло».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Принцип формулировки</div><div class="analysis-text">«Откликается из прошлого опыта» — обращение к памяти конкретных попыток, не к «вообще». И крутой драматургический ход: каждый вариант описывает типичную ошибочную стратегию этого архетипа, которая не сработала. Это уже намёк на инсайт — «то, что ты пробовала, не работало не случайно».</div></div>
+        <div class="analysis-row"><div class="analysis-label">Разводка архетипов</div><div class="analysis-text">По «диагнозу через failed attempt». «Тянуло к остальному» = M (попытка сжаться провалилась). «Интерес не вернулся» = B (попытка перезагрузить огонь провалилась). «Никто не назвал твоё» = L (поиск ответа снаружи провалился). «Больше думала и читала» = гибрид L+M (для тех, кто застрял в подготовке).</div></div>
+      </div>
+    </div>
+
+    <h2 id="principles">Общий принцип всех 7 вопросов</h2>
+    <div class="principles">
+      <ol>
+        <li><strong>Никакой абстракции.</strong> Везде конкретные сцены жизни (заметки в браузере, конец рабочего дня, фразы близких).</li>
+        <li><strong>Тело, не голова.</strong> Все подсказки выводят из рацио в чувство.</li>
+        <li><strong>4 варианта = 3 архетипа + гибрид.</strong> Почти в каждом вопросе один вариант гибридный — чтобы поймать смешанные случаи и не загнать пользователя в одну категорию насильно.</li>
+        <li><strong>Усиленные веса (M+3, B+3) на самых ярких сценариях.</strong> Q4 и Q5 имеют сильные акценты, потому что в них реакция самая показательная.</li>
+        <li><strong>Векторное накопление.</strong> Каждый вопрос добавляет 2–3 балла к одному-двум архетипам. К 7-му вопросу разница между архетипами становится статистически значимой.</li>
+        <li><strong>Драматургия от «внутри» к «вокруг».</strong> Q1–3 = диагностика «сейчас» (состояние + биография + поведение). Q4–5 = реакция на сценарий (выбор + энергия). Q6–7 = социальное зеркало + история попыток. Тест идёт от «что внутри» → «как ты живёшь» → «что вокруг тебя говорит и что не сработало».</li>
+      </ol>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -132,15 +132,29 @@ em {
 }
 
 .welcome-author {
-  max-width: 540px;
-  margin: 0 auto 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  border-radius: 100px;
   font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  margin-bottom: 28px;
 }
-.welcome-author-sep {
+.welcome-author-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
   color: var(--accent);
-  margin: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .welcome-title {
@@ -163,11 +177,10 @@ em {
   border-radius: var(--radius-lg);
 }
 .welcome-pain-list-title {
-  font-size: 14px;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text-primary);
-  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
   margin-bottom: 18px;
 }
 .welcome-pain-list ul {
@@ -252,6 +265,13 @@ em {
   box-shadow: 0 12px 32px var(--accent-glow);
 }
 .btn-accent:active { transform: translateY(0) scale(0.98); }
+
+.welcome-meta {
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
 
 /* ==========================================================
    QUESTION
@@ -1246,33 +1266,35 @@ em {
   <section class="screen welcome active" data-screen="welcome">
     <div class="container welcome-inner">
       <div class="welcome-author">
-        Авторский тест Козыревой Карины <span class="welcome-author-sep">•</span> основан на реальных кейсах, личном опыте, научных книгах, глубинных интервью-исследованиях
+        <span class="welcome-author-dot">К</span>
+        <span>Авторский тест Карины Козыревой</span>
       </div>
 
-      <h1 class="welcome-title">Кто я? И почему работа<br>меня <em>больше не зажигает</em>?</h1>
+      <h1 class="welcome-title">Что со мной — и <em>куда мне</em> дальше?</h1>
 
       <div class="welcome-pain-list">
-        <div class="welcome-pain-list-title">Этот тест будет полезным, если у тебя хоть раз были похожие состояния:</div>
+        <div class="welcome-pain-list-title">Если узнаёшь себя — тест для тебя</div>
         <ul>
-          <li>«Куча идей и интересов, а одного понятного направления нет и выбрать не получается»</li>
-          <li>«Раньше работа зажигала, а сейчас иду как на каторгу, нет туда энергии»</li>
-          <li>«Хочу найти своё призвание, икигай, чувствую, что оно существует — но что это именно понять не могу»</li>
-          <li>«Люблю свою работу, но почему-то стал падать к ней интерес, всё чаще заставляю себя»</li>
-          <li>«Прыгаю от одного обучения к другому, но в понятную профессию это превратить не могу»</li>
-          <li>«Перепробовала разные сферы и профессии — и опять кажется, что не то»</li>
-          <li>«Люблю свою работу, но чувствую тягу, потенциал к чему-то большему»</li>
+          <li>«Умею многое, но стыдно назвать себя кем-то одним — будто всё ненастоящее»</li>
+          <li>«Выберу одно — а вдруг не то? Все направления нравятся одинаково сильно»</li>
+          <li>«Кто я, если не жена и не мать? Себя саму уже не вижу»</li>
+          <li>«Работаю ради денег как срок отбываю — а внутри есть что-то настоящее»</li>
         </ul>
       </div>
 
       <p class="welcome-promise">
-        <strong>7 ключевых вопросов · 3 минуты</strong><br>
-        На выходе — название того, что с тобой происходит, одна самая главная причина этого состояния, а также — что с этим делать дальше. Это решение = <em>выход из замкнутого круга</em>.
+        <strong>7 вопросов · 3 минуты · отвечаешь как чувствуешь.</strong><br>
+        На выходе — где ты сейчас, почему именно тут и куда дальше: к делу, которое идёт легко и приносит деньги.
       </p>
 
       <button class="btn-primary" id="start-btn">
-        Пройти тест и найти решение
+        Узнать, что со мной
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </button>
+
+      <div class="welcome-meta">
+        Бесплатно. Без регистрации. Результат сразу.
+      </div>
     </div>
   </section>
 
