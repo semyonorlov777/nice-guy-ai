@@ -965,7 +965,7 @@
     name.textContent = r.name;
     cell.appendChild(name);
 
-    if (r.visits > 0) {
+    if (r.visits > 0 && !r.noCityVisit) {
       const badge = document.createElement('span');
       badge.className = 'cell-badge';
       badge.textContent = r.visits;
@@ -997,7 +997,6 @@
   const cityGrid = document.getElementById('cityGrid');
 
   function showRegions() {
-    pageTitle.textContent = 'Посещённые регионы России';
     pageEl.classList.add('switching');
     setTimeout(() => {
       viewDetail.classList.add('hidden');
@@ -1018,7 +1017,6 @@
     const totalInRegion = cities.length;
     const lvl = levelOf(r.visits);
 
-    pageTitle.textContent = r.full;
     detailMarker.textContent = visitedInRegion || (r.noCityVisit ? '·' : 0);
     detailMarker.className = 'detail-marker l' + (visitedInRegion ? lvl : (r.noCityVisit ? 1 : 0));
     detailRegion.textContent = r.full;
@@ -1029,7 +1027,13 @@
     }
 
     cityGrid.innerHTML = '';
-    cities.forEach(city => {
+    const sortedCities = [...cities].sort((a, b) => {
+      const av = a.visited === true;
+      const bv = b.visited === true;
+      if (av !== bv) return av ? -1 : 1;
+      return a.name.localeCompare(b.name, 'ru');
+    });
+    sortedCities.forEach(city => {
       const cell = document.createElement('div');
       const visited = city.visited === true;
       const lvlClass = visited ? ('l' + cityLevel(city)) : 'l0';
