@@ -125,134 +125,110 @@
   .legend-swatch.l3 { background: #c25b2e; }
   .legend-swatch.l4 { background: #7a2e1b; }
 
-  /* Detail panel */
-  .panel-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(42, 37, 32, 0);
-    pointer-events: none;
-    transition: background 0.22s ease;
-    z-index: 10;
+  /* View switching */
+  .view {
+    transition: opacity 0.16s ease, transform 0.16s ease;
   }
-  .panel-backdrop.open {
-    background: rgba(42, 37, 32, 0.18);
-    pointer-events: auto;
+  .view.hidden {
+    display: none;
   }
-  .panel {
-    position: fixed;
-    top: 50%;
-    right: 28px;
-    transform: translate(20px, -50%);
-    width: 360px;
-    max-width: calc(100vw - 32px);
-    max-height: 80vh;
-    background: #fff8ee;
-    border: 1px solid #e8dccb;
-    border-radius: 16px;
-    box-shadow: 0 24px 60px rgba(80, 40, 20, 0.18);
-    padding: 24px 24px 20px;
+  .page.switching .view {
     opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s ease, transform 0.22s ease;
-    z-index: 11;
-    overflow-y: auto;
+    transform: translateY(6px);
   }
-  .panel.open {
-    opacity: 1;
-    transform: translate(0, -50%);
-    pointer-events: auto;
-  }
-  @media (max-width: 720px) {
-    .panel {
-      top: auto;
-      right: 0;
-      left: 0;
-      bottom: 0;
-      transform: translateY(20px);
-      width: 100%;
-      max-height: 75vh;
-      border-radius: 16px 16px 0 0;
-    }
-    .panel.open { transform: translateY(0); }
-  }
-  .panel-header {
+
+  /* Detail view */
+  .detail-header {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
   }
-  .panel-marker {
-    width: 36px;
-    height: 36px;
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid #e8dccb;
+    border-radius: 999px;
+    color: #8a7a66;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     flex-shrink: 0;
-    border-radius: 8px;
+  }
+  .back-btn:hover {
+    background: #f5ead4;
+    color: #2a2520;
+    border-color: #d9c5a8;
+  }
+  .detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  .detail-marker {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
     font-variant-numeric: tabular-nums;
   }
-  .panel-marker.l1 { background: #f0c674; color: #4a3520; }
-  .panel-marker.l2 { background: #e8965e; color: #fff8ee; }
-  .panel-marker.l3 { background: #c25b2e; color: #fff8ee; }
-  .panel-marker.l4 { background: #7a2e1b; color: #fff8ee; }
-  .panel-title {
+  .detail-marker.l1 { background: #f0c674; color: #4a3520; }
+  .detail-marker.l2 { background: #e8965e; color: #fff8ee; }
+  .detail-marker.l3 { background: #c25b2e; color: #fff8ee; }
+  .detail-marker.l4 { background: #7a2e1b; color: #fff8ee; }
+  .detail-title {
     flex: 1;
     min-width: 0;
   }
-  .panel-region {
+  .detail-region {
     font-family: 'Inter', sans-serif;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
     line-height: 1.2;
     color: #2a2520;
     margin-bottom: 2px;
   }
-  .panel-subtitle {
-    font-size: 12px;
+  .detail-subtitle {
+    font-size: 13px;
     color: #8a7a66;
   }
-  .panel-close {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    color: #8a7a66;
-    font-size: 22px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease;
-  }
-  .panel-close:hover { background: #f0e6d5; color: #2a2520; }
 
-  /* Cities waffle inside panel */
+  /* Cities waffle in detail view */
   .cities-grid {
-    list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+    grid-template-columns: repeat(auto-fill, 64px);
     gap: 3px;
+    justify-content: start;
   }
   .city-cell {
     position: relative;
-    aspect-ratio: 1 / 1;
+    width: 64px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 4px 2px;
-    font-size: 9px;
+    padding: 4px 3px;
+    font-size: 10px;
     font-weight: 600;
-    line-height: 1.1;
+    line-height: 1.15;
     cursor: default;
     overflow: hidden;
     transition: transform 0.14s ease, box-shadow 0.14s ease;
   }
+  .city-cell.l0 { background: #e8dccb; color: #8a7a66; }
   .city-cell.l1 { background: #f0c674; color: #4a3520; }
   .city-cell.l2 { background: #e8965e; color: #fff8ee; }
   .city-cell.l3 { background: #c25b2e; color: #fff8ee; }
@@ -288,157 +264,117 @@
     opacity: 0.85;
   }
   .empty-note {
-    padding: 16px;
+    padding: 24px;
     text-align: center;
     color: #8a7a66;
-    font-size: 13px;
+    font-size: 14px;
     font-style: italic;
     background: #fef6e6;
-    border-radius: 10px;
+    border-radius: 12px;
   }
-  .panel-legend {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid #f0e6d5;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    font-size: 10px;
-    color: #8a7a66;
-  }
-  .panel-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .panel-legend-swatch {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-  }
-  .panel-legend-swatch.l1 { background: #f0c674; }
-  .panel-legend-swatch.l2 { background: #e8965e; }
-  .panel-legend-swatch.l3 { background: #c25b2e; }
-  .panel-legend-swatch.l4 { background: #7a2e1b; }
 </style>
 </head>
 <body>
-<div class="page">
+<div class="page" id="page">
   <header>
-    <h1>Посещённые регионы России</h1>
+    <h1 id="pageTitle">Посещённые регионы России</h1>
     <span class="brand">Моя карта</span>
   </header>
 
-  <div class="grid-wrap">
-    <div class="grid" id="grid"></div>
-  </div>
+  <section class="view view-regions" id="viewRegions">
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
 
-  <div class="footer">
-    <div>
-      <div class="stat-big" id="statBig">— из 85 регионов</div>
-      <div class="stat-desc"><span id="statPct">—</span>% субъектов РФ · <span id="statCities">—</span></div>
-      <div class="legend">
-        <div class="legend-item"><span class="legend-swatch l0"></span>не был</div>
-        <div class="legend-item"><span class="legend-swatch l1"></span>1 город</div>
-        <div class="legend-item"><span class="legend-swatch l2"></span>2–3</div>
-        <div class="legend-item"><span class="legend-swatch l3"></span>4–7</div>
-        <div class="legend-item"><span class="legend-swatch l4"></span>8+</div>
+    <div class="footer">
+      <div>
+        <div class="stat-big" id="statBig">— из 85 регионов</div>
+        <div class="stat-desc"><span id="statPct">—</span>% субъектов РФ · <span id="statCities">—</span></div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch l0"></span>не был</div>
+          <div class="legend-item"><span class="legend-swatch l1"></span>1 город</div>
+          <div class="legend-item"><span class="legend-swatch l2"></span>2–3</div>
+          <div class="legend-item"><span class="legend-swatch l3"></span>4–7</div>
+          <div class="legend-item"><span class="legend-swatch l4"></span>8+</div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-desc">
+          Карта показывает субъекты Российской Федерации. Каждый квадрат — один регион,
+          расположение примерно соответствует географии. Насыщенность цвета — по числу
+          посещённых городов. Клик на цветной квадрат — детализация по городам.
+        </div>
       </div>
     </div>
-    <div>
-      <div class="stat-desc">
-        Карта показывает субъекты Российской Федерации. Каждый квадрат — один регион,
-        расположение примерно соответствует географии. Насыщенность цвета — по числу
-        посещённых городов. Клик на цветной квадрат — список городов.
+  </section>
+
+  <section class="view view-detail hidden" id="viewDetail" aria-hidden="true">
+    <div class="detail-header">
+      <button class="back-btn" id="backBtn" type="button" aria-label="Назад к регионам">← К&nbsp;регионам</button>
+      <div class="detail-meta">
+        <div class="detail-marker" id="detailMarker">—</div>
+        <div class="detail-title">
+          <div class="detail-region" id="detailRegion">—</div>
+          <div class="detail-subtitle" id="detailSubtitle">—</div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <div class="grid-wrap">
+      <div class="cities-grid" id="cityGrid"></div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch l0"></span>не был</div>
+          <div class="legend-item"><span class="legend-swatch l1"></span>был раз</div>
+          <div class="legend-item"><span class="legend-swatch l2"></span>2–3 раза</div>
+          <div class="legend-item"><span class="legend-swatch l3"></span>4+ раз</div>
+          <div class="legend-item"><span class="legend-swatch l4"></span>жил тут</div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-desc" id="detailFootnote">
+          Полный список административных городов региона. Посещённые подсвечены
+          по интенсивности — как на главной карте.
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
-
-<div class="panel-backdrop" id="backdrop"></div>
-<aside class="panel" id="panel" role="dialog" aria-hidden="true">
-  <div class="panel-header">
-    <div class="panel-marker" id="panelMarker">—</div>
-    <div class="panel-title">
-      <div class="panel-region" id="panelRegion">—</div>
-      <div class="panel-subtitle" id="panelSubtitle">—</div>
-    </div>
-    <button class="panel-close" id="panelClose" aria-label="Закрыть">×</button>
-  </div>
-  <div class="cities-grid" id="cityList" role="list"></div>
-  <div class="panel-legend" id="panelLegend">
-    <div class="panel-legend-item"><span class="panel-legend-swatch l1"></span>был раз</div>
-    <div class="panel-legend-item"><span class="panel-legend-swatch l2"></span>2–3 раза</div>
-    <div class="panel-legend-item"><span class="panel-legend-swatch l3"></span>4+ раз</div>
-    <div class="panel-legend-item"><span class="panel-legend-swatch l4"></span>жил</div>
-  </div>
-</aside>
 
 <script>
   // [col, row, name, full, visits, cities]
   // cities: [{name, note?}] для регионов с visits > 0
   const REGIONS = [
-    { col: 2, row: 1, name: "СПб", full: "Санкт-Петербург", visits: 5, cities: [
-      { name: "Санкт-Петербург", count: 4, note: "4 раза" },
-      { name: "Зеленогорск" },
-      { name: "Кронштадт" },
-      { name: "Петергоф" },
-      { name: "Пушкин (Царское село)" }
-    ] },
+    { col: 2, row: 1, name: "СПб", full: "Санкт-Петербург", visits: 5, slug: "spb" },
     { col: 5, row: 1, name: "Мурм", full: "Мурманская область", visits: 0 },
     { col: 16, row: 1, name: "Чукот", full: "Чукотский АО", visits: 0 },
     { col: 17, row: 1, name: "Камч", full: "Камчатский край", visits: 0 },
-    { col: 1, row: 2, name: "Москва", full: "Москва", visits: 2, cities: [
-      { name: "Москва", count: 5, lived: true, note: "5 раз + 4 года жил" },
-      { name: "Зеленоград" }
-    ] },
-    { col: 15, row: 2, name: "Крск", full: "Красноярский край", visits: 1, cities: [
-      { name: "Красноярск", count: 2, note: "2 раза" }
-    ] },
+    { col: 1, row: 2, name: "Москва", full: "Москва", visits: 2, slug: "moscow" },
+    { col: 15, row: 2, name: "Крск", full: "Красноярский край", visits: 1, slug: "krasnoyarsk" },
     { col: 17, row: 2, name: "Магад", full: "Магаданская область", visits: 0 },
-    { col: 4, row: 3, name: "Карел", full: "Республика Карелия", visits: 1, cities: [
-      { name: "Сортавала" }
-    ] },
+    { col: 4, row: 3, name: "Карел", full: "Республика Карелия", visits: 1, slug: "karelia" },
     { col: 10, row: 3, name: "НАО", full: "Ненецкий АО", visits: 0 },
     { col: 11, row: 3, name: "ЯНАО", full: "Ямало-Ненецкий АО", visits: 0 },
     { col: 14, row: 3, name: "Томск", full: "Томская область", visits: 0 },
     { col: 15, row: 3, name: "Кузбас", full: "Кемеровская область", visits: 0 },
     { col: 1, row: 4, name: "Клнгрд", full: "Калининградская область", visits: 0 },
-    { col: 3, row: 4, name: "Лен обл", full: "Ленинградская область", visits: 3, cities: [
-      { name: "Выборг", count: 2, note: "2 раза" },
-      { name: "Сертолово" },
-      { name: "Шлиссельбург" }
-    ] },
+    { col: 3, row: 4, name: "Лен обл", full: "Ленинградская область", visits: 3, slug: "leningrad_oblast" },
     { col: 5, row: 4, name: "Новг", full: "Новгородская область", visits: 0 },
     { col: 6, row: 4, name: "Влгда", full: "Вологодская область", visits: 0 },
     { col: 9, row: 4, name: "Архнгл", full: "Архангельская область", visits: 0 },
     { col: 10, row: 4, name: "Коми", full: "Республика Коми", visits: 0 },
     { col: 11, row: 4, name: "ХМАО", full: "Ханты-Мансийский АО", visits: 0 },
     { col: 12, row: 4, name: "Тюмень", full: "Тюменская область", visits: 0 },
-    { col: 15, row: 4, name: "Ирк", full: "Иркутская область", visits: 8, cities: [
-      { name: "Иркутск", count: 4, lived: true, note: "4 раза + жил 5 лет" },
-      { name: "Усолье-Сибирское", lived: true, note: "жил 12 лет" },
-      { name: "Слюдянка", count: 3, note: "3 раза" },
-      { name: "Ангарск" },
-      { name: "Братск" },
-      { name: "Свирск" },
-      { name: "Черемхово" },
-      { name: "Шелехово" }
-    ] },
+    { col: 15, row: 4, name: "Ирк", full: "Иркутская область", visits: 8, slug: "irkutsk" },
     { col: 16, row: 4, name: "Якутия", full: "Республика Саха (Якутия)", visits: 0 },
     { col: 17, row: 4, name: "Хбрвск", full: "Хабаровский край", visits: 0 },
     { col: 18, row: 4, name: "Сах обл", full: "Сахалинская область", visits: 0 },
     { col: 3, row: 5, name: "Псков", full: "Псковская область", visits: 0 },
-    { col: 4, row: 5, name: "Тверь", full: "Тверская область", visits: 3, cities: [
-      { name: "Тверь" },
-      { name: "Калязин" },
-      { name: "Торжок" }
-    ] },
-    { col: 5, row: 5, name: "Ярсвл", full: "Ярославская область", visits: 3, cities: [
-      { name: "Ярославль" },
-      { name: "Переславль-Залесский" },
-      { name: "Углич" }
-    ] },
+    { col: 4, row: 5, name: "Тверь", full: "Тверская область", visits: 3, slug: "tver" },
+    { col: 5, row: 5, name: "Ярсвл", full: "Ярославская область", visits: 3, slug: "yaroslavl" },
     { col: 6, row: 5, name: "Ивнво", full: "Ивановская область", visits: 0 },
     { col: 7, row: 5, name: "Кстрма", full: "Костромская область", visits: 0 },
     { col: 8, row: 5, name: "Мар Эл", full: "Республика Марий Эл", visits: 0 },
@@ -446,52 +382,14 @@
     { col: 10, row: 5, name: "Пермь", full: "Пермский край", visits: 0 },
     { col: 11, row: 5, name: "Екб", full: "Свердловская область", visits: 0 },
     { col: 12, row: 5, name: "Курган", full: "Курганская область", visits: 0 },
-    { col: 13, row: 5, name: "Нск", full: "Новосибирская область", visits: 1, cities: [
-      { name: "Новосибирск" }
-    ] },
+    { col: 13, row: 5, name: "Нск", full: "Новосибирская область", visits: 1, slug: "novosibirsk" },
     { col: 14, row: 5, name: "Хакас", full: "Республика Хакасия", visits: 0 },
-    { col: 15, row: 5, name: "Бурят", full: "Республика Бурятия", visits: 1, cities: [
-      { name: "достопримечательность", note: "вне города" }
-    ] },
+    { col: 15, row: 5, name: "Бурят", full: "Республика Бурятия", visits: 1, slug: "buryatia", noCityVisit: true },
     { col: 16, row: 5, name: "Амур", full: "Амурская область", visits: 0 },
-    { col: 2, row: 6, name: "Смлнск", full: "Смоленская область", visits: 1, cities: [
-      { name: "Рудня" }
-    ] },
-    { col: 3, row: 6, name: "Калуга", full: "Калужская область", visits: 3, cities: [
-      { name: "Калуга" },
-      { name: "Малоярославец" },
-      { name: "Обнинск" }
-    ] },
-    { col: 4, row: 6, name: "Мск об", full: "Московская область", visits: 24, cities: [
-      { name: "Жуковский", count: 2, note: "2 раза, 3 недели" },
-      { name: "Коломна", count: 2, note: "2 раза" },
-      { name: "Боровск" },
-      { name: "Верея" },
-      { name: "Голицыно" },
-      { name: "Дмитров" },
-      { name: "Долгопрудный" },
-      { name: "Звенигород" },
-      { name: "Истра" },
-      { name: "Кашира" },
-      { name: "Клин" },
-      { name: "Королёв" },
-      { name: "Лобня" },
-      { name: "Люберцы" },
-      { name: "Можайск" },
-      { name: "Наро-Фоминск" },
-      { name: "Одинцово" },
-      { name: "Подольск" },
-      { name: "Раменское" },
-      { name: "Реутов" },
-      { name: "Сергиев Посад" },
-      { name: "Серпухов" },
-      { name: "Солнечногорск" },
-      { name: "Химки" }
-    ] },
-    { col: 5, row: 6, name: "Влдмр", full: "Владимирская область", visits: 2, cities: [
-      { name: "Владимир" },
-      { name: "Суздаль" }
-    ] },
+    { col: 2, row: 6, name: "Смлнск", full: "Смоленская область", visits: 1, slug: "smolensk" },
+    { col: 3, row: 6, name: "Калуга", full: "Калужская область", visits: 4, slug: "kaluga" },
+    { col: 4, row: 6, name: "Мск об", full: "Московская область", visits: 23, slug: "moscow_oblast" },
+    { col: 5, row: 6, name: "Влдмр", full: "Владимирская область", visits: 2, slug: "vladimir" },
     { col: 6, row: 6, name: "Нижний", full: "Нижегородская область", visits: 0 },
     { col: 7, row: 6, name: "Чуваш", full: "Чувашская Республика", visits: 0 },
     { col: 8, row: 6, name: "Татар", full: "Республика Татарстан", visits: 0 },
@@ -505,9 +403,7 @@
     { col: 17, row: 6, name: "Прмрск", full: "Приморский край", visits: 0 },
     { col: 2, row: 7, name: "Брянск", full: "Брянская область", visits: 0 },
     { col: 3, row: 7, name: "Орел", full: "Орловская область", visits: 0 },
-    { col: 4, row: 7, name: "Тула", full: "Тульская область", visits: 1, cities: [
-      { name: "Тула", count: 2, note: "2 раза" }
-    ] },
+    { col: 4, row: 7, name: "Тула", full: "Тульская область", visits: 1, slug: "tula" },
     { col: 5, row: 7, name: "Рязань", full: "Рязанская область", visits: 0 },
     { col: 6, row: 7, name: "Мрдв", full: "Республика Мордовия", visits: 0 },
     { col: 7, row: 7, name: "Ульнск", full: "Ульяновская область", visits: 0 },
@@ -521,52 +417,487 @@
     { col: 7, row: 8, name: "Сртв", full: "Саратовская область", visits: 0 },
     { col: 8, row: 8, name: "Орнбрг", full: "Оренбургская область", visits: 0 },
     { col: 3, row: 9, name: "Белг", full: "Белгородская область", visits: 0 },
-    { col: 4, row: 9, name: "Врнж", full: "Воронежская область", visits: 1, cities: [
-      { name: "Воронеж" }
-    ] },
+    { col: 4, row: 9, name: "Врнж", full: "Воронежская область", visits: 1, slug: "voronezh" },
     { col: 5, row: 9, name: "Влггрд", full: "Волгоградская область", visits: 0 },
-    { col: 3, row: 10, name: "Адыгея", full: "Республика Адыгея", visits: 2, cities: [
-      { name: "Адыгейск" },
-      { name: "Майкоп" }
-    ] },
-    { col: 4, row: 10, name: "Кубань", full: "Краснодарский край", visits: 6, cities: [
-      { name: "Краснодар", count: 2, lived: true, note: "жил полгода, 2 раза" },
-      { name: "Сочи" },
-      { name: "Адлер" },
-      { name: "Белореченск" },
-      { name: "Новороссийск" },
-      { name: "Усть-Лабинск" }
-    ] },
-    { col: 5, row: 10, name: "Ростов", full: "Ростовская область", visits: 2, cities: [
-      { name: "Ростов-на-Дону" },
-      { name: "Батайск" }
-    ] },
+    { col: 3, row: 10, name: "Адыгея", full: "Республика Адыгея", visits: 2, slug: "adygea" },
+    { col: 4, row: 10, name: "Кубань", full: "Краснодарский край", visits: 5, slug: "krasnodar" },
+    { col: 5, row: 10, name: "Ростов", full: "Ростовская область", visits: 2, slug: "rostov" },
     { col: 6, row: 10, name: "Клмк", full: "Республика Калмыкия", visits: 0 },
     { col: 7, row: 10, name: "Астрхн", full: "Астраханская область", visits: 0 },
     { col: 4, row: 11, name: "КЧР", full: "Карачаево-Черкесия", visits: 0 },
     { col: 5, row: 11, name: "Ставр", full: "Ставропольский край", visits: 0 },
-    { col: 6, row: 11, name: "Чечня", full: "Чеченская Республика", visits: 2, cities: [
-      { name: "Грозный" },
-      { name: "Гудермес" }
-    ] },
-    { col: 7, row: 11, name: "Дгстн", full: "Республика Дагестан", visits: 6, cities: [
-      { name: "Махачкала" },
-      { name: "Дербент" },
-      { name: "Каспийск" },
-      { name: "Буйнакск" },
-      { name: "Кизилюрт" },
-      { name: "Хасавюрт" }
-    ] },
+    { col: 6, row: 11, name: "Чечня", full: "Чеченская Республика", visits: 2, slug: "chechnya" },
+    { col: 7, row: 11, name: "Дгстн", full: "Республика Дагестан", visits: 6, slug: "dagestan" },
     { col: 4, row: 12, name: "КБР", full: "Кабардино-Балкария", visits: 0 },
-    { col: 5, row: 12, name: "Алания", full: "Северная Осетия — Алания", visits: 2, cities: [
-      { name: "Владикавказ" },
-      { name: "Беслан" }
-    ] },
-    { col: 6, row: 12, name: "Ингуш", full: "Республика Ингушетия", visits: 2, cities: [
-      { name: "Магас" },
-      { name: "Назрань" }
-    ] }
+    { col: 5, row: 12, name: "Алания", full: "Северная Осетия — Алания", visits: 2, slug: "north_ossetia" },
+    { col: 6, row: 12, name: "Ингуш", full: "Республика Ингушетия", visits: 2, slug: "ingushetia" }
   ];
+
+  // Полные административные списки городов по slug регионов.
+  // Источник: Википедия (статусы городов на 2024–2025). Посещённые помечены visited:true,
+  // count = число поездок если >1, lived = факт длительного проживания.
+  const CITY_DATA = {
+    moscow: [
+      { name: "Москва", visited: true, count: 5, lived: true },
+      { name: "Зеленоград", visited: true },
+      { name: "Московский", visited: false },
+      { name: "Троицк", visited: false },
+      { name: "Щербинка", visited: false }
+    ],
+    moscow_oblast: [
+      { name: "Верея", visited: true },
+      { name: "Голицыно", visited: true },
+      { name: "Дмитров", visited: true },
+      { name: "Долгопрудный", visited: true },
+      { name: "Жуковский", visited: true, count: 2 },
+      { name: "Звенигород", visited: true },
+      { name: "Истра", visited: true },
+      { name: "Кашира", visited: true },
+      { name: "Клин", visited: true },
+      { name: "Коломна", visited: true, count: 2 },
+      { name: "Королёв", visited: true },
+      { name: "Лобня", visited: true },
+      { name: "Люберцы", visited: true },
+      { name: "Можайск", visited: true },
+      { name: "Наро-Фоминск", visited: true },
+      { name: "Одинцово", visited: true },
+      { name: "Подольск", visited: true },
+      { name: "Раменское", visited: true },
+      { name: "Реутов", visited: true },
+      { name: "Сергиев Посад", visited: true },
+      { name: "Серпухов", visited: true },
+      { name: "Солнечногорск", visited: true },
+      { name: "Химки", visited: true },
+      { name: "Апрелевка", visited: false },
+      { name: "Балашиха", visited: false },
+      { name: "Белоозёрский", visited: false },
+      { name: "Бронницы", visited: false },
+      { name: "Видное", visited: false },
+      { name: "Волоколамск", visited: false },
+      { name: "Воскресенск", visited: false },
+      { name: "Высоковск", visited: false },
+      { name: "Дедовск", visited: false },
+      { name: "Дзержинский", visited: false },
+      { name: "Домодедово", visited: false },
+      { name: "Дрезна", visited: false },
+      { name: "Дубна", visited: false },
+      { name: "Егорьевск", visited: false },
+      { name: "Зарайск", visited: false },
+      { name: "Ивантеевка", visited: false },
+      { name: "Котельники", visited: false },
+      { name: "Красноармейск", visited: false },
+      { name: "Красногорск", visited: false },
+      { name: "Краснозаводск", visited: false },
+      { name: "Краснознаменск", visited: false },
+      { name: "Кубинка", visited: false },
+      { name: "Куровское", visited: false },
+      { name: "Ликино-Дулёво", visited: false },
+      { name: "Лосино-Петровский", visited: false },
+      { name: "Луховицы", visited: false },
+      { name: "Лыткарино", visited: false },
+      { name: "Мытищи", visited: false },
+      { name: "Ногинск", visited: false },
+      { name: "Озёры", visited: false },
+      { name: "Орехово-Зуево", visited: false },
+      { name: "Павловский Посад", visited: false },
+      { name: "Пересвет", visited: false },
+      { name: "Протвино", visited: false },
+      { name: "Пушкино", visited: false },
+      { name: "Пущино", visited: false },
+      { name: "Рошаль", visited: false },
+      { name: "Руза", visited: false },
+      { name: "Старая Купавна", visited: false },
+      { name: "Ступино", visited: false },
+      { name: "Талдом", visited: false },
+      { name: "Фрязино", visited: false },
+      { name: "Хотьково", visited: false },
+      { name: "Черноголовка", visited: false },
+      { name: "Чехов", visited: false },
+      { name: "Шатура", visited: false },
+      { name: "Щёлково", visited: false },
+      { name: "Электрогорск", visited: false },
+      { name: "Электросталь", visited: false },
+      { name: "Электроугли", visited: false },
+      { name: "Яхрома", visited: false }
+    ],
+    spb: [
+      { name: "Санкт-Петербург", visited: true, count: 4 },
+      { name: "Зеленогорск", visited: true },
+      { name: "Кронштадт", visited: true },
+      { name: "Петергоф", visited: true },
+      { name: "Пушкин", visited: true },
+      { name: "Колпино", visited: false },
+      { name: "Красное Село", visited: false },
+      { name: "Ломоносов", visited: false },
+      { name: "Павловск", visited: false },
+      { name: "Сестрорецк", visited: false }
+    ],
+    leningrad_oblast: [
+      { name: "Выборг", visited: true, count: 2 },
+      { name: "Сертолово", visited: true },
+      { name: "Шлиссельбург", visited: true },
+      { name: "Бокситогорск", visited: false },
+      { name: "Бугры", visited: false },
+      { name: "Волосово", visited: false },
+      { name: "Волхов", visited: false },
+      { name: "Всеволожск", visited: false },
+      { name: "Высоцк", visited: false },
+      { name: "Гатчина", visited: false },
+      { name: "Ивангород", visited: false },
+      { name: "Каменногорск", visited: false },
+      { name: "Кингисепп", visited: false },
+      { name: "Кириши", visited: false },
+      { name: "Кировск", visited: false },
+      { name: "Колтуши", visited: false },
+      { name: "Коммунар", visited: false },
+      { name: "Кудрово", visited: false },
+      { name: "Лодейное Поле", visited: false },
+      { name: "Луга", visited: false },
+      { name: "Любань", visited: false },
+      { name: "Мурино", visited: false },
+      { name: "Никольское", visited: false },
+      { name: "Новая Ладога", visited: false },
+      { name: "Отрадное", visited: false },
+      { name: "Пикалёво", visited: false },
+      { name: "Подпорожье", visited: false },
+      { name: "Приморск", visited: false },
+      { name: "Приозерск", visited: false },
+      { name: "Светогорск", visited: false },
+      { name: "Сланцы", visited: false },
+      { name: "Сосновый Бор", visited: false },
+      { name: "Сясьстрой", visited: false },
+      { name: "Тельмана", visited: false },
+      { name: "Тихвин", visited: false },
+      { name: "Тосно", visited: false }
+    ],
+    kaluga: [
+      { name: "Боровск", visited: true },
+      { name: "Калуга", visited: true },
+      { name: "Малоярославец", visited: true },
+      { name: "Обнинск", visited: true },
+      { name: "Балабаново", visited: false },
+      { name: "Белоусово", visited: false },
+      { name: "Ермолино", visited: false },
+      { name: "Жиздра", visited: false },
+      { name: "Жуков", visited: false },
+      { name: "Киров", visited: false },
+      { name: "Козельск", visited: false },
+      { name: "Кондрово", visited: false },
+      { name: "Кремёнки", visited: false },
+      { name: "Людиново", visited: false },
+      { name: "Медынь", visited: false },
+      { name: "Мещовск", visited: false },
+      { name: "Мосальск", visited: false },
+      { name: "Сосенский", visited: false },
+      { name: "Спас-Деменск", visited: false },
+      { name: "Сухиничи", visited: false },
+      { name: "Таруса", visited: false },
+      { name: "Юхнов", visited: false }
+    ],
+    tver: [
+      { name: "Калязин", visited: true },
+      { name: "Тверь", visited: true },
+      { name: "Торжок", visited: true },
+      { name: "Андреаполь", visited: false },
+      { name: "Бежецк", visited: false },
+      { name: "Белый", visited: false },
+      { name: "Бологое", visited: false },
+      { name: "Весьегонск", visited: false },
+      { name: "Вышний Волочёк", visited: false },
+      { name: "Западная Двина", visited: false },
+      { name: "Зубцов", visited: false },
+      { name: "Кашин", visited: false },
+      { name: "Кимры", visited: false },
+      { name: "Конаково", visited: false },
+      { name: "Красный Холм", visited: false },
+      { name: "Кувшиново", visited: false },
+      { name: "Лихославль", visited: false },
+      { name: "Нелидово", visited: false },
+      { name: "Осташков", visited: false },
+      { name: "Ржев", visited: false },
+      { name: "Старица", visited: false },
+      { name: "Торопец", visited: false },
+      { name: "Удомля", visited: false }
+    ],
+    yaroslavl: [
+      { name: "Переславль-Залесский", visited: true },
+      { name: "Углич", visited: true },
+      { name: "Ярославль", visited: true },
+      { name: "Гаврилов-Ям", visited: false },
+      { name: "Данилов", visited: false },
+      { name: "Любим", visited: false },
+      { name: "Мышкин", visited: false },
+      { name: "Пошехонье", visited: false },
+      { name: "Ростов", visited: false },
+      { name: "Рыбинск", visited: false },
+      { name: "Тутаев", visited: false }
+    ],
+    vladimir: [
+      { name: "Владимир", visited: true },
+      { name: "Суздаль", visited: true },
+      { name: "Александров", visited: false },
+      { name: "Вязники", visited: false },
+      { name: "Гороховец", visited: false },
+      { name: "Гусь-Хрустальный", visited: false },
+      { name: "Камешково", visited: false },
+      { name: "Карабаново", visited: false },
+      { name: "Киржач", visited: false },
+      { name: "Ковров", visited: false },
+      { name: "Кольчугино", visited: false },
+      { name: "Костерёво", visited: false },
+      { name: "Курлово", visited: false },
+      { name: "Лакинск", visited: false },
+      { name: "Меленки", visited: false },
+      { name: "Муром", visited: false },
+      { name: "Петушки", visited: false },
+      { name: "Покров", visited: false },
+      { name: "Радужный", visited: false },
+      { name: "Собинка", visited: false },
+      { name: "Струнино", visited: false },
+      { name: "Судогда", visited: false },
+      { name: "Юрьев-Польский", visited: false }
+    ],
+    smolensk: [
+      { name: "Рудня", visited: true },
+      { name: "Велиж", visited: false },
+      { name: "Вязьма", visited: false },
+      { name: "Гагарин", visited: false },
+      { name: "Демидов", visited: false },
+      { name: "Десногорск", visited: false },
+      { name: "Дорогобуж", visited: false },
+      { name: "Духовщина", visited: false },
+      { name: "Ельня", visited: false },
+      { name: "Починок", visited: false },
+      { name: "Рославль", visited: false },
+      { name: "Сафоново", visited: false },
+      { name: "Смоленск", visited: false },
+      { name: "Сычёвка", visited: false },
+      { name: "Ярцево", visited: false }
+    ],
+    voronezh: [
+      { name: "Воронеж", visited: true },
+      { name: "Бобров", visited: false },
+      { name: "Богучар", visited: false },
+      { name: "Борисоглебск", visited: false },
+      { name: "Бутурлиновка", visited: false },
+      { name: "Калач", visited: false },
+      { name: "Лиски", visited: false },
+      { name: "Нововоронеж", visited: false },
+      { name: "Новохопёрск", visited: false },
+      { name: "Острогожск", visited: false },
+      { name: "Павловск", visited: false },
+      { name: "Поворино", visited: false },
+      { name: "Россошь", visited: false },
+      { name: "Семилуки", visited: false },
+      { name: "Эртиль", visited: false }
+    ],
+    tula: [
+      { name: "Тула", visited: true, count: 2 },
+      { name: "Алексин", visited: false },
+      { name: "Белёв", visited: false },
+      { name: "Богородицк", visited: false },
+      { name: "Болохово", visited: false },
+      { name: "Венёв", visited: false },
+      { name: "Донской", visited: false },
+      { name: "Ефремов", visited: false },
+      { name: "Кимовск", visited: false },
+      { name: "Киреевск", visited: false },
+      { name: "Липки", visited: false },
+      { name: "Новомосковск", visited: false },
+      { name: "Плавск", visited: false },
+      { name: "Советск", visited: false },
+      { name: "Суворов", visited: false },
+      { name: "Узловая", visited: false },
+      { name: "Чекалин", visited: false },
+      { name: "Щёкино", visited: false },
+      { name: "Ясногорск", visited: false }
+    ],
+    karelia: [
+      { name: "Сортавала", visited: true },
+      { name: "Беломорск", visited: false },
+      { name: "Кемь", visited: false },
+      { name: "Кондопога", visited: false },
+      { name: "Костомукша", visited: false },
+      { name: "Лахденпохья", visited: false },
+      { name: "Медвежьегорск", visited: false },
+      { name: "Олонец", visited: false },
+      { name: "Петрозаводск", visited: false },
+      { name: "Питкяранта", visited: false },
+      { name: "Пудож", visited: false },
+      { name: "Сегежа", visited: false },
+      { name: "Суоярви", visited: false }
+    ],
+    novosibirsk: [
+      { name: "Новосибирск", visited: true },
+      { name: "Барабинск", visited: false },
+      { name: "Бердск", visited: false },
+      { name: "Болотное", visited: false },
+      { name: "Искитим", visited: false },
+      { name: "Карасук", visited: false },
+      { name: "Каргат", visited: false },
+      { name: "Куйбышев", visited: false },
+      { name: "Купино", visited: false },
+      { name: "Обь", visited: false },
+      { name: "Татарск", visited: false },
+      { name: "Тогучин", visited: false },
+      { name: "Черепаново", visited: false },
+      { name: "Чулым", visited: false }
+    ],
+    irkutsk: [
+      { name: "Иркутск", visited: true, count: 4, lived: true },
+      { name: "Усолье-Сибирское", visited: true, lived: true },
+      { name: "Слюдянка", visited: true, count: 3 },
+      { name: "Ангарск", visited: true },
+      { name: "Братск", visited: true },
+      { name: "Свирск", visited: true },
+      { name: "Черемхово", visited: true },
+      { name: "Шелехов", visited: true },
+      { name: "Алзамай", visited: false },
+      { name: "Байкальск", visited: false },
+      { name: "Бирюсинск", visited: false },
+      { name: "Бодайбо", visited: false },
+      { name: "Вихоревка", visited: false },
+      { name: "Железногорск-Илимский", visited: false },
+      { name: "Зима", visited: false },
+      { name: "Киренск", visited: false },
+      { name: "Нижнеудинск", visited: false },
+      { name: "Саянск", visited: false },
+      { name: "Тайшет", visited: false },
+      { name: "Тулун", visited: false },
+      { name: "Усть-Илимск", visited: false },
+      { name: "Усть-Кут", visited: false }
+    ],
+    krasnoyarsk: [
+      { name: "Красноярск", visited: true, count: 2 },
+      { name: "Артёмовск", visited: false },
+      { name: "Ачинск", visited: false },
+      { name: "Боготол", visited: false },
+      { name: "Бородино", visited: false },
+      { name: "Дивногорск", visited: false },
+      { name: "Дудинка", visited: false },
+      { name: "Енисейск", visited: false },
+      { name: "Железногорск", visited: false },
+      { name: "Заозёрный", visited: false },
+      { name: "Зеленогорск", visited: false },
+      { name: "Игарка", visited: false },
+      { name: "Иланский", visited: false },
+      { name: "Канск", visited: false },
+      { name: "Кодинск", visited: false },
+      { name: "Лесосибирск", visited: false },
+      { name: "Минусинск", visited: false },
+      { name: "Назарово", visited: false },
+      { name: "Норильск", visited: false },
+      { name: "Сосновоборск", visited: false },
+      { name: "Ужур", visited: false },
+      { name: "Уяр", visited: false },
+      { name: "Шарыпово", visited: false }
+    ],
+    buryatia: [
+      { name: "Бабушкин", visited: false },
+      { name: "Гусиноозёрск", visited: false },
+      { name: "Закаменск", visited: false },
+      { name: "Кяхта", visited: false },
+      { name: "Северобайкальск", visited: false },
+      { name: "Улан-Удэ", visited: false }
+    ],
+    krasnodar: [
+      { name: "Белореченск", visited: true },
+      { name: "Краснодар", visited: true, count: 2, lived: true },
+      { name: "Новороссийск", visited: true },
+      { name: "Сочи", visited: true },
+      { name: "Усть-Лабинск", visited: true },
+      { name: "Абинск", visited: false },
+      { name: "Анапа", visited: false },
+      { name: "Апшеронск", visited: false },
+      { name: "Армавир", visited: false },
+      { name: "Геленджик", visited: false },
+      { name: "Горячий Ключ", visited: false },
+      { name: "Гулькевичи", visited: false },
+      { name: "Ейск", visited: false },
+      { name: "Кореновск", visited: false },
+      { name: "Кропоткин", visited: false },
+      { name: "Крымск", visited: false },
+      { name: "Курганинск", visited: false },
+      { name: "Лабинск", visited: false },
+      { name: "Новокубанск", visited: false },
+      { name: "Приморско-Ахтарск", visited: false },
+      { name: "Славянск-на-Кубани", visited: false },
+      { name: "Темрюк", visited: false },
+      { name: "Тимашёвск", visited: false },
+      { name: "Тихорецк", visited: false },
+      { name: "Туапсе", visited: false },
+      { name: "Хадыженск", visited: false }
+    ],
+    adygea: [
+      { name: "Адыгейск", visited: true },
+      { name: "Майкоп", visited: true }
+    ],
+    rostov: [
+      { name: "Батайск", visited: true },
+      { name: "Ростов-на-Дону", visited: true },
+      { name: "Азов", visited: false },
+      { name: "Аксай", visited: false },
+      { name: "Белая Калитва", visited: false },
+      { name: "Волгодонск", visited: false },
+      { name: "Гуково", visited: false },
+      { name: "Донецк", visited: false },
+      { name: "Зверево", visited: false },
+      { name: "Зерноград", visited: false },
+      { name: "Каменск-Шахтинский", visited: false },
+      { name: "Константиновск", visited: false },
+      { name: "Красный Сулин", visited: false },
+      { name: "Миллерово", visited: false },
+      { name: "Морозовск", visited: false },
+      { name: "Новочеркасск", visited: false },
+      { name: "Новошахтинск", visited: false },
+      { name: "Пролетарск", visited: false },
+      { name: "Сальск", visited: false },
+      { name: "Семикаракорск", visited: false },
+      { name: "Таганрог", visited: false },
+      { name: "Цимлянск", visited: false },
+      { name: "Шахты", visited: false }
+    ],
+    dagestan: [
+      { name: "Буйнакск", visited: true },
+      { name: "Дербент", visited: true },
+      { name: "Каспийск", visited: true },
+      { name: "Кизилюрт", visited: true },
+      { name: "Махачкала", visited: true },
+      { name: "Хасавюрт", visited: true },
+      { name: "Дагестанские Огни", visited: false },
+      { name: "Избербаш", visited: false },
+      { name: "Кизляр", visited: false },
+      { name: "Южно-Сухокумск", visited: false }
+    ],
+    chechnya: [
+      { name: "Грозный", visited: true },
+      { name: "Гудермес", visited: true },
+      { name: "Аргун", visited: false },
+      { name: "Ачхой-Мартан", visited: false },
+      { name: "Курчалой", visited: false },
+      { name: "Наурская", visited: false },
+      { name: "Ойсхара", visited: false },
+      { name: "Серноводское", visited: false },
+      { name: "Урус-Мартан", visited: false },
+      { name: "Шали", visited: false },
+      { name: "Шелковская", visited: false }
+    ],
+    ingushetia: [
+      { name: "Магас", visited: true },
+      { name: "Назрань", visited: true },
+      { name: "Карабулак", visited: false },
+      { name: "Малгобек", visited: false },
+      { name: "Сунжа", visited: false }
+    ],
+    north_ossetia: [
+      { name: "Беслан", visited: true },
+      { name: "Владикавказ", visited: true },
+      { name: "Алагир", visited: false },
+      { name: "Ардон", visited: false },
+      { name: "Дигора", visited: false },
+      { name: "Моздок", visited: false }
+    ]
+  };
 
   function levelOf(v) {
     if (v === 0) return 0;
@@ -615,7 +946,6 @@
       badge.className = 'cell-badge';
       badge.textContent = r.visits;
       cell.appendChild(badge);
-      cell.addEventListener('click', () => openPanel(idx));
     }
 
     cellByIdx.set(idx, cell);
@@ -624,77 +954,108 @@
 
   // Stats
   const visitedRegions = REGIONS.filter(r => r.visits > 0).length;
-  const totalCities = REGIONS.reduce((s, r) => s + r.visits, 0);
+  const totalCities = Object.values(CITY_DATA).reduce(
+    (s, list) => s + list.filter(c => c.visited).length, 0
+  );
   const pct = Math.round((visitedRegions / 85) * 100);
   document.getElementById('statBig').textContent = visitedRegions + ' из 85 регионов';
   document.getElementById('statPct').textContent = pct;
   document.getElementById('statCities').textContent = totalCities + ' ' + pluralCities(totalCities);
 
-  // Panel
-  const panel = document.getElementById('panel');
-  const backdrop = document.getElementById('backdrop');
-  const panelRegion = document.getElementById('panelRegion');
-  const panelSubtitle = document.getElementById('panelSubtitle');
-  const panelMarker = document.getElementById('panelMarker');
-  const cityList = document.getElementById('cityList');
-  let activeIdx = null;
+  // View switching (drill-down)
+  const pageEl = document.getElementById('page');
+  const viewRegions = document.getElementById('viewRegions');
+  const viewDetail = document.getElementById('viewDetail');
+  const pageTitle = document.getElementById('pageTitle');
+  const detailRegion = document.getElementById('detailRegion');
+  const detailSubtitle = document.getElementById('detailSubtitle');
+  const detailMarker = document.getElementById('detailMarker');
+  const cityGrid = document.getElementById('cityGrid');
 
-  function openPanel(idx) {
+  function showRegions() {
+    pageTitle.textContent = 'Посещённые регионы России';
+    pageEl.classList.add('switching');
+    setTimeout(() => {
+      viewDetail.classList.add('hidden');
+      viewDetail.setAttribute('aria-hidden', 'true');
+      viewRegions.classList.remove('hidden');
+      viewRegions.setAttribute('aria-hidden', 'false');
+      pageEl.classList.remove('switching');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 160);
+  }
+
+  function showDetail(idx) {
     const r = REGIONS[idx];
-    if (!r.cities) return;
-    if (activeIdx !== null) cellByIdx.get(activeIdx)?.classList.remove('active');
-    activeIdx = idx;
-    cellByIdx.get(idx).classList.add('active');
+    const cities = (r.slug && CITY_DATA[r.slug]) || [];
+    if (!cities.length && !r.noCityVisit) return;
 
+    const visitedInRegion = cities.filter(c => c.visited).length;
+    const totalInRegion = cities.length;
     const lvl = levelOf(r.visits);
-    panelMarker.textContent = r.visits;
-    panelMarker.className = 'panel-marker l' + lvl;
-    panelRegion.textContent = r.full;
-    panelSubtitle.textContent = r.visits + ' ' + pluralCities(r.visits) + ' посещено';
 
-    cityList.innerHTML = '';
-    r.cities.forEach(city => {
+    pageTitle.textContent = r.full;
+    detailMarker.textContent = visitedInRegion || (r.noCityVisit ? '·' : 0);
+    detailMarker.className = 'detail-marker l' + (visitedInRegion ? lvl : (r.noCityVisit ? 1 : 0));
+    detailRegion.textContent = r.full;
+    if (r.noCityVisit) {
+      detailSubtitle.textContent = 'был в регионе, но не в городе · всего ' + totalInRegion + ' городов';
+    } else {
+      detailSubtitle.textContent = visitedInRegion + ' из ' + totalInRegion + ' городов посещено';
+    }
+
+    cityGrid.innerHTML = '';
+    cities.forEach(city => {
       const cell = document.createElement('div');
-      cell.className = 'city-cell l' + cityLevel(city);
-      cell.setAttribute('role', 'listitem');
-      cell.title = city.name + (city.note ? ' — ' + city.note : '');
+      const visited = city.visited === true;
+      const lvlClass = visited ? ('l' + cityLevel(city)) : 'l0';
+      cell.className = 'city-cell ' + lvlClass;
+      cell.title = city.name + (visited
+        ? (city.lived ? ' — жил тут' : (city.count ? ' — был ' + city.count + ' раза' : ' — был'))
+        : ' — не был');
 
       const name = document.createElement('span');
       name.className = 'city-name';
       name.textContent = city.name;
       cell.appendChild(name);
 
-      if (city.count && city.count > 1) {
+      if (visited && city.count && city.count > 1) {
         const badge = document.createElement('span');
         badge.className = 'city-badge';
         badge.textContent = '×' + city.count;
         cell.appendChild(badge);
       }
-      if (city.lived) {
+      if (visited && city.lived) {
         const home = document.createElement('span');
         home.className = 'city-home';
         home.title = 'Здесь жил';
         cell.appendChild(home);
       }
-      cityList.appendChild(cell);
+      cityGrid.appendChild(cell);
     });
 
-    panel.classList.add('open');
-    backdrop.classList.add('open');
-    panel.setAttribute('aria-hidden', 'false');
+    pageEl.classList.add('switching');
+    setTimeout(() => {
+      viewRegions.classList.add('hidden');
+      viewRegions.setAttribute('aria-hidden', 'true');
+      viewDetail.classList.remove('hidden');
+      viewDetail.setAttribute('aria-hidden', 'false');
+      pageEl.classList.remove('switching');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 160);
   }
 
-  function closePanel() {
-    if (activeIdx !== null) cellByIdx.get(activeIdx)?.classList.remove('active');
-    activeIdx = null;
-    panel.classList.remove('open');
-    backdrop.classList.remove('open');
-    panel.setAttribute('aria-hidden', 'true');
-  }
+  // Wire region clicks (replace previous openPanel handlers)
+  REGIONS.forEach((r, idx) => {
+    if (r.visits > 0) {
+      cellByIdx.get(idx).addEventListener('click', () => showDetail(idx));
+    }
+  });
 
-  document.getElementById('panelClose').addEventListener('click', closePanel);
-  backdrop.addEventListener('click', closePanel);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+  document.getElementById('backBtn').addEventListener('click', showRegions);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !viewDetail.classList.contains('hidden')) showRegions();
+  });
 </script>
 </body>
 </html>
