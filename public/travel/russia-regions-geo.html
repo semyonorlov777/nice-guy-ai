@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Посещённые регионы России — гео-версия</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #faf6f0;
+    color: #2a2520;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+  .page { max-width: 1100px; margin: 0 auto; }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand { font-size: 14px; font-weight: 500; color: #8a7a66; }
+
+  .grid-wrap { overflow-x: auto; padding-bottom: 8px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(18, 50px);
+    grid-template-rows: repeat(12, 50px);
+    gap: 3px;
+    min-width: 950px;
+  }
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px;
+    line-height: 1.1;
+    cursor: default;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+  }
+  /* Тёплая землистая палитра: бежевый → мёд → охра → терракот → кирпич */
+  .cell.level-0 { background: #e8dccb; color: #8a7a66; }
+  .cell.level-1 { background: #f0c674; color: #4a3520; }
+  .cell.level-2 { background: #e8965e; color: #fff8ee; }
+  .cell.level-3 { background: #c25b2e; color: #fff8ee; }
+  .cell.level-4 { background: #7a2e1b; color: #fff8ee; }
+
+  .cell.clickable { cursor: pointer; }
+  .cell.clickable:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 18px rgba(80, 40, 20, 0.22);
+    z-index: 3;
+  }
+  .cell.active {
+    outline: 2px solid #2a2520;
+    outline-offset: 1px;
+    z-index: 4;
+  }
+
+  .cell-badge {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    opacity: 0.95;
+  }
+
+  .footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid #e8dccb;
+  }
+  @media (max-width: 720px) {
+    .footer { grid-template-columns: 1fr; }
+  }
+  .stat-big {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .stat-desc {
+    font-size: 12px;
+    color: #8a7a66;
+    line-height: 1.5;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #2a2520;
+  }
+  .legend-swatch {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border-radius: 3px;
+  }
+  .legend-swatch.l0 { background: #e8dccb; }
+  .legend-swatch.l1 { background: #f0c674; }
+  .legend-swatch.l2 { background: #e8965e; }
+  .legend-swatch.l3 { background: #c25b2e; }
+  .legend-swatch.l4 { background: #7a2e1b; }
+
+  /* View switching */
+  .view {
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+  .view.hidden {
+    display: none;
+  }
+  .page.switching .view {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  /* Detail view */
+  .detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid #e8dccb;
+    border-radius: 999px;
+    color: #8a7a66;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+  }
+  .back-btn:hover {
+    background: #f5ead4;
+    color: #2a2520;
+    border-color: #d9c5a8;
+  }
+  .detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  .detail-marker {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .detail-marker.l1 { background: #f0c674; color: #4a3520; }
+  .detail-marker.l2 { background: #e8965e; color: #fff8ee; }
+  .detail-marker.l3 { background: #c25b2e; color: #fff8ee; }
+  .detail-marker.l4 { background: #7a2e1b; color: #fff8ee; }
+  .detail-title {
+    flex: 1;
+    min-width: 0;
+  }
+  .detail-region {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #2a2520;
+    margin-bottom: 2px;
+  }
+  .detail-subtitle {
+    font-size: 13px;
+    color: #8a7a66;
+  }
+
+  /* Geo map in detail view */
+  .geo-map {
+    background: #fef9ef;
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #f0e6d5;
+  }
+  .geo-svg {
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+    margin: 0 auto;
+  }
+  .geo-region-fill {
+    fill: #f0e6d5;
+    stroke: #c4b5a5;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .geo-city {
+    cursor: default;
+    transition: r 0.14s ease;
+  }
+  .geo-city.l0 { fill: #c4a98a; stroke: #fff8ee; stroke-width: 1; opacity: 0.65; }
+  .geo-city.l1 { fill: #f0c674; stroke: #4a3520; stroke-width: 1; }
+  .geo-city.l2 { fill: #e8965e; stroke: #fff8ee; stroke-width: 1.2; }
+  .geo-city.l3 { fill: #c25b2e; stroke: #fff8ee; stroke-width: 1.4; }
+  .geo-city.l4 { fill: #7a2e1b; stroke: #fff8ee; stroke-width: 1.5; }
+  .geo-city:hover { r: 7; }
+  .geo-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #2a2520;
+    pointer-events: none;
+  }
+  .geo-label-shadow {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #fff8ee;
+    stroke: #fff8ee;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    paint-order: stroke fill;
+    pointer-events: none;
+  }
+  .geo-no-cities {
+    text-align: center;
+    padding: 40px 24px;
+    color: #8a7a66;
+    font-style: italic;
+  }
+
+  /* Cities waffle in detail view */
+  .cities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 64px);
+    gap: 3px;
+    justify-content: start;
+  }
+  .city-cell {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 3px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.15;
+    cursor: default;
+    overflow: hidden;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
+  }
+  .city-cell.l0 { background: #e8dccb; color: #8a7a66; }
+  .city-cell.l1 { background: #f0c674; color: #4a3520; }
+  .city-cell.l2 { background: #e8965e; color: #fff8ee; }
+  .city-cell.l3 { background: #c25b2e; color: #fff8ee; }
+  .city-cell.l4 { background: #7a2e1b; color: #fff8ee; }
+  .city-cell:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(80, 40, 20, 0.22);
+    z-index: 1;
+  }
+  .city-name {
+    display: block;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  .city-badge {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    opacity: 0.95;
+  }
+  .city-home {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff8ee;
+    opacity: 0.85;
+  }
+  .empty-note {
+    padding: 24px;
+    text-align: center;
+    color: #8a7a66;
+    font-size: 14px;
+    font-style: italic;
+    background: #fef6e6;
+    border-radius: 12px;
+  }
+  .panel-legend {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #f0e6d5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 10px;
+    color: #8a7a66;
+  }
+  .panel-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .panel-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .panel-legend-swatch.l1 { background: #f0c674; }
+  .panel-legend-swatch.l2 { background: #e8965e; }
+  .panel-legend-swatch.l3 { background: #c25b2e; }
+  .panel-legend-swatch.l4 { background: #7a2e1b; }
+</style>
+</head>
+<body>
+<div class="page" id="page">
+  <header>
+    <h1 id="pageTitle">Посещённые регионы России <span style="font-size:14px;font-weight:500;color:#8a7a66;letter-spacing:0;">· гео</span></h1>
+    <span class="brand">Моя карта</span>
+  </header>
+
+  <section class="view view-regions" id="viewRegions">
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <div class="stat-big" id="statBig">— из 85 регионов</div>
+        <div class="stat-desc"><span id="statPct">—</span>% субъектов РФ · <span id="statCities">—</span></div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch l0"></span>не был</div>
+          <div class="legend-item"><span class="legend-swatch l1"></span>1 город</div>
+          <div class="legend-item"><span class="legend-swatch l2"></span>2–3</div>
+          <div class="legend-item"><span class="legend-swatch l3"></span>4–7</div>
+          <div class="legend-item"><span class="legend-swatch l4"></span>8+</div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-desc">
+          Карта показывает субъекты Российской Федерации. Каждый квадрат — один регион,
+          расположение примерно соответствует географии. Насыщенность цвета — по числу
+          посещённых городов. Клик на цветной квадрат — детализация по городам.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view view-detail hidden" id="viewDetail" aria-hidden="true">
+    <div class="detail-header">
+      <button class="back-btn" id="backBtn" type="button" aria-label="Назад к регионам">← К&nbsp;регионам</button>
+      <div class="detail-meta">
+        <div class="detail-marker" id="detailMarker">—</div>
+        <div class="detail-title">
+          <div class="detail-region" id="detailRegion">—</div>
+          <div class="detail-subtitle" id="detailSubtitle">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="geo-map">
+      <div id="cityGrid"></div>
+    </div>
+
+    <div class="footer">
+      <div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch l0"></span>не был</div>
+          <div class="legend-item"><span class="legend-swatch l1"></span>был раз</div>
+          <div class="legend-item"><span class="legend-swatch l2"></span>2–3 раза</div>
+          <div class="legend-item"><span class="legend-swatch l3"></span>4+ раз</div>
+          <div class="legend-item"><span class="legend-swatch l4"></span>жил тут</div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-desc" id="detailFootnote">
+          Полный список административных городов региона. Посещённые подсвечены
+          по интенсивности — как на главной карте.
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // [col, row, name, full, visits, cities]
+  // cities: [{name, note?}] для регионов с visits > 0
+  const REGIONS = [
+    { col: 2, row: 1, name: "СПб", full: "Санкт-Петербург", visits: 5, slug: "spb" },
+    { col: 5, row: 1, name: "Мурм", full: "Мурманская область", visits: 0 },
+    { col: 16, row: 1, name: "Чукот", full: "Чукотский АО", visits: 0 },
+    { col: 17, row: 1, name: "Камч", full: "Камчатский край", visits: 0 },
+    { col: 1, row: 2, name: "Москва", full: "Москва", visits: 2, slug: "moscow" },
+    { col: 15, row: 2, name: "Крск", full: "Красноярский край", visits: 1, slug: "krasnoyarsk" },
+    { col: 17, row: 2, name: "Магад", full: "Магаданская область", visits: 0 },
+    { col: 4, row: 3, name: "Карел", full: "Республика Карелия", visits: 1, slug: "karelia" },
+    { col: 10, row: 3, name: "НАО", full: "Ненецкий АО", visits: 0 },
+    { col: 11, row: 3, name: "ЯНАО", full: "Ямало-Ненецкий АО", visits: 0 },
+    { col: 14, row: 3, name: "Томск", full: "Томская область", visits: 0 },
+    { col: 15, row: 3, name: "Кузбас", full: "Кемеровская область", visits: 0 },
+    { col: 1, row: 4, name: "Клнгрд", full: "Калининградская область", visits: 0 },
+    { col: 3, row: 4, name: "Лен обл", full: "Ленинградская область", visits: 3, slug: "leningrad_oblast" },
+    { col: 5, row: 4, name: "Новг", full: "Новгородская область", visits: 0 },
+    { col: 6, row: 4, name: "Влгда", full: "Вологодская область", visits: 0 },
+    { col: 9, row: 4, name: "Архнгл", full: "Архангельская область", visits: 0 },
+    { col: 10, row: 4, name: "Коми", full: "Республика Коми", visits: 0 },
+    { col: 11, row: 4, name: "ХМАО", full: "Ханты-Мансийский АО", visits: 0 },
+    { col: 12, row: 4, name: "Тюмень", full: "Тюменская область", visits: 0 },
+    { col: 15, row: 4, name: "Ирк", full: "Иркутская область", visits: 8, slug: "irkutsk" },
+    { col: 16, row: 4, name: "Якутия", full: "Республика Саха (Якутия)", visits: 0 },
+    { col: 17, row: 4, name: "Хбрвск", full: "Хабаровский край", visits: 0 },
+    { col: 18, row: 4, name: "Сах обл", full: "Сахалинская область", visits: 0 },
+    { col: 3, row: 5, name: "Псков", full: "Псковская область", visits: 0 },
+    { col: 4, row: 5, name: "Тверь", full: "Тверская область", visits: 3, slug: "tver" },
+    { col: 5, row: 5, name: "Ярсвл", full: "Ярославская область", visits: 3, slug: "yaroslavl" },
+    { col: 6, row: 5, name: "Ивнво", full: "Ивановская область", visits: 0 },
+    { col: 7, row: 5, name: "Кстрма", full: "Костромская область", visits: 0 },
+    { col: 8, row: 5, name: "Мар Эл", full: "Республика Марий Эл", visits: 0 },
+    { col: 9, row: 5, name: "Киров", full: "Кировская область", visits: 0 },
+    { col: 10, row: 5, name: "Пермь", full: "Пермский край", visits: 0 },
+    { col: 11, row: 5, name: "Екб", full: "Свердловская область", visits: 0 },
+    { col: 12, row: 5, name: "Курган", full: "Курганская область", visits: 0 },
+    { col: 13, row: 5, name: "Нск", full: "Новосибирская область", visits: 1, slug: "novosibirsk" },
+    { col: 14, row: 5, name: "Хакас", full: "Республика Хакасия", visits: 0 },
+    { col: 15, row: 5, name: "Бурят", full: "Республика Бурятия", visits: 1, slug: "buryatia", noCityVisit: true },
+    { col: 16, row: 5, name: "Амур", full: "Амурская область", visits: 0 },
+    { col: 2, row: 6, name: "Смлнск", full: "Смоленская область", visits: 1, slug: "smolensk" },
+    { col: 3, row: 6, name: "Калуга", full: "Калужская область", visits: 4, slug: "kaluga" },
+    { col: 4, row: 6, name: "Мск об", full: "Московская область", visits: 23, slug: "moscow_oblast" },
+    { col: 5, row: 6, name: "Влдмр", full: "Владимирская область", visits: 2, slug: "vladimir" },
+    { col: 6, row: 6, name: "Нижний", full: "Нижегородская область", visits: 0 },
+    { col: 7, row: 6, name: "Чуваш", full: "Чувашская Республика", visits: 0 },
+    { col: 8, row: 6, name: "Татар", full: "Республика Татарстан", visits: 0 },
+    { col: 9, row: 6, name: "Удмрт", full: "Удмуртская Республика", visits: 0 },
+    { col: 10, row: 6, name: "Члбнск", full: "Челябинская область", visits: 0 },
+    { col: 11, row: 6, name: "Омск", full: "Омская область", visits: 0 },
+    { col: 12, row: 6, name: "Алт кр", full: "Алтайский край", visits: 0 },
+    { col: 13, row: 6, name: "Тыва", full: "Республика Тыва", visits: 0 },
+    { col: 14, row: 6, name: "Збйкл", full: "Забайкальский край", visits: 0 },
+    { col: 16, row: 6, name: "ЕАО", full: "Еврейская АО", visits: 0 },
+    { col: 17, row: 6, name: "Прмрск", full: "Приморский край", visits: 0 },
+    { col: 2, row: 7, name: "Брянск", full: "Брянская область", visits: 0 },
+    { col: 3, row: 7, name: "Орел", full: "Орловская область", visits: 0 },
+    { col: 4, row: 7, name: "Тула", full: "Тульская область", visits: 1, slug: "tula" },
+    { col: 5, row: 7, name: "Рязань", full: "Рязанская область", visits: 0 },
+    { col: 6, row: 7, name: "Мрдв", full: "Республика Мордовия", visits: 0 },
+    { col: 7, row: 7, name: "Ульнск", full: "Ульяновская область", visits: 0 },
+    { col: 8, row: 7, name: "Самара", full: "Самарская область", visits: 0 },
+    { col: 9, row: 7, name: "Бшкр", full: "Республика Башкортостан", visits: 0 },
+    { col: 12, row: 7, name: "Алтай", full: "Республика Алтай", visits: 0 },
+    { col: 3, row: 8, name: "Курск", full: "Курская область", visits: 0 },
+    { col: 4, row: 8, name: "Липецк", full: "Липецкая область", visits: 0 },
+    { col: 5, row: 8, name: "Тамбов", full: "Тамбовская область", visits: 0 },
+    { col: 6, row: 8, name: "Пенза", full: "Пензенская область", visits: 0 },
+    { col: 7, row: 8, name: "Сртв", full: "Саратовская область", visits: 0 },
+    { col: 8, row: 8, name: "Орнбрг", full: "Оренбургская область", visits: 0 },
+    { col: 3, row: 9, name: "Белг", full: "Белгородская область", visits: 0 },
+    { col: 4, row: 9, name: "Врнж", full: "Воронежская область", visits: 1, slug: "voronezh" },
+    { col: 5, row: 9, name: "Влггрд", full: "Волгоградская область", visits: 0 },
+    { col: 3, row: 10, name: "Адыгея", full: "Республика Адыгея", visits: 2, slug: "adygea" },
+    { col: 4, row: 10, name: "Кубань", full: "Краснодарский край", visits: 5, slug: "krasnodar" },
+    { col: 5, row: 10, name: "Ростов", full: "Ростовская область", visits: 2, slug: "rostov" },
+    { col: 6, row: 10, name: "Клмк", full: "Республика Калмыкия", visits: 0 },
+    { col: 7, row: 10, name: "Астрхн", full: "Астраханская область", visits: 0 },
+    { col: 4, row: 11, name: "КЧР", full: "Карачаево-Черкесия", visits: 0 },
+    { col: 5, row: 11, name: "Ставр", full: "Ставропольский край", visits: 0 },
+    { col: 6, row: 11, name: "Чечня", full: "Чеченская Республика", visits: 2, slug: "chechnya" },
+    { col: 7, row: 11, name: "Дгстн", full: "Республика Дагестан", visits: 6, slug: "dagestan" },
+    { col: 4, row: 12, name: "КБР", full: "Кабардино-Балкария", visits: 0 },
+    { col: 5, row: 12, name: "Алания", full: "Северная Осетия — Алания", visits: 2, slug: "north_ossetia" },
+    { col: 6, row: 12, name: "Ингуш", full: "Республика Ингушетия", visits: 2, slug: "ingushetia" }
+  ];
+
+  // Полные административные списки городов по slug регионов.
+  // Источник: Википедия (статусы городов на 2024–2025). Посещённые помечены visited:true,
+  // count = число поездок если >1, lived = факт длительного проживания.
+  const CITY_DATA = {
+    moscow: [
+      { name: "Москва", visited: true, count: 5, lived: true },
+      { name: "Зеленоград", visited: true },
+      { name: "Московский", visited: false },
+      { name: "Троицк", visited: false },
+      { name: "Щербинка", visited: false }
+    ],
+    moscow_oblast: [
+      { name: "Верея", visited: true },
+      { name: "Голицыно", visited: true },
+      { name: "Дмитров", visited: true },
+      { name: "Долгопрудный", visited: true },
+      { name: "Жуковский", visited: true, count: 2 },
+      { name: "Звенигород", visited: true },
+      { name: "Истра", visited: true },
+      { name: "Кашира", visited: true },
+      { name: "Клин", visited: true },
+      { name: "Коломна", visited: true, count: 2 },
+      { name: "Королёв", visited: true },
+      { name: "Лобня", visited: true },
+      { name: "Люберцы", visited: true },
+      { name: "Можайск", visited: true },
+      { name: "Наро-Фоминск", visited: true },
+      { name: "Одинцово", visited: true },
+      { name: "Подольск", visited: true },
+      { name: "Раменское", visited: true },
+      { name: "Реутов", visited: true },
+      { name: "Сергиев Посад", visited: true },
+      { name: "Серпухов", visited: true },
+      { name: "Солнечногорск", visited: true },
+      { name: "Химки", visited: true },
+      { name: "Апрелевка", visited: false },
+      { name: "Балашиха", visited: false },
+      { name: "Белоозёрский", visited: false },
+      { name: "Бронницы", visited: false },
+      { name: "Видное", visited: false },
+      { name: "Волоколамск", visited: false },
+      { name: "Воскресенск", visited: false },
+      { name: "Высоковск", visited: false },
+      { name: "Дедовск", visited: false },
+      { name: "Дзержинский", visited: false },
+      { name: "Домодедово", visited: false },
+      { name: "Дрезна", visited: false },
+      { name: "Дубна", visited: false },
+      { name: "Егорьевск", visited: false },
+      { name: "Зарайск", visited: false },
+      { name: "Ивантеевка", visited: false },
+      { name: "Котельники", visited: false },
+      { name: "Красноармейск", visited: false },
+      { name: "Красногорск", visited: false },
+      { name: "Краснозаводск", visited: false },
+      { name: "Краснознаменск", visited: false },
+      { name: "Кубинка", visited: false },
+      { name: "Куровское", visited: false },
+      { name: "Ликино-Дулёво", visited: false },
+      { name: "Лосино-Петровский", visited: false },
+      { name: "Луховицы", visited: false },
+      { name: "Лыткарино", visited: false },
+      { name: "Мытищи", visited: false },
+      { name: "Ногинск", visited: false },
+      { name: "Озёры", visited: false },
+      { name: "Орехово-Зуево", visited: false },
+      { name: "Павловский Посад", visited: false },
+      { name: "Пересвет", visited: false },
+      { name: "Протвино", visited: false },
+      { name: "Пушкино", visited: false },
+      { name: "Пущино", visited: false },
+      { name: "Рошаль", visited: false },
+      { name: "Руза", visited: false },
+      { name: "Старая Купавна", visited: false },
+      { name: "Ступино", visited: false },
+      { name: "Талдом", visited: false },
+      { name: "Фрязино", visited: false },
+      { name: "Хотьково", visited: false },
+      { name: "Черноголовка", visited: false },
+      { name: "Чехов", visited: false },
+      { name: "Шатура", visited: false },
+      { name: "Щёлково", visited: false },
+      { name: "Электрогорск", visited: false },
+      { name: "Электросталь", visited: false },
+      { name: "Электроугли", visited: false },
+      { name: "Яхрома", visited: false }
+    ],
+    spb: [
+      { name: "Санкт-Петербург", visited: true, count: 4 },
+      { name: "Зеленогорск", visited: true },
+      { name: "Кронштадт", visited: true },
+      { name: "Петергоф", visited: true },
+      { name: "Пушкин", visited: true },
+      { name: "Колпино", visited: false },
+      { name: "Красное Село", visited: false },
+      { name: "Ломоносов", visited: false },
+      { name: "Павловск", visited: false },
+      { name: "Сестрорецк", visited: false }
+    ],
+    leningrad_oblast: [
+      { name: "Выборг", visited: true, count: 2 },
+      { name: "Сертолово", visited: true },
+      { name: "Шлиссельбург", visited: true },
+      { name: "Бокситогорск", visited: false },
+      { name: "Бугры", visited: false },
+      { name: "Волосово", visited: false },
+      { name: "Волхов", visited: false },
+      { name: "Всеволожск", visited: false },
+      { name: "Высоцк", visited: false },
+      { name: "Гатчина", visited: false },
+      { name: "Ивангород", visited: false },
+      { name: "Каменногорск", visited: false },
+      { name: "Кингисепп", visited: false },
+      { name: "Кириши", visited: false },
+      { name: "Кировск", visited: false },
+      { name: "Колтуши", visited: false },
+      { name: "Коммунар", visited: false },
+      { name: "Кудрово", visited: false },
+      { name: "Лодейное Поле", visited: false },
+      { name: "Луга", visited: false },
+      { name: "Любань", visited: false },
+      { name: "Мурино", visited: false },
+      { name: "Никольское", visited: false },
+      { name: "Новая Ладога", visited: false },
+      { name: "Отрадное", visited: false },
+      { name: "Пикалёво", visited: false },
+      { name: "Подпорожье", visited: false },
+      { name: "Приморск", visited: false },
+      { name: "Приозерск", visited: false },
+      { name: "Светогорск", visited: false },
+      { name: "Сланцы", visited: false },
+      { name: "Сосновый Бор", visited: false },
+      { name: "Сясьстрой", visited: false },
+      { name: "Тельмана", visited: false },
+      { name: "Тихвин", visited: false },
+      { name: "Тосно", visited: false }
+    ],
+    kaluga: [
+      { name: "Боровск", visited: true },
+      { name: "Калуга", visited: true },
+      { name: "Малоярославец", visited: true },
+      { name: "Обнинск", visited: true },
+      { name: "Балабаново", visited: false },
+      { name: "Белоусово", visited: false },
+      { name: "Ермолино", visited: false },
+      { name: "Жиздра", visited: false },
+      { name: "Жуков", visited: false },
+      { name: "Киров", visited: false },
+      { name: "Козельск", visited: false },
+      { name: "Кондрово", visited: false },
+      { name: "Кремёнки", visited: false },
+      { name: "Людиново", visited: false },
+      { name: "Медынь", visited: false },
+      { name: "Мещовск", visited: false },
+      { name: "Мосальск", visited: false },
+      { name: "Сосенский", visited: false },
+      { name: "Спас-Деменск", visited: false },
+      { name: "Сухиничи", visited: false },
+      { name: "Таруса", visited: false },
+      { name: "Юхнов", visited: false }
+    ],
+    tver: [
+      { name: "Калязин", visited: true },
+      { name: "Тверь", visited: true },
+      { name: "Торжок", visited: true },
+      { name: "Андреаполь", visited: false },
+      { name: "Бежецк", visited: false },
+      { name: "Белый", visited: false },
+      { name: "Бологое", visited: false },
+      { name: "Весьегонск", visited: false },
+      { name: "Вышний Волочёк", visited: false },
+      { name: "Западная Двина", visited: false },
+      { name: "Зубцов", visited: false },
+      { name: "Кашин", visited: false },
+      { name: "Кимры", visited: false },
+      { name: "Конаково", visited: false },
+      { name: "Красный Холм", visited: false },
+      { name: "Кувшиново", visited: false },
+      { name: "Лихославль", visited: false },
+      { name: "Нелидово", visited: false },
+      { name: "Осташков", visited: false },
+      { name: "Ржев", visited: false },
+      { name: "Старица", visited: false },
+      { name: "Торопец", visited: false },
+      { name: "Удомля", visited: false }
+    ],
+    yaroslavl: [
+      { name: "Переславль-Залесский", visited: true },
+      { name: "Углич", visited: true },
+      { name: "Ярославль", visited: true },
+      { name: "Гаврилов-Ям", visited: false },
+      { name: "Данилов", visited: false },
+      { name: "Любим", visited: false },
+      { name: "Мышкин", visited: false },
+      { name: "Пошехонье", visited: false },
+      { name: "Ростов", visited: false },
+      { name: "Рыбинск", visited: false },
+      { name: "Тутаев", visited: false }
+    ],
+    vladimir: [
+      { name: "Владимир", visited: true },
+      { name: "Суздаль", visited: true },
+      { name: "Александров", visited: false },
+      { name: "Вязники", visited: false },
+      { name: "Гороховец", visited: false },
+      { name: "Гусь-Хрустальный", visited: false },
+      { name: "Камешково", visited: false },
+      { name: "Карабаново", visited: false },
+      { name: "Киржач", visited: false },
+      { name: "Ковров", visited: false },
+      { name: "Кольчугино", visited: false },
+      { name: "Костерёво", visited: false },
+      { name: "Курлово", visited: false },
+      { name: "Лакинск", visited: false },
+      { name: "Меленки", visited: false },
+      { name: "Муром", visited: false },
+      { name: "Петушки", visited: false },
+      { name: "Покров", visited: false },
+      { name: "Радужный", visited: false },
+      { name: "Собинка", visited: false },
+      { name: "Струнино", visited: false },
+      { name: "Судогда", visited: false },
+      { name: "Юрьев-Польский", visited: false }
+    ],
+    smolensk: [
+      { name: "Рудня", visited: true },
+      { name: "Велиж", visited: false },
+      { name: "Вязьма", visited: false },
+      { name: "Гагарин", visited: false },
+      { name: "Демидов", visited: false },
+      { name: "Десногорск", visited: false },
+      { name: "Дорогобуж", visited: false },
+      { name: "Духовщина", visited: false },
+      { name: "Ельня", visited: false },
+      { name: "Починок", visited: false },
+      { name: "Рославль", visited: false },
+      { name: "Сафоново", visited: false },
+      { name: "Смоленск", visited: false },
+      { name: "Сычёвка", visited: false },
+      { name: "Ярцево", visited: false }
+    ],
+    voronezh: [
+      { name: "Воронеж", visited: true },
+      { name: "Бобров", visited: false },
+      { name: "Богучар", visited: false },
+      { name: "Борисоглебск", visited: false },
+      { name: "Бутурлиновка", visited: false },
+      { name: "Калач", visited: false },
+      { name: "Лиски", visited: false },
+      { name: "Нововоронеж", visited: false },
+      { name: "Новохопёрск", visited: false },
+      { name: "Острогожск", visited: false },
+      { name: "Павловск", visited: false },
+      { name: "Поворино", visited: false },
+      { name: "Россошь", visited: false },
+      { name: "Семилуки", visited: false },
+      { name: "Эртиль", visited: false }
+    ],
+    tula: [
+      { name: "Тула", visited: true, count: 2 },
+      { name: "Алексин", visited: false },
+      { name: "Белёв", visited: false },
+      { name: "Богородицк", visited: false },
+      { name: "Болохово", visited: false },
+      { name: "Венёв", visited: false },
+      { name: "Донской", visited: false },
+      { name: "Ефремов", visited: false },
+      { name: "Кимовск", visited: false },
+      { name: "Киреевск", visited: false },
+      { name: "Липки", visited: false },
+      { name: "Новомосковск", visited: false },
+      { name: "Плавск", visited: false },
+      { name: "Советск", visited: false },
+      { name: "Суворов", visited: false },
+      { name: "Узловая", visited: false },
+      { name: "Чекалин", visited: false },
+      { name: "Щёкино", visited: false },
+      { name: "Ясногорск", visited: false }
+    ],
+    karelia: [
+      { name: "Сортавала", visited: true },
+      { name: "Беломорск", visited: false },
+      { name: "Кемь", visited: false },
+      { name: "Кондопога", visited: false },
+      { name: "Костомукша", visited: false },
+      { name: "Лахденпохья", visited: false },
+      { name: "Медвежьегорск", visited: false },
+      { name: "Олонец", visited: false },
+      { name: "Петрозаводск", visited: false },
+      { name: "Питкяранта", visited: false },
+      { name: "Пудож", visited: false },
+      { name: "Сегежа", visited: false },
+      { name: "Суоярви", visited: false }
+    ],
+    novosibirsk: [
+      { name: "Новосибирск", visited: true },
+      { name: "Барабинск", visited: false },
+      { name: "Бердск", visited: false },
+      { name: "Болотное", visited: false },
+      { name: "Искитим", visited: false },
+      { name: "Карасук", visited: false },
+      { name: "Каргат", visited: false },
+      { name: "Куйбышев", visited: false },
+      { name: "Купино", visited: false },
+      { name: "Обь", visited: false },
+      { name: "Татарск", visited: false },
+      { name: "Тогучин", visited: false },
+      { name: "Черепаново", visited: false },
+      { name: "Чулым", visited: false }
+    ],
+    irkutsk: [
+      { name: "Иркутск", visited: true, count: 4, lived: true },
+      { name: "Усолье-Сибирское", visited: true, lived: true },
+      { name: "Слюдянка", visited: true, count: 3 },
+      { name: "Ангарск", visited: true },
+      { name: "Братск", visited: true },
+      { name: "Свирск", visited: true },
+      { name: "Черемхово", visited: true },
+      { name: "Шелехов", visited: true },
+      { name: "Алзамай", visited: false },
+      { name: "Байкальск", visited: false },
+      { name: "Бирюсинск", visited: false },
+      { name: "Бодайбо", visited: false },
+      { name: "Вихоревка", visited: false },
+      { name: "Железногорск-Илимский", visited: false },
+      { name: "Зима", visited: false },
+      { name: "Киренск", visited: false },
+      { name: "Нижнеудинск", visited: false },
+      { name: "Саянск", visited: false },
+      { name: "Тайшет", visited: false },
+      { name: "Тулун", visited: false },
+      { name: "Усть-Илимск", visited: false },
+      { name: "Усть-Кут", visited: false }
+    ],
+    krasnoyarsk: [
+      { name: "Красноярск", visited: true, count: 2 },
+      { name: "Артёмовск", visited: false },
+      { name: "Ачинск", visited: false },
+      { name: "Боготол", visited: false },
+      { name: "Бородино", visited: false },
+      { name: "Дивногорск", visited: false },
+      { name: "Дудинка", visited: false },
+      { name: "Енисейск", visited: false },
+      { name: "Железногорск", visited: false },
+      { name: "Заозёрный", visited: false },
+      { name: "Зеленогорск", visited: false },
+      { name: "Игарка", visited: false },
+      { name: "Иланский", visited: false },
+      { name: "Канск", visited: false },
+      { name: "Кодинск", visited: false },
+      { name: "Лесосибирск", visited: false },
+      { name: "Минусинск", visited: false },
+      { name: "Назарово", visited: false },
+      { name: "Норильск", visited: false },
+      { name: "Сосновоборск", visited: false },
+      { name: "Ужур", visited: false },
+      { name: "Уяр", visited: false },
+      { name: "Шарыпово", visited: false }
+    ],
+    buryatia: [
+      { name: "Бабушкин", visited: false },
+      { name: "Гусиноозёрск", visited: false },
+      { name: "Закаменск", visited: false },
+      { name: "Кяхта", visited: false },
+      { name: "Северобайкальск", visited: false },
+      { name: "Улан-Удэ", visited: false }
+    ],
+    krasnodar: [
+      { name: "Белореченск", visited: true },
+      { name: "Краснодар", visited: true, count: 2, lived: true },
+      { name: "Новороссийск", visited: true },
+      { name: "Сочи", visited: true },
+      { name: "Усть-Лабинск", visited: true },
+      { name: "Абинск", visited: false },
+      { name: "Анапа", visited: false },
+      { name: "Апшеронск", visited: false },
+      { name: "Армавир", visited: false },
+      { name: "Геленджик", visited: false },
+      { name: "Горячий Ключ", visited: false },
+      { name: "Гулькевичи", visited: false },
+      { name: "Ейск", visited: false },
+      { name: "Кореновск", visited: false },
+      { name: "Кропоткин", visited: false },
+      { name: "Крымск", visited: false },
+      { name: "Курганинск", visited: false },
+      { name: "Лабинск", visited: false },
+      { name: "Новокубанск", visited: false },
+      { name: "Приморско-Ахтарск", visited: false },
+      { name: "Славянск-на-Кубани", visited: false },
+      { name: "Темрюк", visited: false },
+      { name: "Тимашёвск", visited: false },
+      { name: "Тихорецк", visited: false },
+      { name: "Туапсе", visited: false },
+      { name: "Хадыженск", visited: false }
+    ],
+    adygea: [
+      { name: "Адыгейск", visited: true },
+      { name: "Майкоп", visited: true }
+    ],
+    rostov: [
+      { name: "Батайск", visited: true },
+      { name: "Ростов-на-Дону", visited: true },
+      { name: "Азов", visited: false },
+      { name: "Аксай", visited: false },
+      { name: "Белая Калитва", visited: false },
+      { name: "Волгодонск", visited: false },
+      { name: "Гуково", visited: false },
+      { name: "Донецк", visited: false },
+      { name: "Зверево", visited: false },
+      { name: "Зерноград", visited: false },
+      { name: "Каменск-Шахтинский", visited: false },
+      { name: "Константиновск", visited: false },
+      { name: "Красный Сулин", visited: false },
+      { name: "Миллерово", visited: false },
+      { name: "Морозовск", visited: false },
+      { name: "Новочеркасск", visited: false },
+      { name: "Новошахтинск", visited: false },
+      { name: "Пролетарск", visited: false },
+      { name: "Сальск", visited: false },
+      { name: "Семикаракорск", visited: false },
+      { name: "Таганрог", visited: false },
+      { name: "Цимлянск", visited: false },
+      { name: "Шахты", visited: false }
+    ],
+    dagestan: [
+      { name: "Буйнакск", visited: true },
+      { name: "Дербент", visited: true },
+      { name: "Каспийск", visited: true },
+      { name: "Кизилюрт", visited: true },
+      { name: "Махачкала", visited: true },
+      { name: "Хасавюрт", visited: true },
+      { name: "Дагестанские Огни", visited: false },
+      { name: "Избербаш", visited: false },
+      { name: "Кизляр", visited: false },
+      { name: "Южно-Сухокумск", visited: false }
+    ],
+    chechnya: [
+      { name: "Грозный", visited: true },
+      { name: "Гудермес", visited: true },
+      { name: "Аргун", visited: false },
+      { name: "Ачхой-Мартан", visited: false },
+      { name: "Курчалой", visited: false },
+      { name: "Наурская", visited: false },
+      { name: "Ойсхара", visited: false },
+      { name: "Серноводское", visited: false },
+      { name: "Урус-Мартан", visited: false },
+      { name: "Шали", visited: false },
+      { name: "Шелковская", visited: false }
+    ],
+    ingushetia: [
+      { name: "Магас", visited: true },
+      { name: "Назрань", visited: true },
+      { name: "Карабулак", visited: false },
+      { name: "Малгобек", visited: false },
+      { name: "Сунжа", visited: false }
+    ],
+    north_ossetia: [
+      { name: "Беслан", visited: true },
+      { name: "Владикавказ", visited: true },
+      { name: "Алагир", visited: false },
+      { name: "Ардон", visited: false },
+      { name: "Дигора", visited: false },
+      { name: "Моздок", visited: false }
+    ]
+  };
+
+  // Compact geo data: [name, lat, lng]
+  const COORDS = {"moscow":[["Москва",55.7505,37.6175],["Зеленоград",55.992,37.2142],["Московский",55.6026,37.3479],["Троицк",55.4728,37.3017],["Щербинка",55.5101,37.5622]],"moscow_oblast":[["Верея",55.3432,36.1851],["Голицыно",55.615,36.9888],["Дмитров",56.3451,37.5201],["Долгопрудный",55.9341,37.5142],["Жуковский",55.5973,38.12],["Звенигород",55.7294,36.8585],["Истра",55.9146,36.8595],["Кашира",54.8374,38.1505],["Клин",56.3353,36.7346],["Коломна",55.0939,38.767],["Королёв",55.919,37.815],["Лобня",56.0104,37.4671],["Люберцы",55.6783,37.8938],["Можайск",55.5065,36.0213],["Наро-Фоминск",55.3843,36.7235],["Одинцово",55.6782,37.2668],["Подольск",55.4309,37.5453],["Раменское",55.5709,38.2282],["Реутов",55.7622,37.8566],["Сергиев Посад",56.3153,38.136],["Серпухов",54.9155,37.4196],["Солнечногорск",56.1854,36.9782],["Химки",55.8917,37.4397],["Апрелевка",55.5454,37.073],["Балашиха",55.7998,37.9374],["Белоозёрский",55.4595,38.439],["Бронницы",55.422,38.2591],["Видное",55.5571,37.7087],["Волоколамск",56.036,35.9583],["Воскресенск",55.3225,38.6817],["Высоковск",56.3205,36.5522],["Дедовск",55.8598,37.1206],["Дзержинский",55.6309,37.8497],["Домодедово",55.4087,37.9095],["Дрезна",55.7448,38.8491],["Дубна",56.7363,37.1624],["Егорьевск",55.383,39.0356],["Зарайск",54.7586,38.8818],["Ивантеевка",55.9752,37.9087],["Котельники",55.6617,37.8673],["Красноармейск",56.1211,38.1458],["Красногорск",55.8205,37.3197],["Краснозаводск",56.4405,38.2443],["Краснознаменск",55.5972,37.0395],["Кубинка",55.5755,36.6953],["Куровское",55.5771,38.9226],["Ликино-Дулёво",55.7043,38.9569],["Лосино-Петровский",55.8706,38.2033],["Луховицы",54.9656,39.0277],["Лыткарино",55.5822,37.908],["Мытищи",55.9095,37.7339],["Ногинск",55.8554,38.4412],["Озёры",54.8542,38.5599],["Орехово-Зуево",55.8062,38.981],["Павловский Посад",55.7813,38.6508],["Пересвет",56.4158,38.1736],["Протвино",54.8708,37.2189],["Пушкино",56.0104,37.8462],["Пущино",54.8347,37.614],["Рошаль",55.6583,39.8717],["Руза",55.6999,36.1947],["Старая Купавна",55.807,38.1774],["Ступино",54.8866,38.0773],["Талдом",56.7309,37.528],["Фрязино",55.9546,38.0568],["Хотьково",56.2517,37.978],["Черноголовка",56.0061,38.3835],["Чехов",55.1427,37.4545],["Шатура",55.5784,39.5438],["Щёлково",55.9206,37.9916],["Электрогорск",55.8833,38.7817],["Электросталь",55.7845,38.4449],["Электроугли",55.7184,38.2228],["Яхрома",56.2899,37.4838]],"spb":[["Санкт-Петербург",59.9387,30.3162],["Зеленогорск",60.1971,29.7072],["Кронштадт",59.9908,29.7747],["Петергоф",59.8818,29.912],["Пушкин",59.6878,30.3407],["Колпино",59.7491,30.5971],["Красное Село",59.7338,30.0862],["Ломоносов",59.9017,29.7794],["Павловск",59.6935,30.4328],["Сестрорецк",60.0931,29.9585]],"leningrad_oblast":[["Выборг",60.7092,28.7441],["Сертолово",60.1437,30.2078],["Шлиссельбург",59.9404,31.0337],["Бокситогорск",59.4729,33.849],["Бугры",60.0685,30.3947],["Волосово",59.4444,29.4925],["Волхов",59.9276,32.3277],["Всеволожск",60.024,30.646],["Высоцк",60.628,28.5688],["Гатчина",59.568,30.1252],["Ивангород",59.3744,28.2193],["Каменногорск",60.9526,29.1303],["Кингисепп",59.3744,28.5982],["Кириши",59.4503,32.0106],["Кировск",59.8814,30.9855],["Колтуши",59.933,30.6549],["Коммунар",59.6195,30.3931],["Кудрово",59.9084,30.5126],["Лодейное Поле",60.7339,33.5458],["Луга",58.7357,29.8475],["Любань",59.3501,31.2487],["Мурино",60.0462,30.4459],["Никольское",59.7035,30.7861],["Новая Ладога",60.1052,32.3147],["Отрадное",59.7727,30.802],["Пикалёво",59.513,34.1774],["Подпорожье",60.9143,34.1624],["Приморск",60.3667,28.6167],["Приозерск",61.0385,30.1248],["Светогорск",61.1113,28.8701],["Сланцы",59.1173,28.087],["Сосновый Бор",59.8969,29.0766],["Сясьстрой",60.1397,32.5638],["Тельмана",59.7265,30.6121],["Тихвин",59.6443,33.5419],["Тосно",59.5413,30.8774]],"kaluga":[["Боровск",55.2073,36.4827],["Калуга",54.5101,36.2598],["Малоярославец",55.0122,36.459],["Обнинск",55.0952,36.6119],["Балабаново",55.1784,36.6576],["Белоусово",55.0897,36.6613],["Ермолино",55.196,36.596],["Жиздра",53.7485,34.7354],["Жуков",55.0338,36.7489],["Киров",54.0743,34.3026],["Козельск",54.0356,35.7926],["Кондрово",54.8069,35.9301],["Кремёнки",54.8865,37.1172],["Людиново",53.8646,34.4479],["Медынь",54.969,35.857],["Мещовск",54.3207,35.2796],["Мосальск",54.4873,34.979],["Сосенский",54.0592,35.9665],["Спас-Деменск",54.4106,34.0268],["Сухиничи",54.1013,35.3394],["Таруса",54.7294,37.1816],["Юхнов",54.7416,35.2264]],"tver":[["Калязин",57.2412,37.8296],["Тверь",56.8587,35.9208],["Торжок",57.0413,34.96],["Андреаполь",56.6468,32.2653],["Бежецк",57.7814,36.6925],["Белый",55.8331,32.9395],["Бологое",57.8852,34.0496],["Весьегонск",58.6637,37.2626],["Вышний Волочёк",57.5844,34.5598],["Западная Двина",56.2588,32.0707],["Зубцов",56.1701,34.5852],["Кашин",57.3618,37.6115],["Кимры",56.8734,37.3557],["Конаково",56.7126,36.779],["Красный Холм",58.0565,37.1147],["Кувшиново",57.0315,34.1797],["Лихославль",57.1244,35.4665],["Нелидово",56.2261,32.7711],["Осташков",57.1558,33.1013],["Ржев",56.2565,34.3286],["Старица",56.5081,34.9315],["Торопец",56.4965,31.6411],["Удомля",57.8833,35.0167]],"yaroslavl":[["Мышкин",57.7847,38.4516],["Пошехонье",58.5032,39.1197],["Рыбинск",58.049,38.8559],["Тутаев",57.87,39.5308],["Переславль-Залесский",56.7381,38.8562],["Углич",57.5333,38.3333],["Ярославль",57.6167,39.85],["Гаврилов-Ям",57.3,39.85],["Любим",58.35,40.7],["Ростов",57.1833,39.4167],["Данилов",58.1833,40.1833]],"vladimir":[["Владимир",56.1289,40.4075],["Суздаль",56.4194,40.4488],["Александров",56.3976,38.7273],["Вязники",56.2469,42.1586],["Гороховец",56.2066,42.679],["Гусь-Хрустальный",55.615,40.6709],["Камешково",56.3463,40.9971],["Меленки",55.3368,41.6314],["Муром",55.5793,42.0528],["Петушки",55.931,39.4599],["Покров",55.9196,39.1773],["Радужный",55.994,40.3294],["Собинка",55.9904,40.0151],["Струнино",56.374,38.586],["Судогда",55.9516,40.8587],["Юрьев-Польский",56.4972,39.6786],["Ковров",56.3606,41.3197],["Карабаново",56.3089,38.7014]],"smolensk":[["Рудня",54.9471,31.0906],["Починок",54.4048,32.4408],["Рославль",53.9484,32.8607],["Сафоново",55.1084,33.2377],["Смоленск",54.7814,32.0461],["Сычёвка",55.827,34.277],["Ярцево",55.0662,32.6884],["Велиж",55.6,31.2],["Гагарин",55.55,35],["Духовщина",55.2,32.4167],["Вязьма",55.2103,34.285]],"voronezh":[["Воронеж",51.6606,39.2006],["Бобров",51.0968,40.0308],["Богучар",49.9324,40.5545],["Борисоглебск",51.368,42.0752],["Острогожск",50.8667,39.0667],["Калач",50.4258,41.0156],["Павловск",50.4586,40.0933],["Эртиль",51.8333,40.8],["Россошь",50.2,39.5833]],"tula":[["Тула",54.2,37.6167],["Алексин",54.5,37.0667],["Болохово",54.0833,37.8167],["Донской",53.9667,38.3167],["Киреевск",53.9333,37.9333],["Новомосковск",54.0333,38.2667],["Суворов",54.1167,36.5],["Ясногорск",54.4794,37.6934],["Советск",53.9333,37.6333],["Ефремов",53.1492,38.0826],["Чекалин",54.1,36.25]],"karelia":[["Беломорск",64.5167,34.7667],["Кондопога",62.2,34.2667],["Олонец",60.9833,32.9667],["Петрозаводск",61.7961,34.3492],["Кемь",64.95,34.6],["Лахденпохья",61.5167,30.2],["Суоярви",62.0833,32.3667],["Сортавала",61.7,30.6667]],"novosibirsk":[["Новосибирск",55.0167,82.9167],["Барабинск",55.35,78.35],["Бердск",54.75,83.1],["Болотное",55.6667,84.4],["Искитим",54.6333,83.3],["Карасук",53.7333,78.0333],["Куйбышев",55.4503,78.3075],["Купино",54.3667,77.3],["Чулым",55.1,80.9667],["Каргат",55.2,80.2833],["Обь",54.9917,82.7125]],"irkutsk":[["Ангарск",52.5667,103.9167],["Иркутск",52.2833,104.3],["Усолье-Сибирское",52.75,103.65],["Алзамай",55.55,98.6667],["Байкальск",51.5172,104.1561],["Черемхово",53.15,103.0667],["Зима",53.9167,102.05],["Слюдянка",51.6667,103.7],["Шелехов",52.2,104.1],["Бодайбо",57.85,114.2],["Братск",56.152,101.633],["Свирск",53.0833,103.3333]],"krasnoyarsk":[["Красноярск",56.0121,92.8713],["Ачинск",56.2667,90.5],["Дивногорск",55.95,92.3833],["Дудинка",69.4,86.1833],["Норильск",69.3333,88.2167],["Артёмовск",54.35,93.4333],["Бородино",55.9,94.9],["Железногорск",56.25,93.5333],["Зеленогорск",56.1,94.5833],["Назарово",56.0064,90.3914],["Сосновоборск",56.1333,93.3667],["Боготол",56.2,89.5167]],"buryatia":[["Гусиноозёрск",51.2856,106.5292],["Улан-Удэ",51.8333,107.6167],["Бабушкин",51.7167,105.8667]],"krasnodar":[["Краснодар",45.0333,38.9833],["Новороссийск",44.7167,37.7667],["Абинск",44.8667,38.1667],["Анапа",44.8939,37.3175],["Апшеронск",44.4608,39.7406],["Армавир",44.9946,41.1295],["Кропоткин",45.4333,40.5667],["Темрюк",45.2667,37.3833],["Белореченск",44.7667,39.8667],["Сочи",43.5853,39.7203],["Усть-Лабинск",45.2153,39.6894]],"adygea":[["Адыгейск",44.8845,39.192],["Майкоп",44.611,40.111]],"rostov":[["Ростов-на-Дону",47.2406,39.7106],["Азов",47.1,39.4167],["Волгодонск",47.54,42.2072],["Донецк",48.0089,37.8],["Новочеркасск",47.4358,40.0986],["Таганрог",47.2392,38.8833],["Цимлянск",47.6467,42.0947],["Шахты",47.7122,40.2084],["Аксай",47.2667,39.8667],["Зверево",48.0167,40.1167],["Пролетарск",46.7031,41.7192],["Гуково",48.05,39.9333],["Батайск",47.1333,39.75]],"dagestan":[["Махачкала",42.9833,47.5],["Буйнакск",42.8167,47.1167],["Дербент",42.0698,48.295],["Каспийск",42.8833,47.6333],["Кизилюрт",43.2,46.8667],["Хасавюрт",43.2499,46.5832]],"chechnya":[["Грозный",43.3167,45.7],["Урус-Мартан",43.1291,45.5417],["Шали",43.145,45.9038],["Шелковская",43.5076,46.3369],["Серноводское",43.3149,45.1602],["Аргун",43.2921,45.8766],["Гудермес",43.3486,46.0961]],"ingushetia":[["Магас",43.1667,44.8167],["Назрань",43.2167,44.7667],["Малгобек",43.5089,44.5856],["Карабулак",43.3063,44.9098],["Сунжа",43.3135,45.0516]],"north_ossetia":[["Беслан",43.1889,44.5217],["Алагир",43.0417,44.2106],["Дигора",43.1589,44.1573],["Моздок",43.7366,44.6528],["Ардон",43.1728,44.2922],["Владикавказ",43.0167,44.6833]]};
+
+  // Region SVG outlines
+  const SVGS = {"moscow":{"vb":"0 0 1000.00 1335.67","p":"M207.76,1335.67 L186.19,1306.92 L182.21,1273.10 L154.46,1277.70 L124.20,1220.24 L126.28,1189.71 L115.21,1184.95 L128.33,1149.33 L191.47,1121.70 L155.21,1100.50 L157.46,1072.21 L121.64,1051.27 L114.26,1033.21 L45.48,973.83 L38.79,955.98 L50.48,942.37 L0.00,881.90 L1.21,844.41 L10.40,843.70 L11.12,779.30 L99.95,783.12 L100.19,768.53 L117.29,771.52 L113.33,797.84 L149.91,801.46 L146.30,859.68 L163.97,855.33 L185.63,875.37 L186.35,857.66 L200.73,846.61 L221.17,848.74 L245.79,881.30 L264.25,870.41 L269.60,886.12 L290.90,878.49 L251.05,848.04 L249.29,836.97 L289.19,832.40 L277.00,796.22 L286.71,772.04 L271.00,772.04 L268.66,746.42 L276.87,716.08 L244.13,654.70 L269.13,631.48 L275.55,641.69 L294.60,625.80 L316.85,632.17 L328.41,611.50 L364.29,609.57 L375.85,573.66 L402.23,561.83 L431.65,569.68 L446.44,562.72 L443.54,542.37 L525.93,541.64 L516.12,532.10 L527.67,517.31 L501.20,471.16 L485.99,418.23 L487.41,354.09 L464.99,383.86 L454.51,378.80 L468.62,341.65 L490.74,347.75 L507.43,290.77 L480.15,302.66 L455.12,267.34 L462.86,244.66 L493.41,232.32 L492.20,253.33 L507.87,253.23 L522.24,228.26 L489.21,212.02 L483.24,162.77 L493.61,152.12 L475.26,138.68 L464.31,147.45 L453.67,132.73 L473.23,125.08 L456.85,102.77 L488.58,98.90 L507.52,110.28 L524.60,101.34 L519.88,147.53 L504.04,178.38 L520.75,213.54 L586.46,201.83 L630.48,172.66 L615.27,120.74 L635.62,117.50 L630.69,103.85 L652.84,106.20 L646.60,169.68 L772.94,194.21 L882.04,291.85 L888.30,301.98 L892.84,417.09 L927.09,413.13 L933.57,424.88 L911.37,435.35 L921.82,457.04 L962.34,440.65 L1000.00,463.41 L980.40,492.34 L993.80,499.08 L996.52,528.13 L959.67,524.35 L953.50,513.45 L966.62,495.50 L946.76,477.47 L930.90,480.17 L904.92,525.05 L884.08,513.87 L891.38,555.63 L816.55,637.62 L757.06,679.47 L684.70,677.47 L665.97,759.06 L691.38,777.04 L694.18,807.75 L654.79,811.12 L650.80,832.44 L636.98,833.56 L637.98,853.21 L626.68,862.37 L631.43,886.86 L600.78,886.19 L585.27,855.81 L562.46,844.52 L551.49,819.50 L522.32,848.32 L507.99,839.09 L490.43,874.79 L513.50,876.35 L501.78,891.30 L536.16,894.01 L544.74,920.57 L570.22,923.53 L573.80,958.46 L566.50,992.90 L559.60,974.25 L536.12,997.98 L549.89,1015.98 L530.63,1018.64 L518.62,1041.01 L537.62,1073.21 L521.20,1081.97 L498.97,1071.28 L526.28,1110.70 L517.22,1171.00 L427.50,1210.58 L432.77,1186.88 L402.34,1158.46 L400.66,1185.97 L379.97,1188.18 L357.21,1167.15 L335.68,1194.95 L309.41,1199.86 L315.01,1302.03 L290.02,1301.97 L291.14,1315.20 L207.76,1335.67 Z M895.13,315.54 L918.26,301.96 L928.46,310.83 L912.67,329.75 L895.13,315.54 Z M282.14,7.26 L308.01,12.16 L331.42,0.00 L392.90,42.67 L393.37,80.77 L376.98,63.74 L357.13,62.09 L345.87,88.15 L356.10,111.22 L295.03,87.38 L293.12,48.48 L298.95,32.94 L282.14,7.26 Z","b":{"lat_min":55.142201,"lat_max":56.021224,"lng_min":36.803101,"lng_max":37.967428}},"moscow_oblast":{"vb":"0 0 1000.00 945.81","p":"M0.00,350.42 L5.55,336.70 L18.06,324.63 L17.85,319.26 L23.39,321.87 L37.67,302.56 L27.44,299.35 L26.90,291.79 L31.73,289.88 L28.36,286.38 L30.93,281.47 L42.44,272.93 L39.64,271.15 L42.59,266.59 L33.96,262.29 L33.08,255.73 L48.33,253.24 L51.27,248.74 L58.04,251.81 L69.96,244.71 L64.55,238.64 L67.79,235.09 L63.14,227.76 L65.67,220.96 L62.72,219.80 L65.74,214.36 L63.68,209.09 L66.04,204.79 L70.58,206.87 L73.52,197.12 L54.03,202.06 L55.69,188.08 L60.96,184.31 L54.65,180.31 L56.51,174.98 L73.16,184.90 L89.22,168.29 L93.28,168.54 L95.26,176.34 L100.86,174.49 L106.30,179.68 L105.36,185.31 L114.78,190.68 L116.03,199.12 L129.04,193.28 L136.59,196.50 L137.44,202.23 L141.19,200.19 L142.99,205.28 L178.25,204.88 L182.91,208.41 L181.17,218.04 L185.91,218.04 L186.58,207.00 L193.41,195.69 L222.55,189.37 L228.81,180.99 L252.54,169.73 L275.63,169.67 L275.25,161.66 L284.96,160.57 L289.96,154.22 L303.18,161.19 L297.47,152.38 L329.15,132.82 L327.16,126.39 L360.36,137.92 L360.02,143.96 L377.10,151.32 L380.32,144.63 L385.56,146.32 L395.39,129.82 L391.09,124.94 L392.61,119.01 L388.93,111.19 L397.35,107.37 L397.70,104.03 L391.76,101.65 L400.57,91.75 L379.33,71.03 L399.19,62.64 L406.77,66.09 L408.64,61.29 L414.14,60.59 L411.32,69.86 L415.39,74.61 L421.67,64.09 L433.90,68.17 L435.49,62.72 L453.70,56.70 L457.69,63.54 L475.27,41.65 L474.04,32.29 L477.77,34.96 L479.80,29.87 L469.87,23.10 L471.30,17.16 L481.83,15.32 L482.99,10.06 L493.75,8.20 L494.52,4.36 L500.31,6.42 L504.20,0.00 L516.04,2.98 L513.87,8.07 L516.97,11.50 L521.39,10.09 L524.00,17.40 L535.64,18.34 L541.65,28.15 L552.58,24.71 L560.69,32.60 L562.41,66.93 L574.05,66.74 L573.76,71.86 L589.35,65.97 L606.87,65.33 L611.61,69.26 L613.43,67.61 L612.16,57.78 L624.03,69.50 L623.80,76.84 L627.04,82.85 L623.46,91.11 L626.70,110.70 L630.93,114.47 L629.30,124.17 L634.53,126.59 L634.79,134.86 L617.99,149.38 L622.22,156.49 L630.25,154.33 L630.27,158.58 L622.86,162.27 L631.68,167.14 L633.91,177.03 L636.07,173.26 L641.83,174.60 L643.19,180.95 L639.49,195.43 L652.10,200.24 L647.38,209.40 L645.80,223.04 L650.58,226.08 L650.03,233.24 L642.35,236.41 L645.77,253.07 L654.70,264.61 L668.21,260.78 L663.12,271.57 L666.88,271.78 L664.67,278.96 L667.20,285.94 L664.76,288.92 L669.28,295.43 L668.51,303.71 L671.81,312.81 L679.81,316.80 L680.44,326.66 L683.72,330.55 L677.75,336.01 L684.70,343.63 L700.69,339.42 L708.48,342.59 L729.63,365.37 L738.86,354.73 L753.13,359.71 L765.59,352.90 L771.30,355.53 L767.20,358.24 L764.90,355.11 L764.29,360.57 L770.01,363.05 L772.88,355.81 L774.11,359.60 L767.30,367.65 L771.33,369.63 L776.44,381.49 L773.29,385.48 L782.04,384.58 L781.54,389.20 L791.26,386.34 L794.74,391.54 L816.33,391.05 L826.28,382.85 L826.28,388.75 L819.87,394.27 L825.08,404.57 L826.02,415.00 L848.06,412.29 L845.36,414.85 L854.54,414.81 L854.58,424.11 L864.64,424.73 L865.10,410.02 L879.24,409.59 L879.20,406.20 L900.68,409.96 L899.37,400.63 L906.17,396.85 L906.35,390.73 L937.40,393.94 L941.38,404.53 L938.92,411.51 L940.29,414.77 L936.88,419.22 L940.16,425.90 L962.18,445.15 L969.92,456.20 L967.52,463.21 L977.75,472.88 L974.13,483.54 L968.59,481.91 L968.99,501.30 L992.51,501.26 L993.18,508.41 L998.97,511.48 L997.69,523.91 L987.27,527.83 L987.52,539.25 L994.69,547.69 L999.30,563.59 L994.70,568.40 L1000.00,575.07 L994.82,576.37 L989.91,593.06 L966.08,602.34 L960.26,607.17 L958.12,615.63 L956.85,610.94 L944.00,610.24 L927.27,614.01 L916.80,623.02 L901.12,644.51 L914.86,644.88 L919.59,637.44 L932.15,646.70 L920.62,683.79 L918.94,674.93 L914.59,673.30 L913.84,684.22 L885.25,676.83 L880.80,689.81 L863.92,691.26 L864.53,696.20 L853.65,709.61 L857.79,720.12 L852.82,719.93 L853.78,723.28 L840.41,732.43 L838.81,736.74 L843.69,741.65 L825.25,771.83 L834.93,774.05 L826.34,781.70 L810.16,779.48 L807.48,784.12 L807.55,796.19 L812.27,798.49 L812.31,804.81 L806.29,813.14 L797.63,812.32 L793.78,804.34 L791.35,810.56 L786.77,809.56 L787.68,813.51 L783.58,814.14 L781.35,809.52 L777.82,813.57 L766.26,811.24 L760.18,815.80 L756.01,825.30 L752.20,822.15 L751.01,813.65 L734.82,820.33 L731.74,816.67 L727.33,823.39 L729.33,830.28 L726.59,833.18 L728.83,836.28 L721.45,842.65 L723.58,847.26 L732.17,846.47 L729.60,851.60 L725.03,850.86 L717.99,867.92 L721.95,871.13 L722.23,876.95 L732.63,875.47 L737.93,881.20 L747.88,881.90 L749.85,892.85 L735.87,898.42 L737.30,905.74 L733.49,906.11 L732.84,900.24 L729.26,898.06 L725.91,904.53 L716.89,904.62 L717.72,908.40 L704.84,913.67 L703.11,934.34 L706.21,936.07 L702.98,944.21 L695.54,945.81 L690.24,943.10 L688.86,937.48 L664.80,931.76 L666.61,923.36 L663.57,914.19 L668.08,897.31 L659.65,896.44 L653.56,890.02 L656.95,887.68 L652.95,881.67 L640.24,872.33 L642.72,858.09 L638.44,851.25 L650.54,841.95 L654.42,843.43 L652.07,835.25 L666.00,828.62 L654.15,806.88 L641.36,813.19 L635.63,806.85 L625.79,809.11 L626.07,804.08 L621.44,798.50 L614.47,803.67 L607.04,798.40 L606.61,791.81 L590.44,795.31 L587.49,785.72 L578.26,788.06 L569.34,784.16 L569.98,777.98 L572.71,778.64 L571.69,767.99 L563.60,761.24 L554.98,761.90 L560.33,756.06 L561.84,746.86 L551.68,738.24 L514.05,744.29 L520.18,750.16 L519.49,765.64 L517.15,765.55 L516.08,775.58 L509.92,781.93 L501.14,784.52 L489.93,775.47 L474.47,777.47 L476.11,769.60 L473.84,762.48 L464.41,758.05 L465.77,753.05 L454.36,741.07 L437.13,738.81 L436.92,743.52 L426.15,737.84 L424.37,746.30 L419.68,744.89 L417.80,737.84 L412.73,739.77 L398.80,732.32 L400.90,728.13 L399.17,722.33 L404.28,712.48 L397.85,702.96 L400.07,696.76 L392.67,688.62 L395.75,685.56 L385.07,674.27 L382.68,665.81 L389.48,663.39 L389.11,651.28 L377.43,647.26 L377.95,641.09 L375.01,635.83 L399.70,628.08 L398.42,604.54 L409.42,597.01 L419.42,601.34 L419.81,595.01 L426.82,601.55 L425.60,607.01 L446.26,597.89 L448.35,584.00 L442.06,574.92 L450.96,575.36 L446.58,567.95 L453.78,562.18 L450.61,558.03 L456.02,552.56 L457.61,556.86 L459.29,548.93 L458.46,540.88 L440.09,529.65 L444.14,521.43 L447.43,523.55 L454.15,516.91 L465.50,532.28 L472.55,532.43 L473.83,520.15 L477.01,519.89 L477.93,514.98 L487.00,514.21 L486.36,507.13 L480.51,502.99 L484.82,484.19 L501.48,484.65 L515.17,475.01 L532.40,456.12 L530.72,446.50 L535.52,449.08 L541.50,438.74 L549.73,442.27 L546.71,446.40 L548.13,448.92 L556.61,449.79 L555.98,443.09 L552.90,441.54 L557.41,434.88 L548.74,429.63 L539.41,433.41 L537.01,428.41 L542.12,426.00 L540.63,423.29 L532.74,424.20 L531.69,397.68 L505.13,372.86 L476.05,367.21 L477.48,352.58 L472.38,352.04 L473.52,355.18 L468.83,355.93 L472.34,367.89 L447.07,377.31 L443.23,369.21 L447.96,351.46 L432.36,351.79 L436.13,356.93 L431.63,358.69 L434.08,362.08 L440.82,363.16 L438.44,365.61 L439.81,376.96 L447.41,380.70 L444.11,386.45 L440.50,386.48 L440.78,381.64 L433.74,384.48 L431.96,389.70 L437.73,397.84 L444.01,395.10 L440.16,408.23 L435.07,406.82 L431.82,415.38 L439.40,409.69 L439.07,424.47 L448.67,447.29 L446.01,450.70 L448.26,452.90 L429.29,453.07 L429.96,457.76 L426.56,459.36 L413.71,460.28 L411.05,468.55 L389.14,473.60 L383.39,478.95 L390.92,493.09 L389.57,505.98 L393.19,505.98 L390.95,511.55 L393.76,519.89 L384.98,523.49 L394.15,530.50 L383.77,531.15 L378.10,523.65 L373.39,523.16 L369.92,529.79 L360.86,526.17 L361.69,512.76 L353.27,511.92 L354.18,505.86 L329.74,507.65 L327.18,531.29 L338.80,545.22 L336.11,548.36 L337.65,552.47 L363.43,575.13 L362.91,581.65 L371.26,586.53 L356.72,592.90 L353.70,601.11 L337.61,606.03 L340.82,610.32 L329.26,617.68 L325.40,606.15 L326.56,600.73 L319.30,591.15 L306.14,593.97 L298.75,588.47 L291.24,592.71 L287.13,586.58 L289.59,582.58 L288.55,576.68 L292.14,577.05 L287.99,569.01 L290.45,563.54 L287.18,562.64 L274.56,572.17 L274.20,578.11 L270.49,581.89 L267.71,578.94 L254.49,583.77 L250.90,579.20 L244.37,582.70 L245.46,587.21 L241.33,588.57 L244.22,595.16 L236.17,596.82 L233.24,610.03 L226.80,618.80 L230.36,620.59 L220.73,625.58 L217.66,618.83 L206.49,617.91 L196.03,624.67 L191.18,620.95 L188.89,611.80 L178.00,610.25 L176.02,605.90 L172.73,610.57 L160.19,601.10 L154.58,604.37 L146.35,598.83 L137.30,604.29 L131.68,599.49 L133.66,592.89 L127.52,594.21 L117.19,582.14 L112.70,587.78 L110.39,583.78 L101.83,588.17 L83.96,584.00 L81.50,589.04 L84.70,591.43 L81.50,597.95 L76.43,595.16 L68.90,598.08 L71.13,601.53 L58.88,605.44 L41.15,598.35 L36.76,587.94 L28.76,583.71 L29.83,578.97 L21.78,570.13 L28.17,562.44 L27.23,549.43 L30.01,548.54 L29.52,541.23 L35.79,535.26 L30.62,533.37 L31.81,525.46 L27.78,520.26 L34.85,517.51 L32.64,505.46 L38.79,500.92 L28.83,491.32 L30.08,482.07 L44.22,484.03 L42.74,479.82 L47.98,473.51 L46.30,464.83 L34.56,452.47 L37.39,440.36 L33.22,437.71 L30.81,428.57 L38.38,426.03 L35.31,420.14 L36.05,408.16 L26.63,405.62 L27.64,399.62 L14.82,377.48 L14.27,367.74 L10.04,374.36 L8.17,368.05 L11.07,363.74 L0.00,350.42 Z","b":{"lat_min":54.256714,"lat_max":56.958512,"lng_min":35.148495,"lng_max":40.205688}},"spb":{"vb":"0 0 1000.00 915.89","p":"M164.07,470.60 L180.90,460.25 L193.88,379.00 L202.43,363.92 L182.03,328.64 L153.89,317.73 L232.40,333.38 L246.75,319.25 L251.08,352.71 L289.37,380.64 L267.20,409.84 L253.24,411.86 L262.31,401.97 L236.96,396.78 L241.87,383.16 L204.18,382.59 L183.26,459.10 L191.22,466.37 L263.39,469.43 L263.98,483.71 L283.72,501.08 L379.02,537.65 L393.70,534.23 L453.34,573.04 L530.75,572.50 L553.45,550.05 L545.47,527.70 L573.33,532.50 L588.71,513.63 L594.54,471.47 L572.43,465.90 L573.11,434.92 L589.39,425.71 L586.17,396.02 L459.80,368.58 L439.78,376.20 L401.58,350.72 L391.81,311.54 L351.88,324.98 L330.11,320.17 L401.63,303.11 L399.48,272.68 L378.67,260.11 L384.51,250.36 L368.68,231.42 L388.79,202.02 L371.03,145.00 L219.91,84.83 L107.81,69.01 L20.77,109.68 L6.85,99.68 L29.70,92.07 L0.00,79.96 L45.61,26.68 L68.82,14.16 L68.89,25.55 L112.66,34.43 L161.36,0.77 L196.77,7.71 L218.57,25.23 L213.64,1.99 L247.29,0.00 L268.13,31.02 L280.28,32.23 L315.93,68.30 L435.28,116.71 L446.97,149.92 L574.66,175.72 L572.58,188.52 L605.00,192.96 L624.87,175.90 L637.38,211.31 L657.87,228.02 L708.43,232.12 L725.54,281.92 L782.55,314.82 L782.15,331.00 L798.47,331.28 L799.15,352.98 L816.41,390.06 L832.52,376.47 L839.87,400.73 L815.63,413.89 L802.90,528.28 L822.43,573.33 L801.58,580.38 L801.39,595.06 L837.23,615.35 L850.11,610.82 L854.00,627.94 L900.88,672.75 L984.31,697.28 L977.41,710.35 L1000.00,750.48 L959.35,748.18 L944.22,778.81 L918.45,783.47 L905.14,762.36 L863.98,771.17 L854.95,808.77 L829.47,805.27 L821.83,829.91 L797.27,833.71 L789.11,845.32 L807.79,861.04 L810.54,897.48 L781.81,907.70 L759.04,872.00 L735.80,892.32 L660.56,873.30 L621.13,915.89 L612.65,908.60 L626.68,893.52 L609.42,873.77 L617.66,859.88 L594.04,856.80 L656.20,745.01 L618.43,717.62 L648.01,680.31 L588.61,669.58 L564.85,680.04 L552.38,671.25 L536.37,724.28 L518.52,723.37 L510.26,779.37 L530.39,824.17 L505.64,817.49 L490.51,793.17 L460.47,786.76 L487.81,744.79 L508.80,661.45 L525.83,651.90 L509.75,640.74 L469.58,641.52 L458.73,633.21 L462.98,609.75 L387.47,623.63 L388.52,598.50 L348.78,584.87 L343.92,601.58 L333.19,581.33 L295.04,563.23 L278.09,578.17 L257.34,557.25 L222.04,558.93 L214.84,531.59 L220.22,513.21 L170.83,492.09 L164.07,470.60 Z","b":{"lat_min":59.633783,"lat_max":60.242701,"lng_min":29.42981,"lng_max":30.757012}},"leningrad_oblast":{"vb":"0 0 1000.00 658.37","p":"M0.00,342.56 L3.35,345.08 L0.00,342.56 Z M35.72,337.03 L31.39,335.47 L33.86,331.14 L37.73,335.89 L35.72,337.03 Z M109.25,302.40 L102.02,302.26 L103.84,298.92 L102.28,295.83 L106.03,292.86 L113.95,300.03 L113.05,304.83 L109.25,302.40 Z M169.81,296.02 L169.66,300.76 L160.02,296.05 L166.44,291.94 L169.81,296.02 Z M10.08,297.66 L14.89,292.97 L10.08,297.66 Z M124.72,294.63 L132.12,297.05 L124.72,294.63 Z M273.73,0.00 L287.20,16.50 L301.60,20.07 L305.20,34.25 L396.33,47.35 L683.88,147.04 L684.72,139.99 L711.38,133.56 L713.13,122.97 L723.54,120.99 L713.86,115.10 L721.79,103.28 L746.47,90.94 L746.45,85.55 L741.37,78.37 L744.48,73.81 L755.09,73.57 L755.44,78.15 L762.53,83.93 L782.70,88.81 L797.92,57.87 L793.57,51.56 L777.39,45.11 L765.76,59.63 L755.38,56.75 L744.67,39.91 L756.06,26.55 L769.38,26.06 L769.32,21.93 L833.91,19.25 L845.02,24.62 L857.39,41.69 L862.81,29.18 L859.69,27.44 L861.44,21.27 L869.07,12.30 L881.87,12.46 L894.60,3.75 L897.34,8.97 L926.42,14.89 L930.31,20.80 L940.00,20.94 L943.26,15.64 L954.54,17.43 L965.38,10.60 L960.53,34.39 L966.41,34.77 L965.43,42.52 L1000.00,27.60 L999.86,73.77 L980.49,92.52 L973.16,106.94 L950.43,109.32 L940.65,126.60 L947.69,135.37 L944.42,142.90 L950.07,144.85 L951.67,162.80 L954.65,164.78 L950.34,219.64 L951.89,224.81 L947.75,234.97 L939.18,242.98 L941.73,245.36 L938.37,266.55 L944.26,275.09 L945.02,284.19 L936.63,291.24 L937.24,296.24 L971.42,306.01 L971.51,319.78 L963.32,333.11 L966.99,364.46 L990.61,366.05 L989.51,388.24 L976.91,379.75 L976.80,406.06 L967.23,407.34 L978.95,413.35 L956.65,409.55 L956.87,417.20 L963.09,420.31 L966.96,427.41 L965.06,430.20 L970.77,431.00 L969.12,434.77 L970.97,435.79 L956.23,443.17 L954.74,450.14 L965.73,455.44 L942.09,462.58 L940.94,468.97 L924.97,469.65 L917.96,476.59 L905.17,478.52 L901.91,498.52 L889.16,508.12 L881.89,499.83 L870.36,500.62 L858.32,491.10 L855.16,494.58 L845.88,481.12 L839.37,487.00 L831.53,480.87 L831.13,486.87 L819.10,488.81 L820.31,495.21 L815.80,495.52 L801.04,484.93 L799.42,474.21 L796.61,480.40 L784.37,481.90 L783.38,478.39 L786.58,474.25 L781.35,463.26 L764.14,453.12 L765.08,440.74 L733.05,440.12 L732.41,455.99 L723.24,454.68 L720.13,445.28 L711.09,440.43 L701.02,441.42 L699.93,432.59 L689.61,432.20 L690.13,438.54 L684.53,448.41 L676.07,448.41 L663.06,465.88 L667.35,477.83 L662.32,493.72 L649.78,502.41 L643.94,501.08 L645.26,496.59 L630.65,502.89 L624.06,495.09 L633.86,492.86 L611.73,481.57 L615.73,472.71 L611.56,468.73 L613.56,464.22 L602.53,461.76 L609.40,451.90 L606.66,449.60 L608.68,453.55 L602.90,458.59 L600.79,457.00 L605.07,450.73 L601.12,455.07 L593.25,440.74 L576.54,435.61 L578.29,429.23 L571.60,434.18 L569.17,442.18 L557.58,447.06 L555.61,450.48 L557.19,456.47 L550.33,455.97 L548.73,454.54 L552.60,451.78 L546.96,451.31 L544.26,445.70 L528.98,443.78 L527.71,455.84 L529.71,460.95 L527.26,463.71 L532.18,474.85 L526.84,482.19 L524.18,479.37 L519.55,489.93 L521.73,489.53 L518.81,499.18 L520.41,504.26 L506.76,514.56 L507.79,521.37 L491.46,526.18 L480.93,507.12 L475.41,506.80 L462.94,517.41 L462.15,523.53 L466.59,527.27 L461.00,533.41 L457.40,545.10 L439.19,559.82 L430.16,559.32 L429.73,565.02 L435.34,569.46 L433.69,587.01 L430.13,592.14 L428.06,586.97 L419.18,594.24 L416.43,589.24 L398.77,594.60 L391.08,581.55 L385.36,586.98 L377.08,581.50 L366.41,584.99 L366.29,590.50 L363.18,590.75 L368.10,596.78 L359.98,602.52 L365.25,608.51 L360.85,611.47 L372.05,633.64 L363.93,637.25 L367.69,642.34 L359.66,646.41 L360.51,652.44 L347.30,655.04 L346.27,649.97 L336.34,653.43 L337.31,657.00 L323.89,657.81 L319.42,649.75 L315.52,653.49 L306.82,649.99 L300.30,642.11 L304.82,632.93 L297.02,631.16 L287.05,620.08 L283.72,628.19 L276.18,626.90 L275.20,623.77 L281.40,625.00 L280.75,621.58 L284.76,619.71 L274.54,614.78 L269.00,619.10 L265.21,610.51 L272.11,606.87 L268.20,602.10 L270.60,595.02 L243.06,589.52 L247.34,587.02 L245.32,586.24 L242.81,565.19 L228.71,571.93 L200.25,557.70 L174.94,554.26 L172.09,560.13 L167.79,554.85 L162.24,561.03 L164.53,566.96 L160.72,563.43 L158.79,566.68 L152.59,554.54 L155.60,553.28 L154.66,550.29 L150.98,550.96 L141.98,535.58 L145.12,533.82 L139.12,533.03 L136.32,527.12 L129.19,530.26 L124.29,523.82 L116.03,522.54 L95.55,532.34 L103.61,497.96 L112.58,485.71 L113.98,473.94 L120.14,466.12 L140.25,461.46 L149.21,443.49 L147.07,436.63 L130.58,421.72 L136.08,392.73 L124.91,370.36 L129.62,362.14 L128.73,357.11 L136.47,346.26 L133.91,343.79 L135.61,342.77 L147.35,352.53 L150.46,371.77 L170.48,376.28 L174.77,368.57 L175.55,347.36 L178.91,340.07 L187.24,335.07 L206.88,351.70 L213.91,350.16 L215.24,345.34 L220.83,350.25 L225.36,344.04 L234.96,343.52 L245.96,331.50 L245.99,325.58 L237.71,320.51 L243.61,319.43 L245.45,310.56 L262.43,302.53 L301.72,310.43 L321.01,323.24 L321.29,330.12 L346.39,336.08 L346.24,339.86 L357.62,337.77 L358.62,342.55 L367.10,344.12 L357.24,364.41 L364.06,369.04 L367.79,370.05 L364.75,363.30 L371.10,347.03 L385.53,348.39 L381.06,354.01 L386.76,358.13 L377.39,374.96 L380.95,375.42 L381.47,383.85 L387.42,377.44 L410.04,381.08 L406.80,373.23 L416.73,367.73 L418.09,362.07 L438.61,358.95 L436.24,350.95 L408.65,335.56 L411.83,332.29 L408.88,325.51 L410.80,308.29 L414.46,306.31 L413.35,302.66 L410.92,304.71 L408.21,295.86 L397.22,288.43 L394.64,280.93 L383.92,277.80 L382.04,272.47 L355.21,268.56 L353.45,263.56 L335.45,256.28 L325.10,246.00 L304.79,251.18 L298.18,248.13 L287.80,258.03 L292.28,259.85 L288.84,261.00 L289.56,264.53 L255.76,264.75 L240.10,259.63 L238.13,248.67 L221.98,235.46 L217.79,222.94 L215.96,228.75 L210.57,228.54 L191.77,215.44 L190.10,204.45 L173.48,170.88 L182.67,178.44 L190.42,193.42 L202.60,203.19 L206.36,199.54 L201.02,198.01 L205.71,197.98 L201.78,193.90 L204.99,190.85 L200.53,184.16 L199.40,175.05 L195.25,172.00 L189.58,178.72 L186.50,174.79 L187.52,162.27 L183.22,156.32 L170.65,154.42 L178.92,168.10 L171.10,160.75 L163.86,161.64 L162.06,163.00 L164.51,166.06 L158.99,165.55 L159.21,169.49 L150.81,175.82 L151.70,185.34 L142.77,180.11 L144.86,185.04 L133.39,183.46 L134.51,186.84 L130.02,187.55 L126.19,183.17 L126.84,186.78 L119.97,185.52 L111.06,198.43 L99.91,190.70 L99.75,180.17 L145.04,124.67 L150.38,123.71 L184.96,84.25 L199.11,86.29 L206.44,64.51 L218.40,47.01 L234.24,40.26 L257.61,20.79 L273.73,0.00 Z M96.84,194.91 L101.79,196.35 L101.91,200.87 L96.84,194.91 Z M172.63,219.07 L182.19,218.47 L174.32,199.75 L175.05,195.83 L181.89,203.05 L186.13,215.54 L184.89,218.41 L197.90,224.17 L196.11,227.60 L207.19,236.45 L204.24,241.94 L195.68,240.28 L172.63,219.07 Z","b":{"lat_min":58.421187,"lat_max":61.329293,"lng_min":26.896822,"lng_max":35.697879}},"kaluga":{"vb":"0 0 1000.00 929.69","p":"M492.85,35.68 L499.48,41.30 L498.71,45.77 L522.17,54.86 L538.39,49.84 L535.44,45.43 L545.40,41.68 L552.11,45.25 L556.34,36.89 L552.11,33.84 L555.36,27.37 L579.02,32.73 L590.35,27.09 L593.40,32.21 L599.35,24.99 L613.03,40.46 L621.15,38.77 L618.53,47.23 L625.96,53.37 L637.36,50.52 L637.94,46.38 L648.84,53.48 L656.26,49.29 L672.86,61.43 L677.21,55.44 L679.83,61.02 L694.25,63.00 L697.28,74.73 L703.70,79.50 L710.59,71.92 L717.54,70.84 L732.32,72.01 L736.39,80.67 L749.13,74.27 L744.42,71.98 L752.95,60.73 L756.82,43.81 L761.97,45.83 L767.47,41.68 L763.65,33.23 L769.12,31.48 L767.68,25.71 L776.32,21.22 L781.07,27.09 L798.57,20.90 L802.25,24.67 L807.16,19.83 L807.63,12.21 L821.51,6.09 L824.34,0.00 L828.66,1.15 L825.41,8.17 L830.89,18.47 L826.15,17.99 L827.52,25.56 L824.26,30.68 L829.70,38.53 L839.65,33.11 L849.43,40.16 L866.84,36.54 L876.45,48.82 L874.92,55.77 L879.53,62.26 L876.93,65.14 L880.02,70.54 L895.33,61.11 L891.08,55.61 L895.37,53.21 L915.75,50.71 L915.12,59.72 L924.34,76.69 L932.80,75.33 L934.01,85.32 L944.47,100.55 L943.78,108.46 L947.37,106.29 L959.25,113.61 L959.73,129.12 L950.74,132.23 L953.89,143.06 L968.04,157.53 L963.95,161.46 L973.75,171.89 L970.81,179.84 L979.31,192.04 L972.55,204.66 L974.84,212.09 L972.06,217.46 L990.50,227.01 L997.21,224.55 L1000.00,229.49 L988.88,245.06 L992.50,262.80 L990.30,268.47 L980.32,276.25 L983.00,282.17 L992.98,288.62 L983.89,302.64 L979.08,321.43 L967.37,334.32 L966.12,350.81 L960.64,359.05 L949.03,361.70 L943.32,354.48 L944.50,345.59 L921.09,334.90 L908.06,341.83 L901.32,353.45 L913.86,369.36 L913.61,377.56 L896.22,381.15 L897.88,388.58 L890.84,391.46 L900.10,399.67 L896.31,405.72 L900.51,414.39 L913.39,405.82 L913.69,411.08 L921.68,413.61 L917.80,417.98 L924.61,432.10 L910.78,452.38 L920.90,457.43 L919.44,462.81 L922.22,471.83 L920.13,475.41 L898.51,480.99 L887.06,477.50 L876.15,486.44 L874.01,482.28 L849.72,474.34 L847.42,468.77 L842.55,471.54 L845.12,476.47 L836.67,481.59 L834.74,478.12 L820.80,481.09 L811.20,477.86 L809.79,481.81 L798.09,479.35 L798.04,475.88 L790.37,479.47 L795.55,491.01 L793.50,495.59 L783.82,499.17 L785.78,501.71 L779.47,504.82 L781.07,508.89 L769.21,505.82 L765.79,515.33 L755.35,511.19 L749.78,502.12 L748.02,507.54 L730.13,509.44 L731.92,516.14 L728.48,529.29 L720.79,536.31 L712.69,528.51 L705.96,530.64 L704.17,526.93 L676.49,528.43 L663.92,518.50 L662.84,524.23 L659.21,524.83 L659.67,530.93 L672.27,527.46 L689.95,541.32 L686.37,548.97 L695.84,541.98 L704.47,546.06 L697.30,557.52 L694.21,553.12 L685.17,554.37 L685.45,558.05 L694.61,558.61 L700.10,565.33 L713.33,560.20 L713.21,565.89 L721.52,564.76 L722.46,578.24 L707.44,581.91 L700.64,592.14 L699.72,601.28 L692.92,603.14 L691.66,612.28 L698.56,613.37 L700.69,622.06 L708.12,625.89 L704.07,633.01 L684.37,623.63 L679.44,626.05 L681.71,630.33 L662.26,647.21 L662.35,654.62 L667.50,663.17 L660.68,670.79 L642.21,671.34 L641.10,677.66 L657.97,685.11 L657.00,692.71 L660.08,695.90 L645.51,706.28 L649.68,717.17 L656.21,717.59 L655.16,725.97 L657.47,733.74 L674.62,729.12 L675.05,735.48 L681.10,733.87 L685.61,741.08 L686.46,749.00 L667.95,758.91 L664.79,773.94 L656.79,774.44 L655.18,764.58 L647.54,762.22 L647.83,767.99 L643.31,767.48 L634.46,787.40 L620.64,791.26 L620.82,797.54 L613.28,812.69 L613.43,819.48 L607.44,827.92 L603.83,821.47 L588.61,817.07 L584.68,810.21 L565.72,814.89 L568.50,819.88 L557.56,826.17 L558.20,832.10 L551.58,837.18 L548.70,843.83 L550.82,850.81 L544.13,862.59 L536.65,865.50 L538.24,861.01 L543.78,861.91 L547.75,849.95 L543.70,855.73 L518.10,855.89 L527.26,860.69 L526.74,867.33 L516.88,869.09 L513.73,876.54 L505.90,876.55 L505.76,903.54 L485.70,905.09 L470.14,911.59 L472.31,924.84 L467.77,929.14 L442.31,929.69 L427.02,920.78 L424.93,916.27 L427.40,909.19 L413.36,904.85 L410.53,900.05 L411.47,892.33 L400.87,887.29 L378.98,887.42 L368.71,892.45 L368.89,880.17 L361.56,885.55 L352.03,881.94 L310.63,883.07 L310.81,876.17 L302.03,869.27 L302.27,863.49 L293.29,862.60 L292.46,843.86 L286.21,838.70 L285.26,831.94 L279.68,830.21 L279.15,810.86 L274.93,811.26 L273.89,793.33 L277.64,792.51 L273.82,778.64 L267.38,769.59 L274.68,764.15 L271.48,761.18 L273.60,752.53 L259.25,748.65 L252.91,740.68 L254.90,737.12 L250.33,725.38 L240.29,726.44 L235.01,717.99 L236.83,710.40 L224.27,695.40 L220.03,684.33 L214.55,685.94 L203.24,678.30 L202.55,657.40 L196.32,645.67 L155.63,668.12 L144.30,669.24 L146.80,666.53 L142.13,658.28 L120.52,665.83 L114.42,663.66 L114.80,660.42 L101.33,659.64 L92.95,652.75 L91.76,634.27 L100.89,634.16 L98.38,629.21 L90.93,628.83 L90.67,621.71 L94.89,617.26 L95.89,609.54 L78.53,607.09 L69.27,595.50 L46.17,596.66 L44.11,592.86 L38.54,596.26 L36.05,590.65 L31.35,596.96 L19.89,601.76 L18.46,606.82 L14.01,598.82 L15.52,595.68 L5.83,590.43 L13.32,588.80 L10.14,580.19 L3.73,584.24 L0.00,581.27 L0.39,569.21 L8.84,561.91 L11.03,566.76 L23.61,564.09 L29.48,558.44 L19.89,560.17 L22.34,552.26 L31.88,550.67 L28.27,540.23 L30.85,532.58 L29.62,527.43 L46.69,522.27 L46.48,513.04 L41.96,505.93 L45.59,500.00 L40.08,497.50 L39.87,490.11 L46.91,490.65 L44.53,485.79 L52.55,485.73 L61.95,473.76 L57.74,469.36 L62.52,458.48 L50.19,453.50 L42.90,438.47 L31.74,429.66 L45.73,428.02 L48.77,422.01 L46.08,418.07 L54.88,404.95 L65.74,397.24 L61.60,393.10 L47.79,392.31 L54.57,385.11 L51.84,378.43 L63.33,375.52 L63.68,366.72 L67.57,361.37 L83.97,348.89 L89.24,357.13 L105.96,349.66 L108.18,355.17 L114.93,357.35 L121.01,347.72 L130.80,344.99 L134.13,348.39 L140.27,346.14 L151.26,356.85 L160.03,352.08 L165.72,361.24 L179.01,353.05 L183.64,357.73 L188.59,373.74 L201.90,380.04 L207.20,378.27 L209.74,372.37 L260.05,374.47 L257.53,361.68 L265.63,353.92 L263.61,347.02 L271.74,346.72 L271.43,338.01 L279.94,337.67 L279.20,309.71 L269.61,310.78 L265.30,300.18 L249.11,300.87 L249.95,297.27 L257.46,297.19 L259.15,301.29 L274.30,296.09 L283.61,304.76 L285.70,300.66 L294.28,302.92 L297.10,299.59 L306.19,309.55 L327.49,300.07 L328.50,287.03 L350.34,288.81 L356.74,294.70 L361.92,288.21 L361.51,282.43 L370.67,275.85 L371.73,268.03 L377.57,266.39 L380.12,257.20 L386.66,254.64 L380.61,252.93 L376.16,243.22 L377.71,236.98 L373.16,236.00 L371.53,217.37 L374.07,213.55 L371.87,200.95 L380.97,201.70 L384.61,197.76 L380.82,188.98 L383.49,186.80 L390.76,193.61 L393.09,204.61 L403.00,203.44 L399.17,196.08 L405.39,195.63 L410.95,187.43 L407.09,183.32 L416.77,182.05 L413.30,176.55 L419.04,175.38 L418.73,171.14 L438.02,168.26 L437.33,161.21 L433.11,158.28 L438.56,155.42 L431.61,151.85 L436.12,149.99 L435.40,140.71 L441.21,138.24 L444.59,141.43 L449.18,134.26 L454.39,135.40 L453.43,130.99 L460.06,129.54 L472.49,107.61 L477.17,107.60 L481.01,84.09 L478.78,77.01 L495.73,65.23 L491.77,61.67 L495.02,52.74 L486.09,50.31 L483.20,43.87 L489.36,43.60 L492.85,35.68 Z","b":{"lat_min":53.279123,"lat_max":55.35128,"lng_min":33.451051,"lng_max":37.272035}},"tver":{"vb":"0 0 1000.00 790.17","p":"M27.31,463.28 L34.21,458.95 L43.48,472.80 L69.67,466.74 L82.57,478.08 L87.62,474.34 L88.60,467.06 L100.41,468.98 L104.78,461.38 L115.74,455.10 L123.16,457.56 L115.82,449.50 L130.16,428.00 L133.25,431.78 L146.63,423.89 L149.04,425.26 L146.90,432.78 L151.09,436.44 L176.57,410.49 L186.54,412.21 L195.64,406.34 L193.79,393.48 L199.06,392.34 L205.83,400.68 L213.46,399.61 L214.39,392.25 L225.67,385.99 L235.00,376.52 L234.77,372.64 L239.63,377.41 L246.12,373.97 L252.78,355.56 L256.07,356.42 L256.08,349.70 L263.87,348.12 L266.89,341.59 L283.75,346.98 L286.58,341.98 L301.57,350.71 L305.25,341.85 L311.74,342.07 L319.36,344.83 L316.11,350.49 L323.13,355.15 L329.84,352.67 L330.18,342.52 L325.62,339.06 L325.78,322.37 L333.68,321.46 L333.92,313.26 L337.06,313.18 L335.47,297.21 L351.36,284.54 L357.97,289.67 L360.03,284.80 L358.45,281.06 L362.35,277.57 L365.78,282.01 L373.40,277.86 L367.87,268.11 L367.60,261.49 L369.64,261.28 L367.03,251.28 L371.04,249.40 L367.34,247.63 L380.54,242.23 L385.43,234.31 L383.36,220.74 L386.38,218.92 L384.63,215.77 L386.59,213.55 L377.64,209.95 L377.56,201.73 L370.27,205.41 L364.95,196.24 L374.71,186.54 L371.03,184.65 L372.45,181.73 L378.99,184.95 L379.32,179.73 L388.33,169.54 L398.14,169.66 L401.18,177.49 L417.75,171.25 L427.04,158.99 L430.71,166.11 L449.87,159.13 L456.84,165.38 L488.84,173.06 L494.08,183.11 L506.29,182.23 L516.18,193.23 L522.78,189.11 L524.08,176.38 L521.51,173.98 L524.78,169.09 L522.12,165.83 L523.14,161.76 L518.54,162.24 L532.31,151.02 L556.29,156.02 L566.38,163.59 L575.32,159.22 L578.50,152.69 L593.69,144.11 L593.50,133.58 L597.15,121.73 L592.43,117.84 L599.95,111.37 L621.95,110.88 L620.56,106.32 L628.02,101.66 L645.02,98.61 L656.65,104.99 L662.59,100.39 L661.35,105.43 L670.23,109.45 L679.43,104.84 L680.95,108.33 L684.03,107.70 L681.63,100.63 L694.63,98.85 L694.05,95.57 L705.59,87.65 L722.64,87.45 L724.30,83.62 L739.66,93.89 L744.20,83.43 L758.62,85.07 L764.01,71.86 L759.11,70.05 L763.40,63.46 L768.75,64.60 L769.75,57.86 L775.49,59.68 L779.89,39.49 L799.31,34.05 L801.80,29.62 L793.36,15.22 L804.27,6.60 L828.57,6.43 L833.80,0.00 L850.33,11.96 L851.24,28.28 L855.45,30.34 L855.37,36.33 L860.97,44.46 L864.75,40.86 L863.14,53.30 L872.71,53.02 L879.21,68.44 L892.23,75.67 L912.46,100.90 L907.81,99.94 L907.05,108.32 L896.38,109.56 L891.73,118.03 L887.54,112.92 L879.75,115.60 L881.77,118.00 L878.86,123.86 L874.94,122.52 L873.20,128.40 L881.51,136.48 L882.01,143.67 L873.51,145.52 L875.49,149.91 L867.82,153.30 L874.14,153.96 L875.29,161.60 L901.56,171.59 L901.64,177.88 L915.71,190.23 L917.94,187.35 L919.06,192.13 L910.85,195.46 L904.53,192.36 L892.40,201.13 L891.18,207.23 L895.49,214.53 L890.47,214.20 L888.49,216.82 L890.47,218.89 L871.27,213.65 L871.95,223.07 L883.29,233.91 L871.87,234.46 L868.65,241.50 L881.84,243.20 L874.71,250.98 L874.74,255.15 L889.13,257.34 L890.52,264.77 L898.50,268.34 L898.69,275.05 L910.35,283.89 L907.82,293.57 L915.19,294.93 L921.86,303.75 L932.19,302.91 L933.40,310.04 L937.95,314.06 L930.39,333.24 L937.21,340.75 L931.19,348.07 L935.88,348.43 L941.25,359.27 L958.94,373.64 L962.18,369.83 L972.18,374.74 L978.70,369.13 L994.41,366.36 L998.04,371.93 L1000.00,386.84 L998.28,392.31 L976.44,400.97 L978.19,414.07 L983.84,416.93 L984.37,426.45 L988.92,427.21 L990.16,433.32 L983.98,437.99 L990.40,438.14 L990.13,448.91 L986.83,451.40 L988.22,456.08 L986.00,459.66 L977.21,459.52 L974.88,466.00 L982.96,468.78 L980.71,472.15 L982.50,479.76 L971.12,486.11 L970.04,491.32 L976.93,493.64 L972.64,500.32 L987.06,498.85 L988.76,514.48 L955.82,512.85 L954.67,488.85 L949.24,483.33 L941.93,485.74 L937.90,478.88 L925.41,474.10 L923.33,471.70 L924.78,468.15 L916.85,466.06 L894.83,478.06 L893.87,482.21 L900.52,486.94 L896.67,488.63 L897.49,495.18 L885.72,510.48 L883.04,505.70 L869.79,513.71 L861.60,510.86 L857.40,518.21 L854.68,514.90 L856.56,508.42 L833.26,515.71 L847.48,530.19 L841.58,537.11 L845.32,541.11 L839.68,543.79 L844.01,556.81 L831.76,571.84 L820.33,566.69 L820.56,562.47 L798.33,554.41 L799.66,558.90 L778.45,572.58 L782.27,578.73 L773.42,573.87 L763.58,579.06 L763.83,584.66 L748.37,584.70 L728.30,598.43 L708.78,602.85 L704.22,610.75 L703.76,618.47 L700.60,618.48 L701.76,611.74 L698.64,609.27 L675.03,609.55 L665.69,601.17 L656.98,605.24 L656.15,599.35 L649.84,595.60 L650.47,591.66 L646.83,588.03 L643.08,589.33 L641.75,583.88 L628.28,595.31 L617.13,588.38 L615.89,592.10 L620.12,594.90 L616.58,597.53 L615.47,607.30 L628.53,603.85 L626.55,610.66 L621.93,612.22 L623.32,615.90 L621.29,619.71 L624.69,630.39 L622.52,632.87 L626.14,637.11 L601.45,644.82 L602.04,649.41 L607.81,652.41 L605.84,655.60 L607.72,656.84 L600.01,662.81 L597.68,675.31 L604.52,677.56 L594.96,691.05 L591.26,689.22 L579.30,711.01 L573.54,712.16 L568.33,703.09 L553.96,708.12 L549.75,704.32 L547.74,709.26 L541.02,707.24 L540.16,711.49 L534.98,708.88 L536.75,705.57 L531.15,710.07 L525.89,706.03 L517.65,721.07 L507.43,722.17 L509.21,718.50 L506.29,714.54 L498.67,717.39 L477.77,695.06 L469.91,701.95 L448.21,685.18 L438.57,694.04 L416.08,684.20 L409.21,685.97 L409.24,697.08 L400.60,696.96 L402.34,706.92 L400.26,708.39 L403.65,709.89 L401.12,717.03 L389.46,710.49 L381.05,711.28 L380.40,717.69 L383.97,717.78 L380.67,738.66 L371.10,737.64 L370.27,746.38 L366.01,746.18 L365.50,755.97 L346.72,762.33 L350.62,767.35 L337.44,767.44 L335.24,774.52 L329.04,773.83 L330.10,770.11 L320.95,773.56 L317.43,783.98 L310.40,789.56 L304.18,781.61 L295.69,786.86 L291.54,781.63 L284.74,783.22 L281.74,790.17 L279.12,784.61 L256.36,775.74 L239.91,776.79 L231.69,787.96 L234.31,772.12 L228.41,764.13 L226.20,771.80 L223.17,771.65 L222.38,780.72 L219.51,778.12 L220.86,771.41 L217.62,770.28 L215.90,775.80 L213.18,768.72 L204.28,772.15 L205.52,775.47 L203.39,776.56 L198.60,775.31 L196.79,781.34 L188.53,777.94 L188.36,774.26 L183.56,774.70 L183.27,781.57 L176.18,776.79 L170.15,786.41 L166.11,784.22 L167.21,779.76 L175.06,776.63 L177.65,768.81 L168.76,768.59 L169.80,761.25 L167.18,757.83 L148.41,756.55 L147.64,752.51 L134.90,758.76 L132.15,763.12 L133.08,774.76 L127.52,775.43 L127.48,769.99 L120.90,766.80 L109.13,766.88 L110.12,762.10 L94.08,769.46 L83.97,748.14 L82.28,733.29 L84.97,727.35 L76.11,714.64 L78.29,708.38 L96.45,692.09 L96.79,684.17 L92.03,679.10 L89.83,666.40 L97.30,661.21 L96.47,655.58 L91.57,653.35 L91.09,641.33 L97.55,625.29 L78.83,625.42 L77.43,621.26 L60.44,617.79 L60.53,600.67 L57.47,599.27 L58.15,595.93 L28.41,581.74 L30.90,580.71 L29.95,571.97 L36.33,552.16 L41.42,543.96 L14.48,543.23 L5.55,530.60 L6.89,525.91 L0.23,521.72 L8.25,519.70 L0.00,513.54 L6.01,502.12 L12.58,502.53 L14.21,483.86 L16.88,482.75 L16.37,487.43 L20.52,489.43 L25.15,482.95 L22.39,481.36 L26.94,477.49 L27.31,463.28 Z","b":{"lat_min":55.634004,"lat_max":58.863139,"lng_min":30.772483,"lng_max":38.32641}},"yaroslavl":{"vb":"0 0 1000.00 1174.36","p":"M77.75,229.49 L94.85,209.90 L101.59,191.21 L95.68,186.58 L99.48,160.25 L130.83,157.89 L139.20,167.56 L147.29,167.22 L155.20,149.69 L165.35,142.09 L163.60,133.91 L179.95,129.32 L169.73,120.74 L190.71,109.59 L280.92,111.19 L298.94,124.25 L313.58,111.19 L315.67,100.88 L320.34,99.11 L318.28,88.87 L338.56,94.53 L342.03,99.48 L345.62,96.40 L349.18,109.66 L355.75,108.36 L352.81,101.17 L360.18,98.19 L362.64,102.06 L392.07,101.40 L393.51,107.33 L413.03,108.03 L411.11,85.84 L416.92,77.93 L412.21,72.21 L417.63,72.98 L442.23,48.68 L433.39,47.37 L421.88,31.36 L413.80,28.64 L418.45,23.57 L419.63,6.14 L430.26,0.00 L439.06,13.56 L461.37,8.76 L465.03,2.44 L487.37,14.23 L493.71,19.73 L496.29,27.71 L502.13,24.37 L499.65,19.71 L519.44,14.48 L518.90,19.45 L528.34,22.33 L526.91,28.34 L530.72,35.28 L546.16,27.95 L551.31,30.07 L550.59,35.59 L580.83,38.88 L589.30,24.78 L617.44,57.44 L619.23,65.77 L624.34,59.04 L638.27,57.71 L658.39,98.77 L679.96,95.85 L686.54,104.24 L696.99,104.20 L695.52,113.96 L701.05,135.20 L705.72,135.77 L704.35,145.44 L718.95,144.09 L724.33,148.79 L726.99,159.64 L715.37,161.46 L711.68,168.74 L714.66,175.04 L725.47,182.96 L733.86,183.10 L739.92,194.47 L760.19,195.82 L770.06,204.12 L776.60,203.45 L780.60,194.60 L793.40,200.92 L824.55,198.46 L830.31,188.65 L871.58,175.46 L875.90,180.34 L902.46,177.16 L907.91,185.02 L922.29,176.94 L922.07,183.41 L932.59,184.19 L934.64,190.67 L955.66,200.97 L956.81,207.75 L964.29,217.83 L961.48,228.59 L969.04,227.94 L971.08,236.32 L977.57,239.10 L963.21,249.47 L994.88,278.20 L989.77,284.10 L999.80,293.80 L1000.00,301.79 L992.39,302.65 L986.62,315.31 L973.49,325.20 L970.42,322.09 L960.38,326.14 L940.53,357.28 L941.12,369.12 L930.30,370.96 L926.57,366.91 L920.17,377.11 L923.06,411.49 L918.47,407.74 L912.01,410.20 L912.14,422.24 L908.70,423.52 L909.09,430.52 L892.33,431.69 L891.05,443.49 L901.26,460.56 L896.32,462.06 L893.15,469.09 L890.24,465.27 L867.87,472.70 L866.15,483.68 L857.39,492.19 L859.15,495.15 L846.53,513.69 L857.04,529.51 L852.95,537.54 L860.29,551.47 L860.38,561.26 L855.07,561.61 L856.37,567.80 L850.88,569.53 L853.48,576.08 L862.01,580.54 L859.32,595.96 L866.78,594.99 L861.57,610.76 L866.14,610.54 L877.71,627.70 L875.11,632.29 L874.92,645.32 L855.41,672.95 L846.80,671.30 L851.11,661.08 L845.02,659.03 L833.92,666.26 L827.66,661.23 L820.81,666.62 L823.12,673.31 L818.70,677.46 L812.18,674.39 L805.94,685.56 L815.86,693.44 L812.75,696.44 L822.43,697.68 L821.89,704.36 L809.14,701.16 L808.78,705.46 L802.66,700.40 L796.81,709.51 L803.60,720.30 L799.37,722.62 L805.69,730.82 L804.05,737.69 L806.74,746.37 L793.63,751.48 L792.79,755.46 L798.92,763.16 L807.50,765.13 L804.32,785.13 L801.75,784.93 L805.06,797.32 L801.33,797.33 L803.24,810.23 L796.44,819.77 L786.78,815.40 L786.66,811.63 L768.94,809.37 L765.61,814.37 L759.76,810.03 L759.67,815.32 L739.15,821.10 L737.47,824.70 L752.00,823.98 L754.84,829.46 L746.06,839.44 L740.40,835.28 L737.13,839.71 L741.79,849.99 L730.69,856.32 L728.17,851.34 L705.39,852.36 L699.95,847.63 L697.40,854.42 L678.32,866.40 L653.82,864.39 L652.45,876.97 L646.35,878.23 L646.33,886.77 L649.74,892.48 L655.26,891.87 L654.92,907.73 L642.53,902.26 L638.82,904.79 L633.22,897.81 L628.93,902.22 L630.97,911.74 L624.06,908.38 L620.08,912.66 L602.45,911.05 L593.73,919.55 L593.56,930.17 L589.74,934.63 L578.60,931.91 L568.59,940.02 L571.13,947.54 L576.67,949.49 L573.77,954.14 L576.18,968.33 L570.60,967.04 L546.13,996.62 L558.35,1010.02 L551.69,1017.79 L547.94,1012.15 L536.56,1014.53 L539.86,1021.04 L531.19,1029.80 L530.56,1040.47 L535.74,1044.45 L530.89,1045.91 L531.03,1056.94 L536.98,1059.96 L522.75,1066.84 L520.03,1075.14 L524.36,1084.92 L521.52,1091.76 L527.88,1098.13 L516.72,1103.05 L513.89,1113.57 L519.73,1129.79 L519.07,1145.08 L516.65,1153.52 L509.09,1149.76 L507.98,1168.75 L503.58,1173.66 L481.51,1165.17 L478.14,1153.06 L460.44,1156.67 L457.21,1165.22 L453.14,1160.71 L440.83,1172.60 L425.75,1174.36 L402.95,1158.38 L395.42,1158.69 L398.89,1154.17 L394.79,1150.24 L395.27,1142.27 L377.49,1145.06 L373.23,1137.86 L369.66,1138.56 L372.44,1145.71 L372.07,1156.47 L365.53,1148.40 L341.94,1150.38 L334.59,1154.55 L327.51,1172.49 L317.18,1171.18 L321.10,1160.97 L311.66,1147.70 L319.57,1136.24 L308.73,1132.43 L301.48,1119.33 L292.12,1120.09 L284.94,1114.01 L280.25,1097.51 L283.49,1094.00 L274.72,1093.29 L277.13,1103.04 L256.36,1114.52 L252.05,1095.28 L255.32,1092.64 L256.73,1083.83 L252.49,1075.50 L252.80,1065.33 L237.25,1049.09 L233.21,1034.02 L223.42,1037.27 L218.65,1030.57 L204.99,1036.94 L202.71,1032.68 L213.40,1023.69 L206.22,1017.52 L199.91,1019.08 L202.03,1008.77 L224.28,996.18 L220.78,981.10 L225.18,974.41 L220.85,969.28 L209.38,968.90 L213.35,964.27 L213.93,956.05 L231.13,956.32 L235.47,949.23 L232.75,939.95 L239.21,935.02 L239.74,913.67 L235.80,909.40 L227.18,913.38 L233.67,903.92 L239.26,904.11 L236.83,891.99 L227.94,890.48 L226.90,871.62 L215.85,865.94 L212.43,839.98 L225.82,838.43 L237.61,832.91 L241.46,824.81 L255.15,822.80 L253.79,819.93 L258.51,811.96 L252.50,774.89 L247.58,771.35 L216.85,776.86 L215.14,784.02 L204.10,787.98 L197.06,787.98 L184.54,778.25 L178.20,785.79 L143.61,757.30 L133.11,735.81 L123.94,735.10 L123.43,731.63 L135.72,720.60 L129.52,709.76 L122.37,705.69 L131.01,691.67 L128.25,681.31 L133.23,676.24 L132.08,670.59 L137.15,667.67 L128.26,659.71 L125.90,645.57 L115.22,650.28 L105.68,647.24 L92.65,629.75 L78.23,627.05 L83.17,607.85 L60.37,590.33 L57.77,584.08 L60.01,577.04 L44.40,569.96 L40.43,562.51 L41.69,555.22 L13.54,550.88 L13.48,542.62 L27.42,527.19 L13.83,519.98 L1.62,523.83 L0.63,519.34 L7.92,509.86 L17.61,513.52 L19.20,506.95 L30.25,508.79 L19.47,499.97 L20.62,492.97 L8.08,487.29 L10.05,479.60 L5.57,476.68 L6.76,468.61 L10.50,467.22 L15.52,473.76 L29.87,472.45 L39.02,481.09 L44.30,479.00 L40.42,474.89 L44.30,469.71 L54.12,470.37 L54.56,465.64 L45.70,455.89 L48.08,443.80 L71.22,432.90 L71.80,426.41 L83.40,427.72 L84.16,432.54 L100.21,425.94 L96.28,424.04 L100.43,419.87 L98.02,416.48 L93.67,422.18 L73.66,405.92 L74.32,398.89 L66.15,397.70 L66.00,385.24 L52.37,382.63 L45.91,372.17 L38.53,376.69 L22.17,365.06 L14.61,365.42 L15.70,355.65 L12.36,350.28 L1.84,354.52 L0.00,348.98 L15.00,342.25 L11.13,333.55 L27.75,329.88 L26.78,315.62 L16.74,311.63 L16.83,306.98 L10.54,299.60 L13.93,287.95 L21.60,290.60 L27.29,278.99 L23.34,274.23 L28.50,270.89 L33.49,273.15 L38.57,268.92 L46.77,279.05 L53.86,274.16 L55.87,262.25 L60.22,265.23 L66.01,259.75 L76.72,259.81 L78.21,243.19 L87.30,245.09 L77.75,229.49 Z","b":{"lat_min":56.535227,"lat_max":58.956012,"lng_min":37.327909,"lng_max":41.190459}},"vladimir":{"vb":"0 0 1000.00 650.59","p":"M9.45,58.65 L26.54,49.64 L24.56,41.99 L31.78,42.54 L29.11,45.30 L32.97,58.25 L46.59,62.42 L52.56,72.70 L61.48,75.70 L54.97,84.69 L62.73,95.10 L59.51,103.11 L68.02,104.14 L73.84,90.06 L79.89,86.79 L99.31,85.24 L104.70,91.57 L102.71,77.51 L105.65,76.97 L109.15,82.61 L123.79,80.43 L123.40,86.68 L126.77,89.77 L123.92,93.31 L130.11,93.07 L148.88,105.61 L161.29,104.22 L171.42,94.90 L174.78,98.43 L177.43,91.72 L192.01,88.90 L194.78,98.40 L212.95,105.06 L216.57,101.20 L217.48,86.31 L223.70,89.25 L225.70,82.63 L226.24,70.64 L221.43,57.90 L223.76,49.65 L232.95,45.78 L227.71,40.79 L230.05,35.42 L226.48,27.75 L228.72,21.23 L240.44,15.83 L252.64,26.00 L259.61,24.07 L260.62,19.07 L265.30,18.81 L268.67,11.46 L278.20,5.48 L287.85,6.17 L290.44,0.00 L296.82,3.54 L298.42,0.08 L325.75,17.98 L346.76,16.16 L345.84,40.35 L342.46,45.39 L339.97,71.54 L330.37,77.08 L335.92,82.12 L333.78,85.47 L342.95,82.12 L344.43,91.44 L352.56,98.46 L353.36,104.11 L358.73,106.19 L352.22,112.27 L353.48,116.50 L350.10,120.77 L357.07,131.63 L377.79,124.94 L389.77,126.55 L397.36,137.19 L405.53,134.26 L408.97,143.47 L415.93,141.93 L418.14,134.91 L423.21,134.42 L420.66,128.94 L424.86,123.57 L432.60,123.46 L434.84,116.13 L439.41,117.40 L450.43,105.96 L455.98,110.23 L459.08,102.64 L465.37,105.64 L472.43,87.16 L481.10,87.10 L487.48,79.87 L497.22,88.61 L531.38,83.10 L538.14,91.77 L544.89,91.11 L543.10,95.89 L555.42,109.75 L556.67,116.87 L586.04,111.28 L587.85,122.68 L612.27,123.16 L612.13,128.17 L615.59,126.95 L618.17,119.26 L620.04,123.37 L637.65,122.49 L638.00,125.76 L659.88,118.62 L685.78,122.35 L693.21,116.65 L697.09,129.55 L701.08,125.23 L705.73,129.04 L725.34,120.32 L729.55,113.74 L731.91,114.40 L730.68,120.54 L738.82,122.02 L758.65,119.12 L769.15,108.32 L777.87,111.94 L779.40,115.39 L775.99,117.53 L783.13,126.03 L781.03,137.87 L786.32,145.21 L789.71,167.15 L796.37,168.95 L800.43,164.66 L803.99,175.22 L823.70,165.27 L823.43,157.97 L837.96,153.77 L837.62,137.99 L853.59,143.78 L862.59,138.25 L880.57,138.90 L894.93,150.53 L912.24,152.17 L918.94,157.11 L929.51,154.93 L931.93,160.79 L948.81,169.87 L950.26,175.76 L959.03,183.06 L959.19,193.67 L963.47,200.94 L952.70,208.27 L952.18,214.54 L956.84,215.70 L961.27,226.36 L955.51,229.19 L956.78,235.95 L962.07,230.21 L971.42,229.81 L969.58,235.00 L965.99,234.16 L971.73,240.88 L973.25,237.21 L984.81,238.79 L986.65,229.65 L990.96,235.63 L986.54,237.07 L990.51,240.11 L995.03,236.86 L995.27,243.11 L1000.00,246.85 L998.94,255.93 L979.88,256.77 L965.39,265.59 L946.78,269.62 L938.79,277.41 L940.76,277.52 L939.15,291.00 L945.82,291.65 L944.31,305.13 L947.34,305.74 L946.85,321.42 L940.79,315.41 L923.84,334.88 L915.78,337.24 L917.02,329.89 L907.42,325.88 L901.27,341.96 L901.99,353.13 L881.68,377.40 L877.92,389.87 L868.72,389.96 L871.46,393.88 L857.12,395.72 L848.54,402.23 L846.97,411.73 L836.55,418.60 L834.23,432.32 L823.22,430.52 L820.71,435.63 L824.51,446.47 L822.77,454.79 L811.75,453.33 L807.77,456.98 L807.91,466.45 L816.18,488.99 L812.22,498.08 L814.19,503.99 L827.32,512.43 L829.66,521.03 L812.62,536.92 L808.71,530.29 L800.66,540.34 L795.00,565.39 L782.70,557.74 L781.49,562.58 L787.06,568.18 L788.24,580.95 L775.31,592.24 L771.67,589.41 L764.37,598.27 L768.34,601.12 L767.22,605.17 L774.56,610.01 L765.64,616.20 L766.06,621.56 L769.09,622.51 L767.13,627.35 L756.19,626.64 L752.58,632.28 L754.51,633.50 L748.05,640.66 L750.61,650.59 L745.71,639.66 L733.96,640.56 L726.19,647.37 L715.51,644.28 L717.77,639.75 L714.85,632.04 L702.94,634.17 L696.89,624.16 L685.83,626.09 L675.49,634.68 L649.45,615.40 L643.75,601.18 L612.82,602.55 L611.56,607.25 L602.27,611.52 L597.70,609.24 L596.62,617.39 L600.25,623.16 L594.70,618.52 L593.67,611.43 L596.35,610.44 L593.63,605.38 L590.07,605.55 L579.59,592.21 L581.43,586.56 L560.90,585.26 L560.34,599.59 L548.48,606.73 L544.24,599.12 L530.17,601.51 L522.59,610.79 L517.68,611.01 L518.58,603.81 L495.79,613.74 L498.50,607.15 L493.24,593.39 L487.77,592.02 L486.24,586.48 L488.98,583.31 L480.23,574.96 L492.95,557.39 L488.90,554.48 L478.21,556.48 L463.84,575.40 L451.92,574.22 L449.13,579.76 L444.18,579.81 L437.29,572.76 L437.55,567.50 L445.42,556.90 L430.88,562.45 L427.11,552.79 L412.05,556.23 L415.92,552.97 L408.56,551.10 L405.99,540.08 L398.26,530.89 L397.99,518.47 L409.22,514.21 L410.60,500.70 L404.36,497.36 L403.63,489.58 L378.29,489.63 L377.85,468.54 L383.82,470.31 L387.73,458.72 L376.71,448.20 L379.29,440.57 L370.95,428.56 L366.66,428.27 L359.01,415.00 L353.67,415.85 L347.21,407.62 L343.68,400.36 L347.36,395.52 L345.88,391.98 L348.53,384.39 L344.24,372.87 L310.78,369.38 L310.59,376.03 L303.25,380.14 L304.67,390.29 L281.51,386.21 L281.56,389.89 L266.32,390.36 L265.82,406.36 L254.98,405.69 L254.94,395.57 L245.05,395.61 L247.95,392.82 L224.20,395.78 L223.19,384.43 L217.58,373.23 L224.49,367.23 L224.49,360.81 L213.76,369.73 L190.49,370.26 L186.74,364.60 L176.27,367.72 L176.81,362.69 L167.37,363.67 L170.77,359.33 L165.26,346.44 L160.92,344.28 L168.26,335.53 L166.93,331.41 L163.83,339.28 L157.67,336.58 L158.33,330.65 L160.81,334.05 L165.23,331.11 L159.08,328.24 L145.64,335.65 L130.26,330.23 L120.32,341.80 L97.53,317.03 L89.13,313.58 L71.89,318.16 L64.40,309.87 L70.85,303.93 L67.30,299.71 L66.63,288.98 L58.00,284.64 L54.45,274.75 L55.28,265.74 L50.41,258.66 L53.03,255.42 L50.31,247.84 L52.69,240.03 L48.64,239.79 L54.13,228.07 L48.94,226.44 L46.39,231.35 L39.57,232.23 L29.94,219.68 L26.25,201.56 L34.53,198.12 L35.12,190.33 L29.97,187.02 L31.67,172.19 L36.76,162.23 L23.18,157.00 L27.16,141.25 L25.69,134.34 L19.49,132.89 L17.15,136.99 L14.76,126.23 L5.25,120.94 L13.24,116.93 L13.22,112.30 L4.56,114.65 L0.00,106.91 L18.11,91.13 L17.83,82.13 L12.19,79.50 L13.95,68.95 L9.39,64.86 L9.45,58.65 Z","b":{"lat_min":55.103672,"lat_max":56.812642,"lng_min":38.27379,"lng_max":42.966181}},"smolensk":{"vb":"0 0 1000.00 991.55","p":"M38.18,165.84 L37.39,159.38 L42.54,157.27 L42.10,152.42 L45.40,148.72 L61.14,137.66 L66.94,139.14 L58.97,128.52 L61.18,115.13 L82.98,116.13 L97.56,129.77 L104.55,122.76 L119.80,127.42 L119.83,121.92 L143.01,129.29 L147.02,122.34 L150.83,122.66 L153.31,126.78 L143.15,132.54 L148.00,136.11 L158.73,135.12 L157.15,130.17 L161.59,126.37 L174.48,125.80 L183.29,118.93 L181.67,126.23 L200.84,126.11 L211.56,130.99 L209.71,135.21 L211.62,139.29 L220.68,138.26 L222.34,130.97 L219.17,120.49 L223.66,113.83 L241.77,110.36 L239.71,105.73 L244.42,104.29 L245.66,110.46 L276.24,112.41 L280.52,117.64 L278.82,128.85 L280.71,125.71 L283.86,129.64 L293.30,129.18 L289.08,141.11 L280.54,140.14 L276.29,145.89 L274.50,152.71 L281.08,156.06 L280.92,152.76 L289.14,148.10 L287.74,143.89 L290.90,141.36 L302.46,148.67 L305.16,140.23 L302.93,138.16 L310.74,137.50 L311.03,143.12 L324.49,148.30 L327.43,139.10 L335.24,141.01 L338.71,139.35 L336.69,134.28 L351.18,129.04 L350.76,135.88 L355.62,139.86 L358.43,131.42 L363.69,133.15 L361.50,143.40 L366.18,147.37 L368.71,142.86 L367.47,133.51 L372.41,133.74 L376.00,122.03 L379.26,131.00 L385.61,134.23 L381.35,158.41 L390.06,151.93 L388.13,144.89 L394.74,141.36 L421.54,139.75 L440.42,148.40 L444.64,146.42 L450.39,154.53 L458.62,153.30 L462.89,161.79 L467.77,151.17 L475.35,152.47 L478.86,148.75 L485.61,156.74 L499.44,148.73 L500.38,153.99 L509.58,160.86 L521.03,152.33 L520.53,147.90 L526.22,141.86 L526.76,136.43 L541.67,131.17 L539.94,136.85 L550.04,137.90 L549.85,133.00 L554.16,131.72 L553.63,127.08 L575.11,126.94 L568.52,124.53 L568.75,119.28 L599.35,109.57 L600.18,94.63 L607.12,94.94 L608.47,81.59 L624.07,83.15 L629.44,51.27 L623.62,51.14 L624.68,41.34 L638.38,40.14 L652.49,46.55 L651.93,51.17 L657.38,50.12 L661.50,39.22 L655.98,36.93 L659.36,34.69 L657.51,31.40 L659.37,22.79 L656.54,19.48 L670.61,19.66 L670.55,2.70 L681.75,0.00 L684.71,4.85 L699.94,10.08 L702.84,6.98 L718.39,15.01 L734.10,1.49 L745.04,5.62 L744.08,10.12 L762.75,18.73 L769.45,27.11 L772.48,20.51 L782.26,16.58 L788.99,26.25 L799.33,31.97 L801.45,38.58 L811.67,41.93 L811.10,45.56 L816.31,50.68 L828.72,46.31 L833.48,52.37 L830.57,57.97 L847.22,56.29 L850.11,52.61 L847.61,49.12 L860.66,33.32 L869.21,39.49 L878.35,32.63 L875.46,37.68 L883.90,41.66 L885.30,35.18 L896.24,38.25 L899.52,30.72 L906.38,36.52 L929.79,28.85 L938.28,42.69 L947.67,40.93 L959.75,55.14 L956.58,59.74 L958.62,66.47 L963.24,59.41 L963.83,69.80 L977.82,93.44 L976.72,99.83 L986.98,102.55 L986.18,115.34 L989.53,121.62 L983.68,120.40 L981.28,124.33 L983.90,134.09 L988.45,136.91 L985.36,149.84 L998.17,163.03 L1000.00,172.29 L994.28,179.02 L995.90,183.52 L980.48,181.42 L979.12,191.30 L989.98,201.55 L983.27,206.39 L985.69,219.25 L977.97,222.18 L982.36,227.73 L981.07,236.17 L986.71,238.19 L979.87,244.57 L980.41,252.36 L977.37,253.32 L978.40,267.20 L971.43,275.41 L980.21,284.84 L979.04,289.90 L987.76,294.41 L984.85,303.72 L979.77,303.95 L982.16,309.31 L989.52,311.33 L986.84,318.77 L990.10,321.73 L976.13,331.54 L977.97,337.44 L974.81,357.01 L970.95,357.02 L960.70,375.28 L947.96,385.18 L940.38,384.59 L940.98,392.31 L937.26,393.86 L942.99,396.84 L938.50,399.21 L941.97,401.65 L942.54,407.53 L926.65,409.92 L926.90,413.45 L922.17,414.42 L925.03,419.00 L917.06,420.07 L920.23,423.49 L915.65,430.32 L910.52,430.69 L913.68,436.82 L905.51,437.79 L903.60,428.63 L897.60,422.96 L895.41,424.78 L898.52,432.09 L888.03,434.75 L889.09,463.93 L892.85,464.75 L891.56,469.95 L895.23,478.03 L900.21,479.46 L887.91,490.60 L887.04,497.12 L879.49,502.59 L879.83,507.40 L875.56,512.81 L870.29,507.90 L852.29,506.43 L851.46,517.28 L833.90,525.18 L826.41,516.89 L815.30,521.19 L807.63,513.97 L795.14,518.30 L787.56,514.95 L786.86,517.95 L800.21,517.38 L803.76,526.20 L811.66,525.31 L812.27,548.60 L805.26,548.87 L805.51,556.13 L798.82,556.38 L800.48,562.13 L793.80,568.59 L795.88,579.24 L754.42,577.49 L747.96,583.87 L736.99,578.63 L729.10,561.40 L718.15,568.22 L713.46,560.59 L706.23,564.57 L697.17,555.65 L689.37,554.69 L681.30,556.96 L676.29,564.98 L668.89,558.58 L655.11,564.80 L650.77,557.93 L637.26,568.33 L634.06,572.78 L633.77,580.11 L624.30,582.53 L626.54,588.09 L620.96,594.10 L635.75,598.20 L619.55,615.54 L621.77,618.82 L619.26,623.83 L607.73,625.20 L616.93,632.53 L622.93,645.04 L633.10,649.19 L629.16,658.25 L632.63,661.92 L624.88,671.89 L618.27,671.94 L620.23,675.99 L614.43,675.53 L614.60,681.69 L619.15,683.77 L616.15,688.70 L619.88,694.63 L620.05,702.31 L605.98,706.61 L604.88,717.27 L607.85,725.96 L599.98,727.29 L597.96,733.87 L605.87,732.43 L590.66,739.36 L588.86,735.32 L581.90,741.40 L581.57,751.44 L589.93,750.55 L592.56,757.71 L586.38,759.07 L594.36,763.44 L590.67,769.39 L577.49,772.15 L577.27,776.35 L581.32,780.28 L577.05,782.10 L572.44,792.32 L558.62,799.22 L557.76,792.95 L552.88,791.51 L544.75,795.19 L543.93,799.58 L549.77,805.14 L546.17,810.86 L538.49,812.67 L537.25,820.78 L542.84,822.98 L539.86,826.10 L541.07,830.76 L546.72,830.51 L548.73,840.75 L534.58,848.48 L527.06,844.10 L526.81,848.20 L531.39,849.62 L529.84,854.42 L535.01,870.00 L514.69,874.70 L498.85,888.33 L499.26,898.56 L491.86,898.47 L493.79,901.43 L483.01,914.52 L473.85,919.27 L473.82,926.10 L466.66,926.98 L461.48,937.38 L465.26,942.58 L454.60,954.85 L454.74,961.21 L460.81,959.32 L456.62,969.12 L462.93,972.08 L458.53,983.64 L438.69,982.17 L440.83,986.87 L434.54,991.55 L430.12,979.52 L431.91,974.67 L410.18,970.37 L409.49,961.08 L403.44,968.39 L399.12,966.98 L397.94,954.21 L386.10,952.23 L387.43,948.61 L372.14,941.23 L360.45,918.91 L364.62,907.69 L358.38,908.68 L357.72,897.33 L376.45,887.87 L372.39,877.23 L368.38,876.49 L367.98,870.26 L345.26,876.20 L342.78,865.44 L338.22,861.25 L327.36,859.78 L330.10,855.83 L318.47,859.52 L315.29,856.96 L316.86,853.49 L313.49,847.13 L299.02,844.96 L295.67,839.92 L247.37,853.89 L239.26,853.30 L228.16,844.42 L220.81,845.18 L216.19,834.88 L224.39,832.68 L221.59,830.27 L223.41,826.27 L233.52,822.14 L225.58,818.08 L231.91,816.31 L231.16,810.52 L237.78,802.95 L235.89,793.54 L237.52,787.63 L245.23,784.76 L245.10,774.50 L237.10,770.60 L244.06,760.25 L245.52,752.33 L240.95,742.61 L226.94,737.73 L223.43,742.77 L215.84,743.06 L219.66,729.97 L198.02,732.51 L198.44,728.02 L192.24,720.16 L173.43,720.07 L172.27,715.90 L159.16,711.92 L160.66,705.63 L146.17,694.45 L134.69,692.65 L135.52,685.40 L120.56,679.41 L120.36,654.11 L114.59,652.82 L121.64,646.12 L117.90,634.71 L106.70,631.02 L110.90,622.62 L103.72,609.98 L103.11,598.05 L87.85,594.53 L71.21,581.67 L74.16,573.43 L80.91,568.55 L84.23,555.18 L97.43,538.25 L96.17,529.40 L91.08,522.63 L66.09,525.07 L58.90,519.97 L51.08,520.90 L50.00,515.13 L56.94,509.30 L54.39,502.82 L47.80,505.51 L34.01,489.80 L0.00,471.49 L8.07,445.52 L14.51,443.56 L12.86,438.30 L17.31,433.20 L13.85,420.99 L39.70,410.77 L43.67,402.22 L40.66,391.26 L51.63,387.19 L55.11,377.08 L50.55,368.71 L44.05,326.11 L36.45,323.68 L33.22,304.57 L27.33,299.59 L26.12,293.84 L14.79,294.42 L13.89,280.51 L16.41,273.80 L36.71,256.93 L38.86,249.27 L32.36,232.53 L33.95,226.89 L29.75,220.50 L35.30,220.50 L44.11,211.46 L34.69,204.41 L34.32,199.92 L43.24,196.01 L38.18,165.84 Z","b":{"lat_min":53.413006,"lat_max":56.067054,"lng_min":30.75451,"lng_max":35.391128}},"voronezh":{"vb":"0 0 1000.00 837.52","p":"M32.58,45.16 L38.41,39.35 L54.82,38.07 L53.83,33.47 L71.80,28.08 L87.23,15.68 L96.60,16.17 L101.58,21.08 L112.72,12.83 L111.00,6.68 L118.66,1.63 L125.93,20.23 L135.29,24.34 L140.24,18.86 L134.77,16.73 L138.06,9.26 L143.71,3.36 L154.08,2.18 L159.17,5.30 L182.72,38.95 L194.89,39.49 L201.15,36.13 L197.69,22.61 L201.17,17.32 L216.08,12.64 L209.84,6.74 L216.82,4.33 L228.08,7.82 L234.80,0.32 L241.91,0.00 L250.97,1.48 L249.58,5.62 L277.94,9.75 L286.71,26.52 L283.58,28.45 L280.27,41.29 L337.54,57.84 L341.40,52.76 L349.22,60.18 L361.50,55.51 L369.37,39.60 L372.31,44.68 L396.26,49.68 L404.30,43.18 L403.20,36.58 L414.92,34.11 L413.86,38.70 L421.13,47.22 L433.46,41.85 L452.20,54.52 L455.67,46.51 L461.02,45.31 L469.78,51.23 L483.24,46.98 L483.37,50.09 L493.13,55.32 L501.63,49.98 L513.85,54.15 L543.93,54.58 L554.51,68.59 L563.20,59.63 L579.79,70.82 L583.98,69.79 L584.59,79.74 L578.21,90.45 L580.47,93.95 L570.79,119.88 L588.91,117.28 L595.79,127.34 L606.76,120.70 L608.39,125.92 L620.03,126.26 L619.41,122.59 L656.83,120.07 L653.61,102.41 L658.23,103.45 L659.10,99.12 L690.93,109.66 L693.50,103.26 L691.39,97.86 L700.76,100.00 L701.93,107.17 L716.90,109.88 L727.44,121.81 L745.51,120.76 L747.66,130.76 L758.12,126.70 L759.89,129.95 L773.22,129.01 L769.65,141.05 L781.01,139.14 L794.76,147.05 L805.20,147.71 L806.77,143.09 L817.57,146.67 L821.81,155.96 L831.45,155.08 L825.45,135.01 L829.12,131.90 L825.12,126.91 L827.68,122.52 L838.22,129.50 L843.46,130.28 L842.45,124.91 L850.46,126.46 L854.50,129.63 L852.88,131.74 L866.75,136.14 L864.56,143.85 L858.96,144.62 L861.50,152.50 L858.12,161.47 L862.90,163.54 L865.12,159.24 L874.58,169.62 L891.57,157.70 L903.46,155.25 L906.80,167.85 L911.35,166.87 L916.69,172.66 L921.22,185.92 L959.43,200.16 L976.54,234.10 L981.65,232.29 L978.41,251.55 L981.45,258.80 L1000.00,275.08 L986.19,286.33 L980.88,282.48 L958.99,285.23 L950.34,281.53 L937.77,291.03 L926.88,312.63 L918.04,315.38 L893.45,315.22 L890.97,310.06 L864.21,317.93 L839.43,318.30 L799.82,304.78 L796.18,298.81 L788.17,299.13 L773.56,310.69 L765.70,324.04 L760.80,336.64 L759.02,351.92 L754.37,355.67 L757.04,356.63 L722.65,368.44 L704.43,380.71 L693.34,379.52 L684.35,390.87 L682.76,418.47 L676.91,414.86 L630.37,436.61 L652.55,445.57 L667.50,458.34 L688.12,492.63 L702.80,491.68 L707.32,503.06 L696.65,506.56 L682.66,527.90 L698.44,553.88 L703.83,572.85 L682.06,612.17 L674.70,617.30 L678.61,625.33 L668.07,621.49 L655.32,638.35 L672.79,649.98 L675.16,665.37 L665.58,669.50 L657.16,685.00 L635.36,688.19 L612.34,710.70 L603.85,735.85 L605.07,754.85 L597.86,758.36 L578.98,790.57 L552.86,790.38 L549.34,801.56 L519.82,799.66 L515.45,809.34 L520.42,811.48 L511.37,812.16 L498.76,831.00 L465.30,827.79 L445.11,814.33 L420.83,809.49 L415.58,818.06 L400.93,824.07 L377.49,824.64 L373.96,832.26 L364.82,837.40 L347.13,837.52 L335.53,824.53 L316.84,818.77 L302.49,784.76 L306.49,779.68 L279.09,772.17 L269.74,771.26 L258.33,778.10 L238.88,772.56 L226.93,755.44 L226.71,744.77 L216.96,728.70 L219.49,716.81 L223.54,716.22 L218.59,710.87 L223.13,709.17 L222.35,702.16 L232.17,696.71 L237.99,680.47 L224.84,676.22 L226.83,670.51 L223.03,666.31 L229.80,664.80 L228.97,658.62 L219.45,662.15 L211.40,652.16 L212.82,645.70 L203.80,640.63 L208.59,630.00 L208.24,618.13 L204.45,617.56 L200.75,608.35 L204.08,603.86 L186.75,597.49 L188.77,587.96 L200.72,580.27 L192.96,575.83 L187.23,567.25 L185.59,556.01 L181.43,556.08 L175.75,547.73 L186.86,535.69 L190.43,536.39 L189.48,530.10 L206.01,525.14 L205.57,516.28 L198.89,522.27 L196.44,517.42 L199.14,501.23 L195.27,497.02 L196.97,492.80 L189.26,488.85 L191.12,486.12 L198.63,490.98 L204.39,486.54 L190.05,477.66 L172.30,477.16 L171.73,467.47 L177.16,462.55 L158.14,460.33 L156.77,464.66 L149.44,456.56 L131.51,455.28 L138.80,441.21 L135.51,439.87 L137.99,435.67 L146.09,437.38 L148.17,434.16 L138.35,430.00 L123.48,432.55 L118.61,428.74 L119.11,419.26 L125.85,411.86 L122.49,409.89 L121.60,403.38 L127.36,407.22 L126.83,396.41 L122.67,396.01 L131.25,393.87 L132.71,390.01 L145.83,398.08 L154.32,392.71 L152.33,390.75 L156.99,383.71 L148.31,383.46 L147.62,376.67 L139.03,368.32 L151.46,361.06 L149.77,351.16 L139.54,347.11 L138.76,337.77 L129.91,338.53 L119.86,346.40 L114.59,343.94 L117.12,355.73 L103.38,363.59 L100.20,356.92 L93.98,359.01 L85.56,354.51 L82.13,347.24 L76.10,346.76 L79.48,339.63 L68.50,338.51 L66.93,333.94 L66.16,340.13 L62.50,341.71 L52.34,337.65 L52.99,331.66 L56.13,330.35 L56.41,320.22 L50.99,320.37 L50.82,313.58 L57.32,308.39 L80.30,309.21 L76.99,304.77 L80.97,301.43 L79.71,293.57 L66.62,291.83 L69.81,289.42 L64.53,275.20 L61.87,275.06 L62.03,268.97 L54.74,268.53 L41.45,278.72 L36.24,266.96 L31.74,265.49 L45.96,263.73 L47.01,256.47 L40.07,254.04 L40.85,245.22 L49.77,244.60 L49.99,235.53 L38.01,239.95 L32.76,233.33 L35.41,227.96 L30.06,219.92 L37.96,216.63 L34.71,210.32 L36.15,204.13 L30.07,200.77 L33.59,191.47 L19.35,178.44 L10.88,162.28 L0.85,156.12 L0.00,152.19 L4.59,141.60 L20.55,146.17 L18.40,132.91 L31.83,135.05 L32.28,132.23 L52.12,138.09 L64.29,135.48 L72.32,121.88 L79.46,117.04 L68.01,119.53 L54.70,105.69 L55.47,99.49 L61.66,94.13 L64.54,85.11 L59.48,83.10 L58.59,76.34 L63.73,69.32 L58.39,64.78 L64.98,59.64 L60.95,52.13 L42.75,54.08 L42.53,60.55 L37.94,60.45 L37.53,47.94 L32.58,45.16 Z","b":{"lat_min":49.55795,"lat_max":52.103184,"lng_min":38.135846,"lng_max":42.947337}},"tula":{"vb":"0 0 1000.00 1059.69","p":"M449.61,6.13 L449.24,11.21 L457.02,13.45 L459.96,0.00 L477.83,9.03 L478.17,1.54 L483.37,5.91 L506.74,5.13 L525.66,24.17 L523.40,32.12 L532.92,39.68 L539.03,39.16 L542.80,50.49 L540.09,62.99 L565.72,59.82 L584.29,74.19 L598.86,70.08 L609.08,59.98 L610.85,44.04 L614.72,44.18 L612.68,29.11 L615.88,19.58 L605.71,10.26 L668.11,0.63 L679.90,6.12 L684.94,14.34 L682.44,28.96 L673.58,38.25 L682.91,42.22 L687.87,37.19 L701.28,47.92 L702.97,64.85 L698.45,63.80 L697.39,73.62 L704.76,72.33 L712.17,79.82 L727.48,76.11 L732.36,91.34 L746.36,85.55 L759.18,85.79 L759.88,96.26 L772.21,104.64 L783.77,96.41 L791.44,105.29 L790.98,113.29 L797.06,108.94 L807.29,109.69 L816.79,119.76 L826.90,111.07 L837.99,109.74 L857.65,144.29 L842.80,155.49 L834.55,154.83 L838.44,167.84 L832.01,165.48 L811.95,180.27 L812.59,186.20 L819.05,191.13 L818.68,209.01 L814.93,213.77 L836.01,228.61 L842.65,238.17 L837.01,241.90 L847.13,252.09 L861.09,253.48 L861.50,261.61 L853.62,280.30 L858.65,294.88 L855.66,308.24 L861.55,312.34 L875.47,311.79 L887.66,319.57 L895.54,317.33 L897.84,326.25 L906.63,330.57 L908.33,335.95 L921.62,337.42 L925.90,347.89 L921.56,349.63 L924.55,357.03 L921.46,364.76 L913.59,369.79 L930.83,372.19 L934.49,366.46 L944.55,386.49 L941.70,402.60 L933.37,403.71 L923.68,416.58 L912.81,418.78 L912.08,423.98 L921.19,440.22 L927.17,436.78 L933.66,445.16 L935.28,456.36 L925.93,469.35 L924.91,477.47 L940.45,467.26 L936.18,464.77 L937.36,457.37 L943.28,455.05 L950.60,465.79 L950.55,470.80 L943.61,477.67 L943.80,490.77 L957.28,507.46 L975.10,503.07 L979.37,518.33 L969.72,518.95 L965.28,529.63 L948.87,523.80 L949.02,540.33 L960.85,547.63 L968.68,558.01 L959.36,560.89 L955.88,568.88 L948.58,568.19 L950.59,576.44 L966.43,576.48 L966.69,585.67 L963.08,592.16 L955.86,595.10 L968.62,609.02 L991.74,600.57 L990.62,604.27 L997.96,615.92 L1000.00,626.34 L993.90,629.48 L989.35,638.71 L990.32,650.96 L986.57,651.64 L988.45,664.02 L974.63,675.67 L976.60,684.91 L995.68,687.26 L997.84,696.82 L994.52,700.82 L995.75,710.02 L985.61,709.45 L983.47,731.64 L978.69,734.92 L972.51,721.19 L945.53,723.76 L925.10,735.78 L924.96,753.13 L936.59,762.96 L932.75,769.86 L926.19,771.66 L926.28,783.28 L939.41,808.16 L941.31,827.12 L938.68,830.90 L914.17,830.16 L905.02,839.33 L898.57,831.72 L892.89,833.09 L878.47,844.44 L867.91,847.56 L861.69,861.68 L874.42,866.32 L868.60,874.24 L873.36,874.70 L875.06,887.46 L879.27,883.32 L893.37,890.97 L888.70,900.17 L899.24,909.79 L893.67,912.46 L892.88,919.20 L887.73,924.16 L877.64,924.98 L879.52,940.66 L893.98,941.08 L897.98,952.47 L903.03,950.64 L908.29,957.75 L898.09,986.29 L890.34,991.34 L896.94,1001.11 L896.09,1007.19 L885.83,1005.91 L880.32,1014.88 L870.63,1010.74 L873.80,1034.81 L861.89,1034.18 L863.63,1027.28 L858.75,1018.89 L853.97,1021.43 L849.65,1009.53 L841.62,1014.02 L840.56,1024.08 L824.26,1034.73 L809.80,1035.43 L806.92,1053.14 L795.47,1059.69 L793.20,1043.04 L789.23,1041.94 L789.19,1028.37 L775.54,1018.86 L763.94,1032.90 L736.55,1006.96 L731.66,1014.33 L728.37,999.55 L702.26,1005.60 L663.70,998.81 L659.38,1012.00 L652.11,1022.23 L637.54,1021.24 L629.26,991.95 L630.69,981.78 L609.87,974.57 L607.78,966.50 L600.08,958.64 L574.42,971.32 L573.16,976.28 L560.35,975.01 L560.23,961.58 L551.45,941.94 L548.24,925.22 L549.23,891.45 L554.01,874.63 L535.86,882.01 L516.46,882.82 L508.97,877.66 L513.04,870.12 L479.83,862.26 L480.23,867.77 L456.39,874.85 L446.29,885.41 L428.08,887.43 L412.26,886.26 L406.00,881.12 L402.07,883.55 L398.12,874.51 L391.28,870.58 L362.97,881.26 L364.51,864.96 L327.23,877.94 L331.17,866.08 L302.46,869.06 L289.65,865.24 L286.30,854.23 L277.86,859.62 L281.89,849.70 L274.88,848.67 L272.30,838.58 L254.09,827.51 L260.71,823.69 L261.93,810.03 L240.96,796.02 L236.77,807.76 L220.52,820.04 L194.72,813.79 L192.44,803.21 L181.06,789.70 L172.30,795.12 L172.08,788.86 L158.15,779.67 L154.44,769.56 L137.58,766.26 L138.71,752.06 L126.95,741.86 L130.11,735.04 L129.76,723.82 L119.24,721.17 L112.32,726.73 L107.48,724.91 L109.10,716.67 L89.59,729.71 L75.72,725.61 L59.20,712.91 L52.48,710.77 L48.60,717.63 L42.58,718.08 L37.74,710.97 L42.54,707.15 L39.60,697.48 L44.69,690.29 L29.68,681.36 L33.64,662.73 L41.94,655.17 L56.83,650.43 L55.76,640.62 L50.11,631.68 L42.53,633.68 L41.99,625.78 L24.23,627.11 L20.52,631.51 L17.62,621.88 L18.93,611.48 L10.75,610.97 L5.53,597.45 L13.29,590.00 L15.93,593.76 L23.78,584.59 L19.92,580.63 L21.14,571.21 L0.00,561.96 L1.39,554.13 L24.54,553.45 L33.07,543.99 L26.62,533.39 L26.51,524.20 L50.88,503.26 L48.03,497.96 L54.21,494.96 L78.89,506.59 L83.96,497.76 L74.65,493.01 L71.98,482.23 L63.34,480.88 L64.92,469.54 L73.44,467.24 L74.59,455.90 L83.11,443.22 L101.92,438.66 L100.74,421.95 L90.34,423.35 L90.48,416.29 L78.78,417.59 L73.92,422.65 L67.04,414.32 L55.57,413.62 L55.21,409.06 L66.54,407.51 L70.40,412.96 L79.39,398.75 L75.38,393.30 L56.72,402.35 L61.20,392.87 L39.05,375.68 L28.94,381.54 L23.26,379.99 L22.69,372.43 L27.24,371.68 L28.58,364.57 L44.33,376.88 L52.32,373.13 L79.01,375.03 L81.25,379.63 L89.69,376.98 L99.83,386.66 L109.47,377.95 L109.44,369.80 L113.78,361.64 L111.54,353.33 L133.94,350.98 L136.15,344.26 L143.13,355.50 L156.21,360.64 L160.49,348.85 L175.35,352.65 L173.34,347.60 L181.25,343.75 L178.80,340.59 L190.92,336.16 L193.48,330.48 L187.00,316.17 L196.61,311.71 L196.67,316.02 L211.32,319.07 L213.09,314.17 L225.13,318.17 L242.58,314.49 L245.00,318.79 L255.59,312.44 L252.37,306.33 L258.47,302.89 L261.34,309.80 L291.78,319.64 L294.46,324.80 L308.13,313.72 L322.47,318.05 L336.24,311.08 L349.55,311.12 L352.17,306.69 L348.68,295.50 L350.51,288.83 L337.85,282.57 L355.17,257.42 L346.64,239.90 L351.49,234.48 L341.49,231.34 L341.11,224.82 L324.98,235.45 L319.71,224.70 L324.46,217.20 L312.86,207.01 L321.68,203.44 L319.61,194.23 L329.32,189.10 L341.38,189.77 L341.70,179.61 L332.30,168.83 L334.88,167.33 L325.99,159.87 L334.43,145.47 L350.75,136.86 L380.08,150.12 L378.60,161.15 L385.76,170.11 L400.30,166.81 L407.16,156.60 L408.74,136.15 L423.40,120.16 L429.42,96.85 L440.82,79.47 L428.31,71.47 L424.95,64.13 L437.46,54.49 L440.21,47.45 L435.68,25.45 L449.61,6.13 Z","b":{"lat_min":52.946357,"lat_max":54.850802,"lng_min":35.900676,"lng_max":38.950779}},"karelia":{"vb":"0 0 1000.00 1562.97","p":"M851.54,672.61 L854.04,665.33 L855.20,669.74 L851.54,672.61 Z M849.85,644.04 L853.30,645.50 L847.11,646.66 L845.77,638.73 L838.68,635.93 L842.63,630.07 L848.97,633.43 L851.88,639.64 L858.32,638.91 L862.40,649.70 L857.66,640.34 L849.85,644.04 Z M827.45,638.27 L833.17,638.91 L827.45,638.27 Z M823.01,608.76 L832.71,611.21 L823.01,608.76 Z M833.28,622.94 L820.61,620.19 L818.96,615.29 L833.28,622.94 Z M787.11,596.80 L792.20,598.91 L787.11,596.80 Z M709.71,593.30 L713.10,590.62 L709.71,593.30 Z M743.69,597.42 L741.45,593.89 L747.52,596.75 L743.69,597.42 Z M720.41,591.10 L726.81,588.82 L722.39,594.65 L720.41,591.10 Z M789.99,608.83 L785.73,605.35 L789.99,608.83 Z M774.95,608.58 L777.41,611.81 L769.13,614.97 L755.96,596.91 L766.23,592.49 L775.27,603.79 L774.95,608.58 Z M0.00,1393.43 L22.79,1359.03 L22.06,1351.07 L39.30,1343.68 L50.29,1329.63 L59.34,1308.43 L84.83,1279.69 L88.56,1265.87 L115.19,1235.32 L115.60,1227.95 L150.05,1181.45 L156.34,1163.90 L163.75,1163.82 L185.04,1137.36 L189.55,1138.48 L191.75,1132.93 L189.45,1131.43 L215.03,1102.06 L216.19,1092.56 L221.80,1088.28 L239.80,1047.19 L246.95,1013.34 L250.24,1013.89 L248.76,1010.49 L264.06,981.19 L254.23,958.29 L248.07,955.71 L249.66,950.99 L226.89,927.17 L224.09,900.76 L193.79,876.96 L188.37,864.40 L178.75,861.10 L171.77,851.57 L136.42,835.40 L124.99,814.84 L109.95,804.35 L77.08,759.69 L110.55,742.70 L117.69,719.80 L141.50,683.45 L144.46,661.82 L134.40,642.93 L139.31,638.16 L136.32,627.98 L125.13,626.10 L122.09,623.06 L122.90,617.96 L93.04,600.93 L85.60,591.40 L87.19,578.54 L78.85,556.98 L79.15,542.88 L96.16,526.89 L85.21,503.18 L90.41,494.18 L85.37,489.47 L50.21,490.12 L44.19,482.55 L45.45,477.78 L39.49,469.84 L35.21,454.18 L34.00,436.67 L36.95,419.07 L68.40,407.87 L59.44,397.53 L67.23,381.65 L38.07,374.86 L34.30,367.37 L51.08,344.59 L49.52,311.97 L64.64,289.00 L48.23,269.00 L82.33,253.42 L96.38,260.68 L88.29,201.51 L80.06,179.79 L71.54,141.24 L46.76,104.20 L19.30,32.34 L1.87,1.17 L262.78,3.48 L268.03,43.06 L287.80,44.92 L292.21,77.25 L304.59,82.56 L351.55,84.04 L353.60,50.16 L375.34,49.03 L376.40,23.81 L427.69,24.58 L444.56,29.32 L450.35,33.63 L442.17,38.02 L456.86,39.23 L468.72,51.99 L472.10,51.08 L468.24,46.25 L470.04,43.26 L485.47,51.30 L484.46,47.55 L498.14,50.46 L500.41,52.48 L492.58,57.95 L503.46,64.59 L523.40,60.80 L527.03,65.05 L485.50,72.79 L501.26,75.92 L503.51,79.08 L497.21,82.16 L506.15,80.64 L504.82,86.97 L480.28,88.67 L485.52,95.58 L528.64,80.42 L527.09,85.08 L528.99,91.04 L534.63,93.25 L502.78,94.87 L517.04,103.58 L533.33,100.44 L542.30,104.84 L520.61,106.22 L538.00,115.66 L556.13,115.06 L564.95,128.49 L569.16,126.70 L611.17,161.67 L617.21,174.90 L626.37,182.06 L622.32,188.97 L626.56,190.28 L625.34,199.73 L640.63,201.94 L642.93,212.61 L651.39,222.46 L648.10,228.11 L659.93,228.12 L665.33,240.57 L656.56,248.59 L661.99,255.89 L627.36,261.94 L631.19,264.65 L628.34,268.98 L635.59,283.99 L629.67,291.58 L631.92,297.85 L628.33,303.23 L618.40,308.93 L622.55,315.77 L623.71,323.61 L621.47,326.23 L602.56,323.27 L600.26,325.93 L612.96,335.84 L607.85,330.54 L595.25,340.04 L578.87,339.94 L604.70,348.06 L598.08,363.47 L605.68,364.91 L604.96,370.76 L611.09,371.38 L614.91,376.34 L613.75,380.19 L619.77,384.47 L628.84,385.11 L622.12,398.55 L627.63,405.04 L625.65,410.60 L640.26,415.19 L636.34,422.83 L634.07,420.37 L636.57,430.45 L639.61,429.60 L636.45,435.72 L643.28,437.65 L643.09,441.65 L651.86,436.30 L641.62,450.49 L636.05,440.65 L625.78,445.39 L650.52,456.42 L652.39,459.08 L647.77,461.72 L654.48,469.83 L652.38,483.32 L658.81,490.59 L654.56,495.27 L665.00,494.32 L661.70,501.83 L664.57,503.19 L662.91,509.08 L656.92,505.85 L641.06,518.39 L649.11,518.68 L647.20,522.30 L652.49,527.53 L650.92,531.56 L662.14,523.95 L655.86,531.17 L658.82,534.67 L638.58,553.91 L643.90,555.73 L639.41,560.95 L643.48,567.20 L651.35,561.76 L656.89,564.53 L657.80,559.95 L667.92,566.54 L666.68,571.78 L662.24,571.10 L664.55,574.11 L657.99,576.31 L657.85,586.06 L678.29,587.38 L674.49,593.40 L678.84,595.11 L675.71,597.52 L679.24,601.24 L676.85,605.17 L678.45,606.32 L688.93,603.64 L684.12,594.79 L688.36,591.06 L697.21,592.51 L694.20,599.82 L701.20,601.00 L700.99,608.41 L696.44,616.66 L699.69,619.18 L712.32,618.92 L712.09,614.43 L719.29,610.20 L730.01,611.99 L731.74,605.78 L726.57,598.56 L730.97,593.93 L745.44,605.88 L746.58,612.41 L757.94,612.77 L756.30,607.42 L758.99,605.40 L766.13,627.36 L763.50,634.86 L770.33,642.18 L769.69,646.37 L777.01,646.90 L779.75,640.88 L803.14,663.40 L794.87,671.95 L805.27,682.43 L803.72,694.71 L808.31,700.56 L828.65,701.36 L827.57,704.44 L830.81,707.49 L838.97,708.76 L838.40,737.87 L843.30,762.00 L827.65,793.78 L767.47,799.28 L762.54,806.90 L778.41,835.82 L797.19,846.21 L805.27,884.12 L803.40,902.10 L820.23,898.33 L821.84,906.31 L810.50,917.96 L811.22,927.78 L803.54,943.89 L804.83,954.30 L836.13,1011.32 L870.08,1036.67 L898.89,1049.02 L919.84,1041.51 L950.16,1048.25 L954.16,1055.96 L953.26,1064.08 L957.52,1088.04 L964.27,1093.73 L958.43,1113.52 L959.76,1125.01 L945.87,1147.99 L943.45,1155.23 L946.32,1156.94 L943.09,1166.52 L971.96,1162.83 L978.51,1173.06 L976.06,1174.92 L980.21,1182.30 L978.13,1186.97 L980.15,1187.35 L983.59,1208.93 L986.11,1208.53 L984.70,1216.42 L987.59,1222.91 L1000.00,1225.52 L994.38,1269.42 L990.21,1282.15 L993.11,1290.84 L988.08,1300.59 L983.38,1301.51 L978.68,1318.74 L979.13,1332.10 L985.27,1341.09 L925.98,1346.23 L924.56,1335.67 L910.49,1333.93 L894.19,1319.05 L877.26,1332.55 L876.12,1338.62 L855.51,1333.19 L842.60,1338.57 L832.31,1364.28 L834.78,1367.93 L832.77,1370.71 L707.38,1442.14 L704.76,1442.45 L705.75,1433.52 L699.76,1433.08 L704.70,1405.65 L700.01,1405.00 L693.65,1413.53 L682.17,1411.47 L678.84,1417.58 L668.97,1417.42 L665.00,1410.60 L628.91,1397.96 L630.15,1401.91 L619.61,1407.80 L606.57,1407.62 L598.80,1417.96 L597.02,1425.07 L600.20,1427.08 L594.68,1441.50 L582.07,1421.82 L570.75,1415.63 L504.94,1418.72 L505.01,1423.48 L491.43,1424.05 L479.83,1439.45 L496.11,1462.74 L504.18,1460.12 L504.15,1454.30 L513.17,1445.45 L534.20,1456.10 L521.75,1493.21 L510.95,1495.12 L498.02,1490.20 L490.80,1483.54 L490.45,1478.26 L479.64,1478.53 L476.47,1483.79 L481.64,1492.07 L481.66,1498.29 L456.52,1512.52 L448.44,1526.14 L458.30,1532.93 L447.69,1535.22 L445.90,1547.43 L418.75,1554.84 L417.89,1562.97 L124.91,1448.03 L32.07,1432.93 L28.40,1416.57 L13.72,1412.45 L0.00,1393.43 Z M668.63,581.32 L672.91,582.46 L668.63,581.32 Z M661.90,581.71 L659.42,579.97 L661.90,581.71 Z M735.91,536.44 L731.64,533.13 L734.17,530.53 L741.35,538.23 L735.91,536.44 Z M724.19,516.81 L730.25,526.73 L717.55,518.85 L724.19,516.81 Z M656.92,511.23 L659.16,513.68 L656.92,511.23 Z M664.57,503.19 L670.75,498.71 L664.57,503.19 Z M670.12,480.66 L674.21,481.06 L670.12,480.66 Z M659.22,482.32 L664.41,481.95 L659.22,482.32 Z M683.63,452.45 L686.90,450.15 L684.24,455.98 L683.63,452.45 Z M662.97,443.04 L654.16,453.82 L651.70,450.11 L662.97,443.04 Z M670.87,453.97 L679.20,446.69 L681.34,453.15 L666.81,463.72 L670.87,453.97 Z M661.69,426.84 L664.66,426.19 L661.69,426.84 Z M643.25,422.82 L649.28,422.73 L643.25,422.82 Z M662.97,443.04 L662.11,437.47 L668.72,440.34 L662.97,443.04 Z","b":{"lat_min":60.679797,"lat_max":66.667324,"lng_min":29.305928,"lng_max":37.943999}},"novosibirsk":{"vb":"0 0 1000.00 690.28","p":"M100.41,0.00 L160.53,3.51 L182.36,13.17 L336.57,12.34 L334.27,21.38 L448.76,54.66 L516.06,142.28 L611.46,122.13 L646.67,173.88 L688.40,157.84 L723.15,153.68 L741.60,144.85 L757.97,141.75 L765.67,145.05 L771.49,139.90 L768.70,135.52 L769.77,125.88 L782.56,122.87 L791.73,125.83 L799.87,120.05 L817.72,138.68 L814.92,144.88 L803.27,150.49 L808.17,158.81 L795.39,175.88 L810.08,179.78 L810.65,183.37 L804.92,185.99 L807.21,187.15 L802.42,195.30 L810.96,201.19 L816.26,196.27 L819.07,199.46 L812.23,206.36 L811.81,214.11 L822.86,219.88 L820.20,223.00 L828.89,234.55 L826.38,234.41 L827.03,241.99 L820.48,241.43 L815.93,253.92 L810.67,259.03 L809.94,263.40 L819.70,270.19 L830.37,264.09 L833.34,264.67 L831.05,272.79 L838.95,267.54 L850.31,274.89 L855.21,257.26 L861.96,253.85 L862.55,245.05 L865.54,244.99 L883.91,213.58 L896.09,213.09 L908.83,205.85 L922.17,219.51 L933.89,208.66 L936.81,213.29 L943.34,211.51 L945.42,215.37 L942.25,217.91 L942.22,224.51 L937.32,225.26 L942.46,230.01 L934.04,234.72 L935.37,238.49 L940.95,237.62 L945.80,246.58 L943.41,250.83 L948.92,251.45 L949.28,257.06 L941.09,258.13 L942.39,265.44 L959.39,274.27 L956.71,277.20 L962.51,278.97 L966.81,299.27 L961.53,299.52 L963.99,309.23 L950.65,320.56 L957.59,326.07 L974.08,325.77 L980.01,334.90 L979.81,342.95 L970.23,351.46 L981.09,362.57 L978.88,381.55 L972.56,392.48 L977.13,399.58 L985.53,400.91 L996.22,416.46 L993.35,418.56 L997.13,423.34 L988.63,426.28 L990.21,429.86 L984.80,429.55 L977.83,438.71 L988.75,447.19 L986.96,449.44 L989.42,454.71 L981.56,459.67 L1000.00,489.59 L955.51,515.12 L946.19,524.65 L943.49,537.84 L932.28,541.65 L928.33,535.12 L916.48,538.86 L916.20,534.93 L910.74,532.73 L874.82,552.39 L877.07,544.95 L844.18,547.08 L836.38,555.13 L837.61,569.99 L833.02,570.79 L833.95,575.47 L823.74,577.70 L818.96,551.33 L816.34,557.22 L808.67,554.68 L760.50,605.25 L764.96,610.09 L751.04,623.93 L755.71,628.72 L739.31,645.43 L747.41,651.49 L737.20,654.31 L704.21,635.19 L708.60,622.72 L702.89,627.82 L685.11,615.69 L674.36,616.52 L671.23,621.20 L668.07,614.67 L669.84,613.50 L660.87,604.73 L663.95,598.91 L661.38,593.89 L672.83,588.97 L672.38,572.47 L664.31,575.55 L655.65,569.77 L643.39,582.89 L648.56,561.87 L640.77,564.37 L636.93,552.62 L625.87,555.71 L621.66,550.27 L602.10,546.15 L584.68,500.46 L570.91,506.13 L575.90,523.37 L571.26,525.67 L569.45,521.36 L553.35,534.40 L542.72,536.63 L546.64,544.04 L541.45,548.12 L536.16,546.00 L511.66,560.78 L509.12,552.50 L494.87,558.32 L498.85,567.92 L477.52,581.23 L474.73,585.38 L479.17,593.39 L451.96,602.60 L453.77,611.33 L432.10,622.27 L428.61,615.95 L419.96,617.07 L415.74,622.62 L402.40,623.10 L399.00,618.32 L394.11,627.44 L384.27,623.06 L360.94,630.67 L359.11,627.07 L351.72,629.73 L355.29,639.29 L354.76,651.50 L348.08,654.35 L342.69,648.44 L332.54,651.37 L332.41,656.11 L326.54,658.21 L315.51,653.84 L313.46,633.21 L306.01,632.40 L306.03,638.63 L301.12,640.35 L281.96,641.25 L283.56,653.10 L297.58,658.38 L297.25,664.31 L282.63,662.67 L282.07,667.69 L287.16,673.24 L284.55,678.79 L279.29,676.93 L281.11,690.28 L144.78,565.69 L141.51,554.79 L134.23,545.04 L136.24,536.60 L152.39,537.78 L156.06,544.44 L166.45,537.30 L178.36,513.40 L176.80,502.80 L168.11,500.08 L186.57,493.17 L183.21,486.49 L164.60,493.07 L158.15,506.28 L141.05,509.94 L117.11,503.34 L110.48,514.87 L113.65,517.42 L112.53,520.26 L59.88,544.62 L60.13,470.64 L71.40,471.67 L76.16,459.87 L73.45,449.58 L70.86,444.02 L59.45,448.12 L54.93,424.44 L43.97,425.62 L40.14,411.44 L42.49,406.37 L24.34,406.75 L29.30,392.83 L32.07,392.79 L27.96,379.34 L22.57,379.48 L22.34,368.85 L17.31,368.64 L16.35,364.92 L20.49,361.25 L17.92,356.97 L18.66,348.77 L11.37,341.30 L8.94,329.52 L0.35,325.29 L11.03,316.71 L7.41,312.96 L23.30,304.06 L19.55,293.68 L13.24,296.60 L5.26,289.02 L16.79,281.74 L2.74,271.16 L4.14,266.98 L0.00,264.01 L1.64,258.83 L14.18,263.30 L28.06,261.59 L27.85,250.28 L17.39,243.49 L44.21,214.66 L43.92,210.67 L56.38,209.75 L64.17,196.50 L86.90,196.07 L92.33,187.57 L102.99,189.11 L104.76,194.96 L121.51,188.69 L107.94,166.98 L103.57,169.27 L98.79,164.94 L100.75,163.72 L99.29,148.65 L96.51,143.40 L103.41,143.12 L101.74,138.24 L89.18,134.88 L81.14,143.75 L74.12,143.09 L74.58,132.39 L87.15,127.40 L94.75,108.09 L107.55,108.06 L106.17,104.43 L119.77,94.25 L114.92,71.64 L116.92,61.41 L110.38,51.14 L100.41,0.00 Z","b":{"lat_min":53.290941,"lat_max":57.235533,"lng_min":75.08801,"lng_max":85.116875}},"irkutsk":{"vb":"0 0 1000.00 1051.65","p":"M529.48,5.99 L547.24,1.22 L550.65,5.29 L547.96,8.75 L551.24,10.16 L548.09,14.90 L558.29,24.31 L556.08,31.04 L560.00,35.94 L554.83,39.81 L538.87,37.82 L538.57,48.27 L531.12,52.89 L531.96,57.21 L546.91,54.62 L571.86,59.35 L579.38,68.45 L580.57,75.66 L585.93,76.03 L589.56,94.14 L587.92,96.65 L590.35,96.94 L588.40,103.44 L591.14,104.27 L589.00,107.69 L597.40,118.12 L590.03,121.70 L588.51,130.44 L579.13,139.10 L587.35,151.21 L607.18,150.24 L606.28,155.54 L610.77,160.39 L607.51,164.35 L610.28,172.16 L592.89,191.88 L593.95,205.37 L605.46,221.01 L600.83,238.36 L615.71,242.65 L620.43,251.39 L629.12,248.19 L634.02,251.71 L631.54,264.75 L622.12,277.19 L623.26,288.56 L613.39,290.05 L616.85,296.94 L608.83,304.28 L607.02,307.74 L608.79,311.29 L604.57,313.36 L605.93,315.95 L602.65,317.70 L603.11,322.70 L599.17,326.03 L597.88,338.41 L600.54,342.37 L594.85,349.48 L596.61,354.41 L588.61,363.05 L591.54,371.05 L579.14,387.02 L583.37,390.05 L578.63,393.09 L578.83,397.68 L589.95,399.69 L590.09,408.88 L595.24,411.15 L595.76,419.40 L599.37,417.03 L603.39,425.14 L622.17,424.96 L632.19,419.55 L636.67,413.06 L634.32,409.63 L641.64,401.85 L662.81,408.01 L666.19,402.12 L672.75,400.94 L681.20,406.40 L687.18,400.49 L693.60,402.04 L707.76,381.87 L710.61,390.32 L707.99,400.40 L718.33,396.49 L723.84,399.24 L715.20,412.03 L714.91,430.77 L718.45,432.69 L721.62,424.86 L718.02,419.43 L721.89,415.65 L722.00,420.39 L727.19,420.43 L730.38,414.12 L750.49,411.64 L758.48,403.07 L761.33,396.35 L757.04,392.17 L764.84,383.18 L763.85,376.83 L787.65,364.81 L795.48,351.43 L805.66,345.40 L802.18,341.77 L805.30,334.09 L824.82,325.70 L830.00,315.35 L827.91,311.58 L832.88,305.45 L855.72,300.94 L874.22,313.11 L891.68,314.07 L892.29,321.00 L906.28,328.86 L909.48,336.48 L908.47,340.63 L923.74,342.60 L909.32,351.15 L918.48,354.56 L917.71,369.92 L913.73,375.63 L919.57,383.33 L933.21,386.18 L941.76,379.13 L944.13,388.73 L947.73,388.32 L953.75,373.03 L961.94,372.36 L966.26,375.22 L966.93,382.34 L983.93,390.11 L983.40,396.73 L987.12,398.95 L980.08,409.37 L981.17,419.66 L988.68,424.93 L983.41,429.47 L988.68,438.56 L987.03,450.05 L983.67,453.81 L999.22,462.81 L996.79,474.99 L1000.00,480.65 L999.07,484.99 L980.48,489.71 L971.73,485.67 L962.36,472.27 L954.61,474.66 L944.33,469.19 L929.06,477.98 L934.26,489.25 L926.47,492.51 L925.24,508.65 L927.34,509.56 L912.22,517.78 L916.69,522.33 L914.88,532.00 L923.22,533.08 L923.55,539.02 L919.80,540.85 L923.39,546.45 L923.63,554.67 L927.88,554.41 L928.11,563.00 L931.95,562.05 L933.96,555.43 L942.13,558.31 L939.65,567.01 L933.49,570.53 L937.78,581.52 L932.27,587.32 L933.22,594.04 L929.70,592.37 L928.17,596.74 L922.61,586.47 L913.64,598.12 L898.01,604.52 L879.84,594.03 L869.82,597.54 L854.89,586.69 L877.05,572.66 L872.86,565.31 L859.79,563.90 L851.66,574.08 L826.80,574.76 L823.32,581.02 L827.34,585.09 L820.18,590.72 L813.92,608.65 L802.38,607.35 L799.26,612.10 L787.96,607.84 L775.22,621.94 L772.23,614.50 L759.81,608.82 L752.41,613.18 L732.99,608.74 L726.80,601.78 L724.93,594.05 L727.53,587.80 L725.07,586.42 L713.24,595.04 L705.39,595.07 L699.66,587.16 L687.16,590.89 L676.20,573.23 L667.75,586.12 L668.11,591.97 L660.39,597.85 L643.20,592.68 L635.51,596.84 L631.91,591.26 L614.61,584.65 L606.15,591.77 L604.42,595.94 L606.32,600.14 L601.12,606.99 L586.44,604.54 L578.28,611.52 L571.84,610.76 L570.99,614.73 L568.38,611.96 L564.31,617.12 L554.39,618.24 L557.34,623.18 L549.64,637.83 L553.57,644.17 L560.11,644.70 L567.82,662.90 L578.62,661.92 L579.77,666.47 L576.40,670.77 L567.09,668.29 L560.87,675.53 L559.55,692.18 L554.88,694.83 L555.80,703.32 L551.65,708.07 L554.25,711.54 L553.63,719.24 L559.23,724.57 L559.76,729.88 L555.04,741.53 L558.22,748.50 L555.71,770.55 L549.08,779.54 L571.30,788.88 L568.46,796.11 L541.73,841.67 L526.42,883.80 L448.04,953.52 L423.78,994.13 L381.16,1011.70 L383.99,1031.01 L382.68,1037.76 L363.94,1039.38 L348.79,1051.34 L347.07,1027.36 L337.95,1022.92 L328.50,1027.43 L323.25,1021.68 L320.70,1012.66 L323.01,1008.91 L320.62,1004.45 L322.64,997.84 L302.95,982.71 L294.59,964.80 L276.95,959.80 L273.02,965.14 L267.31,964.70 L266.14,959.60 L268.84,957.16 L257.08,950.04 L256.69,944.39 L245.57,931.90 L224.04,919.87 L210.80,906.55 L201.35,894.25 L199.56,889.72 L203.20,882.72 L196.59,872.92 L189.12,878.34 L179.84,877.70 L178.52,886.90 L158.55,894.46 L158.45,899.87 L152.52,905.52 L142.70,900.40 L145.01,893.89 L139.63,890.35 L115.25,895.71 L112.74,892.92 L112.70,884.47 L100.26,882.69 L99.39,874.83 L82.66,872.55 L83.23,868.63 L77.00,866.27 L71.58,855.64 L52.78,844.38 L46.28,844.81 L44.33,851.10 L37.34,848.93 L17.60,823.23 L18.13,816.39 L0.64,802.55 L1.45,791.66 L10.91,791.81 L17.75,777.09 L37.93,780.63 L39.10,767.80 L45.50,751.15 L40.26,740.73 L44.17,736.54 L42.97,724.41 L55.17,717.48 L51.07,708.72 L49.49,697.76 L51.37,695.32 L46.67,690.78 L50.14,688.21 L47.11,684.63 L48.46,680.19 L57.14,675.23 L57.17,663.11 L60.28,663.08 L63.18,654.44 L72.87,660.86 L76.17,655.12 L74.98,650.38 L82.01,648.48 L81.28,633.42 L95.03,633.49 L95.03,620.84 L89.14,619.77 L91.02,599.87 L77.67,597.85 L77.94,593.01 L84.45,591.07 L86.15,585.78 L72.21,581.12 L98.14,517.64 L131.96,520.15 L141.81,526.47 L146.39,521.66 L161.16,520.77 L171.73,497.38 L185.44,497.36 L189.15,498.50 L188.00,505.80 L191.12,515.16 L201.40,524.54 L199.02,529.13 L201.38,530.22 L202.44,539.62 L217.76,551.84 L226.58,545.17 L225.65,538.31 L219.91,532.83 L223.93,521.98 L220.12,513.90 L226.74,514.80 L233.75,506.51 L234.95,500.45 L232.38,495.88 L243.33,485.42 L251.37,483.67 L260.20,468.93 L279.21,462.07 L294.50,444.96 L294.30,431.82 L289.57,429.05 L291.35,423.39 L287.55,417.59 L291.61,409.41 L305.55,408.80 L313.78,398.86 L318.81,403.64 L328.00,403.01 L322.25,405.28 L329.70,421.86 L337.02,424.37 L339.82,430.43 L353.26,431.92 L354.07,442.52 L350.77,445.05 L364.54,441.29 L366.50,446.91 L371.83,446.01 L370.31,450.33 L375.46,455.44 L389.81,450.17 L393.61,444.61 L387.68,439.62 L391.17,432.12 L413.79,414.83 L410.62,411.82 L411.07,404.68 L406.02,401.04 L408.16,388.93 L396.75,386.73 L388.00,369.65 L399.22,362.11 L397.26,356.16 L401.11,354.34 L419.83,356.98 L415.57,348.68 L419.60,344.48 L416.11,332.33 L419.77,326.44 L411.94,320.65 L394.02,320.65 L383.51,312.16 L382.99,303.22 L376.99,295.45 L381.49,286.78 L375.49,276.71 L382.54,272.33 L380.30,269.88 L382.21,258.49 L392.03,249.50 L400.02,250.64 L396.01,239.61 L388.62,237.11 L410.18,230.91 L409.08,227.91 L413.41,221.80 L426.79,212.49 L432.66,214.59 L439.84,209.75 L436.42,197.51 L457.54,181.68 L460.46,164.26 L455.54,162.48 L461.26,157.89 L459.08,153.45 L472.87,145.37 L469.32,140.72 L474.82,136.31 L473.60,134.16 L460.81,129.46 L462.51,122.01 L448.91,111.66 L445.58,98.13 L457.58,95.34 L459.37,88.19 L455.36,85.82 L458.22,77.17 L467.12,80.10 L472.07,73.65 L460.76,62.12 L466.10,60.67 L469.94,52.15 L466.34,47.74 L474.43,35.11 L467.26,24.97 L468.97,22.10 L487.07,31.45 L496.33,27.42 L499.32,30.67 L497.94,33.11 L507.34,33.82 L516.01,24.03 L542.23,21.94 L536.34,5.69 L529.48,5.99 Z","b":{"lat_min":51.130227,"lat_max":64.321545,"lng_min":95.647701,"lng_max":119.138674}},"krasnoyarsk":{"vb":"0 0 1000.00 1957.32","p":"M330.83,1722.08 L330.83,1722.08 Z M129.32,594.39 L129.32,594.39 Z M121.84,585.91 L125.28,587.67 L121.84,585.91 Z M756.11,571.74 L752.01,573.78 L756.11,571.74 Z M780.89,558.84 L783.22,558.02 L780.89,558.84 Z M762.04,567.72 L759.24,566.99 L764.87,565.59 L762.04,567.72 Z M790.47,550.85 L790.47,550.85 Z M71.40,534.22 L75.52,531.91 L71.40,534.22 Z M69.29,562.96 L65.54,560.17 L80.39,542.45 L89.40,552.61 L91.09,564.55 L69.29,562.96 Z M271.58,534.90 L271.58,534.90 Z M110.00,519.88 L110.00,519.88 Z M114.52,518.84 L117.33,520.05 L114.52,518.84 Z M106.49,517.14 L106.49,517.14 Z M931.17,491.40 L889.99,504.69 L884.08,494.79 L895.40,481.75 L922.19,488.18 L928.42,479.16 L938.52,480.70 L928.66,482.40 L931.17,491.40 Z M225.22,490.89 L227.43,491.01 L225.22,490.89 Z M290.92,496.73 L297.06,495.07 L291.27,506.23 L283.96,504.89 L290.92,496.73 Z M290.89,495.47 L290.89,495.47 Z M281.59,482.93 L286.77,485.99 L276.02,484.44 L281.59,482.93 Z M173.42,478.19 L166.85,474.65 L177.19,475.74 L173.42,478.19 Z M279.70,474.58 L281.77,475.37 L276.47,473.44 L279.70,474.58 Z M275.53,473.96 L273.78,473.78 L275.53,473.96 Z M270.78,475.56 L270.78,475.56 Z M180.28,476.56 L198.41,475.84 L180.28,476.56 Z M278.37,479.56 L274.44,479.69 L278.37,479.56 Z M232.81,461.76 L234.78,461.90 L232.81,461.76 Z M237.86,460.52 L242.46,461.35 L236.07,461.69 L237.86,460.52 Z M238.52,456.50 L241.64,456.82 L238.52,456.50 Z M240.47,458.34 L238.78,458.67 L240.47,458.34 Z M249.04,472.99 L246.35,472.17 L250.66,471.56 L242.26,468.63 L254.88,469.87 L249.04,472.99 Z M247.71,454.46 L239.80,453.76 L250.76,453.54 L247.71,454.46 Z M89.76,446.32 L81.55,443.50 L84.91,438.94 L92.31,443.45 L89.76,446.32 Z M235.52,446.32 L235.52,446.32 Z M252.72,445.00 L252.72,445.00 Z M231.57,446.32 L229.66,446.02 L238.16,443.68 L231.57,446.32 Z M214.49,450.96 L217.40,452.54 L214.49,450.96 Z M228.41,454.22 L220.00,451.24 L234.21,448.49 L223.64,450.81 L230.23,454.31 L228.41,454.22 Z M246.97,443.21 L252.31,445.90 L244.30,451.73 L238.83,446.95 L246.97,443.21 Z M265.83,441.05 L262.26,442.84 L268.08,446.82 L252.24,449.55 L265.83,441.05 Z M253.82,438.18 L253.82,438.18 Z M250.39,426.27 L253.00,425.27 L250.39,426.27 Z M249.33,433.94 L237.20,431.59 L248.23,428.43 L253.40,433.54 L249.33,433.94 Z M240.96,428.32 L243.11,428.06 L240.96,428.32 Z M148.10,402.06 L159.40,410.79 L148.10,402.06 Z M237.77,425.21 L240.73,424.67 L237.77,425.21 Z M278.88,432.10 L267.07,422.73 L278.57,421.55 L274.82,416.80 L292.36,418.77 L282.57,425.13 L286.78,427.57 L276.55,426.75 L282.57,428.58 L278.88,432.10 Z M252.04,423.20 L248.25,423.82 L252.04,423.20 Z M270.37,418.71 L270.37,418.71 Z M314.85,373.33 L311.20,373.06 L314.85,373.33 Z M439.78,362.01 L441.87,361.69 L439.78,362.01 Z M441.38,360.43 L437.18,360.66 L446.14,359.37 L441.38,360.43 Z M455.86,358.49 L455.86,358.49 Z M266.32,396.60 L270.30,395.87 L266.32,396.60 Z M213.87,438.30 L215.75,438.13 L213.87,438.30 Z M436.88,350.63 L435.12,349.02 L436.88,350.63 Z M537.76,343.47 L537.76,343.47 Z M468.60,337.71 L470.52,336.62 L468.60,337.71 Z M491.15,330.72 L493.72,330.45 L491.15,330.72 Z M614.47,334.48 L618.04,333.91 L614.47,334.48 Z M504.35,338.60 L499.58,337.84 L506.28,338.05 L504.35,338.60 Z M497.19,336.48 L484.70,335.85 L501.59,330.40 L496.00,332.90 L497.19,336.48 Z M416.54,345.32 L412.29,345.06 L416.54,345.32 Z M548.66,322.98 L548.66,322.98 Z M979.48,318.03 L979.48,318.03 Z M502.71,322.29 L504.79,323.07 L502.71,322.29 Z M494.92,321.68 L503.26,318.91 L494.92,321.68 Z M504.97,317.96 L511.03,320.04 L504.97,317.96 Z M943.69,308.68 L946.25,307.55 L943.69,308.68 Z M537.53,311.36 L539.22,311.28 L537.53,311.36 Z M508.21,314.90 L511.70,313.10 L508.21,314.90 Z M527.02,312.92 L527.02,312.92 Z M515.80,314.00 L514.02,313.48 L515.80,314.00 Z M543.76,328.35 L535.27,326.73 L546.15,326.99 L543.76,328.35 Z M528.08,326.74 L532.22,326.26 L528.08,326.74 Z M553.79,333.24 L543.73,336.91 L550.46,327.98 L548.37,325.53 L554.33,327.33 L551.79,331.48 L553.79,333.24 Z M487.27,325.72 L489.40,325.89 L487.27,325.72 Z M501.06,324.18 L501.06,324.18 Z M986.11,324.18 L988.30,325.39 L979.82,323.93 L986.11,324.18 Z M423.20,355.17 L426.21,354.50 L423.20,355.17 Z M465.52,203.70 L467.97,206.31 L463.55,204.49 L465.52,203.70 Z M805.99,194.71 L812.04,198.09 L794.36,202.61 L805.99,194.71 Z M812.98,198.46 L811.04,194.66 L812.98,198.46 Z M809.00,192.97 L809.00,192.97 Z M600.37,179.61 L598.40,178.72 L600.37,179.61 Z M598.57,176.88 L600.40,174.49 L598.57,176.88 Z M599.96,184.17 L598.20,183.85 L599.96,184.17 Z M747.21,146.72 L741.12,148.43 L747.21,146.72 Z M720.70,135.40 L722.48,138.56 L718.34,136.31 L720.70,135.40 Z M722.55,141.69 L722.55,141.69 Z M720.71,140.91 L720.71,140.91 Z M32.08,114.82 L39.39,117.30 L17.45,119.05 L0.00,108.07 L32.08,114.82 Z M399.00,116.72 L394.24,115.35 L399.00,116.72 Z M404.17,116.30 L384.01,113.25 L404.17,116.30 Z M636.07,112.44 L636.07,112.44 Z M637.35,103.23 L641.98,105.50 L631.54,109.61 L633.62,102.73 L637.35,103.23 Z M410.58,121.09 L405.94,117.78 L415.86,121.90 L410.58,121.09 Z M575.78,93.89 L573.90,93.02 L575.78,93.89 Z M482.01,88.74 L482.01,88.74 Z M488.05,84.71 L488.05,84.71 Z M441.38,146.67 L427.87,143.12 L441.38,146.67 Z M576.93,166.23 L574.79,166.48 L576.93,166.23 Z M597.50,164.58 L593.61,165.45 L597.50,164.58 Z M547.74,152.76 L547.74,152.76 Z M627.43,134.57 L625.67,134.46 L627.43,134.57 Z M441.38,121.55 L448.66,122.83 L439.43,122.32 L441.38,121.55 Z M633.92,120.88 L635.85,120.78 L631.77,123.62 L633.92,120.88 Z M433.77,120.74 L416.52,122.01 L441.07,120.80 L433.77,120.74 Z M441.38,51.66 L437.92,52.26 L441.38,51.66 Z M565.27,67.55 L565.27,67.55 Z M69.29,28.95 L65.82,27.67 L82.53,19.69 L101.12,24.70 L69.29,28.95 Z M455.42,12.52 L451.66,12.02 L455.42,12.52 Z M404.17,4.79 L412.89,10.03 L395.98,15.55 L369.37,10.52 L373.62,5.36 L404.17,4.79 Z M580.00,78.32 L578.42,76.94 L580.00,78.32 Z M404.17,103.87 L401.13,101.93 L430.94,100.64 L401.43,94.71 L399.64,92.43 L405.49,89.29 L400.30,86.41 L403.32,83.78 L393.79,79.96 L446.89,82.22 L470.43,89.26 L450.18,103.10 L404.17,103.87 Z M478.59,84.27 L472.61,85.20 L483.48,82.11 L478.59,84.27 Z M441.38,81.64 L436.25,81.60 L441.38,81.64 Z M627.43,143.80 L633.18,153.95 L620.34,162.79 L570.12,163.17 L549.29,150.45 L519.12,150.85 L516.49,143.99 L496.38,146.94 L483.15,133.43 L485.45,131.95 L484.44,118.97 L469.27,121.50 L467.76,118.73 L473.94,116.25 L465.71,113.23 L471.72,107.99 L455.02,120.28 L451.97,118.20 L456.83,114.85 L445.68,112.57 L456.42,113.73 L475.88,99.31 L491.11,98.49 L489.41,98.12 L492.67,96.72 L482.22,89.55 L494.23,85.76 L493.61,81.20 L499.06,77.31 L507.75,82.64 L512.97,77.14 L570.57,73.53 L581.96,79.74 L576.70,83.23 L578.29,90.46 L539.26,102.35 L572.25,98.36 L558.28,103.98 L557.87,111.02 L558.17,105.70 L586.26,95.67 L582.85,89.83 L591.15,86.66 L590.00,92.00 L592.76,91.71 L594.65,84.95 L591.85,81.77 L593.74,80.41 L613.34,79.90 L610.91,82.57 L622.81,85.46 L635.99,98.37 L628.98,100.31 L631.60,103.92 L626.22,113.67 L629.89,116.96 L627.09,120.97 L627.31,132.51 L611.32,131.04 L627.43,143.80 Z M527.33,75.83 L525.33,75.86 L527.33,75.83 Z M441.38,72.27 L424.52,67.29 L457.56,68.17 L406.14,67.02 L440.58,61.83 L419.90,56.86 L443.81,51.69 L445.43,42.67 L456.76,33.47 L435.72,35.63 L454.39,26.79 L451.77,21.64 L516.61,4.85 L504.32,1.37 L522.94,0.48 L526.09,3.51 L523.29,6.86 L532.78,8.71 L548.86,24.11 L575.61,31.52 L573.95,33.70 L578.07,34.81 L575.02,36.84 L579.53,39.53 L563.92,43.43 L545.78,36.15 L558.55,42.58 L555.91,51.31 L559.48,61.77 L564.92,64.72 L560.52,68.84 L488.37,74.58 L465.79,83.76 L425.14,74.83 L446.07,74.80 L441.38,72.27 Z M816.31,205.37 L836.89,207.88 L831.19,214.29 L802.09,207.86 L816.31,205.37 Z M627.43,219.91 L619.95,221.25 L615.37,215.12 L634.94,193.74 L632.87,189.09 L648.11,163.89 L663.43,165.80 L653.27,159.56 L658.52,149.04 L670.89,150.87 L659.89,146.08 L672.35,141.97 L664.42,140.91 L667.56,134.99 L676.56,134.17 L674.08,128.70 L681.41,125.97 L684.51,134.03 L692.68,135.45 L689.96,126.42 L692.51,122.19 L715.16,129.09 L707.36,136.37 L702.71,154.46 L694.77,163.05 L703.77,160.04 L709.73,146.09 L733.16,137.93 L738.20,141.12 L736.31,145.28 L738.88,149.89 L757.61,158.57 L752.05,159.79 L756.86,163.80 L754.81,165.38 L762.50,159.34 L771.43,163.42 L775.85,178.47 L759.22,196.46 L712.34,202.04 L708.58,207.18 L665.10,204.93 L627.43,219.91 Z M920.36,501.61 L930.20,506.78 L917.70,511.68 L912.98,519.62 L899.38,521.25 L912.66,530.17 L906.05,537.91 L918.66,537.32 L915.89,541.15 L918.92,544.32 L913.56,551.17 L919.75,552.57 L912.73,556.02 L915.50,559.31 L914.67,567.57 L920.30,576.47 L930.59,580.32 L922.89,588.47 L937.83,592.84 L940.27,597.28 L938.31,600.32 L949.10,606.12 L949.10,654.07 L968.27,664.03 L962.87,669.08 L964.95,673.53 L899.43,704.88 L899.18,715.33 L904.45,720.04 L886.74,722.42 L884.48,723.78 L884.93,730.41 L877.76,733.24 L879.38,742.30 L884.13,746.19 L877.53,762.16 L849.83,756.84 L843.84,761.25 L842.00,769.14 L813.01,778.82 L803.22,774.98 L794.10,786.38 L814.28,822.92 L812.07,924.17 L792.35,935.16 L789.32,943.33 L777.33,945.42 L792.46,953.29 L791.00,960.57 L795.97,959.78 L794.20,964.22 L799.08,981.21 L793.20,988.63 L793.13,999.65 L799.28,1002.59 L803.94,1013.07 L801.31,1034.52 L815.93,1045.39 L811.95,1054.07 L801.95,1057.92 L804.24,1064.55 L789.01,1076.49 L795.81,1087.57 L788.07,1085.54 L789.98,1090.32 L786.43,1090.23 L786.87,1100.71 L782.05,1100.19 L782.78,1106.96 L784.13,1113.36 L790.95,1109.62 L793.99,1117.91 L804.99,1114.97 L805.64,1109.50 L826.57,1128.20 L833.75,1124.90 L842.50,1133.42 L849.77,1128.92 L853.43,1142.45 L837.14,1144.20 L827.66,1152.55 L807.90,1142.59 L806.37,1146.41 L811.30,1153.42 L806.26,1163.94 L808.50,1167.61 L806.12,1174.71 L802.80,1175.91 L809.83,1185.51 L806.75,1190.89 L801.22,1188.45 L800.82,1203.58 L793.36,1205.91 L795.43,1217.17 L803.88,1225.79 L802.83,1232.00 L810.78,1235.91 L808.12,1241.37 L810.32,1245.24 L801.75,1251.98 L803.11,1255.67 L799.55,1259.50 L802.61,1260.98 L800.79,1275.48 L787.67,1288.67 L789.79,1298.86 L773.37,1308.90 L771.36,1316.48 L757.96,1321.65 L762.55,1323.73 L765.04,1332.91 L753.97,1339.46 L754.18,1350.98 L749.80,1354.63 L753.53,1363.01 L750.73,1370.23 L754.78,1384.15 L777.32,1396.05 L775.04,1400.95 L777.21,1411.07 L774.71,1414.56 L777.36,1421.48 L765.72,1419.28 L757.57,1432.03 L763.01,1446.25 L770.10,1448.08 L768.77,1458.17 L773.60,1469.66 L759.54,1484.05 L757.37,1490.30 L761.06,1494.46 L758.70,1499.09 L749.77,1503.47 L742.99,1491.69 L734.43,1494.82 L735.98,1483.88 L721.34,1475.51 L716.70,1461.70 L720.28,1459.81 L711.43,1456.36 L706.32,1464.63 L697.66,1465.14 L695.13,1471.95 L699.33,1483.81 L699.45,1494.75 L660.84,1537.16 L661.69,1546.00 L653.22,1552.16 L655.59,1558.89 L653.09,1567.92 L657.24,1578.20 L651.75,1583.76 L642.23,1573.58 L641.59,1561.02 L635.19,1553.21 L633.97,1539.33 L631.66,1538.39 L623.14,1538.40 L616.57,1557.88 L604.54,1562.63 L577.40,1555.27 L561.28,1608.14 L569.95,1612.02 L564.68,1622.07 L572.98,1623.76 L571.81,1640.33 L575.47,1641.22 L575.47,1651.76 L566.92,1651.69 L567.38,1664.24 L563.01,1665.82 L561.70,1674.55 L555.67,1669.21 L551.94,1676.42 L551.92,1686.52 L546.52,1690.65 L547.57,1697.33 L545.41,1699.47 L548.33,1703.25 L550.69,1721.70 L543.11,1727.48 L543.86,1737.58 L541.42,1741.07 L544.68,1749.75 L539.98,1774.29 L527.44,1771.34 L523.18,1783.61 L518.08,1781.99 L516.40,1789.57 L543.88,1836.64 L537.36,1841.77 L532.10,1834.78 L528.65,1845.87 L518.64,1840.99 L509.98,1851.58 L504.89,1844.77 L500.21,1851.55 L491.86,1850.87 L488.70,1855.56 L491.76,1859.87 L486.72,1881.83 L476.56,1887.07 L475.52,1896.71 L466.65,1912.28 L464.25,1928.15 L455.28,1933.75 L443.00,1953.14 L433.89,1956.12 L421.88,1957.32 L414.71,1949.78 L395.34,1945.45 L389.44,1948.87 L386.85,1937.58 L379.84,1929.25 L390.64,1902.35 L400.24,1899.98 L406.00,1882.86 L405.33,1866.85 L412.96,1864.06 L417.86,1852.65 L408.44,1836.23 L404.73,1818.65 L408.60,1803.41 L401.65,1787.45 L400.31,1775.83 L391.27,1766.07 L391.98,1753.15 L380.38,1749.42 L380.17,1739.03 L372.70,1732.87 L358.08,1743.03 L355.85,1737.24 L347.86,1740.28 L342.20,1735.10 L343.57,1731.11 L340.80,1721.58 L329.95,1714.70 L351.16,1685.54 L347.80,1683.79 L347.93,1673.10 L341.47,1663.31 L341.56,1656.73 L332.44,1652.35 L327.29,1635.39 L333.52,1629.23 L329.85,1623.42 L332.95,1604.16 L327.44,1601.97 L333.47,1596.47 L337.04,1578.66 L342.19,1579.91 L344.75,1577.59 L343.95,1569.43 L349.90,1569.41 L349.85,1549.67 L316.86,1536.40 L312.03,1509.94 L324.17,1484.59 L335.97,1476.00 L329.28,1463.41 L330.62,1457.90 L311.45,1460.48 L301.19,1433.38 L292.19,1432.18 L289.65,1419.13 L277.96,1414.51 L226.92,1418.27 L223.58,1413.62 L224.50,1399.91 L229.14,1387.71 L215.16,1353.84 L253.09,1325.87 L251.61,1320.34 L260.50,1312.67 L256.95,1305.28 L226.14,1291.06 L221.94,1283.11 L219.87,1265.33 L251.06,1209.63 L247.96,1200.12 L252.88,1187.19 L246.92,1188.59 L244.00,1179.32 L235.29,1173.37 L242.67,1168.92 L243.37,1159.05 L248.06,1150.29 L260.25,1142.31 L261.31,1127.47 L255.94,1112.54 L258.67,1107.41 L256.72,1093.46 L248.63,1088.95 L238.19,1094.81 L233.25,1090.11 L235.51,1085.11 L232.58,1082.18 L215.41,1083.43 L218.61,1075.51 L215.83,1072.23 L222.88,1061.25 L221.68,1047.44 L212.83,1040.33 L215.95,1033.52 L208.19,1026.87 L194.27,1025.06 L196.32,1019.18 L188.87,1009.47 L196.01,1000.30 L183.76,982.01 L184.14,973.26 L190.41,969.01 L185.58,957.62 L158.38,930.81 L164.85,925.29 L161.41,919.18 L165.80,911.71 L158.30,906.76 L156.01,903.55 L157.90,898.57 L147.99,887.07 L164.86,883.95 L164.21,872.39 L169.89,868.86 L173.46,857.79 L171.82,841.28 L178.37,835.19 L163.63,809.99 L167.67,803.92 L151.16,800.61 L150.13,796.72 L154.25,790.16 L147.56,783.35 L144.31,795.67 L127.49,800.25 L120.94,792.41 L98.23,789.75 L88.32,770.03 L77.08,766.82 L80.32,764.58 L72.74,755.13 L85.68,744.14 L85.13,737.02 L90.53,739.33 L108.26,718.24 L125.89,718.09 L119.48,715.11 L124.11,705.25 L119.50,701.24 L121.28,693.43 L117.81,677.91 L102.28,673.04 L79.31,655.04 L85.50,647.21 L84.16,641.83 L101.83,640.28 L106.97,635.54 L104.33,626.11 L112.39,622.44 L94.97,611.03 L77.77,610.46 L64.06,601.05 L67.09,598.21 L60.67,592.18 L89.01,591.26 L124.14,609.42 L124.79,615.42 L146.58,634.65 L193.50,631.71 L187.06,623.00 L173.27,622.13 L162.31,608.02 L165.05,601.86 L161.87,597.36 L126.13,586.24 L122.66,580.67 L125.56,574.03 L121.38,572.75 L120.69,566.07 L124.62,561.37 L125.75,551.79 L115.90,542.61 L118.92,539.24 L111.25,537.07 L121.01,535.40 L111.75,528.68 L121.31,516.86 L106.38,513.60 L291.24,491.71 L288.25,499.13 L281.70,500.73 L285.81,500.74 L282.75,507.50 L273.04,508.54 L281.93,504.02 L274.78,503.88 L253.31,521.36 L276.91,537.62 L257.88,524.48 L260.43,520.44 L257.96,517.06 L291.04,507.52 L299.33,494.57 L289.97,483.37 L281.59,482.93 L279.99,479.04 L292.29,478.55 L283.11,476.42 L280.35,466.42 L258.58,459.32 L264.43,455.03 L269.32,459.23 L262.99,452.82 L272.80,449.80 L287.15,454.25 L284.26,458.45 L287.63,457.70 L287.58,463.13 L289.87,461.95 L288.54,455.49 L291.28,455.68 L276.28,447.51 L281.11,444.26 L253.82,438.18 L265.45,429.93 L254.16,428.90 L255.78,424.14 L284.51,440.22 L286.57,436.76 L280.85,435.16 L288.41,433.85 L290.80,430.69 L288.82,426.58 L297.59,418.62 L292.30,416.69 L307.28,415.64 L284.82,408.52 L287.09,406.68 L314.97,407.88 L348.55,381.22 L360.57,386.50 L358.49,383.59 L372.05,375.57 L411.43,373.35 L411.75,366.90 L473.78,354.77 L458.73,357.15 L453.76,350.11 L442.85,356.27 L444.74,353.94 L441.99,351.12 L446.16,349.29 L444.59,345.35 L451.98,347.51 L454.95,344.36 L451.25,342.83 L453.60,341.06 L459.77,342.31 L456.12,344.69 L459.89,347.96 L473.47,345.18 L465.51,340.78 L520.08,339.07 L508.52,330.32 L544.50,331.76 L540.33,339.85 L540.83,334.49 L536.33,331.80 L538.93,335.14 L533.95,334.54 L538.34,337.29 L535.22,342.09 L521.29,339.52 L533.02,342.44 L515.57,357.12 L518.93,360.21 L537.45,347.89 L544.49,350.77 L538.94,357.07 L548.12,355.67 L557.03,349.05 L544.97,349.34 L561.56,341.94 L557.61,348.01 L562.76,347.47 L556.92,353.47 L574.68,350.83 L567.06,346.31 L583.87,344.12 L585.80,342.90 L577.47,341.75 L599.90,331.96 L627.92,344.91 L621.19,332.06 L607.83,326.71 L601.45,317.52 L643.18,318.68 L660.49,312.84 L662.87,303.65 L669.56,303.73 L656.19,291.80 L659.61,285.18 L665.82,287.53 L667.52,279.93 L665.44,279.18 L668.46,275.18 L710.57,244.56 L730.89,242.04 L739.84,234.82 L773.05,246.66 L787.73,245.76 L791.05,255.27 L798.48,258.15 L744.17,276.80 L789.05,274.01 L785.43,280.61 L776.17,282.07 L813.28,279.27 L830.84,288.11 L811.03,301.11 L812.71,303.87 L810.06,310.57 L801.28,310.56 L802.34,314.73 L835.96,315.59 L842.92,311.18 L843.23,300.15 L894.77,303.09 L926.15,297.71 L928.52,303.52 L941.07,304.34 L937.53,308.87 L955.53,319.37 L950.74,325.18 L960.36,318.86 L949.05,308.81 L960.97,307.20 L965.08,313.06 L962.96,315.00 L968.55,315.41 L964.75,318.32 L968.42,320.57 L965.64,324.98 L970.47,327.53 L968.36,335.35 L963.59,334.52 L972.38,340.51 L969.32,344.76 L976.88,343.14 L975.33,341.23 L980.91,337.59 L974.29,333.10 L981.40,331.00 L988.20,338.76 L991.25,352.06 L989.32,353.56 L999.93,356.36 L999.06,364.52 L990.38,379.62 L986.15,378.50 L991.76,372.74 L960.13,359.43 L972.54,367.85 L969.41,370.14 L972.50,373.04 L970.16,378.68 L982.32,371.39 L985.55,380.68 L995.57,385.72 L989.63,389.26 L994.24,390.34 L990.87,399.03 L971.31,417.74 L952.60,423.93 L943.85,438.49 L934.47,436.21 L922.96,445.83 L906.75,448.37 L906.84,453.31 L893.57,459.97 L892.88,469.18 L870.66,479.77 L849.21,503.44 L825.89,507.78 L811.41,526.84 L793.70,529.94 L792.00,538.65 L787.85,540.88 L785.41,555.96 L757.98,564.60 L748.62,573.96 L778.05,564.89 L791.88,552.21 L804.09,554.27 L796.64,551.54 L796.10,539.52 L799.50,535.64 L852.65,533.85 L848.56,530.73 L877.68,522.03 L876.44,516.67 L881.84,519.28 L875.25,515.49 L876.10,511.24 L890.04,519.20 L920.36,501.61 Z M484.06,305.98 L493.44,306.30 L481.42,307.80 L484.06,305.98 Z M483.57,312.96 L471.18,310.87 L483.57,312.96 Z M512.60,311.05 L514.46,311.10 L512.60,311.05 Z M499.67,311.41 L501.82,310.77 L499.67,311.41 Z M531.18,309.93 L522.77,309.51 L538.02,304.16 L530.03,313.36 L531.18,309.93 Z M515.80,307.51 L510.53,304.99 L521.76,304.55 L515.80,307.51 Z M506.95,284.28 L536.75,270.91 L541.00,274.16 L524.01,288.30 L518.21,288.40 L526.36,282.85 L506.95,284.28 Z M635.86,272.67 L635.86,272.67 Z M688.67,257.56 L691.22,257.48 L686.42,258.57 L688.67,257.56 Z M835.29,264.65 L822.61,268.03 L829.69,265.36 L824.72,264.54 L828.10,259.87 L836.50,261.04 L835.29,264.65 Z M832.77,259.83 L834.53,259.33 L832.77,259.83 Z M813.48,255.19 L804.39,257.83 L815.40,253.31 L813.48,255.19 Z M565.61,293.22 L560.37,293.62 L565.61,293.22 Z M520.80,291.03 L517.86,291.95 L520.80,291.03 Z M549.63,293.01 L545.28,291.83 L549.63,293.01 Z M532.78,290.84 L521.88,290.16 L535.38,289.94 L532.78,290.84 Z M484.06,305.98 L487.53,303.74 L484.06,305.98 Z M494.82,306.73 L510.19,306.82 L494.82,306.73 Z M564.72,307.24 L568.98,309.51 L560.82,310.10 L564.42,305.87 L560.37,304.11 L563.92,299.66 L556.44,299.31 L569.36,297.54 L564.38,301.77 L566.87,306.10 L564.72,307.24 Z M492.33,302.72 L494.89,302.66 L492.33,302.72 Z M527.55,303.32 L523.13,304.68 L527.55,303.32 Z M520.89,302.31 L517.00,302.05 L520.89,302.31 Z M487.54,302.98 L483.74,300.47 L487.54,302.98 Z M578.74,301.38 L578.74,301.38 Z M511.75,302.67 L511.75,302.67 Z M494.19,299.83 L497.06,300.07 L494.19,299.83 Z M915.26,297.73 L918.32,296.64 L915.26,297.73 Z M565.61,293.22 L577.11,296.83 L565.61,293.22 Z","b":{"lat_min":51.773091,"lat_max":81.25366,"lng_min":76.131517,"lng_max":113.924253}},"buryatia":{"vb":"0 0 1000.00 671.54","p":"M32.81,394.95 L40.43,388.42 L40.55,382.17 L66.20,373.43 L67.90,362.80 L79.83,363.53 L89.42,357.27 L97.91,368.60 L93.23,376.69 L95.53,381.93 L104.40,388.23 L107.66,396.14 L124.67,411.54 L152.33,425.45 L155.16,432.19 L166.61,439.88 L167.11,446.42 L182.22,454.65 L178.75,457.47 L180.25,463.36 L187.59,463.87 L192.63,457.70 L215.29,463.48 L216.06,470.23 L226.03,484.18 L251.33,501.67 L248.72,509.31 L251.79,514.46 L248.83,518.80 L252.10,529.22 L258.84,535.88 L270.99,530.66 L282.71,535.80 L283.21,563.87 L304.37,549.69 L328.44,547.82 L330.12,540.01 L326.49,517.69 L361.70,508.24 L381.23,497.38 L393.31,483.78 L412.39,450.44 L457.63,417.65 L513.07,369.85 L532.73,321.15 L570.72,260.13 L542.18,249.32 L550.69,238.94 L551.25,218.72 L553.92,213.45 L549.83,205.40 L555.89,191.93 L555.22,185.78 L548.02,179.63 L548.82,170.72 L545.49,167.47 L550.81,161.23 L549.62,151.41 L554.73,150.94 L555.27,136.03 L558.61,127.58 L565.31,120.73 L577.27,123.60 L581.60,118.63 L580.13,113.36 L566.25,114.50 L556.34,93.46 L547.95,92.85 L542.90,85.52 L552.78,68.59 L549.00,62.88 L561.74,61.58 L566.97,55.62 L570.32,58.82 L571.42,54.23 L579.68,55.11 L590.16,47.04 L609.02,49.87 L615.71,41.95 L613.26,37.09 L615.48,32.27 L626.35,24.04 L632.03,29.00 L648.57,31.68 L649.06,36.26 L653.20,38.14 L663.07,33.33 L667.45,37.59 L675.37,34.53 L681.43,39.93 L695.07,32.51 L694.61,25.75 L705.46,10.85 L709.69,13.51 L710.02,21.91 L719.54,31.26 L735.59,26.95 L742.95,36.09 L753.04,36.06 L762.41,26.80 L768.23,26.09 L771.39,27.69 L768.05,34.91 L770.46,43.85 L778.81,48.46 L778.40,51.90 L803.35,57.02 L812.86,51.99 L828.80,58.55 L832.64,67.15 L844.53,59.19 L849.01,50.86 L863.52,55.77 L867.97,53.31 L867.53,50.28 L882.36,51.79 L886.31,44.93 L885.76,39.87 L891.29,34.24 L890.39,31.06 L899.59,24.55 L894.43,19.85 L898.90,12.61 L930.83,11.83 L941.28,0.06 L958.07,1.69 L963.49,11.75 L928.78,31.40 L927.13,49.29 L918.75,53.67 L918.07,60.22 L932.16,62.37 L932.98,70.28 L938.58,74.43 L938.32,77.96 L932.05,77.39 L931.72,87.11 L940.57,101.39 L936.29,103.59 L937.72,116.37 L944.55,121.83 L940.84,128.34 L942.34,138.77 L940.38,144.91 L944.72,147.30 L942.86,160.44 L947.65,166.27 L944.41,169.49 L955.59,175.56 L970.40,172.29 L975.59,178.09 L975.59,186.14 L991.07,196.41 L995.48,204.38 L994.44,209.40 L998.42,212.14 L996.74,214.37 L1000.00,223.04 L996.17,228.52 L997.16,234.96 L990.53,238.32 L992.44,243.43 L987.96,246.86 L989.15,250.63 L977.92,251.90 L977.97,257.02 L959.25,252.33 L927.67,261.58 L921.83,265.50 L922.43,270.42 L903.92,281.95 L902.94,288.52 L895.76,292.62 L893.63,300.05 L871.94,307.18 L868.39,316.52 L840.58,324.52 L837.52,326.75 L838.60,332.26 L829.41,334.85 L828.07,337.32 L833.97,343.99 L830.92,353.06 L836.97,358.51 L837.59,368.53 L851.63,375.21 L848.24,384.58 L860.53,386.79 L857.19,388.76 L857.16,395.66 L853.26,401.02 L854.65,408.50 L844.62,422.69 L830.28,427.11 L820.73,434.92 L818.02,442.40 L815.36,438.69 L794.05,442.01 L781.46,453.33 L760.92,451.80 L758.98,460.75 L751.88,465.01 L741.54,460.57 L740.75,455.81 L734.85,457.68 L718.72,477.30 L715.45,485.96 L701.64,495.58 L677.15,502.95 L676.41,509.06 L667.70,513.65 L667.95,521.93 L659.27,529.00 L645.00,527.88 L643.26,521.83 L637.70,520.35 L620.33,519.06 L600.84,534.54 L590.07,536.11 L588.50,543.27 L584.29,539.22 L579.31,542.15 L570.47,528.14 L562.65,536.10 L546.67,530.48 L546.14,538.22 L539.82,538.49 L537.60,548.62 L532.85,552.27 L542.80,559.48 L543.01,564.76 L537.11,571.00 L530.97,570.07 L526.76,592.19 L515.63,596.65 L522.26,608.22 L534.55,610.65 L541.59,618.43 L550.08,620.93 L546.27,626.08 L536.04,625.32 L530.87,631.72 L523.63,630.08 L518.37,639.87 L510.53,638.37 L509.11,645.75 L497.77,653.90 L501.14,668.64 L495.00,671.52 L470.60,669.06 L462.10,661.77 L458.50,649.97 L447.23,640.21 L430.81,635.93 L417.07,640.05 L407.98,636.92 L406.59,631.18 L393.18,627.50 L362.78,624.61 L354.76,631.88 L343.00,630.12 L337.24,636.38 L330.70,634.32 L324.26,639.75 L314.76,639.48 L301.41,654.62 L284.82,650.22 L278.33,655.90 L263.96,648.56 L253.26,649.64 L253.69,640.85 L250.07,637.22 L235.08,639.46 L219.85,630.58 L214.22,614.87 L201.24,605.67 L202.19,599.25 L196.15,592.94 L197.58,578.46 L192.35,569.47 L192.93,559.59 L190.12,553.41 L194.42,549.01 L190.68,542.78 L170.70,533.96 L163.04,534.91 L159.02,530.11 L151.01,534.39 L143.16,525.92 L136.50,527.29 L134.60,521.85 L121.76,520.50 L121.38,516.42 L110.41,508.94 L67.46,504.93 L61.09,492.59 L34.58,486.85 L35.52,481.63 L26.84,481.52 L21.57,477.87 L19.56,468.50 L11.10,466.53 L11.07,458.47 L1.45,459.45 L3.01,450.92 L0.00,445.47 L10.92,434.44 L8.48,428.02 L16.44,423.13 L18.11,417.77 L17.51,411.19 L12.05,409.88 L14.36,401.11 L16.79,397.32 L32.85,403.66 L32.41,399.67 L35.18,397.87 L32.81,394.95 Z","b":{"lat_min":49.9619,"lat_max":57.248942,"lng_min":98.63053,"lng_max":116.918977}},"krasnodar":{"vb":"0 0 1000.00 963.15","p":"M405.73,3.04 L405.71,15.32 L441.43,15.24 L441.43,11.16 L453.82,11.14 L453.81,15.24 L446.55,15.25 L446.56,41.30 L441.42,41.27 L441.08,85.93 L447.82,88.60 L447.75,68.01 L453.29,70.65 L459.57,67.62 L467.47,71.65 L469.50,68.46 L477.81,72.03 L480.15,77.49 L492.32,76.24 L494.04,71.78 L506.12,74.91 L507.46,55.00 L510.94,55.03 L511.07,47.78 L517.66,47.80 L517.80,24.09 L548.12,23.47 L553.45,20.95 L553.47,17.53 L561.37,17.61 L561.35,21.08 L576.62,20.97 L576.33,25.85 L609.32,24.33 L630.18,25.52 L630.23,30.38 L673.39,30.24 L673.40,38.50 L676.59,38.53 L676.45,41.90 L688.69,40.13 L683.70,45.05 L683.77,64.91 L681.20,64.96 L681.24,68.94 L673.62,69.88 L673.60,95.70 L704.14,94.73 L704.06,104.49 L707.36,106.04 L707.38,119.37 L716.68,119.35 L716.71,139.21 L709.21,141.59 L709.16,147.81 L714.01,147.99 L714.01,156.25 L724.12,156.29 L724.09,164.94 L765.51,167.77 L771.18,164.02 L805.59,164.22 L805.78,179.78 L840.99,179.53 L840.96,161.55 L853.57,160.69 L853.72,185.75 L849.97,185.78 L849.10,190.73 L851.32,191.16 L851.31,211.64 L864.15,209.14 L868.94,211.66 L868.99,221.51 L876.46,221.50 L881.67,248.62 L886.65,248.67 L886.75,275.98 L903.82,275.92 L906.50,282.20 L900.80,289.33 L905.47,293.23 L905.96,299.36 L908.44,299.40 L908.31,309.31 L888.34,309.09 L887.93,332.56 L865.75,332.40 L865.78,327.41 L851.36,321.77 L848.24,327.24 L825.88,327.11 L825.51,375.95 L840.50,375.96 L840.37,395.18 L851.62,401.97 L850.38,410.21 L854.52,410.08 L856.83,422.06 L854.16,429.42 L858.54,431.17 L861.97,442.14 L858.71,445.78 L862.88,447.90 L860.76,452.43 L862.45,456.28 L900.65,456.64 L905.61,454.20 L905.67,449.27 L909.64,445.66 L913.24,456.75 L924.16,456.89 L923.72,493.16 L934.39,500.67 L944.13,521.57 L982.52,522.13 L982.17,544.42 L979.72,544.40 L979.55,555.77 L973.07,566.30 L974.94,573.44 L969.04,575.02 L970.89,582.18 L964.99,584.00 L964.22,590.40 L938.42,598.64 L941.74,611.20 L947.95,615.44 L951.60,629.71 L962.69,623.52 L970.02,651.68 L979.47,649.14 L981.96,658.73 L991.41,656.20 L998.53,660.63 L998.30,666.82 L992.66,668.41 L990.27,680.89 L977.50,681.66 L978.57,689.70 L970.47,693.65 L989.61,701.96 L1000.00,719.87 L991.24,746.64 L979.34,761.45 L962.46,767.31 L963.01,776.09 L960.09,781.49 L949.57,780.86 L948.65,793.54 L939.43,793.67 L935.91,798.52 L924.30,791.20 L925.41,799.86 L916.65,799.36 L915.44,794.36 L912.32,793.57 L916.28,789.57 L903.35,791.05 L910.20,779.65 L909.55,773.47 L912.65,778.50 L914.01,776.79 L912.00,770.25 L906.73,767.64 L888.52,769.34 L888.45,765.07 L879.03,759.08 L879.24,764.45 L871.90,767.71 L862.35,760.43 L861.50,762.79 L846.65,754.94 L834.30,754.41 L834.29,765.18 L841.09,768.95 L838.07,770.75 L841.22,775.04 L839.70,783.29 L842.89,789.01 L833.23,809.05 L828.38,808.43 L823.22,815.54 L817.14,816.45 L813.84,826.85 L809.91,828.99 L807.95,840.70 L801.56,850.29 L808.18,862.90 L797.33,865.04 L794.05,870.87 L795.76,877.64 L799.62,880.32 L797.01,889.26 L805.37,902.48 L799.77,922.50 L789.70,914.16 L771.15,926.25 L759.32,924.67 L753.96,917.99 L736.63,916.56 L722.19,909.85 L719.22,912.08 L708.17,907.69 L682.44,912.35 L678.73,916.21 L679.75,922.59 L663.61,951.10 L662.75,963.12 L659.51,963.15 L644.49,952.22 L634.55,928.40 L605.42,910.27 L599.27,893.64 L584.71,885.39 L579.91,875.67 L556.30,851.94 L524.38,810.03 L495.96,787.56 L480.50,767.97 L474.07,767.33 L472.44,758.58 L466.30,749.26 L441.81,740.20 L426.57,716.69 L382.96,697.53 L342.53,690.98 L327.62,680.67 L311.97,678.67 L302.12,667.61 L298.22,657.01 L281.92,641.79 L286.88,640.38 L283.78,633.65 L278.58,632.65 L278.29,639.42 L269.72,637.42 L254.19,620.13 L258.97,616.21 L255.49,610.22 L234.13,593.20 L230.75,594.80 L236.01,609.12 L219.35,614.91 L184.60,607.48 L166.57,599.20 L152.13,585.39 L152.61,578.30 L135.93,548.95 L139.51,545.49 L139.00,538.82 L121.44,519.53 L100.29,506.71 L62.22,490.66 L39.62,485.54 L26.60,488.09 L6.76,479.60 L0.00,464.52 L1.98,459.13 L28.00,457.45 L32.23,452.35 L51.92,449.66 L76.79,438.03 L75.61,428.98 L64.40,427.57 L39.31,434.87 L32.67,414.95 L41.66,420.33 L47.23,416.92 L47.41,413.17 L36.62,410.10 L33.06,404.87 L11.77,430.60 L4.27,434.92 L23.45,417.18 L36.38,396.52 L50.37,394.12 L63.39,399.05 L84.90,414.37 L120.99,426.64 L150.81,426.08 L154.04,421.42 L164.18,422.94 L179.21,415.04 L190.72,402.84 L194.12,393.48 L194.99,346.99 L197.84,335.28 L241.03,308.60 L257.12,253.47 L266.80,233.63 L291.05,226.59 L295.41,228.88 L295.28,233.93 L287.85,240.51 L288.12,251.81 L292.85,255.72 L302.42,241.55 L301.18,233.16 L307.14,221.79 L307.60,214.01 L319.04,201.13 L321.63,178.97 L327.47,168.61 L315.67,153.88 L291.34,133.47 L270.26,130.54 L269.48,134.18 L275.41,139.17 L269.42,142.10 L257.84,132.21 L245.40,114.66 L219.85,53.55 L235.15,63.97 L273.64,67.76 L281.43,66.04 L300.37,51.95 L315.64,50.13 L329.50,38.65 L328.59,48.07 L337.78,60.28 L371.28,65.64 L387.66,59.37 L389.42,54.81 L384.62,42.87 L371.05,36.01 L349.33,36.51 L352.81,20.35 L358.41,9.96 L369.36,0.00 L379.29,6.95 L405.73,3.04 Z M334.84,33.81 L341.12,30.93 L334.84,33.81 Z","b":{"lat_min":43.385174,"lat_max":46.881739,"lng_min":36.597915,"lng_max":41.74398}},"adygea":{"vb":"0 0 1000.00 975.61","p":"M0.00,177.71 L2.73,104.96 L10.30,101.26 L15.08,105.23 L16.95,116.37 L24.63,114.81 L30.59,105.25 L40.95,108.10 L34.64,122.96 L40.45,126.00 L48.69,142.10 L59.88,147.87 L61.93,138.74 L84.32,144.07 L87.04,137.18 L81.05,128.46 L102.16,109.11 L107.69,115.60 L103.03,125.45 L106.68,130.23 L122.70,120.93 L130.22,122.66 L125.79,134.06 L128.83,146.36 L137.44,149.11 L138.37,140.21 L157.86,142.49 L160.81,165.88 L170.89,155.29 L178.03,161.39 L187.38,159.42 L188.21,153.18 L198.33,153.14 L207.89,146.25 L238.21,151.39 L247.13,144.77 L257.74,151.66 L257.52,141.26 L262.32,138.44 L273.37,143.82 L277.55,131.75 L289.27,133.21 L295.38,124.95 L307.39,122.47 L306.95,115.12 L315.92,116.69 L330.84,107.25 L333.41,94.67 L341.86,93.75 L345.94,82.15 L353.76,85.06 L362.03,70.88 L371.10,76.66 L374.60,72.84 L368.61,65.69 L389.22,51.12 L396.46,37.14 L407.82,37.56 L411.27,19.76 L435.54,4.01 L451.56,0.00 L480.04,15.97 L476.52,19.27 L479.94,41.39 L499.80,44.14 L505.12,53.95 L524.39,55.86 L523.64,61.87 L533.84,57.61 L540.76,68.27 L558.29,66.06 L581.40,80.37 L602.47,81.61 L604.66,87.40 L614.53,91.00 L617.90,83.92 L640.90,82.86 L649.89,76.03 L658.09,83.08 L666.83,71.64 L693.52,64.95 L726.34,69.66 L737.68,66.24 L748.85,79.51 L763.37,75.52 L770.01,87.47 L765.54,93.17 L767.47,101.40 L787.86,107.13 L790.55,113.68 L801.01,110.08 L815.08,122.37 L844.47,158.52 L881.47,189.74 L887.12,207.89 L883.84,211.30 L902.56,234.57 L910.47,237.21 L906.17,242.12 L916.22,273.71 L925.42,280.44 L931.96,295.81 L928.61,305.06 L934.70,314.88 L941.33,350.50 L949.49,347.23 L962.06,380.78 L968.38,391.74 L975.88,395.43 L982.19,415.24 L975.45,441.65 L991.78,485.89 L999.95,490.47 L1000.00,503.67 L925.32,503.63 L925.40,491.49 L945.27,491.82 L943.66,460.34 L948.54,454.22 L947.92,445.03 L936.71,423.73 L937.09,388.94 L925.68,388.75 L924.65,377.12 L900.40,376.66 L899.41,317.91 L878.69,318.54 L881.32,304.24 L834.71,304.54 L834.71,322.45 L843.99,322.70 L843.83,337.25 L804.33,334.90 L807.55,343.54 L804.19,353.54 L822.42,364.18 L819.84,370.29 L808.52,368.17 L793.06,382.88 L791.82,395.10 L798.61,415.03 L793.06,425.99 L806.90,429.24 L818.89,458.42 L827.56,456.78 L828.98,470.50 L812.46,494.09 L824.84,515.83 L827.39,532.20 L837.06,532.82 L860.00,603.96 L846.49,610.66 L840.61,624.03 L801.16,649.95 L818.55,687.03 L823.08,705.42 L823.02,726.27 L834.45,738.80 L826.72,772.87 L834.42,780.17 L857.18,842.90 L845.47,844.55 L844.44,849.91 L826.56,854.24 L824.35,858.98 L821.69,885.79 L830.13,893.98 L821.83,908.22 L817.36,930.73 L810.92,935.86 L811.78,948.01 L803.95,967.24 L774.50,961.56 L761.21,975.61 L748.37,974.72 L732.82,963.33 L727.59,949.32 L728.63,936.74 L719.67,919.63 L723.27,909.64 L716.95,899.89 L701.28,910.67 L679.13,904.52 L673.77,919.02 L649.42,895.05 L635.51,892.79 L606.69,859.68 L592.32,833.70 L585.60,832.80 L582.64,846.30 L587.39,855.85 L558.12,866.08 L538.96,860.41 L522.90,840.92 L541.39,827.66 L532.39,817.69 L531.99,803.60 L547.15,771.51 L547.46,758.55 L530.68,730.04 L523.21,728.96 L515.26,715.57 L516.60,705.76 L522.21,701.53 L518.51,694.44 L564.61,691.79 L569.91,701.13 L570.83,716.02 L579.72,732.25 L605.36,748.65 L611.52,746.74 L612.50,754.21 L625.94,764.10 L637.67,756.43 L636.85,743.97 L656.36,723.12 L664.74,733.51 L673.50,729.45 L671.20,722.48 L662.15,717.98 L665.69,711.96 L663.79,701.56 L671.00,695.55 L666.13,667.07 L661.56,664.60 L671.93,647.17 L658.82,635.42 L624.24,640.19 L616.29,628.21 L613.03,609.93 L617.19,587.82 L608.91,582.03 L591.97,589.25 L584.81,580.06 L571.04,582.82 L566.88,588.67 L555.47,578.62 L571.34,549.56 L563.67,542.53 L567.29,526.02 L571.49,525.28 L574.08,443.33 L568.13,443.00 L568.98,418.98 L595.26,419.72 L597.05,411.28 L588.44,407.54 L591.08,395.72 L583.44,385.22 L588.96,378.99 L579.54,371.79 L594.48,353.12 L585.19,345.85 L586.15,337.48 L601.80,321.87 L623.18,334.61 L643.01,314.70 L633.13,306.06 L620.25,278.89 L609.02,283.37 L600.01,261.07 L607.84,264.34 L622.15,258.77 L617.56,247.44 L608.98,250.77 L597.56,222.99 L611.68,217.25 L601.48,192.33 L592.92,193.95 L583.12,143.84 L577.02,144.91 L574.12,129.58 L516.36,151.61 L520.98,162.77 L482.09,177.72 L476.97,169.89 L483.91,166.32 L472.95,159.49 L475.53,150.12 L459.21,156.39 L462.60,161.47 L447.48,171.75 L437.23,156.71 L459.04,141.89 L462.97,122.58 L448.49,112.29 L441.72,116.74 L421.70,113.61 L424.32,121.12 L411.79,121.96 L414.91,113.43 L404.33,116.18 L397.66,111.36 L394.43,120.63 L385.69,115.25 L384.09,123.54 L376.36,121.24 L378.16,153.42 L382.46,151.91 L387.48,161.77 L396.29,153.09 L400.73,157.62 L392.51,165.58 L407.78,174.79 L425.00,194.81 L457.11,214.99 L457.96,235.22 L448.35,238.12 L441.54,248.25 L417.73,254.63 L423.04,260.62 L417.00,274.59 L381.97,265.68 L381.40,276.15 L369.12,267.44 L338.78,270.30 L224.10,255.11 L194.45,267.68 L164.02,251.01 L146.16,249.52 L146.15,241.03 L118.83,228.25 L81.35,215.94 L84.16,206.72 L76.70,195.07 L63.06,182.64 L50.28,183.39 L46.65,166.86 L33.55,179.04 L0.00,177.71 Z","b":{"lat_min":43.760788,"lat_max":45.216601,"lng_min":38.684018,"lng_max":40.775739}},"rostov":{"vb":"0 0 1000.00 1046.18","p":"M313.91,146.61 L318.06,140.22 L337.21,143.83 L353.14,153.87 L379.53,156.26 L389.48,142.21 L396.63,141.70 L392.70,140.11 L396.15,132.89 L419.44,134.31 L422.21,125.97 L442.82,126.11 L457.71,102.09 L463.40,99.47 L462.43,85.30 L469.14,66.54 L487.30,49.75 L504.49,47.37 L511.13,35.81 L518.69,32.73 L516.83,21.25 L503.04,12.57 L513.10,0.00 L521.42,2.86 L536.48,32.29 L555.82,42.45 L550.19,54.50 L556.89,62.56 L574.07,66.39 L578.87,72.65 L599.58,75.40 L606.64,89.43 L617.15,93.11 L641.97,118.20 L649.85,132.24 L640.01,152.59 L636.56,171.19 L632.99,172.27 L624.17,210.03 L624.54,214.08 L632.43,214.38 L631.32,221.54 L636.28,220.24 L632.03,227.70 L636.98,231.17 L633.62,234.91 L630.79,232.47 L627.39,246.55 L635.81,250.11 L623.09,265.21 L650.66,268.03 L675.34,263.88 L679.41,272.44 L682.16,271.24 L683.11,282.80 L677.08,285.69 L683.53,294.78 L701.66,295.57 L710.58,304.47 L731.54,313.79 L731.36,328.70 L742.23,341.61 L741.78,353.46 L728.73,365.64 L727.50,371.54 L735.81,392.99 L735.13,399.52 L728.25,398.54 L721.61,410.24 L711.39,410.49 L706.14,415.61 L691.29,419.98 L685.69,419.59 L687.11,417.41 L684.57,416.20 L679.09,421.42 L671.65,416.84 L665.09,419.16 L633.68,441.46 L649.30,475.52 L629.92,478.29 L629.97,486.02 L634.16,486.10 L640.78,508.90 L632.87,510.07 L624.81,517.43 L622.53,531.79 L625.87,535.09 L622.98,537.83 L627.20,536.82 L628.22,540.29 L640.90,537.42 L647.87,541.62 L655.06,535.46 L675.11,536.79 L677.36,532.62 L683.83,541.19 L692.90,537.72 L705.74,538.91 L709.33,550.39 L722.85,565.86 L737.70,573.95 L744.10,602.22 L758.40,624.05 L757.88,630.80 L762.06,633.51 L771.28,664.39 L781.38,664.84 L791.75,653.03 L810.53,653.02 L811.90,655.29 L807.43,659.09 L809.88,666.22 L809.04,674.53 L824.75,679.11 L879.85,669.70 L891.26,679.99 L900.19,672.52 L912.57,701.97 L913.68,723.17 L937.62,725.40 L935.35,708.23 L941.66,690.68 L969.28,687.42 L969.44,655.21 L978.01,657.23 L978.10,653.70 L985.41,653.78 L985.39,671.43 L998.49,671.46 L1000.00,700.72 L999.88,754.32 L990.97,793.86 L989.57,813.66 L972.40,832.30 L961.77,829.28 L953.04,846.69 L933.65,858.83 L927.88,880.88 L918.60,887.38 L916.07,893.31 L936.15,903.01 L933.25,931.37 L936.08,931.43 L934.90,939.01 L943.57,945.90 L940.58,956.00 L930.31,960.64 L924.64,967.69 L922.43,962.86 L928.72,957.01 L918.73,948.02 L917.26,939.99 L903.91,933.50 L902.19,937.39 L905.86,945.13 L885.75,990.68 L871.12,995.03 L839.20,993.31 L772.39,924.64 L747.69,935.47 L749.29,940.43 L745.72,943.84 L726.72,942.92 L711.53,936.32 L699.79,920.42 L687.79,915.97 L684.73,908.89 L652.48,897.28 L639.60,898.02 L626.98,903.28 L636.17,942.49 L646.50,940.35 L647.60,961.30 L613.45,961.24 L613.56,971.77 L605.17,971.76 L605.08,984.38 L613.46,984.44 L613.50,991.05 L601.00,991.23 L597.17,999.02 L576.75,988.78 L570.24,981.30 L567.00,985.27 L568.55,988.60 L559.89,988.55 L570.75,1021.53 L572.80,1038.64 L544.41,1037.78 L532.97,1032.85 L520.30,1035.03 L520.12,1046.03 L482.05,1046.18 L482.01,1039.49 L477.81,1039.43 L477.76,1032.93 L475.64,1032.93 L475.65,1019.70 L473.45,1019.66 L473.42,1015.28 L467.11,1015.29 L467.07,1006.51 L452.19,1006.49 L452.21,988.25 L450.33,987.86 L451.07,983.45 L454.23,983.42 L454.10,961.10 L443.46,961.86 L443.49,977.88 L413.78,978.11 L413.62,964.25 L358.63,967.54 L344.86,964.88 L344.88,957.18 L336.36,957.14 L336.35,949.78 L332.26,949.62 L332.30,944.08 L338.63,941.96 L338.61,924.27 L330.76,924.28 L328.03,902.33 L302.26,903.19 L302.28,880.19 L310.84,875.76 L310.78,858.07 L314.99,853.68 L304.66,855.26 L302.09,852.23 L302.08,844.87 L265.67,844.99 L265.62,840.66 L248.02,839.60 L220.19,840.96 L220.43,836.61 L207.55,836.71 L207.57,833.62 L200.90,833.55 L196.39,838.84 L170.81,839.39 L170.69,860.52 L165.13,860.50 L165.02,866.96 L162.08,866.93 L160.95,884.67 L150.76,881.88 L149.31,885.86 L139.04,886.97 L137.07,882.11 L130.06,878.93 L128.34,881.76 L111.71,878.53 L111.77,896.87 L106.08,894.49 L106.36,854.69 L110.70,854.73 L110.69,831.51 L116.82,831.51 L116.83,827.85 L106.38,827.87 L106.38,831.51 L76.24,831.57 L76.25,820.64 L103.39,810.22 L112.06,796.70 L115.85,799.54 L145.30,778.70 L147.53,782.44 L176.15,783.56 L177.99,775.58 L165.71,767.11 L170.21,761.17 L166.61,758.42 L167.64,749.62 L162.71,742.11 L167.31,727.41 L159.99,719.17 L143.74,718.13 L134.35,724.13 L120.33,722.93 L117.32,733.92 L120.69,738.71 L108.66,740.66 L105.70,746.24 L58.84,753.68 L55.31,756.12 L55.98,760.49 L38.31,752.05 L1.73,759.55 L2.17,732.06 L11.15,730.17 L11.17,726.15 L18.49,722.84 L18.69,713.78 L0.00,713.95 L4.08,699.62 L13.54,692.76 L10.55,655.35 L13.89,655.33 L14.83,647.62 L21.38,647.53 L21.35,637.67 L38.77,637.44 L38.74,630.79 L64.79,630.94 L67.15,624.89 L73.16,624.80 L72.58,617.18 L90.58,620.89 L90.16,610.50 L93.33,608.03 L94.41,598.92 L92.13,595.21 L93.34,588.85 L99.69,588.74 L100.72,577.36 L107.58,573.93 L139.82,575.51 L145.79,582.17 L166.50,579.51 L167.38,576.10 L191.27,575.13 L216.77,586.42 L231.80,583.10 L248.69,585.75 L252.96,581.11 L252.96,575.09 L258.17,575.22 L257.83,564.18 L263.01,554.45 L261.41,543.11 L255.07,533.80 L272.60,533.27 L264.53,527.02 L270.30,524.07 L276.94,499.38 L281.36,499.13 L282.21,487.38 L293.30,488.30 L295.10,481.27 L289.52,465.68 L279.42,476.84 L273.26,468.84 L265.66,467.49 L267.06,461.55 L282.29,458.42 L280.63,454.39 L282.38,449.11 L278.52,450.94 L276.47,447.82 L274.89,433.49 L266.53,427.22 L266.62,421.23 L269.88,418.50 L266.87,403.71 L257.55,398.06 L238.90,398.65 L236.06,394.33 L246.35,375.65 L243.24,366.65 L256.34,349.19 L255.67,344.16 L259.11,336.63 L287.78,348.90 L304.82,329.90 L301.71,320.42 L296.59,318.98 L292.40,322.31 L290.62,330.45 L279.34,323.58 L267.52,324.93 L266.31,321.98 L263.38,325.98 L262.93,322.02 L254.71,316.54 L255.84,313.55 L250.03,301.28 L247.19,304.07 L242.66,298.01 L238.67,300.58 L236.50,297.79 L240.07,289.28 L237.99,288.19 L241.43,285.66 L253.58,288.19 L258.59,284.27 L281.56,284.27 L281.56,277.87 L296.79,254.02 L304.52,252.00 L312.32,241.09 L328.11,236.45 L328.96,234.14 L322.20,229.04 L324.56,213.16 L310.44,203.38 L296.56,186.74 L298.11,170.31 L319.53,158.47 L313.91,146.61 Z","b":{"lat_min":45.951688,"lat_max":50.214477,"lng_min":38.22075,"lng_max":44.319992}},"dagestan":{"vb":"0 0 1000.00 1495.57","p":"M172.66,5.64 L195.13,9.13 L199.13,5.84 L198.06,1.61 L203.83,0.00 L248.48,4.31 L252.27,1.02 L301.89,12.93 L314.80,13.08 L321.52,7.45 L357.00,16.00 L360.26,20.02 L367.30,17.46 L380.91,22.50 L402.14,22.57 L421.08,33.16 L439.60,51.36 L450.48,51.94 L455.39,57.05 L477.42,64.51 L479.13,67.72 L474.06,74.22 L490.65,86.93 L490.55,89.93 L497.54,87.08 L489.16,73.86 L504.21,75.68 L514.22,70.60 L517.75,78.61 L505.82,97.34 L488.28,108.75 L477.59,109.32 L465.52,124.53 L467.39,133.21 L457.63,119.83 L459.65,131.77 L452.46,205.86 L456.94,215.63 L469.61,225.94 L479.66,244.22 L512.75,247.34 L509.81,253.82 L512.92,261.73 L522.13,260.57 L523.71,254.78 L532.58,256.81 L536.13,250.92 L529.72,242.82 L545.00,246.48 L554.75,259.03 L567.47,293.42 L576.63,302.99 L585.01,308.99 L600.09,301.73 L608.76,303.38 L613.09,310.24 L627.58,355.66 L650.64,386.41 L668.09,438.59 L675.28,439.95 L679.12,445.20 L674.49,456.78 L676.27,460.58 L692.82,467.30 L695.02,471.29 L683.03,480.88 L666.24,504.13 L673.25,507.96 L658.37,513.52 L649.77,528.92 L650.36,534.32 L645.93,528.73 L639.60,544.27 L642.38,558.89 L650.63,564.59 L660.82,590.17 L674.63,594.75 L679.95,581.99 L682.52,570.79 L679.84,555.38 L697.89,493.51 L703.76,445.30 L710.76,436.45 L742.49,422.35 L751.95,419.82 L757.47,422.64 L758.85,428.37 L737.86,451.38 L711.35,507.22 L702.68,538.80 L705.49,549.69 L693.96,575.66 L683.95,625.12 L686.97,635.27 L683.25,636.08 L682.68,656.48 L687.13,670.87 L696.31,666.44 L701.30,656.02 L697.96,648.15 L702.23,653.03 L704.80,665.01 L702.78,682.45 L684.69,715.64 L676.87,771.12 L680.84,782.59 L689.89,785.11 L709.36,801.07 L730.62,827.16 L744.56,834.28 L748.55,848.82 L751.51,900.93 L755.30,913.33 L771.86,937.06 L793.15,941.78 L799.31,947.69 L805.42,968.96 L834.78,1022.08 L863.36,1050.80 L900.66,1122.59 L913.57,1134.41 L935.01,1192.89 L950.14,1206.80 L971.13,1211.72 L984.63,1220.66 L1000.00,1236.83 L984.93,1270.11 L956.26,1301.09 L951.03,1318.13 L942.65,1332.26 L914.03,1350.95 L903.77,1361.61 L857.64,1375.44 L852.64,1371.50 L844.15,1381.59 L848.69,1385.66 L842.73,1394.44 L833.63,1398.59 L831.36,1420.76 L825.36,1429.58 L819.85,1429.07 L819.40,1435.85 L823.61,1441.98 L807.86,1449.18 L804.64,1454.75 L805.52,1469.40 L801.71,1479.04 L794.76,1484.49 L779.39,1482.83 L767.36,1495.57 L756.18,1495.23 L745.35,1480.74 L729.48,1478.06 L721.38,1478.55 L718.44,1483.76 L701.28,1489.90 L689.24,1476.53 L688.84,1466.21 L680.54,1467.62 L674.49,1462.68 L660.73,1463.97 L647.78,1458.76 L632.57,1449.81 L628.84,1441.83 L621.79,1437.14 L619.24,1414.40 L613.47,1412.41 L609.24,1405.51 L613.23,1394.64 L606.38,1393.18 L601.29,1379.86 L592.36,1373.87 L594.13,1362.38 L584.30,1354.70 L580.18,1340.80 L573.70,1338.52 L563.42,1349.85 L549.97,1351.72 L550.56,1344.94 L545.10,1340.63 L542.85,1332.37 L545.76,1328.93 L544.27,1319.06 L535.64,1314.90 L524.91,1303.07 L523.82,1289.80 L518.85,1283.71 L506.23,1286.71 L495.94,1270.86 L487.69,1269.37 L483.76,1258.99 L478.99,1256.03 L481.89,1248.66 L473.92,1231.52 L467.70,1233.16 L463.81,1239.45 L465.41,1244.43 L439.52,1242.05 L425.47,1254.24 L415.30,1244.18 L414.23,1226.42 L403.96,1221.28 L390.90,1220.78 L373.44,1206.67 L371.94,1199.29 L360.78,1202.49 L354.57,1197.13 L349.17,1203.73 L338.38,1197.37 L332.51,1182.78 L327.70,1182.96 L330.93,1173.52 L321.66,1169.77 L303.68,1179.70 L300.57,1177.92 L300.45,1172.82 L295.49,1172.89 L288.65,1181.27 L281.97,1173.81 L278.17,1159.96 L268.42,1168.03 L264.03,1165.60 L263.70,1159.87 L253.67,1158.11 L244.20,1166.57 L241.18,1161.86 L236.61,1163.55 L236.89,1153.91 L232.60,1151.48 L234.51,1144.60 L227.56,1134.07 L206.46,1134.21 L201.02,1130.31 L195.88,1135.81 L191.04,1126.05 L182.37,1124.22 L184.96,1118.50 L177.47,1112.00 L163.06,1102.67 L156.12,1102.66 L144.95,1092.48 L145.06,1084.03 L157.00,1061.69 L162.56,1064.69 L171.75,1059.30 L176.98,1062.25 L186.19,1054.86 L187.31,1047.87 L183.59,1045.29 L181.15,1027.23 L194.60,1000.25 L192.09,983.66 L202.29,979.88 L230.34,957.92 L227.15,946.67 L235.72,938.81 L246.21,948.33 L258.84,940.62 L260.44,935.24 L267.47,933.03 L258.67,923.99 L261.08,909.93 L278.18,907.78 L281.54,903.05 L278.29,893.93 L284.25,895.85 L306.14,888.26 L308.30,883.94 L303.42,882.05 L304.60,874.30 L299.66,865.70 L290.25,860.27 L310.77,832.59 L310.21,827.36 L316.93,826.15 L325.85,837.98 L335.52,828.22 L343.56,835.97 L345.40,818.40 L362.86,836.56 L362.58,845.02 L380.49,838.00 L385.39,830.59 L382.24,827.57 L409.80,813.02 L398.51,802.35 L399.23,792.49 L392.11,776.83 L402.20,776.28 L406.56,771.18 L399.94,768.21 L407.72,766.45 L405.79,757.14 L400.79,754.01 L402.33,749.31 L382.08,749.50 L377.61,741.03 L377.76,734.67 L370.96,732.10 L367.95,724.63 L382.45,709.71 L378.20,707.84 L378.99,703.84 L369.31,703.30 L374.55,691.20 L378.52,665.61 L374.58,655.54 L362.79,648.71 L358.33,632.03 L352.89,623.58 L350.67,605.58 L368.31,594.25 L366.75,588.33 L372.35,586.88 L376.02,574.49 L381.66,572.09 L379.27,565.98 L380.96,556.90 L375.94,550.95 L379.74,546.60 L379.75,540.71 L387.58,534.75 L385.45,530.46 L387.95,522.21 L404.73,505.87 L414.80,486.33 L426.74,480.91 L433.59,481.83 L445.36,470.96 L443.84,456.74 L434.98,456.96 L434.17,448.81 L430.54,448.69 L425.43,439.96 L411.03,445.33 L399.01,445.07 L398.40,437.44 L385.19,437.61 L385.99,421.52 L389.64,416.74 L381.31,407.53 L384.27,402.28 L380.10,395.41 L382.90,388.63 L349.26,385.95 L355.79,394.15 L355.64,401.20 L360.32,411.87 L329.64,411.45 L329.10,436.21 L319.27,445.15 L284.54,444.41 L284.61,452.61 L280.01,452.26 L279.78,461.67 L269.94,460.62 L258.06,436.59 L273.96,434.85 L277.74,417.11 L224.61,409.00 L216.78,401.06 L198.69,401.37 L198.69,408.52 L176.51,408.16 L174.86,404.37 L110.18,385.84 L110.96,339.27 L115.02,339.12 L114.82,320.71 L0.00,314.47 L9.48,290.05 L76.89,275.76 L92.51,234.92 L93.42,221.26 L84.42,218.32 L73.14,207.17 L35.34,206.04 L36.60,190.61 L46.28,191.58 L47.22,186.22 L38.99,170.96 L45.09,158.16 L80.57,151.29 L88.61,156.27 L120.07,122.76 L158.42,73.91 L146.35,46.28 L172.66,5.64 Z M777.58,410.28 L766.83,418.46 L754.71,411.07 L762.69,401.36 L732.05,410.98 L726.72,404.66 L727.91,395.63 L731.75,391.55 L746.33,390.19 L760.13,394.95 L785.85,393.01 L793.15,396.12 L777.58,410.28 Z M693.02,213.45 L700.49,221.79 L699.24,198.94 L702.28,200.70 L706.39,218.89 L703.49,224.95 L682.16,211.35 L686.36,197.23 L696.42,196.44 L693.02,213.45 Z","b":{"lat_min":41.18678,"lat_max":44.991721,"lng_min":45.103629,"lng_max":48.58736}},"chechnya":{"vb":"0 0 1000.00 1155.78","p":"M0.00,247.14 L11.47,236.92 L15.80,239.51 L10.70,253.68 L14.03,260.24 L27.96,264.96 L41.73,257.49 L41.95,248.35 L57.27,254.29 L68.04,247.59 L71.26,235.70 L80.03,233.41 L80.59,225.03 L99.68,213.29 L114.23,218.17 L115.23,227.01 L126.58,219.27 L128.04,91.83 L121.21,91.15 L121.93,38.96 L202.59,40.44 L201.76,100.76 L332.17,101.27 L334.04,0.27 L378.41,1.83 L483.00,35.51 L486.16,42.76 L528.54,43.47 L528.54,29.76 L563.11,29.16 L578.09,44.37 L679.63,59.91 L672.40,93.92 L642.02,97.24 L664.73,143.29 L683.52,145.30 L683.96,127.27 L692.77,127.95 L692.62,112.23 L759.01,113.64 L777.80,96.51 L778.83,49.08 L837.47,49.88 L828.52,29.43 L828.81,15.93 L819.05,8.78 L816.33,0.21 L880.63,5.35 L875.27,18.35 L883.24,31.50 L877.58,41.57 L884.78,43.69 L893.51,59.20 L886.54,68.37 L885.00,99.20 L888.89,103.33 L910.25,98.88 L911.42,113.49 L934.39,113.99 L961.92,103.71 L971.68,120.44 L978.62,120.66 L980.16,136.28 L997.09,135.85 L1000.00,163.10 L977.52,183.94 L964.41,182.18 L941.59,192.55 L922.36,229.99 L890.27,261.31 L885.50,277.11 L889.57,285.32 L874.60,296.75 L874.58,308.04 L867.33,316.38 L876.91,327.77 L873.70,345.18 L878.25,356.88 L867.48,361.47 L866.16,376.70 L860.46,385.22 L849.75,387.99 L852.74,399.34 L819.02,421.06 L823.28,455.55 L833.66,471.74 L842.19,503.69 L854.69,506.56 L864.73,516.78 L872.25,536.07 L871.67,554.55 L864.14,568.10 L864.68,585.11 L854.66,608.29 L873.15,609.33 L871.65,616.99 L879.76,620.57 L852.05,649.17 L857.81,663.48 L870.80,668.40 L870.51,680.59 L879.06,696.81 L917.76,696.45 L914.83,705.47 L924.37,711.46 L928.07,729.29 L913.19,732.66 L925.85,738.35 L917.52,748.12 L898.22,749.18 L911.84,779.19 L910.46,798.07 L932.04,818.53 L879.36,846.40 L885.38,852.19 L876.02,866.40 L841.78,879.85 L842.33,863.63 L808.95,828.84 L810.02,846.58 L805.43,862.51 L790.07,847.66 L771.59,866.35 L760.99,858.89 L754.53,843.68 L741.70,846.00 L742.77,856.02 L703.54,909.06 L721.54,919.47 L730.97,935.95 L728.71,950.80 L738.03,954.42 L733.92,962.69 L692.07,977.23 L680.69,973.56 L686.90,991.04 L680.47,1000.11 L647.79,1004.21 L643.19,1031.15 L660.00,1048.48 L646.56,1052.71 L643.52,1063.03 L619.37,1077.79 L599.32,1059.55 L582.95,1074.62 L589.04,1096.18 L574.66,1110.13 L563.98,1111.29 L535.42,1138.24 L488.01,1155.78 L477.10,1150.71 L469.13,1134.89 L457.34,1132.65 L448.95,1137.81 L439.23,1129.31 L428.58,1132.91 L419.70,1124.19 L419.35,1113.91 L405.69,1100.54 L389.60,1108.66 L378.41,1103.36 L362.59,1110.97 L340.40,1102.88 L331.10,1106.34 L321.26,1098.24 L285.68,1120.69 L274.90,1116.71 L270.54,1088.21 L246.41,1069.23 L248.31,1056.78 L233.19,1057.68 L210.83,1016.46 L182.34,992.20 L178.64,980.55 L152.41,982.99 L139.55,977.49 L141.04,966.00 L156.36,947.04 L174.00,929.25 L188.73,926.36 L200.04,907.99 L201.23,892.80 L184.76,889.55 L205.19,867.49 L210.51,853.91 L225.14,843.41 L228.71,828.93 L227.37,812.28 L209.89,803.97 L209.69,782.88 L198.35,777.39 L192.48,754.00 L198.20,733.55 L190.54,716.13 L199.45,687.69 L191.03,688.66 L197.33,673.20 L195.92,656.83 L186.89,647.56 L174.01,648.14 L174.20,632.35 L163.82,611.96 L164.98,589.64 L154.98,563.11 L149.02,517.78 L159.98,516.05 L160.17,502.99 L166.32,499.73 L159.40,489.18 L168.82,459.25 L178.91,451.18 L164.22,445.63 L147.09,421.10 L129.21,420.43 L124.59,400.99 L141.25,397.26 L134.80,394.08 L128.58,377.69 L104.93,374.75 L100.86,367.00 L78.48,362.17 L67.54,369.80 L42.23,363.21 L37.91,369.57 L22.88,358.54 L19.17,340.12 L8.33,335.25 L0.00,247.14 Z","b":{"lat_min":42.475502,"lat_max":44.010095,"lng_min":44.83243,"lng_max":46.655132}},"ingushetia":{"vb":"0 0 1000.00 1778.96","p":"M478.48,88.92 L504.13,100.44 L512.93,143.93 L548.48,169.98 L558.70,154.97 L618.61,170.52 L644.49,152.51 L697.46,163.91 L707.09,182.21 L763.06,189.14 L777.76,227.86 L793.04,235.38 L753.60,244.17 L764.54,290.07 L806.85,291.67 L847.38,349.59 L882.14,362.70 L858.28,381.76 L835.98,452.43 L852.36,477.35 L837.80,485.06 L837.35,515.88 L811.42,519.96 L825.52,627.02 L849.18,689.67 L846.45,742.37 L871.02,790.54 L870.56,827.82 L901.04,826.45 L922.40,848.34 L925.74,886.98 L910.84,923.51 L930.75,921.20 L909.68,988.36 L927.81,1029.51 L914.27,1077.79 L928.17,1133.03 L954.98,1146.00 L955.45,1195.81 L996.84,1215.43 L1000.00,1254.75 L991.56,1288.93 L956.94,1313.74 L944.35,1345.81 L896.00,1397.91 L934.97,1405.58 L932.15,1441.43 L905.39,1484.82 L870.53,1491.65 L828.78,1533.65 L792.53,1578.44 L789.02,1605.57 L744.95,1640.32 L725.73,1640.11 L650.04,1547.38 L606.16,1536.88 L530.23,1543.63 L506.46,1584.20 L499.75,1649.27 L479.18,1675.40 L463.57,1673.00 L447.28,1730.96 L454.76,1771.40 L421.59,1778.96 L373.27,1729.04 L344.94,1617.80 L354.30,1602.24 L335.60,1576.00 L258.88,1527.39 L242.53,1495.29 L243.14,1451.79 L233.06,1429.42 L241.06,1392.74 L216.74,1372.86 L215.81,1344.28 L196.11,1301.58 L200.99,1248.36 L288.67,1299.57 L287.48,1344.77 L352.98,1372.17 L386.87,1343.10 L411.22,1342.05 L455.79,1378.23 L486.33,1386.18 L490.45,1353.76 L507.55,1341.63 L497.47,1303.78 L517.32,1301.16 L524.34,1249.30 L560.98,1234.24 L556.85,1207.05 L582.35,1216.25 L615.32,1188.75 L616.70,1134.38 L603.42,1126.64 L589.52,1058.72 L620.05,1038.02 L624.33,1013.34 L550.82,921.85 L460.98,882.64 L477.31,880.97 L457.46,844.99 L414.40,833.45 L412.72,798.23 L381.75,813.27 L282.97,612.23 L246.94,598.01 L245.26,677.27 L261.51,679.10 L260.75,718.67 L116.73,676.09 L128.39,353.23 L71.22,351.50 L42.52,372.21 L1.83,290.28 L2.44,251.38 L18.32,253.05 L0.00,180.07 L30.91,152.15 L37.78,126.63 L31.52,48.10 L200.67,0.00 L186.14,118.66 L226.02,131.18 L296.39,114.87 L281.74,36.02 L413.18,35.60 L416.54,80.77 L402.80,107.54 L453.79,112.35 L478.48,88.92 Z","b":{"lat_min":42.61473,"lat_max":43.614966,"lng_min":44.479066,"lng_max":45.2493}},"north_ossetia":{"vb":"0 0 1000.00 1131.54","p":"M0.00,824.12 L17.96,795.06 L19.61,772.56 L28.48,760.47 L42.62,767.42 L71.66,766.51 L87.57,782.03 L111.32,783.56 L115.92,767.69 L124.67,762.88 L143.54,724.18 L135.38,706.53 L136.77,697.33 L149.98,691.91 L159.52,672.61 L162.38,644.67 L195.26,618.33 L220.12,616.34 L225.55,595.83 L209.93,587.59 L221.50,566.66 L225.25,538.84 L276.27,449.62 L295.36,471.09 L296.72,501.51 L328.14,510.98 L333.73,521.00 L346.95,481.88 L386.55,494.04 L375.56,514.64 L368.69,517.18 L387.18,547.01 L421.53,511.93 L438.36,509.58 L448.14,498.87 L441.39,476.97 L409.41,424.19 L451.71,368.03 L452.91,354.92 L478.95,349.12 L494.30,381.20 L497.26,427.36 L590.40,338.60 L598.80,343.51 L613.07,374.72 L612.74,388.89 L629.54,385.28 L668.86,357.79 L649.72,335.78 L663.38,304.66 L672.12,296.45 L667.39,287.52 L669.56,257.62 L689.42,222.12 L664.10,201.35 L667.06,190.80 L658.18,154.56 L660.19,131.73 L622.50,126.19 L614.87,135.84 L598.66,139.18 L579.00,129.08 L565.98,109.86 L556.45,77.99 L557.75,20.09 L585.79,25.67 L627.59,18.09 L627.53,29.04 L687.06,29.79 L687.67,24.39 L710.52,23.87 L710.52,18.24 L740.37,18.69 L767.45,4.88 L812.04,7.50 L811.98,0.00 L835.49,0.45 L835.00,15.54 L890.92,15.84 L899.45,26.51 L899.45,101.64 L912.73,116.18 L926.73,107.79 L927.99,114.53 L918.34,134.54 L928.06,237.30 L915.88,248.87 L890.73,246.50 L897.50,233.28 L895.85,210.97 L831.01,211.17 L838.24,250.11 L803.52,258.17 L783.85,251.99 L791.02,193.38 L707.58,217.14 L710.67,255.93 L707.28,268.53 L692.03,282.32 L701.07,318.36 L693.24,317.54 L692.94,336.75 L713.01,377.21 L727.16,366.99 L755.37,367.84 L749.62,527.30 L820.65,548.33 L821.03,528.78 L813.01,527.88 L813.84,488.74 L831.61,495.76 L880.34,595.05 L895.62,587.63 L896.45,605.02 L917.69,610.72 L927.48,628.49 L919.42,629.31 L963.74,648.68 L1000.00,693.87 L997.89,706.05 L982.83,716.28 L989.68,749.82 L996.24,753.65 L995.56,780.50 L979.29,794.08 L966.72,789.54 L968.75,802.97 L950.68,810.40 L947.21,836.02 L937.42,837.31 L942.39,856.01 L933.96,862.00 L931.93,878.01 L916.87,874.08 L894.88,856.21 L882.87,856.73 L866.15,871.09 L833.84,857.56 L834.43,835.23 L791.18,809.94 L788.77,836.22 L798.49,857.32 L798.95,871.43 L810.94,881.25 L807.00,899.36 L811.97,910.41 L811.67,931.90 L819.73,947.75 L811.52,954.04 L756.79,957.79 L739.44,938.80 L725.77,950.76 L714.79,949.42 L705.50,967.30 L716.95,999.70 L651.94,979.53 L649.22,987.35 L636.82,992.75 L631.32,983.80 L609.22,987.17 L589.69,977.33 L544.62,1014.73 L533.86,1047.60 L534.67,1060.38 L507.80,1056.52 L489.11,1079.43 L459.12,1069.74 L442.80,1080.57 L399.17,1087.40 L362.81,1131.54 L327.36,1106.74 L304.93,1102.63 L299.28,1093.74 L280.46,1086.06 L250.33,1087.26 L238.22,1094.79 L226.42,1084.42 L227.81,1070.47 L202.71,1052.81 L230.89,1036.54 L262.19,978.59 L262.04,963.43 L243.55,946.11 L200.20,930.47 L186.71,920.69 L185.27,908.55 L162.87,913.23 L149.21,897.90 L134.76,897.24 L135.88,879.45 L103.86,849.24 L69.92,849.70 L51.00,830.47 L0.00,824.12 Z","b":{"lat_min":42.546942,"lat_max":43.835116,"lng_min":43.398487,"lng_max":44.959944}}};
+
+  function levelOf(v) {
+    if (v === 0) return 0;
+    if (v === 1) return 1;
+    if (v <= 3) return 2;
+    if (v <= 7) return 3;
+    return 4;
+  }
+
+  function cityLevel(city) {
+    if (city.lived) return 4;
+    const c = city.count || 1;
+    if (c >= 4) return 3;
+    if (c >= 2) return 2;
+    return 1;
+  }
+
+  function pluralCities(n) {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'город';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'города';
+    return 'городов';
+  }
+
+  // Render grid
+  const grid = document.getElementById('grid');
+  const cellByIdx = new Map();
+  REGIONS.forEach((r, idx) => {
+    const cell = document.createElement('div');
+    const level = levelOf(r.visits);
+    cell.className = 'cell level-' + level + (r.visits > 0 ? ' clickable' : '');
+    cell.style.gridColumn = r.col;
+    cell.style.gridRow = r.row;
+    cell.title = r.full + (r.visits > 0
+      ? ' — ' + r.visits + ' ' + pluralCities(r.visits)
+      : ' — не был');
+    cell.dataset.idx = idx;
+
+    const name = document.createElement('span');
+    name.textContent = r.name;
+    cell.appendChild(name);
+
+    if (r.visits > 0 && !r.noCityVisit) {
+      const badge = document.createElement('span');
+      badge.className = 'cell-badge';
+      badge.textContent = r.visits;
+      cell.appendChild(badge);
+    }
+
+    cellByIdx.set(idx, cell);
+    grid.appendChild(cell);
+  });
+
+  // Stats
+  const visitedRegions = REGIONS.filter(r => r.visits > 0).length;
+  const totalCities = Object.values(CITY_DATA).reduce(
+    (s, list) => s + list.filter(c => c.visited).length, 0
+  );
+  const pct = Math.round((visitedRegions / 85) * 100);
+  document.getElementById('statBig').textContent = visitedRegions + ' из 85 регионов';
+  document.getElementById('statPct').textContent = pct;
+  document.getElementById('statCities').textContent = totalCities + ' ' + pluralCities(totalCities);
+
+  // View switching (drill-down)
+  const pageEl = document.getElementById('page');
+  const viewRegions = document.getElementById('viewRegions');
+  const viewDetail = document.getElementById('viewDetail');
+  const pageTitle = document.getElementById('pageTitle');
+  const detailRegion = document.getElementById('detailRegion');
+  const detailSubtitle = document.getElementById('detailSubtitle');
+  const detailMarker = document.getElementById('detailMarker');
+  const cityGrid = document.getElementById('cityGrid');
+
+  function showRegions() {
+    pageEl.classList.add('switching');
+    setTimeout(() => {
+      viewDetail.classList.add('hidden');
+      viewDetail.setAttribute('aria-hidden', 'true');
+      viewRegions.classList.remove('hidden');
+      viewRegions.setAttribute('aria-hidden', 'false');
+      pageEl.classList.remove('switching');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 160);
+  }
+
+  // Build coord map for fast lookup
+  const COORD_MAP = {};
+  for (const slug of Object.keys(COORDS)) {
+    COORD_MAP[slug] = {};
+    for (const [name, lat, lng] of COORDS[slug]) COORD_MAP[slug][name] = { lat, lng };
+  }
+
+  // Project geo (lat, lng) → SVG (x, y) inside viewBox using region bbox.
+  function geoToSvg(lat, lng, bbox, vb) {
+    const parts = vb.split(' ').map(Number);
+    const vw = parts[2], vh = parts[3];
+    const x = ((lng - bbox.lng_min) / (bbox.lng_max - bbox.lng_min)) * vw;
+    const y = (1 - (lat - bbox.lat_min) / (bbox.lat_max - bbox.lat_min)) * vh;
+    return { x, y };
+  }
+
+  function renderGeoMap(r, cities) {
+    const svgInfo = r.slug && SVGS[r.slug];
+    if (!svgInfo) {
+      cityGrid.innerHTML = '<div class="geo-no-cities">Гео-данные для этого региона не загружены.</div>';
+      return;
+    }
+
+    const vb = svgInfo.vb;
+    const bbox = svgInfo.b;
+    const coords = COORD_MAP[r.slug] || {};
+
+    // Compute base radius from viewBox size — about 0.6% of width
+    const vbW = parseFloat(vb.split(' ')[2]);
+    const baseR = Math.max(3, Math.round(vbW * 0.006));
+    const labelOffset = baseR + 9;
+
+    // Sort: not-visited first (drawn below), then visited (on top)
+    const sortedCities = [...cities].sort((a, b) => (a.visited === true) - (b.visited === true));
+
+    let circles = '';
+    let labels = '';
+    let hasAny = false;
+    sortedCities.forEach(city => {
+      const c = coords[city.name];
+      if (!c) return;
+      hasAny = true;
+      const visited = city.visited === true;
+      const lvlClass = visited ? ('l' + cityLevel(city)) : 'l0';
+      const pos = geoToSvg(c.lat, c.lng, bbox, vb);
+      const radius = visited ? baseR + 1 : baseR - 1;
+      const tooltip = (city.name + (visited
+        ? (city.lived ? ' — жил тут' : (city.count ? ' — был ' + city.count + ' раза' : ' — был'))
+        : ' — не был')).replace(/"/g, '&quot;');
+      circles += `<circle class="geo-city ${lvlClass}" cx="${pos.x.toFixed(2)}" cy="${pos.y.toFixed(2)}" r="${radius}"><title>${tooltip}</title></circle>`;
+      // Label only for visited cities to keep the map readable
+      if (visited) {
+        const lx = (pos.x + labelOffset).toFixed(2);
+        const ly = (pos.y + 4).toFixed(2);
+        const safeName = city.name.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        labels += `<text class="geo-label-shadow" x="${lx}" y="${ly}">${safeName}</text>`;
+        labels += `<text class="geo-label" x="${lx}" y="${ly}">${safeName}</text>`;
+      }
+    });
+
+    if (!hasAny && !r.noCityVisit) {
+      cityGrid.innerHTML = '<div class="geo-no-cities">Координаты городов этого региона не собраны.</div>';
+      return;
+    }
+
+    cityGrid.innerHTML = `<svg class="geo-svg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet"><path class="geo-region-fill" d="${svgInfo.p}"/>${circles}${labels}</svg>`;
+  }
+
+  function showDetail(idx) {
+    const r = REGIONS[idx];
+    const cities = (r.slug && CITY_DATA[r.slug]) || [];
+    if (!cities.length && !r.noCityVisit) return;
+
+    const visitedInRegion = cities.filter(c => c.visited).length;
+    const totalInRegion = cities.length;
+    const lvl = levelOf(r.visits);
+
+    detailMarker.textContent = visitedInRegion || (r.noCityVisit ? '·' : 0);
+    detailMarker.className = 'detail-marker l' + (visitedInRegion ? lvl : (r.noCityVisit ? 1 : 0));
+    detailRegion.textContent = r.full;
+    if (r.noCityVisit) {
+      detailSubtitle.textContent = 'был в регионе, но не в городе · всего ' + totalInRegion + ' городов';
+    } else {
+      detailSubtitle.textContent = visitedInRegion + ' из ' + totalInRegion + ' городов посещено';
+    }
+
+    cityGrid.innerHTML = '';
+    renderGeoMap(r, cities);
+
+    pageEl.classList.add('switching');
+    setTimeout(() => {
+      viewRegions.classList.add('hidden');
+      viewRegions.setAttribute('aria-hidden', 'true');
+      viewDetail.classList.remove('hidden');
+      viewDetail.setAttribute('aria-hidden', 'false');
+      pageEl.classList.remove('switching');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 160);
+  }
+
+  // Wire region clicks (replace previous openPanel handlers)
+  REGIONS.forEach((r, idx) => {
+    if (r.visits > 0) {
+      cellByIdx.get(idx).addEventListener('click', () => showDetail(idx));
+    }
+  });
+
+  document.getElementById('backBtn').addEventListener('click', showRegions);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !viewDetail.classList.contains('hidden')) showRegions();
+  });
+</script>
+</body>
+</html>
