@@ -111,9 +111,9 @@ INSERT INTO programs (
     },
     "author": {
       "photo_url": "/authors/scorecard-marketing.avif",
-      "name": "Daniel Priestley & Glen Carlson",
-      "credentials": "Австралийские предприниматели, соосновали Dent Global, ScoreApp, KPI Companies. Daniel — автор Amazon #1 bestseller «Key Person of Influence», «24 Assets», «Oversubscribed», «Entrepreneur Revolution». Запустили первый бизнес вместе в 2002, переехали в Лондон в 2006, с 2016 развивают ScoreApp — платформу скоркард-маркетинга для 2000+ бизнесов.",
-      "quote": "Data is the lifeblood of marketing. Whatever business you think you are in, you are also a data analytics business."
+      "name": "Дэниел Пристли",
+      "credentials": "Австралийский предприниматель, автор Amazon #1 bestseller «Key Person of Influence», «24 Assets», «Oversubscribed», «Entrepreneur Revolution». Вместе с партнёром Гленом Карлсоном соосновал Dent Global, ScoreApp и KPI Companies. Запустили первый бизнес в 2002, переехали в Лондон в 2006, с 2016 развивают ScoreApp — платформу скоркард-маркетинга для 2000+ бизнесов.",
+      "quote": "Данные — кровь маркетинга. В каком бы бизнесе ты ни был, ты ещё и про аналитику данных."
     },
     "personas": {
       "label": "Для кого",
