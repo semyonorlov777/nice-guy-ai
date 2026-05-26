@@ -48,7 +48,8 @@ export type AnketaProgramSlug =
   | "the-choice"
   | "heroes-and-outlaws"
   | "seven-habits"
-  | "borba-za-vnimanie";
+  | "borba-za-vnimanie"
+  | "scorecard-marketing";
 
 export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
   "nice-guy": [
@@ -317,6 +318,51 @@ export const ANKETA_QUESTIONS: Record<AnketaProgramSlug, AnketaQuestion[]> = {
       title: "Как ты поймёшь, что программа сработала?",
       help: "Что будешь делать или думать иначе через 3–6 месяцев?",
       placeholder: "Например: отказываюсь от клиентов, которые меня тянут вниз — без вины…",
+    },
+  ],
+  "scorecard-marketing": [
+    {
+      id: "context_intent",
+      type: "hybrid",
+      title: "Зачем тебе скоркард-маркетинг?",
+      help: "Выбери, что ближе всего, или скажи своими словами",
+      options: [
+        {
+          value: "own_lead_gen",
+          label: "Свой бизнес — нужны квалифицированные лиды без впаривания",
+          chipLabel: "лиды для своего бизнеса",
+        },
+        {
+          value: "scaling_existing",
+          label: "Масштабирую существующий funnel — хочу автоматизировать продажи",
+          chipLabel: "масштабирую funnel",
+        },
+        {
+          value: "agency_for_clients",
+          label: "Агентство — собираю скоркарды для клиентов",
+          chipLabel: "агентство",
+        },
+        {
+          value: "expert_author",
+          label: "Эксперт или автор — есть аудитория, не хватает моста к продажам",
+          chipLabel: "эксперт / автор",
+        },
+      ],
+      placeholder: "Например: коуч, делаю контент в LinkedIn, конверсии слабые…",
+    },
+    {
+      id: "problem",
+      type: "open_text",
+      title: "Что сейчас не работает в лидгене?",
+      help: "Конкретно: какие лиды приходят, что с конверсией, где отвал. Без оценок, как факт.",
+      placeholder: "Например: подписки есть, но на discovery call записывается 1 из 50…",
+    },
+    {
+      id: "need_payoff",
+      type: "open_text",
+      title: "Как ты поймёшь, что программа сработала?",
+      help: "Что будет в твоём бизнесе через 3-6 месяцев после собранного скоркарда?",
+      placeholder: "Например: каждую неделю 10 квалифицированных discovery-звонков без холодных…",
     },
   ],
 };
