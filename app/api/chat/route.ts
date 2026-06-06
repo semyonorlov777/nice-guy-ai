@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, smoothStream } from "ai";
 import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireAuth, apiError } from "@/lib/api-helpers";
@@ -101,6 +101,9 @@ export async function POST(request: Request) {
       providerOptions: CHAT_PROVIDER_OPTIONS,
       system: systemPrompt || undefined,
       messages: aiMessages,
+      // Ровная печать: выдаём текст словами с лёгкой задержкой — спокойный
+      // ритм без рывков (рекомендация исследования по плавному стримингу).
+      experimental_transform: smoothStream({ delayInMs: 18, chunking: "word" }),
       onFinish: async ({ text, usage }) => {
         const tokensUsed = usage.totalTokens || 0;
 
