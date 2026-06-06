@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import {
@@ -39,7 +40,7 @@ export interface AIBubbleProps {
   bubbleSuffix?: React.ReactNode;
 }
 
-export function AIBubble({
+export const AIBubble = memo(function AIBubble({
   text,
   className = "msg-bubble",
   bubbleSuffix,
@@ -50,7 +51,7 @@ export function AIBubble({
       {bubbleSuffix}
     </div>
   );
-}
+});
 
 // --- QuickReplyBar ---------------------------------------------------------
 

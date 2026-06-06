@@ -66,8 +66,6 @@ export function ChatWindow({
   programId,
   exerciseId,
   chatType,
-  userInitial,
-  avatarUrl,
   welcomeMessage,
   quickReplies,
   children,
@@ -146,6 +144,7 @@ export function ChatWindow({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  const aiLabel = chatType === "author" ? "Автор" : "Наставник";
 
   // --- Send ---
   function handleSend(text: string) {
@@ -213,16 +212,6 @@ export function ChatWindow({
     );
   }
 
-  function renderUserAvatar() {
-    return (
-      <div className="msg-avatar user">
-        {avatarUrl
-          ? <img src={avatarUrl} alt="" className="msg-avatar-img" />
-          : "Я"}
-      </div>
-    );
-  }
-
   // Show welcome AI message when no history exists
   const showWelcome = welcomeMessage && initialMessages.length === 0;
 
@@ -235,12 +224,19 @@ export function ChatWindow({
       ? normalizeQuickReplies(quickReplies)
       : parsedWelcome?.replies || [];
 
-  // Parse quick replies from last AI message (inline «кавычки»)
+  // Parse quick replies from last AI message (inline «кавычки»).
+  // useMemo — чтобы parseQuickReplies не пересоздавал массив replies на каждый
+  // render (иначе QuickReplyBar мерцал бы при стриминге).
   const lastMsg = messages[messages.length - 1];
   const lastAiText = lastMsg?.role === "assistant" ? getMessageText(lastMsg) : "";
-  const parsedLastAi = lastAiText ? parseQuickReplies(lastAiText, isStreaming) : null;
+  const parsedLastAi = useMemo(
+    () => (lastAiText ? parseQuickReplies(lastAiText, isStreaming) : null),
+    [lastAiText, isStreaming],
+  );
   const inlineReplies = parsedLastAi?.replies || [];
-  const showInlineReplies = inlineReplies.length > 0 && messages.length > 0;
+  // Подсказки показываем ТОЛЬКО после завершения печати — чтобы они не дёргали
+  // вёрстку и не мелькали по ходу стрима (рекомендация ресёрча по чат-интерфейсам).
+  const showInlineReplies = inlineReplies.length > 0 && messages.length > 0 && !isStreaming;
 
   // Welcome animation (first visit only)
   const shouldAnimate = Boolean(showWelcome) &&
@@ -303,7 +299,7 @@ export function ChatWindow({
           {/* Welcome AI message */}
           {showWelcome && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`} role="article">
-              <div className="msg-avatar ai" />
+              <div className="msg-meta"><span className="msg-orb" /><span className="msg-who">{aiLabel}</span></div>
               <AIBubble
                 text={(animActive ? streamedText : effectiveWelcomeMessage) ?? ""}
                 className="msg-bubble"
@@ -324,7 +320,7 @@ export function ChatWindow({
                 const exitClass = reply.type === "exit" ? " quick-reply-btn-exit" : "";
                 return (
                   <button
-                    key={i}
+                    key={reply.text}
                     className={`quick-reply-btn${animActive ? " quick-reply-enter" : ""}${exitClass}`}
                     onClick={() => handleSend(reply.text)}
                     disabled={isStreaming}
@@ -370,19 +366,19 @@ export function ChatWindow({
 
             return (
               <div key={msg.id} className={`msg ${isAi ? "msg-ai" : "msg-user"}`} role="article" aria-busy={isAi && isLast && isStreaming ? true : undefined}>
-                {isAi
-                  ? <div className="msg-avatar ai" />
-                  : renderUserAvatar()}
                 {isAi ? (
-                  <AIBubble
-                    text={displayText}
-                    className="msg-bubble"
-                    bubbleSuffix={
-                      status === "streaming" && isLast ? (
-                        <span className="streaming-cursor">{"▊"}</span>
-                      ) : undefined
-                    }
-                  />
+                  <>
+                    <div className="msg-meta"><span className="msg-orb" /><span className="msg-who">{aiLabel}</span></div>
+                    <AIBubble
+                      text={displayText}
+                      className="msg-bubble"
+                      bubbleSuffix={
+                        status === "streaming" && isLast ? (
+                          <span className="streaming-cursor">{"▊"}</span>
+                        ) : undefined
+                      }
+                    />
+                  </>
                 ) : (
                   <div className="msg-bubble">{renderUserContent(displayText)}</div>
                 )}
