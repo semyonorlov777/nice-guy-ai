@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, smoothStream } from "ai";
 import { chatModel, CHAT_PROVIDER_OPTIONS } from "@/lib/ai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
@@ -124,6 +124,7 @@ export async function POST(request: Request) {
     providerOptions: CHAT_PROVIDER_OPTIONS,
     system: systemPrompt,
     messages: filteredMessages,
+    experimental_transform: smoothStream({ delayInMs: 18, chunking: "word" }),
   });
 
   return result.toUIMessageStreamResponse();

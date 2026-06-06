@@ -325,7 +325,7 @@ export function AnonymousChat({
           {/* Welcome AI message */}
           {messages.length === 0 && welcomePhase !== "idle" && welcomePhase !== "thinking" && (
             <div className={`msg msg-ai${animActive ? " msg-welcome-enter" : ""}`}>
-              <div className="msg-avatar ai">НС</div>
+              <div className="msg-meta"><span className="msg-orb" /><span className="msg-who">Наставник</span></div>
               <AIBubble
                 text={animActive ? streamedText : welcomeMessage}
                 className="msg-bubble"
@@ -380,19 +380,19 @@ export function AnonymousChat({
             return (
               <Fragment key={msg.id}>
                 <div className={`msg ${isAi ? "msg-ai" : "msg-user"}`}>
-                  <div className={`msg-avatar ${isAi ? "ai" : "user"}`}>
-                    {isAi ? "НС" : "?"}
-                  </div>
                   {isAi ? (
-                    <AIBubble
-                      text={parsed?.cleanText ?? text}
-                      className="msg-bubble"
-                      bubbleSuffix={
-                        status === "streaming" && isLast ? (
-                          <span className="streaming-cursor">{"▊"}</span>
-                        ) : undefined
-                      }
-                    />
+                    <>
+                      <div className="msg-meta"><span className="msg-orb" /><span className="msg-who">Наставник</span></div>
+                      <AIBubble
+                        text={parsed?.cleanText ?? text}
+                        className="msg-bubble"
+                        bubbleSuffix={
+                          status === "streaming" && isLast ? (
+                            <span className="streaming-cursor">{"▊"}</span>
+                          ) : undefined
+                        }
+                      />
+                    </>
                   ) : (
                     <div className="msg-bubble">{renderUserContent(text)}</div>
                   )}

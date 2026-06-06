@@ -203,7 +203,7 @@ export function NewChatScreen({
 
         {/* Welcome AI message — always visible */}
         <div className="nc-ai-msg">
-          <div className="nc-ai-avatar" />
+          <div className="nc-meta"><span className="nc-orb" /><span className="nc-who">Наставник</span></div>
           <div className="nc-ai-text">{welcome.aiMessage}</div>
         </div>
 
@@ -246,7 +246,7 @@ export function NewChatScreen({
           return (
             <Fragment key={msg.id}>
               <div className="nc-msg nc-msg-ai">
-                <div className="nc-ai-avatar" />
+                <div className="nc-meta"><span className="nc-orb" /><span className="nc-who">Наставник</span></div>
                 <AIBubble
                   text={cleanText}
                   className="nc-bubble nc-bubble-ai"
@@ -273,8 +273,8 @@ export function NewChatScreen({
         {/* Typing indicator */}
         {isStreaming && messages.length > 0 && !getMessageText(messages[messages.length - 1]) && (
           <div className="nc-msg nc-msg-ai">
-            <div className="nc-ai-avatar" />
-            <div className="nc-bubble nc-bubble-ai nc-typing">
+            <div className="nc-meta"><span className="nc-orb" /><span className="nc-who">Наставник</span></div>
+            <div className="nc-typing">
               <span /><span /><span />
             </div>
           </div>
