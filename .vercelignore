@@ -3,5 +3,6 @@ public/*.html
 !public/anketa-demo.html
 !public/anketa-redesign.html
 !public/spiral-test-analysis.html
+!public/chat-demo.html
 docs/
 .claude/
