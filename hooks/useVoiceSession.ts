@@ -28,7 +28,11 @@ export interface CallState {
 
 const MAX_RECONNECTS = 5;
 
-export function useVoiceSession(sessionId: string, onEnded: () => void) {
+/**
+ * halfDuplex: пока звучит голос клиента, микрофон не передаётся (без наушников
+ * динамик телефона иначе «перебивает» клиента его же голосом). Для «Трудного момента».
+ */
+export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { halfDuplex?: boolean } = {}) {
   const [state, setState] = useState<CallState>({
     phase: "idle",
     speaking: "idle",
@@ -45,6 +49,8 @@ export function useVoiceSession(sessionId: string, onEnded: () => void) {
   const endedRef = useRef(false);
   const pausedRef = useRef(false);
   const reconnectsRef = useRef(0);
+  const playingUntilRef = useRef(0);
+  const halfDuplex = !!opts.halfDuplex;
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
     onEndedRef.current = onEnded;
@@ -176,11 +182,18 @@ export function useVoiceSession(sessionId: string, onEnded: () => void) {
         const src = ctx.createMediaStreamSource(streamRef.current);
         const capture = new AudioWorkletNode(ctx, "pcm-capture");
         capture.port.onmessage = (e) => {
+          if (halfDuplex && Date.now() < playingUntilRef.current) return;
           const ws = wsRef.current;
           if (ws && ws.readyState === WebSocket.OPEN && !pausedRef.current) ws.send(e.data as ArrayBuffer);
         };
         src.connect(capture);
         const playback = new AudioWorkletNode(ctx, "pcm-playback", { outputChannelCount: [1] });
+        playback.port.onmessage = (e) => {
+          const d = e.data as { t?: string; playing?: boolean };
+          if (d?.t !== "playing") return;
+          // Хвост 400 мс: отзвук динамика после конца реплики.
+          playingUntilRef.current = d.playing ? Number.MAX_SAFE_INTEGER : Date.now() + 400;
+        };
         playback.connect(ctx.destination);
         captureRef.current = capture;
         playbackRef.current = playback;
@@ -198,7 +211,7 @@ export function useVoiceSession(sessionId: string, onEnded: () => void) {
       return;
     }
     await openSocket(false);
-  }, [openSocket, patch]);
+  }, [halfDuplex, openSocket, patch]);
 
   const end = useCallback(async () => {
     patch({ phase: "ending" });

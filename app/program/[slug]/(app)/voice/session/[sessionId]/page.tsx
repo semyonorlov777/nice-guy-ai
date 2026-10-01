@@ -17,7 +17,7 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
 
   const { data: s } = await supabase
     .from("voice_sessions")
-    .select("id, status, seconds_used, kind, drill_moment_id, program_mode_id, voice_turns(seq, role, text)")
+    .select("id, status, seconds_used, reconnects, usage, engine_model, kind, drill_moment_id, program_mode_id, voice_turns(seq, role, text), voice_debriefs(usage, model)")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -59,9 +59,48 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
           </ol>
         )}
       </div>
+      <TechUsage
+        seconds={s.seconds_used ?? 0}
+        reconnects={s.reconnects ?? 0}
+        model={s.engine_model}
+        usage={s.usage as { prompt_tokens?: number; response_tokens?: number } | null}
+        debrief={s.voice_debriefs as unknown as { usage?: Record<string, number> | null; model?: string | null } | null}
+      />
       <Link className="vp-btn vp-btn-quiet" href={`/program/${slug}/hub`}>
         На главную практикума
       </Link>
     </div>
+  );
+}
+
+// Для этапа тестов: сколько стоила консультация. Свёрнуто по умолчанию.
+// Цена звука Gemini Live по прайсу: вход $3, выход $12 за 1 млн токенов
+// (Google заново тарифицирует весь контекст на каждой реплике — это уже в числах).
+function TechUsage(props: {
+  seconds: number;
+  reconnects: number;
+  model: string | null;
+  usage: { prompt_tokens?: number; response_tokens?: number } | null;
+  debrief: { usage?: Record<string, number> | null; model?: string | null } | null;
+}) {
+  const inT = Number(props.usage?.prompt_tokens ?? 0);
+  const outT = Number(props.usage?.response_tokens ?? 0);
+  const liveUsd = (inT * 3 + outT * 12) / 1e6;
+  const perMin = props.seconds > 0 ? (liveUsd / props.seconds) * 60 : 0;
+  const d = props.debrief?.usage ?? null;
+  const dIn = Number(d?.promptTokenCount ?? 0);
+  const dOut = Number(d?.candidatesTokenCount ?? 0) + Number(d?.thoughtsTokenCount ?? 0);
+  const n = (x: number) => x.toLocaleString("ru-RU");
+  return (
+    <details className="vp-card" style={{ marginTop: 12 }}>
+      <summary className="vp-kicker" style={{ cursor: "pointer", margin: 0 }}>Для тестов: расход</summary>
+      <div style={{ marginTop: 10 }}>
+        <div className="vp-row"><span>Голос ({props.model ?? "—"})</span><b>${liveUsd.toFixed(3)}</b></div>
+        <div className="vp-row"><span>За минуту</span><b>${perMin.toFixed(3)}</b></div>
+        <div className="vp-row"><span>Токены голоса: вход / выход</span><b>{n(inT)} / {n(outT)}</b></div>
+        <div className="vp-row"><span>Длительность · переподключений</span><b>{Math.round(props.seconds / 60 * 10) / 10} мин · {props.reconnects}</b></div>
+        <div className="vp-row"><span>Разбор ({props.debrief?.model ?? "—"}): вход / выход</span><b>{n(dIn)} / {n(dOut)}</b></div>
+      </div>
+    </details>
   );
 }

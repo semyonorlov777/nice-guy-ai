@@ -1,6 +1,6 @@
 // Разбор учебной консультации: счётчики кодом → оценщик (Gemini, JSON) → проверка цитат кодом.
 // ensureDebrief — единственная точка входа, идемпотентна: строку захватывает один вызов.
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
 import { computeCounters, type TurnLite } from "./counters";
@@ -102,13 +102,28 @@ async function runDebrief(sessionId: string): Promise<void> {
     ].join("\n\n");
 
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
-    const resp = await ai.models.generateContent({
-      model: MODEL,
-      contents: [{ role: "user", parts: [{ text: userMessage }] }],
-      config: { systemInstruction: rubric, responseMimeType: "application/json", maxOutputTokens: 8192 },
-    });
-    const raw = (resp.text ?? "").replace(/^```json\s*|\s*```$/g, "");
-    const result = JSON.parse(raw) as Record<string, unknown> & {
+    // Длинная встреча (40+ реплик) не помещалась в 8k вместе с размышлениями модели —
+    // ответ обрывался посреди JSON. Запас больше, размышления короче, одна повторная попытка.
+    const ask = () =>
+      ai.models.generateContent({
+        model: MODEL,
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        config: {
+          systemInstruction: rubric,
+          responseMimeType: "application/json",
+          maxOutputTokens: 32768,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      });
+    let resp = await ask();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse((resp.text ?? "").replace(/^```json\s*|\s*```$/g, ""));
+    } catch {
+      resp = await ask();
+      parsed = JSON.parse((resp.text ?? "").replace(/^```json\s*|\s*```$/g, ""));
+    }
+    const result = parsed as Record<string, unknown> & {
       feedback?: { strength?: Quote & Record<string, unknown>; fix?: Quote & Record<string, unknown>; repeat?: Record<string, unknown>; summary_for_student?: string };
       curator?: Record<string, unknown>;
       hidden_layer?: { reached?: boolean };

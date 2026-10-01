@@ -101,6 +101,7 @@ class VoiceConnection {
   private drill: DrillMoment | null = null;
   private clientTurns = 0;
   private clientSpoke = false;
+  private studentWords = 0;
 
   constructor(
     private ws: WebSocket,
@@ -109,8 +110,7 @@ class VoiceConnection {
     private send: (m: ServerMessage) => void,
   ) {
     this.secondsLeft = Math.max(0, s.seconds_limit - s.seconds_used);
-    this.usage.prompt = Number(s.usage?.prompt_tokens ?? 0);
-    this.usage.response = Number(s.usage?.response_tokens ?? 0);
+
   }
 
   async start() {
@@ -174,8 +174,11 @@ class VoiceConnection {
             if (this.drill && this.clientSpoke) {
               this.clientSpoke = false;
               this.clientTurns += 1;
-              // Реплика + одна реакция на ответ студента — попытка окончена.
-              if (this.clientTurns >= 2) this.timers.push(setTimeout(() => void this.end("student"), 1500));
+              // Попытка окончена, когда после настоящего ответа студента (≥3 слов)
+              // клиент отреагировал. Эхо и «угу» ответом не считаются.
+              if (this.studentWords >= 3 && this.clientTurns >= 2) {
+                this.timers.push(setTimeout(() => void this.end("student"), 1500));
+              }
             }
             this.flushTurn();
             this.setSpeaking("idle");
@@ -251,6 +254,7 @@ class VoiceConnection {
   }
 
   private addTranscript(role: "student" | "client", text: string) {
+    if (role === "student" && this.clientTurns >= 1) this.studentWords += text.split(/\s+/).filter(Boolean).length;
     if (this.buf && this.buf.role !== role) this.flushTurn();
     if (!this.buf) this.buf = { role, text: "", startMs: Date.now() - this.sessionStartMs };
     this.buf.text += text;
@@ -321,10 +325,7 @@ class VoiceConnection {
     const { data, error } = await this.db.rpc("voice_session_tick", { p_session_id: this.s.id, p_seconds: seconds });
     if (error) return console.error("[voice] tick failed", this.s.id, error.message);
     this.secondsLeft = Number(data ?? 0);
-    void this.db
-      .from("voice_sessions")
-      .update({ usage: { prompt_tokens: this.usage.prompt, response_tokens: this.usage.response } })
-      .eq("id", this.s.id);
+    void this.flushUsage();
 
     const limit = this.s.seconds_limit;
     const used = limit - this.secondsLeft;
@@ -339,6 +340,14 @@ class VoiceConnection {
       this.signalOnce("time_up", "[СИСТЕМА: время вышло]");
       this.timers.push(setTimeout(() => void this.end("time_limit"), AFTER_TIME_UP_MS));
     }
+  }
+
+  /** Прибавить накопленный расход токенов (не перезаписывая чужие соединения). */
+  private async flushUsage() {
+    const { prompt, response } = this.usage;
+    if (!prompt && !response) return;
+    this.usage = { prompt: 0, response: 0 };
+    await this.db.rpc("voice_session_add_usage", { p_session_id: this.s.id, p_prompt: prompt, p_response: response });
   }
 
   private stopTimers() {
@@ -361,10 +370,10 @@ class VoiceConnection {
         status: "ended",
         end_reason: reason,
         ended_at: new Date().toISOString(),
-        usage: { prompt_tokens: this.usage.prompt, response_tokens: this.usage.response },
       })
       .eq("id", this.s.id)
       .in("status", LIVE);
+    await this.flushUsage();
     await this.db.from("voice_debriefs").upsert({ session_id: this.s.id, status: "queued" }, { onConflict: "session_id", ignoreDuplicates: true });
     this.send({ t: "ended", reason });
     if (this.ws.readyState === this.ws.OPEN) this.ws.close(1000, "ended");
@@ -378,6 +387,7 @@ class VoiceConnection {
     await this.engine?.close();
     const seconds = this.paused ? 0 : Math.round((Date.now() - this.lastTickAt) / 1000);
     await this.db.rpc("voice_session_tick", { p_session_id: this.s.id, p_seconds: seconds });
+    await this.flushUsage();
     // Сессию закрывает не сокет: браузер переподключится по новому билету,
     // а брошенные сессии добирает уборка по last_heartbeat_at.
     await this.db
@@ -385,7 +395,6 @@ class VoiceConnection {
       .update({
         status: this.paused ? "paused" : "reconnecting",
         paused_at: this.paused ? new Date().toISOString() : null,
-        usage: { prompt_tokens: this.usage.prompt, response_tokens: this.usage.response },
       })
       .eq("id", this.s.id)
       .eq("conn_id", this.s.conn_id)

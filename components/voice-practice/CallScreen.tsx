@@ -11,16 +11,25 @@ function mmss(sec: number | null): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function CallScreen(props: { programSlug: string; sessionId: string; clientName: string; resumable: boolean }) {
+export function CallScreen(props: {
+  programSlug: string;
+  sessionId: string;
+  clientName: string;
+  resumable: boolean;
+  /** «Трудный момент»: клиент начинает сам, после его реакции попытка заканчивается. */
+  drill?: { title: string; context: string } | null;
+}) {
   const router = useRouter();
   const onEnded = useCallback(() => {
     router.replace(`/program/${props.programSlug}/voice/session/${props.sessionId}`);
   }, [router, props.programSlug, props.sessionId]);
-  const { state, start, end } = useVoiceSession(props.sessionId, onEnded);
+  const { state, start, end } = useVoiceSession(props.sessionId, onEnded, { halfDuplex: !!props.drill });
   const { phase } = state;
 
   const status =
-    phase === "idle"
+    phase === "idle" && props.drill
+      ? "Клиент скажет одну трудную фразу. Дослушайте и ответьте так, как ответили бы живому человеку. После реакции клиента попытка закончится и откроется разбор."
+      : phase === "idle"
       ? props.resumable
         ? "Консультация прервалась. Нажмите «Продолжить» — клиент продолжит с того же места."
         : "Нажмите «Начать звонок»."
@@ -40,7 +49,9 @@ export function CallScreen(props: { programSlug: string; sessionId: string; clie
                     ? "Говорит клиент"
                     : state.speaking === "student"
                       ? "Вы говорите"
-                      : "Слушает";
+                      : props.drill
+                        ? "Ваш ответ"
+                        : "Слушает";
 
   const needsGesture = phase === "idle" || phase === "paused" || phase === "error";
   const inCall = phase === "live" || phase === "reconnecting" || phase === "connecting";
@@ -49,7 +60,8 @@ export function CallScreen(props: { programSlug: string; sessionId: string; clie
     <div className="vp-call">
       <div className="vp-call-head">
         <h1>{props.clientName}</h1>
-        <p>учебный клиент</p>
+        <p>{props.drill ? `Трудный момент · ${props.drill.title}` : "учебный клиент"}</p>
+        {props.drill && <p style={{ marginTop: 6, maxWidth: 320 }}>{props.drill.context}</p>}
       </div>
 
       <div className="vp-orb" data-speaking={inCall ? state.speaking : "idle"} aria-hidden />

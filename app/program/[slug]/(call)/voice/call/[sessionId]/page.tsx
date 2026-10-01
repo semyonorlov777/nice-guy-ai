@@ -14,16 +14,25 @@ export default async function VoiceCallPage({ params }: { params: Promise<{ slug
 
   const { data: s } = await supabase
     .from("voice_sessions")
-    .select("id, status, client_id, started_at")
+    .select("id, status, client_id, started_at, kind, drill_moment_id, program_mode_id")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!s) notFound();
   if (s.status === "ended" || s.status === "failed") redirect(`/program/${slug}/voice/session/${sessionId}`);
 
-  const { data: client } = s.client_id
-    ? await createServiceClient().from("voice_clients").select("display_name").eq("id", s.client_id).maybeSingle()
-    : { data: null };
+  const svc = createServiceClient();
+  const [{ data: client }, { data: mode }] = await Promise.all([
+    s.client_id
+      ? svc.from("voice_clients").select("display_name").eq("id", s.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    s.kind === "drill"
+      ? svc.from("voice_modes").select("drill_moments").eq("program_mode_id", s.program_mode_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const moment = ((mode?.drill_moments as { id: string; title: string; context: string }[] | null) ?? []).find(
+    (m) => m.id === s.drill_moment_id,
+  );
 
   return (
     <CallScreen
@@ -31,6 +40,7 @@ export default async function VoiceCallPage({ params }: { params: Promise<{ slug
       sessionId={sessionId}
       clientName={client?.display_name ?? "Учебный клиент"}
       resumable={!!s.started_at}
+      drill={moment ? { title: moment.title, context: moment.context } : null}
     />
   );
 }
