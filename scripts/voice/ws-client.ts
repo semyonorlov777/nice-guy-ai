@@ -4,11 +4,14 @@
 //
 // npx tsx --env-file=.env.local scripts/voice/ws-client.ts --user <uuid> [--url wss://…/api/practice/ws]
 //   [--mode voice_first_minutes] [--client vera] [--rotate] [--out <папка>]
+//   [--lines <файл>] [--seconds <лимит>] [--json <файл>]
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
+// --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
+// --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { newTicket } from "../../lib/voice-practice/ticket";
 import { quietNoise, resamplePcm16, wavFile } from "../../lib/voice-practice/audio/pcm";
@@ -25,6 +28,9 @@ const CLIENT = arg("--client", "vera")!;
 const OUT = arg("--out", "./ws-client-out")!;
 const ROTATE = args.includes("--rotate");
 const MOMENT = arg("--moment");
+const LINES_FILE = arg("--lines");
+const SECONDS = arg("--seconds");
+const JSON_OUT = arg("--json");
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -32,7 +38,11 @@ const FULL_LINES = [
   "Похоже, вы очень устали за эти два месяца. Чего вы ожидаете от нашего разговора?",
   "У нас сегодня около сорока минут, и к концу я хотела бы понять, с чем именно вы хотите работать.",
 ];
-const LINES = MOMENT ? DRILL_LINES : FULL_LINES;
+const LINES = LINES_FILE
+  ? readFileSync(LINES_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+  : MOMENT ? DRILL_LINES : FULL_LINES;
+const silenceOf = (line: string) => Number(/^\[тишина (\d+)\]$/.exec(line)?.[1] ?? 0);
+const CLIENT_RATE = 24000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -58,7 +68,7 @@ async function main() {
       program_id: (pm.programs as unknown as { id: string }).id,
       program_mode_id: pm.id,
       client_id: client.id,
-      seconds_limit: MOMENT ? 120 : 240,
+      seconds_limit: SECONDS ? Number(SECONDS) : MOMENT ? 120 : 240,
       kind: MOMENT ? "drill" : "full",
       drill_moment_id: MOMENT ?? null,
       ticket_hash: t.hash,
@@ -72,6 +82,7 @@ async function main() {
   console.log("озвучиваю реплики…");
   const audio = await Promise.all(
     LINES.map(async (text) => {
+      if (silenceOf(text)) return Buffer.alloc(0);
       const r = await ai.models.generateContent({
         model: "gemini-3.8-flash-tts",
         contents: [{ parts: [{ text }] }],
@@ -83,15 +94,23 @@ async function main() {
   );
 
   const clientAudio: Buffer[] = [];
+  let clientBytes = 0;
+  const steps: { student: string; clientSec: number; latencyMs: number | null }[] = [];
   let ws = await connect(t.ticket);
   let lastAudio = 0;
+  // Сервер шлёт state idle, когда клиент закончил ход (turnComplete): по нему
+  // и ждём конца реплики — паузы внутри реплики бывают длиннее секунды.
+  let clientDone = false;
+  const replyOver = () => (clientDone && lastAudio > 0) || (lastAudio > 0 && Date.now() - lastAudio > 4000);
   function wire(sock: WebSocket) {
     sock.on("message", (data, isBinary) => {
       if (isBinary) {
         clientAudio.push(data as Buffer);
+        clientBytes += (data as Buffer).length;
         lastAudio = Date.now();
       } else {
         const m = JSON.parse(String(data));
+        if (m.t === "state" && m.speaking === "idle") clientDone = true;
         if (m.t !== "state") console.log("  ←", JSON.stringify(m));
       }
     });
@@ -101,12 +120,13 @@ async function main() {
   if (MOMENT) {
     // Клиент начинает сам: ждём его реплику.
     const t0 = Date.now();
-    while (Date.now() - t0 < 15000) {
+    while (Date.now() - t0 < 25000) {
       ws.send(quietNoise(40, 16000));
       await sleep(40);
-      if (lastAudio && Date.now() - lastAudio > 1500) break;
+      if (replyOver()) break;
     }
     console.log(`  (реплика клиента: ${clientAudio.length} кадров)`);
+    steps.push({ student: "(клиент начинает)", clientSec: clientBytes / 2 / CLIENT_RATE, latencyMs: null });
   }
   for (let i = 0; i < audio.length; i++) {
     if (ROTATE && i === 1) {
@@ -119,21 +139,33 @@ async function main() {
       wire(ws);
     }
     console.log(`→ ${LINES[i]}`);
+    if (ws.readyState !== ws.OPEN) break;
     for (let o = 0; o < audio[i].length; o += 1280) {
       ws.send(audio[i].subarray(o, o + 1280));
       await sleep(40);
     }
     const started = Date.now();
+    const bytesBefore = clientBytes;
+    let firstAudio = 0;
     lastAudio = 0;
-    // тишина, пока клиент не договорит (1,5 с без звука после начала ответа) или 20 с
-    while (Date.now() - started < 20000) {
+    clientDone = false;
+    // «[тишина N]» — молчим N секунд целиком; иначе ждём, пока клиент договорит
+    // (сигнал сервера или 4 с без звука после начала ответа), но не дольше 25 с.
+    const hush = silenceOf(LINES[i]) * 1000;
+    while (Date.now() - started < (hush || 25000) && ws.readyState === ws.OPEN) {
       ws.send(quietNoise(40, 16000));
       await sleep(40);
-      if (lastAudio && Date.now() - lastAudio > 1500) break;
+      if (lastAudio && !firstAudio) firstAudio = lastAudio;
+      if (!hush && replyOver()) break;
     }
+    steps.push({
+      student: LINES[i],
+      clientSec: Math.round(((clientBytes - bytesBefore) / 2 / CLIENT_RATE) * 10) / 10,
+      latencyMs: firstAudio ? firstAudio - started : null,
+    });
   }
 
-  ws.send(JSON.stringify({ t: "end" }));
+  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ t: "end" }));
   await sleep(3000);
   const { data: turns } = await db.from("voice_turns").select("seq, role, text").eq("session_id", s.id).order("seq");
   const { data: fin } = await db.from("voice_sessions").select("status, end_reason, seconds_used, reconnects, usage").eq("id", s.id).single();
@@ -143,6 +175,10 @@ async function main() {
   mkdirSync(OUT, { recursive: true });
   writeFileSync(join(OUT, "client.wav"), wavFile(Buffer.concat(clientAudio), 24000));
   console.log("звук:", join(OUT, "client.wav"));
+  if (JSON_OUT) {
+    writeFileSync(JSON_OUT, JSON.stringify({ sessionId: s.id, mode: MODE, client: CLIENT, moment: MOMENT ?? null, steps, turns, session: fin }, null, 2));
+    console.log("итог:", JSON_OUT);
+  }
   process.exit(0);
 }
 
