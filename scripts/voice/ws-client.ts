@@ -4,14 +4,15 @@
 //
 // npx tsx --env-file=.env.local scripts/voice/ws-client.ts --user <uuid> [--url wss://…/api/practice/ws]
 //   [--mode voice_first_minutes] [--client vera] [--rotate] [--out <папка>]
-//   [--lines <файл>] [--seconds <лимит>] [--json <файл>]
+//   [--lines <файл>] [--seconds <лимит>] [--json <файл>] [--tts-cache <папка>]
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
 // --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { newTicket } from "../../lib/voice-practice/ticket";
 import { quietNoise, resamplePcm16, wavFile } from "../../lib/voice-practice/audio/pcm";
@@ -31,6 +32,7 @@ const MOMENT = arg("--moment");
 const LINES_FILE = arg("--lines");
 const SECONDS = arg("--seconds");
 const JSON_OUT = arg("--json");
+const TTS_CACHE = arg("--tts-cache", "./ws-client-out/tts-cache")!;
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -50,6 +52,11 @@ async function main() {
   if (!USER) throw new Error("--user <uuid> обязателен");
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
+
+  // Озвучка до создания сессии; кэш на диске — у TTS лимит 10 запросов в минуту.
+  console.log("озвучиваю реплики…");
+  const audio: Buffer[] = [];
+  for (const text of LINES) audio.push(silenceOf(text) ? Buffer.alloc(0) : await tts(ai, text));
 
   const { data: pm } = await db
     .from("program_modes")
@@ -78,20 +85,6 @@ async function main() {
     .single();
   if (error || !s) throw error;
   console.log("сессия", s.id);
-
-  console.log("озвучиваю реплики…");
-  const audio = await Promise.all(
-    LINES.map(async (text) => {
-      if (silenceOf(text)) return Buffer.alloc(0);
-      const r = await ai.models.generateContent({
-        model: "gemini-3.8-flash-tts",
-        contents: [{ parts: [{ text }] }],
-        config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } } },
-      });
-      const data = r.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
-      return resamplePcm16(Buffer.from(data!, "base64"), 24000, 16000);
-    }),
-  );
 
   const clientAudio: Buffer[] = [];
   let clientBytes = 0;
@@ -180,6 +173,29 @@ async function main() {
     console.log("итог:", JSON_OUT);
   }
   process.exit(0);
+}
+
+async function tts(ai: GoogleGenAI, text: string): Promise<Buffer> {
+  const file = join(TTS_CACHE, createHash("sha1").update(text).digest("hex") + ".pcm");
+  if (existsSync(file)) return readFileSync(file);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r = await ai.models.generateContent({
+        model: "gemini-3.8-flash-tts",
+        contents: [{ parts: [{ text }] }],
+        config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } } },
+      });
+      const data = r.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
+      const pcm = resamplePcm16(Buffer.from(data!, "base64"), 24000, 16000);
+      mkdirSync(TTS_CACHE, { recursive: true });
+      writeFileSync(file, pcm);
+      return pcm;
+    } catch (e) {
+      if ((e as { status?: number }).status !== 429 || attempt >= 5) throw e;
+      console.log("  лимит озвучки, жду 30 с…");
+      await sleep(30000);
+    }
+  }
 }
 
 function connect(ticket: string): Promise<WebSocket> {
