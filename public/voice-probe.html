@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Проверка связи</title>
+<style>
+  :root { --bg:#FAFAF5; --text:#1A1917; --muted:#6B675F; --line:#E4E0D6; --ok:#2E7D4F; --warn:#B7791F; --bad:#B03A2E; --accent:#C9963B; --accent-on:#1A1917; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, system-ui, sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 18px; }
+  label { display:block; font-size:14px; color:var(--muted); margin:12px 0 4px; }
+  input, select { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; color:var(--text); }
+  button { width:100%; padding:14px; margin-top:16px; border:0; border-radius:12px; background:var(--accent); color:var(--accent-on); font:600 17px/1 inherit; font-family:inherit; }
+  button:disabled { opacity:.5; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .row b { font-weight:600; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+  pre { white-space:pre-wrap; background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Проверка связи</h1>
+  <p class="sub">Около четырёх минут. Не сворачивайте страницу. Для мобильной сети выключите Wi-Fi.</p>
+
+  <label for="net">Сеть</label>
+  <select id="net">
+    <option>Wi-Fi</option><option>МТС</option><option>Билайн</option><option>МегаФон</option><option>Т2</option><option>Другая</option>
+  </select>
+  <label for="relay">Адрес проверяемой площадки</label>
+  <input id="relay" placeholder="https://voice-relay-….run.app" autocomplete="off">
+
+  <button id="start">Начать проверку</button>
+
+  <div id="out" style="margin-top:18px"></div>
+  <pre id="report" hidden></pre>
+</main>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var relayInput = document.getElementById("relay");
+  relayInput.value = qs.get("relay") || "";
+  var STREAM_MS = (parseInt(qs.get("sec"), 10) || 180) * 1000;
+  var out = document.getElementById("out");
+  var rows = {};
+  function row(key, title) {
+    var d = document.createElement("div");
+    d.className = "row";
+    d.innerHTML = "<span>" + title + "</span><b>…</b>";
+    out.appendChild(d);
+    rows[key] = d.querySelector("b");
+  }
+  function set(key, text, cls) { rows[key].textContent = text; rows[key].className = cls || ""; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  document.getElementById("start").onclick = async function () {
+    var btn = this;
+    var base = relayInput.value.trim().replace(/\/+$/, "");
+    if (!/^https:\/\//.test(base) && !/^http:\/\/localhost/.test(base)) { alert("Укажите адрес площадки, начиная с https://"); return; }
+    btn.disabled = true;
+    out.innerHTML = "";
+    var res = { net: document.getElementById("net").value, relay: base, ua: navigator.userAgent, at: new Date().toISOString() };
+
+    // 1. Звук: AudioContext создаётся в тапе (как на странице звонка в iOS Safari).
+    row("audio", "Звук на устройстве");
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      var ctx = new Ctx();
+      await ctx.resume();
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      g.gain.value = 0.05; o.frequency.value = 660; o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.25);
+      res.audio = ctx.state + ", " + ctx.sampleRate + " Гц";
+      set("audio", res.audio, ctx.state === "running" ? "ok" : "warn");
+    } catch (e) { res.audio = "ошибка: " + e; set("audio", "ошибка", "bad"); }
+
+    // 2. Задержка: пять запросов /health.
+    row("rtt", "Время отклика");
+    var rtts = [];
+    for (var i = 0; i < 5; i++) {
+      var t = performance.now();
+      try { await fetch(base + "/health", { cache: "no-store" }); rtts.push(Math.round(performance.now() - t)); }
+      catch (e) { rtts.push(-1); }
+      await sleep(200);
+    }
+    var okR = rtts.filter(function (x) { return x >= 0; }).sort(function (a, b) { return a - b; });
+    res.rtt = okR.length ? okR[Math.floor(okR.length / 2)] : null;
+    set("rtt", res.rtt === null ? "нет ответа" : res.rtt + " мс", res.rtt === null ? "bad" : res.rtt < 400 ? "ok" : res.rtt < 1500 ? "warn" : "bad");
+
+    // 3. Крупный ответ 48 КБ (ловит «заморозку после 16 КБ»).
+    row("echo", "Передача 48 КБ");
+    try {
+      var body = new Uint8Array(48 * 1024); crypto.getRandomValues(body);
+      var t2 = performance.now();
+      var ctl = new AbortController(); var to = setTimeout(function () { ctl.abort(); }, 15000);
+      var r = await fetch(base + "/echo", { method: "POST", body: body, signal: ctl.signal, cache: "no-store" });
+      var back = new Uint8Array(await r.arrayBuffer()); clearTimeout(to);
+      res.echo = back.length === body.length ? Math.round(performance.now() - t2) + " мс" : "пришло " + back.length + " байт";
+      set("echo", res.echo, back.length === body.length ? "ok" : "bad");
+    } catch (e) { res.echo = "оборвалось"; set("echo", res.echo, "bad"); }
+
+    // 4. Поток 3 минуты по 32 КБ/с — как живой звонок.
+    row("stream", "Поток 3 минуты");
+    res.stream = await new Promise(function (resolve) {
+      var wsUrl = base.replace(/^http/, "ws") + "/probe";
+      var ws, sent = 0, got = 0, started = 0, timer = null, lastGot = Date.now(), stalls = 0;
+      try { ws = new WebSocket(wsUrl); ws.binaryType = "arraybuffer"; } catch (e) { resolve("не открылось"); return; }
+      var frame = new Uint8Array(1280);
+      function finish(reason) {
+        if (!timer) return;
+        clearInterval(timer); timer = null;
+        try { ws.close(); } catch (e) {}
+        var s = Math.round((Date.now() - started) / 1000);
+        resolve(reason + ": " + s + " с, отправлено " + Math.round(sent / 1024) + " КБ, вернулось " + Math.round(got / 1024) + " КБ, подвисаний " + stalls);
+      }
+      ws.onopen = function () {
+        started = Date.now();
+        timer = setInterval(function () {
+          if (ws.readyState !== 1) return;
+          ws.send(frame); sent += frame.length;
+          var el = Date.now() - started;
+          if (Date.now() - lastGot > 2000) { stalls++; lastGot = Date.now(); }
+          set("stream", Math.round(el / 1000) + " с, " + Math.round(got / 1024) + " КБ", "warn");
+          if (el >= STREAM_MS) finish("готово");
+        }, 40);
+      };
+      ws.onmessage = function (e) { if (e.data instanceof ArrayBuffer) { got += e.data.byteLength; lastGot = Date.now(); } };
+      ws.onerror = function () { finish("ошибка"); };
+      ws.onclose = function () { if (timer) finish("закрыто"); else if (!started) resolve("не открылось"); };
+    });
+    var good = /^готово/.test(res.stream) && !/подвисаний [1-9]/.test(res.stream);
+    set("stream", res.stream, good ? "ok" : "bad");
+
+    var rep = document.getElementById("report");
+    rep.hidden = false;
+    rep.textContent = JSON.stringify(res, null, 1);
+    btn.disabled = false;
+    btn.textContent = "Проверить ещё раз";
+  };
+})();
+</script>
+</body>
+</html>
