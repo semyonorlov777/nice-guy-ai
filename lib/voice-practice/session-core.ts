@@ -277,8 +277,10 @@ class VoiceConnection {
     const limit = this.s.seconds_limit;
     const used = limit - this.secondsLeft;
     if (used >= limit * 0.5) this.signalOnce("half", "[СИСТЕМА: середина встречи]");
-    if (this.secondsLeft <= 120 && limit > 180) {
-      this.signalOnce("two_min", "[СИСТЕМА: осталось 2 минуты]");
+    // Короткий режим (до 6 минут) предупреждаем за минуту, длинный — за две.
+    const warnAt = limit >= 360 ? 120 : 60;
+    if (this.secondsLeft <= warnAt) {
+      this.signalOnce("warn", warnAt === 120 ? "[СИСТЕМА: осталось 2 минуты]" : "[СИСТЕМА: осталась 1 минута]");
       this.send({ t: "state", speaking: "idle", secondsLeft: this.secondsLeft, warn: true });
     }
     if (this.secondsLeft <= 0 && !this.signalsSent.has("time_up")) {

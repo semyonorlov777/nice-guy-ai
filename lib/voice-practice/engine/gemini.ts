@@ -33,8 +33,9 @@ export class GeminiEngine implements VoiceEngine {
         responseModalities: [Modality.AUDIO],
         systemInstruction: opts.instruction,
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName } } },
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
+        // Без подсказки языка расшифровка студента сбивается на японский/немецкий на коротких «угу».
+        inputAudioTranscription: { languageCodes: ["ru-RU"] },
+        outputAudioTranscription: { languageCodes: ["ru-RU"] },
         realtimeInputConfig: {
           automaticActivityDetection: { silenceDurationMs: opts.silenceMs, prefixPaddingMs: 300 },
         },
