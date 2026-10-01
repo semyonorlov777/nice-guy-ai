@@ -10,6 +10,12 @@ import { getProgramModes } from "@/lib/queries/modes";
 import { getAllPrograms, type ProgramSwitcherItem } from "@/lib/queries/all-programs";
 import { resolveUserIdentifier } from "@/lib/user-identifier";
 import type { ProgramFeatures } from "@/types/program";
+import { programBrandMetadata } from "@/lib/queries/program-brand";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  return programBrandMetadata(slug);
+}
 
 export default async function ProgramLayout({
   children,
