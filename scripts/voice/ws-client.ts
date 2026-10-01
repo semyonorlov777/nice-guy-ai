@@ -4,7 +4,7 @@
 //
 // npx tsx --env-file=.env.local scripts/voice/ws-client.ts --user <uuid> [--url wss://…/api/practice/ws]
 //   [--mode voice_first_minutes] [--client vera] [--rotate] [--out <папка>]
-//   [--lines <файл>] [--seconds <лимит>] [--json <файл>] [--tts-cache <папка>]
+//   [--lines <файл>] [--seconds <лимит>] [--json <файл>] [--tts-cache <папка>] [--tts gemini|say]
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
 // --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
@@ -13,6 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { newTicket } from "../../lib/voice-practice/ticket";
 import { quietNoise, resamplePcm16, wavFile } from "../../lib/voice-practice/audio/pcm";
@@ -33,6 +34,7 @@ const LINES_FILE = arg("--lines");
 const SECONDS = arg("--seconds");
 const JSON_OUT = arg("--json");
 const TTS_CACHE = arg("--tts-cache", "./ws-client-out/tts-cache")!;
+const TTS_ENGINE = arg("--tts", "gemini")!;
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -175,9 +177,20 @@ async function main() {
   process.exit(0);
 }
 
+/** Голос macOS (Milena) — запасной путь, когда у Gemini TTS кончился дневной лимит. */
+function sayTts(text: string): Buffer {
+  const tmp = join(TTS_CACHE, `say-${process.pid}.wav`);
+  mkdirSync(TTS_CACHE, { recursive: true });
+  execFileSync("say", ["-v", "Milena", "-o", tmp, "--file-format=WAVE", "--data-format=LEI16@16000", text]);
+  const wav = readFileSync(tmp);
+  const at = wav.indexOf("data");
+  return wav.subarray(at + 8, at + 8 + wav.readUInt32LE(at + 4));
+}
+
 async function tts(ai: GoogleGenAI, text: string): Promise<Buffer> {
   const file = join(TTS_CACHE, createHash("sha1").update(text).digest("hex") + ".pcm");
   if (existsSync(file)) return readFileSync(file);
+  if (TTS_ENGINE === "say") return sayTts(text);
   for (let attempt = 0; ; attempt++) {
     try {
       const r = await ai.models.generateContent({
@@ -191,7 +204,11 @@ async function tts(ai: GoogleGenAI, text: string): Promise<Buffer> {
       writeFileSync(file, pcm);
       return pcm;
     } catch (e) {
-      if ((e as { status?: number }).status !== 429 || attempt >= 5) throw e;
+      if ((e as { status?: number }).status !== 429) throw e;
+      if (String(e).includes("per_day") || attempt >= 5) {
+        console.log("  дневной лимит озвучки — голос macOS");
+        return sayTts(text);
+      }
       console.log("  лимит озвучки, жду 30 с…");
       await sleep(30000);
     }
