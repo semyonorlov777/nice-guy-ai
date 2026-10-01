@@ -138,3 +138,13 @@
   .vp-cur-skill { grid-template-columns: 1fr 76px; }
   .vp-cur-skill .vp-cur-bar { grid-column: 1 / -1; grid-row: 2; }
 }
+/* Первые слова */
+.vp-warmup { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px 0 8px; }
+.vp-warmup .vp-btn { max-width: 360px; }
+.vp-reaction { font-family: var(--font-display); font-size: 22px; margin: 0 0 8px; color: var(--text-secondary); }
+.vp-reaction[data-reaction="warm"] { color: var(--success); }
+.vp-reaction[data-reaction="cold"] { color: var(--accent-dark); }
+.vp-left { text-align: left; margin: 0 0 8px; }
+.vp-gap { margin-top: 10px; }
+.vp-row-stack { flex-direction: column; gap: 4px; line-height: 1.45; }
+.vp-row-stack > span:first-child { font-size: 13px; font-weight: 600; }

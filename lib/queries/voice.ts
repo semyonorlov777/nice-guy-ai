@@ -26,6 +26,18 @@ export const hasVoiceAccess = cache(async (userId: string, programId: string): P
   return !!data;
 });
 
+/** Режим практикума включён и не помечен «скоро» (для режимов без строки voice_modes, например разминки). */
+export async function isVoiceModeOpen(programId: string, modeKey: string): Promise<boolean> {
+  const { data } = await createServiceClient()
+    .from("program_modes")
+    .select("enabled, config, mode_templates!inner(key)")
+    .eq("program_id", programId)
+    .eq("mode_templates.key", modeKey)
+    .maybeSingle();
+  const voice = (data?.config as { voice?: { coming_soon?: boolean } } | null)?.voice;
+  return !!data?.enabled && voice?.coming_soon !== true;
+}
+
 /**
  * Режим практикума по хвосту адреса (/voice/<tool>) — только публичные поля.
  * Тексты инструкций (frame_prompt, prompt) сюда не попадают.
