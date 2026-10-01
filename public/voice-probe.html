@@ -30,8 +30,8 @@
   <select id="net">
     <option>Wi-Fi</option><option>МТС</option><option>Билайн</option><option>МегаФон</option><option>Т2</option><option>Другая</option>
   </select>
-  <label for="relay">Адрес проверяемой площадки</label>
-  <input id="relay" placeholder="https://voice-relay-….run.app" autocomplete="off">
+  <label for="relay">Адрес проверки (менять не нужно)</label>
+  <input id="relay" placeholder="https://nice-guy-ai.vercel.app/api/practice/relay" autocomplete="off">
 
   <button id="start">Начать проверку</button>
 
@@ -42,7 +42,7 @@
 (function () {
   var qs = new URLSearchParams(location.search);
   var relayInput = document.getElementById("relay");
-  relayInput.value = qs.get("relay") || "";
+  relayInput.value = qs.get("relay") || (location.origin + "/api/practice/relay");
   var STREAM_MS = (parseInt(qs.get("sec"), 10) || 180) * 1000;
   var out = document.getElementById("out");
   var rows = {};
