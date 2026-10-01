@@ -135,15 +135,18 @@ async function main() {
     }
     console.log(`→ ${LINES[i]}`);
     if (ws.readyState !== ws.OPEN) break;
-    for (let o = 0; o < audio[i].length; o += 1280) {
-      ws.send(audio[i].subarray(o, o + 1280));
-      await sleep(40);
-    }
-    const started = Date.now();
+    // Счёт начинаем до отправки: клиент может заговорить, пока реплика студента ещё идёт
+    // (пауза внутри реплики закрывает ход). Тогда задержка выйдет отрицательной.
     const bytesBefore = clientBytes;
     let firstAudio = 0;
     lastAudio = 0;
     clientDone = false;
+    for (let o = 0; o < audio[i].length; o += 1280) {
+      ws.send(audio[i].subarray(o, o + 1280));
+      await sleep(40);
+      if (lastAudio && !firstAudio) firstAudio = lastAudio;
+    }
+    const started = Date.now();
     // «[тишина N]» — молчим N секунд целиком; иначе ждём, пока клиент договорит
     // (сигнал сервера или 4 с без звука после начала ответа), но не дольше 25 с.
     const hush = silenceOf(LINES[i]) * 1000;
