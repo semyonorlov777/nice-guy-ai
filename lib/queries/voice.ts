@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase-server";
 
 export interface VoiceModeView {
@@ -76,4 +77,32 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
       summary: c.summary_public,
     })),
   };
+}
+
+export interface SelfReportRow {
+  kind: "anketa" | "confidence_pre" | "confidence_post";
+  day: string;
+  answers: Record<string, unknown>;
+  sum: number | null;
+  created_at: string;
+}
+
+/**
+ * Анкета и уверенность студента в программе, по времени (старые первыми).
+ * Клиент с cookies: RLS пускает только владельца.
+ */
+export async function getSelfReports(
+  supabase: SupabaseClient,
+  userId: string,
+  programId: string,
+): Promise<SelfReportRow[]> {
+  const { data } = await supabase
+    .from("voice_self_reports")
+    .select("kind, day, answers, sum, created_at")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .in("kind", ["anketa", "confidence_pre", "confidence_post"])
+    .order("created_at", { ascending: true })
+    .limit(200);
+  return (data ?? []) as SelfReportRow[];
 }
