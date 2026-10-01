@@ -9,9 +9,12 @@ export interface ProgramSwitcherItem {
   coverUrl: string | null;
   author: string | null;
   features: ProgramFeatures | null;
+  /** Скрыта из каталога и переключателя книг (например, практикум института). */
+  hidden: boolean;
 }
 
 interface LandingDataBook {
+  hidden_from_catalog?: boolean;
   book?: {
     cover_url?: string;
     author_top?: string;
@@ -38,6 +41,7 @@ export const getAllPrograms = cache(async (
       coverUrl: landing?.book?.cover_url ?? null,
       author: landing?.book?.author_top ?? null,
       features: (p.features ?? null) as ProgramFeatures | null,
+      hidden: landing?.hidden_from_catalog === true,
     };
   });
 });

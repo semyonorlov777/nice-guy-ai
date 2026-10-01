@@ -4,7 +4,7 @@ import type { WelcomeConfig } from "@/types/welcome";
 import { normalizeWelcomeReplies } from "@/types/welcome";
 import { themeToWelcomeConfig } from "@/lib/queries/themes";
 import { modeToWelcomeConfig } from "@/lib/queries/modes";
-import type { ProgramModeWithTemplate } from "@/types/modes";
+import type { ProgramModeWithTemplate, ModeInteraction } from "@/types/modes";
 
 /**
  * Получает WelcomeConfig из БД по topic или tool.
@@ -58,7 +58,7 @@ export const getWelcomeConfig = cache(async (
         welcome_ai_message, welcome_replies, welcome_system_context,
         color_class, badge,
         mode_templates!inner (
-          key, name, description, icon, chat_type, route_suffix, is_chat_based
+          key, name, description, icon, chat_type, route_suffix, is_chat_based, interaction
         )
       `,
       )
@@ -76,6 +76,7 @@ export const getWelcomeConfig = cache(async (
         chat_type: string | null;
         route_suffix: string;
         is_chat_based: boolean;
+        interaction: ModeInteraction | null;
       };
       const mode: ProgramModeWithTemplate = {
         key: mt.key,
@@ -85,6 +86,7 @@ export const getWelcomeConfig = cache(async (
         chat_type: mt.chat_type,
         route_suffix: mt.route_suffix,
         is_chat_based: mt.is_chat_based,
+        interaction: mt.interaction ?? (mt.is_chat_based ? "text" : "test"),
         sort_order: row.sort_order,
         access_type: row.access_type as "free" | "paid",
         welcome_message: row.welcome_message,
@@ -112,7 +114,7 @@ export const getWelcomeConfig = cache(async (
       welcome_ai_message, welcome_replies, welcome_system_context,
       color_class, badge,
       mode_templates!inner (
-        key, name, description, icon, chat_type, route_suffix, is_chat_based
+        key, name, description, icon, chat_type, route_suffix, is_chat_based, interaction
       )
     `,
     )
@@ -129,6 +131,7 @@ export const getWelcomeConfig = cache(async (
       chat_type: string | null;
       route_suffix: string;
       is_chat_based: boolean;
+        interaction: ModeInteraction | null;
     };
     const mode: ProgramModeWithTemplate = {
       key: mt.key,
@@ -138,6 +141,7 @@ export const getWelcomeConfig = cache(async (
       chat_type: mt.chat_type,
       route_suffix: mt.route_suffix,
       is_chat_based: mt.is_chat_based,
+        interaction: mt.interaction ?? (mt.is_chat_based ? "text" : "test"),
       sort_order: fallback.sort_order,
       access_type: fallback.access_type as "free" | "paid",
       welcome_message: fallback.welcome_message,

@@ -1481,10 +1481,22 @@ async function main() {
   if (bookFilter) {
     programsQuery = programsQuery.eq("slug", bookFilter);
   }
-  const { data: programs, error: pErr } = await programsQuery;
+  const { data: allPrograms, error: pErr } = await programsQuery;
+  // Голосовые программы (features.voice) живут вне правил чатов: нет «ёлочек»,
+  // welcome-чатов и демо-чата. Их тексты — в закрытых voice_modes/voice_clients.
+  const voiceProgramIds = new Set(
+    (allPrograms ?? [])
+      .filter((p) => (p.features as Record<string, boolean> | null)?.voice === true)
+      .map((p) => p.id as string),
+  );
+  const programs = (allPrograms ?? []).filter((p) => !voiceProgramIds.has(p.id as string));
   if (pErr) {
     console.error("❌ failed to fetch programs:", pErr.message);
     process.exit(2);
+  }
+  if (bookFilter && voiceProgramIds.size > 0 && programs.length === 0) {
+    console.log(`ℹ️  ${bookFilter} — голосовая программа, правила чатов к ней не применяются.`);
+    process.exit(0);
   }
   if (bookFilter && (!programs || programs.length === 0)) {
     console.error(`❌ book not found: ${bookFilter}`);
@@ -1772,6 +1784,7 @@ async function main() {
       };
     }
   >) {
+    if (voiceProgramIds.has(m.program_id)) continue;
     const slug = slugByProgramId.get(m.program_id) ?? "unknown";
     const modeKey = m.mode_templates?.key ?? "unknown";
     const modeName = m.mode_templates?.name ?? null;

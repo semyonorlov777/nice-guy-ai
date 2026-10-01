@@ -48,7 +48,7 @@ export default async function ProgramLayout({
 
   if (isAuthed) {
     // Этап 1: параллельно — список программ + профиль (оба независимы от program.id).
-    const [programs, profileRes] = await Promise.all([
+    const [allPrograms, profileRes] = await Promise.all([
       getAllPrograms(supabase),
       supabase
         .from("profiles")
@@ -57,8 +57,10 @@ export default async function ProgramLayout({
         .single(),
     ]);
 
-    const program = programs.find((p) => p.slug === slug);
+    const program = allPrograms.find((p) => p.slug === slug);
     if (!program) redirect("/");
+    // Скрытая программа (практикум института) не видит книги, книги не видят её.
+    const programs = program.hidden ? [program] : allPrograms.filter((p) => !p.hidden);
 
     const profile = profileRes.data;
     const userInfo = profile

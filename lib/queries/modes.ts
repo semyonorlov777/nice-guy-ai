@@ -1,6 +1,6 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ProgramModeWithTemplate, LastActiveMode } from "@/types/modes";
+import type { ProgramModeWithTemplate, LastActiveMode, ModeInteraction } from "@/types/modes";
 import type { WelcomeConfig } from "@/types/welcome";
 import { normalizeWelcomeReplies } from "@/types/welcome";
 
@@ -36,7 +36,8 @@ export const getProgramModes = cache(async (
         icon,
         chat_type,
         route_suffix,
-        is_chat_based
+        is_chat_based,
+        interaction
       )
     `,
     )
@@ -55,6 +56,7 @@ export const getProgramModes = cache(async (
       chat_type: string | null;
       route_suffix: string;
       is_chat_based: boolean;
+      interaction: ModeInteraction | null;
     };
     return {
       key: mt.key,
@@ -64,6 +66,7 @@ export const getProgramModes = cache(async (
       chat_type: mt.chat_type,
       route_suffix: mt.route_suffix,
       is_chat_based: mt.is_chat_based,
+      interaction: mt.interaction ?? (mt.is_chat_based ? "text" : "test"),
       sort_order: row.sort_order,
       access_type: row.access_type as "free" | "paid",
       welcome_message: row.welcome_message,

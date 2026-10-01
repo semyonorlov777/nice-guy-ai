@@ -1,5 +1,8 @@
 import type { WelcomeReply } from "@/types/welcome";
 
+/** Как студент взаимодействует с режимом: текстовый чат, тест или голосовая сессия */
+export type ModeInteraction = "text" | "test" | "voice";
+
 /** Каталог режимов (shared across books) */
 export interface ModeTemplate {
   id: string;
@@ -10,6 +13,7 @@ export interface ModeTemplate {
   chat_type: string | null;
   route_suffix: string;
   is_chat_based: boolean;
+  interaction: ModeInteraction;
   default_sort_order: number;
 }
 
@@ -34,6 +38,7 @@ export interface ProgramModeWithTemplate {
   chat_type: string | null;
   route_suffix: string;
   is_chat_based: boolean;
+  interaction: ModeInteraction;
   sort_order: number;
   access_type: "free" | "paid";
   welcome_message: string | null;

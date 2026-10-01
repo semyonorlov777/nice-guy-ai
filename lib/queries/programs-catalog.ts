@@ -8,6 +8,7 @@ interface LandingDataMin {
     author_top?: string;
   };
   hero_subtitle?: string;
+  hidden_from_catalog?: boolean;
   short_description?: string;
   pricing?: {
     is_paid?: boolean;
@@ -25,7 +26,9 @@ export const getProgramsForCatalog = cache(
 
     if (!data) return [];
 
-    return data.map((p) => {
+    return data
+      .filter((p) => (p.landing_data as LandingDataMin | null)?.hidden_from_catalog !== true)
+      .map((p) => {
       const landing = p.landing_data as LandingDataMin | null;
       const pricing = landing?.pricing;
       return {

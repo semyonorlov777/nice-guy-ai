@@ -14,6 +14,8 @@ import { ChatSection } from "@/components/landing/ChatSection";
 import { SiteFooter } from "@/components/SiteFooter";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import type { QuickReplyInput } from "@/lib/chat/normalize-quick-replies";
+import type { ProgramFeatures } from "@/types/program";
+import { redirect } from "next/navigation";
 
 export async function generateMetadata({
   params,
@@ -117,9 +119,14 @@ export default async function ProgramLanding({
   const svc = createServiceClient();
   const { data: program } = await svc
     .from("programs")
-    .select("free_chat_welcome, anonymous_quick_replies, landing_data")
+    .select("free_chat_welcome, anonymous_quick_replies, landing_data, features")
     .eq("slug", slug)
     .single();
+
+  // Голосовой практикум — без книжного лендинга: сразу в кабинет (вход — через middleware).
+  if ((program?.features as ProgramFeatures | null)?.voice) {
+    redirect(`/program/${slug}/hub`);
+  }
 
   const landingData = program?.landing_data as LandingData | null;
   const welcomeMessage = program?.free_chat_welcome || "";

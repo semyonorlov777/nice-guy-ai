@@ -6,7 +6,8 @@ import type { ProgramFeatures } from "@/types/program";
 /**
  * Загружает программу по slug и проверяет feature flag.
  * Если программа не найдена — redirect на /.
- * Если feature отключена — redirect на chat страницу программы.
+ * Если feature отключена — redirect на chat страницу программы
+ * (для голосового практикума — на хаб: текстового чата там нет).
  *
  * Обёрнут в React.cache для дедупликации в рамках одного RSC-запроса
  * (вызывается на каждой защищённой странице, иногда дважды).
@@ -26,7 +27,7 @@ export const requireProgramFeature = cache(async (
 
   const features = program.features as ProgramFeatures | null;
   if (!features?.[feature]) {
-    redirect(`/program/${slug}/chat`);
+    redirect(`/program/${slug}/${features?.voice ? "hub" : "chat"}`);
   }
 
   return { id: program.id, features };
