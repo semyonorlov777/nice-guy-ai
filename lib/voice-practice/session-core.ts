@@ -139,7 +139,10 @@ class VoiceConnection {
             this.flushTurn();
             this.setSpeaking("idle");
           },
-          onGoAway: () => this.send({ t: "rotate" }),
+          onGoAway: (ms) => {
+            console.log("[voice] goAway", s.id, ms);
+            this.send({ t: "rotate" });
+          },
           onUsage: (u) => {
             this.usage.prompt += u.promptTokens;
             this.usage.response += u.responseTokens;
@@ -172,10 +175,14 @@ class VoiceConnection {
       })
       .eq("id", s.id);
 
+    console.log("[voice] connected", s.id, { from: s.status, resumed, secondsLeft: this.secondsLeft });
     this.send({ t: "ready", sessionId: s.id, secondsLeft: this.secondsLeft, resumed });
 
     this.ws.on("message", (data: RawData, isBinary: boolean) => this.onMessage(data, isBinary));
-    this.ws.on("close", () => void this.onSocketClose());
+    this.ws.on("close", (code: number, reason: Buffer) => {
+      console.log("[voice] socket closed", s.id, { code, reason: String(reason), paused: this.paused, ended: this.ended });
+      void this.onSocketClose();
+    });
     this.timers.push(setInterval(() => void this.tick(), TICK_MS));
     this.timers.push(setTimeout(() => this.send({ t: "rotate" }), ROTATE_AFTER_MS));
     this.lastTickAt = Date.now();
@@ -236,7 +243,10 @@ class VoiceConnection {
     this.clearSilenceTimer();
     this.silenceTimer = setTimeout(() => {
       this.engine?.sendHiddenText("[СИСТЕМА: продолжай]");
-      this.silenceTimer = setTimeout(() => this.send({ t: "client_silent" }), MODEL_SILENCE_MS);
+      this.silenceTimer = setTimeout(() => {
+        console.log("[voice] client silent", this.s.id);
+        this.send({ t: "client_silent" });
+      }, MODEL_SILENCE_MS);
     }, MODEL_SILENCE_MS);
   }
 
