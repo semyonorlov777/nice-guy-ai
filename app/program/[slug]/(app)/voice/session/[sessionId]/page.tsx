@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import "@/components/voice-practice/voice-practice.css";
 import { DebriefPanel } from "@/components/voice-practice/DebriefPanel";
+import { ConfidencePost } from "@/components/voice-practice/ConfidencePost";
+import { practiceDay } from "@/lib/voice-practice/day";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,7 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
 
   const { data: s } = await supabase
     .from("voice_sessions")
-    .select("id, status, seconds_used, reconnects, usage, engine_model, kind, drill_moment_id, program_mode_id, voice_turns(seq, role, text), voice_debriefs(usage, model)")
+    .select("id, program_id, status, seconds_used, reconnects, usage, engine_model, kind, drill_moment_id, program_mode_id, voice_turns(seq, role, text), voice_debriefs(usage, model)")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -28,6 +30,15 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
     .from("program_modes")
     .select("mode_templates!inner(route_suffix)")
     .eq("id", s.program_mode_id)
+    .maybeSingle();
+  // Уверенность «после» — не чаще раза в день (граница — Москва).
+  const { data: postToday } = await supabase
+    .from("voice_self_reports")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("program_id", s.program_id)
+    .eq("kind", "confidence_post")
+    .eq("day", practiceDay())
     .maybeSingle();
   const routeSuffix = (pm?.mode_templates as unknown as { route_suffix: string } | undefined)?.route_suffix;
   const againHref = routeSuffix
@@ -66,7 +77,8 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
         usage={s.usage as { prompt_tokens?: number; response_tokens?: number } | null}
         debrief={s.voice_debriefs as unknown as { usage?: Record<string, number> | null; model?: string | null } | null}
       />
-      <Link className="vp-btn vp-btn-quiet" href={`/program/${slug}/hub`}>
+      {!postToday && <ConfidencePost programSlug={slug} sessionId={sessionId} />}
+      <Link className="vp-btn vp-btn-quiet" href={`/program/${slug}/hub`} style={{ marginTop: 20 }}>
         На главную практикума
       </Link>
     </div>

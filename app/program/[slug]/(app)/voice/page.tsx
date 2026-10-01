@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { requireProgramFeature } from "@/lib/queries/program";
+import { getSelfReports, type SelfReportRow } from "@/lib/queries/voice";
+import { CONFIDENCE_ITEMS, CONFIDENCE_KEYS } from "@/lib/voice-practice/self-report";
 import "@/components/voice-practice/voice-practice.css";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +28,10 @@ export default async function VoicePracticePage({ params }: { params: Promise<{ 
   const list = sessions ?? [];
 
   const db = createServiceClient();
-  const [{ data: clients }, { data: modes }] = await Promise.all([
+  const [{ data: clients }, { data: modes }, reports] = await Promise.all([
     db.from("voice_clients").select("id, display_name").eq("program_id", programId),
     db.from("program_modes").select("id, mode_templates!inner(name)").eq("program_id", programId),
+    getSelfReports(supabase, user.id, programId),
   ]);
   const clientName = new Map((clients ?? []).map((c) => [c.id, c.display_name as string]));
   const modeName = new Map((modes ?? []).map((m) => [m.id, (m.mode_templates as unknown as { name: string }).name]));
@@ -44,6 +47,7 @@ export default async function VoicePracticePage({ params }: { params: Promise<{ 
         <div className="vp-row"><span>Проведено консультаций</span><b>{done.length}</b></div>
         <div className="vp-row"><span>Минут практики</span><b>{minutes}</b></div>
       </div>
+      <ConfidenceBlock reports={reports} />
       {list.length === 0 ? (
         <div className="vp-card vp-hint">Здесь появятся ваши консультации и разборы. Начните с главной страницы практикума.</div>
       ) : (
@@ -63,5 +67,38 @@ export default async function VoicePracticePage({ params }: { params: Promise<{ 
         На главную практикума
       </Link>
     </div>
+  );
+}
+
+// Уверенность: первая отметка «до» → последняя отметка после неё.
+function ConfidenceBlock({ reports }: { reports: SelfReportRow[] }) {
+  const marks = reports.filter((r) => r.kind === "confidence_pre" || r.kind === "confidence_post");
+  const was = marks.find((r) => r.kind === "confidence_pre") ?? marks[0];
+  if (!was) return null;
+  const later = marks.filter((r) => r !== was && r.created_at > was.created_at);
+  const now = later.at(-1) ?? null;
+  const day = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
+  const fmtDay = (d: string) => day.format(new Date(`${d}T00:00:00Z`));
+  const val = (r: SelfReportRow, k: string) => (typeof r.answers[k] === "number" ? (r.answers[k] as number) : null);
+  return (
+    <>
+      <p className="vp-kicker" style={{ marginTop: 20 }}>Уверенность: было → сейчас</p>
+      <div className="vp-card">
+        {CONFIDENCE_ITEMS.map((text, i) => {
+          const k = CONFIDENCE_KEYS[i];
+          return (
+            <div key={k} className="vp-conf-row">
+              <p>{text}</p>
+              <b>
+                {val(was, k) ?? "—"} → {now ? val(now, k) ?? "—" : "…"}
+              </b>
+            </div>
+          );
+        })}
+        <p className="vp-small" style={{ textAlign: "left" }}>
+          {fmtDay(was.day)}{now ? (now.day === was.day ? "" : ` → ${fmtDay(now.day)}`) : " → отметите после консультации"}. Это ваше ощущение, а не оценка навыка.
+        </p>
+      </div>
+    </>
   );
 }
