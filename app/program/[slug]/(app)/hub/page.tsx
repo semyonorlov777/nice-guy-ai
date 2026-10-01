@@ -1,4 +1,5 @@
-import { hasVoiceAccess } from "@/lib/queries/voice";
+import { getSelfReports, hasVoiceAccess } from "@/lib/queries/voice";
+import { fearFromProblem, recommendationForFear } from "@/lib/voice-practice/self-report";
 import type { ProgramFeatures } from "@/types/program";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -88,6 +89,18 @@ export default async function HubPage({
       hasVoiceAccess(user.id, program.id),
     ]);
     const msgs = (program.hub_messages as Record<string, string> | null) ?? {};
+    let aiMessage = msgs.first ?? "";
+    if (hasAccess) {
+      // Первый вход: анкеты нет → «Как это устроено» и три вопроса.
+      const anketa = (await getSelfReports(supabase, user.id, program.id)).findLast((r) => r.kind === "anketa");
+      if (!anketa) redirect(`/program/${slug}/voice/intro`);
+      // Рекомендация по страху из анкеты (свой ответ — без рекомендации).
+      const answers = anketa.answers as { problem?: string; problem_fear?: string | null };
+      const rec = recommendationForFear(
+        (answers.problem_fear as Parameters<typeof recommendationForFear>[0]) ?? fearFromProblem(answers.problem),
+      );
+      if (rec) aiMessage = `${rec.line} <a href="/program/${slug}${rec.path}">Начать</a>`;
+    }
     return (
       <HubScreen
         state="first"
@@ -98,7 +111,7 @@ export default async function HubPage({
         engagedKeys={[]}
         recommendedKeys={[]}
         hasTestResult={false}
-        aiMessage={msgs.first ?? ""}
+        aiMessage={aiMessage}
         voice={{ hasAccess }}
       />
     );
