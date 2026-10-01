@@ -1,0 +1,4 @@
+node_modules
+scripts
+fake-client-out
+.env.local
