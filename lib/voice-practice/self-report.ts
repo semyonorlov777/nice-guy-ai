@@ -72,8 +72,8 @@ export function recommendationForFear(fear: FearKey | null): { line: string; pat
   switch (fear) {
     case "freeze":
       return {
-        line: "Вы написали, что опасаетесь замереть. Начните с «Первых минут»: одна задача — установить контакт и прояснить ожидания клиента.",
-        path: "/voice/first-minutes",
+        line: "Вы написали, что опасаетесь замереть. Начните с разминки «Первые слова»: клиент говорит одну фразу, вы отвечаете — три минуты, чтобы слова начали включаться.",
+        path: "/voice/warmup",
       };
     case "tears":
       return {
