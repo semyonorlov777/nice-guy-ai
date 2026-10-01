@@ -1,16 +1,16 @@
 // Прогон движка без браузера: реплики «студента» озвучиваются TTS и отправляются
 // в живую сессию, ответы клиента пишутся в WAV, в консоль — расшифровки и расход.
 //
-// npm run fake-client -- [--out <папка>] [--instruction <файл>] [--history] [--voice <имя>]
+// npx tsx --env-file=.env.local scripts/voice/fake-client.ts [--out <папка>] [--instruction <файл>] [--history] [--voice <имя>]
 //
 // --history  проверка засева истории: сессия открывается с уже «сказанным»
 //            началом разговора, клиент должен продолжить, а не здороваться заново.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { GeminiEngine } from "../src/engine/gemini.ts";
-import type { HistoryTurn } from "../src/engine/types.ts";
-import { quietNoise, resamplePcm16, wavFile } from "../src/audio/pcm.ts";
+import { GeminiEngine } from "../../lib/voice-practice/engine/gemini";
+import type { HistoryTurn } from "../../lib/voice-practice/engine/types";
+import { quietNoise, resamplePcm16, wavFile } from "../../lib/voice-practice/audio/pcm";
 
 const args = process.argv.slice(2);
 const arg = (k: string) => {

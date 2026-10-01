@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Ретранслятор голосового практикума — отдельный Node-сервис со своим tsconfig.
-    "relay/**",
   ]),
 ]);
 

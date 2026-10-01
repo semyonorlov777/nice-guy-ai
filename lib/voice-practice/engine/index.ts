@@ -1,6 +1,6 @@
-import { GeminiEngine } from "./gemini.ts";
-import type { VoiceEngine } from "./types.ts";
-import { EngineUnavailableError } from "./types.ts";
+import { GeminiEngine } from "./gemini";
+import type { VoiceEngine } from "./types";
+import { EngineUnavailableError } from "./types";
 
 export function createEngine(name: string): VoiceEngine {
   if (name === "gemini") return new GeminiEngine();

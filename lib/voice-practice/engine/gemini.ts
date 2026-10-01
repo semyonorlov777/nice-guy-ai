@@ -3,8 +3,8 @@ import type {
   EngineConnectOptions,
   EngineHandlers,
   VoiceEngine,
-} from "./types.ts";
-import { EngineUnavailableError } from "./types.ts";
+} from "./types";
+import { EngineUnavailableError } from "./types";
 
 const MODEL = process.env.VOICE_GEMINI_MODEL || "gemini-3.8-live";
 
