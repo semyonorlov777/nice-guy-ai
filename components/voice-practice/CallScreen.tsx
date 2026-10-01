@@ -23,7 +23,7 @@ export function CallScreen(props: { programSlug: string; sessionId: string; clie
     phase === "idle"
       ? props.resumable
         ? "Консультация прервалась. Нажмите «Продолжить» — клиент продолжит с того же места."
-        : "Нажмите «Начать звонок» — разговор начинаете вы."
+        : "Нажмите «Начать звонок»."
       : phase === "connecting"
         ? "Соединяем с учебным клиентом…"
         : phase === "reconnecting"

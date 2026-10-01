@@ -56,6 +56,8 @@ export interface VoiceEngine {
   sendAudio(pcm16k: Buffer): void;
   /** Скрытая вводная для модели, не озвучивается студенту. */
   sendHiddenText(text: string): void;
+  /** Скрытая вводная, после которой модель сразу отвечает (клиент начинает разговор сам). */
+  kick(text: string): void;
   close(): Promise<void>;
 }
 

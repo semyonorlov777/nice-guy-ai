@@ -91,6 +91,10 @@ export class GeminiEngine implements VoiceEngine {
     this.session?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: false });
   }
 
+  kick(text: string): void {
+    this.session?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true });
+  }
+
   async close(): Promise<void> {
     this.closedByUs = true;
     this.session?.close();

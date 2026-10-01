@@ -10,6 +10,8 @@ export interface VoiceModeView {
   precallText: string | null;
   maxSeconds: number;
   clients: { slug: string; displayName: string; level: string; summary: string }[];
+  /** «Трудный момент»: список моментов (только публичные поля). */
+  moments: { id: string; title: string; context: string; clientSlug: string }[];
 }
 
 /** Есть ли у пользователя доступ к голосовому практикуму программы. */
@@ -42,7 +44,7 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
 
   const { data: mode } = await db
     .from("voice_modes")
-    .select("precall_text, client_slugs, max_seconds")
+    .select("precall_text, client_slugs, max_seconds, drill_moments")
     .eq("program_mode_id", pm.id)
     .maybeSingle();
   const slugs = (mode?.client_slugs as string[] | undefined) ?? [];
@@ -64,6 +66,9 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
     comingSoon: voiceCfg?.coming_soon === true || !mode,
     precallText: mode?.precall_text ?? null,
     maxSeconds: mode?.max_seconds ?? voiceCfg?.max_seconds ?? 0,
+    moments: ((mode?.drill_moments as { id: string; title: string; context: string; client_slug: string }[] | null) ?? []).map(
+      (m) => ({ id: m.id, title: m.title, context: m.context, clientSlug: m.client_slug }),
+    ),
     clients: (clients ?? []).map((c) => ({
       slug: c.slug,
       displayName: c.display_name,

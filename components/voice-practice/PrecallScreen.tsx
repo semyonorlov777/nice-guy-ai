@@ -21,7 +21,13 @@ export function PrecallScreen(props: {
   precallText: string | null;
   maxMinutes: number;
   clients: PrecallClient[];
+  moments: { id: string; title: string; context: string; clientSlug: string }[];
+  initialMoment?: string;
 }) {
+  const isDrill = props.moments.length > 0;
+  const [moment, setMoment] = useState(
+    props.moments.find((m) => m.id === props.initialMoment)?.id ?? props.moments[0]?.id ?? "",
+  );
   const router = useRouter();
   const [client, setClient] = useState(props.clients[0]?.slug ?? "");
   const [busy, setBusy] = useState(false);
@@ -33,7 +39,11 @@ export function PrecallScreen(props: {
     const r = await fetch("/api/practice/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ programSlug: props.programSlug, modeKey: props.modeKey, clientSlug: client }),
+      body: JSON.stringify(
+        isDrill
+          ? { programSlug: props.programSlug, modeKey: props.modeKey, momentId: moment }
+          : { programSlug: props.programSlug, modeKey: props.modeKey, clientSlug: client },
+      ),
     }).catch(() => null);
     const data = (await r?.json().catch(() => null)) as { sessionId?: string; activeSessionId?: string; error?: string } | null;
     if (r?.ok && data?.sessionId) {
@@ -54,8 +64,34 @@ export function PrecallScreen(props: {
       <h1 className="vp-title">{props.modeName}</h1>
       {props.modeDescription && <p className="vp-lead">{props.modeDescription}</p>}
 
-      <p className="vp-kicker">Учебный клиент</p>
-      {props.clients.map((c) => (
+      {isDrill && (
+        <>
+          <p className="vp-kicker">Трудный момент</p>
+          {props.moments.map((m) => {
+            const c = props.clients.find((x) => x.slug === m.clientSlug);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className="vp-card vp-client"
+                aria-pressed={moment === m.id}
+                onClick={() => setMoment(m.id)}
+              >
+                <span className="vp-level">{c ? LEVEL_LABEL[c.level] ?? c.level : "·"}</span>
+                <span>
+                  <b>{m.title}</b>
+                  <span>
+                    {c?.displayName ? `${c.displayName}. ` : ""}
+                    {m.context}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </>
+      )}
+      {!isDrill && <p className="vp-kicker">Учебный клиент</p>}
+      {!isDrill && props.clients.map((c) => (
         <button
           key={c.slug}
           type="button"
@@ -77,11 +113,12 @@ export function PrecallScreen(props: {
         </div>
       )}
       <div className="vp-card vp-hint">
-        Если есть наушники — наденьте, звук будет чище. Найдите тихое место и не сворачивайте страницу. Разговор начинаете вы.
+        Если есть наушники — наденьте, звук будет чище. Найдите тихое место и не сворачивайте страницу.{" "}
+        {isDrill ? "Клиент начнёт сам: выслушайте реплику и ответьте." : "Разговор начинаете вы."}
       </div>
 
       {error && <div className="vp-error">{error}</div>}
-      <button type="button" className="vp-btn" disabled={busy || !client} onClick={begin}>
+      <button type="button" className="vp-btn" disabled={busy || (isDrill ? !moment : !client)} onClick={begin}>
         {busy ? "Готовим консультацию…" : "Перейти к звонку"}
       </button>
       <p className="vp-small">

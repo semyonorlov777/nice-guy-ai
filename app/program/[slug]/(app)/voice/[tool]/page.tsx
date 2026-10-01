@@ -6,8 +6,15 @@ import { PrecallScreen } from "@/components/voice-practice/PrecallScreen";
 
 export const dynamic = "force-dynamic";
 
-export default async function VoiceModePage({ params }: { params: Promise<{ slug: string; tool: string }> }) {
+export default async function VoiceModePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string; tool: string }>;
+  searchParams: Promise<{ moment?: string }>;
+}) {
   const { slug, tool } = await params;
+  const { moment } = await searchParams;
   const supabase = await createClient();
   const { id: programId } = await requireProgramFeature(supabase, slug, "voice");
   const {
@@ -29,6 +36,8 @@ export default async function VoiceModePage({ params }: { params: Promise<{ slug
       precallText={mode.precallText}
       maxMinutes={Math.max(1, Math.round(mode.maxSeconds / 60))}
       clients={mode.clients}
+      moments={mode.moments}
+      initialMoment={moment}
     />
   );
 }

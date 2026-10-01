@@ -19,9 +19,9 @@ export async function POST(req: Request) {
   if (!limiter(user.id)) return apiError("Слишком часто, подождите минуту", 429);
 
   const body = (await req.json().catch(() => null)) as
-    | { programSlug?: string; modeKey?: string; clientSlug?: string }
+    | { programSlug?: string; modeKey?: string; clientSlug?: string; momentId?: string }
     | null;
-  if (!body?.programSlug || !body.modeKey || !body.clientSlug) return apiError("Не хватает данных", 400);
+  if (!body?.programSlug || !body.modeKey || (!body.clientSlug && !body.momentId)) return apiError("Не хватает данных", 400);
 
   const db = createServiceClient();
   const { data: program } = await db
@@ -49,16 +49,24 @@ export async function POST(req: Request) {
   const pmConfig = (pm?.config as { voice?: { coming_soon?: boolean } } | null)?.voice;
   if (!pm || pmConfig?.coming_soon) return apiError("Режим пока недоступен", 404);
 
-  const [{ data: mode }, { data: client }] = await Promise.all([
-    db.from("voice_modes").select("client_slugs, max_seconds").eq("program_mode_id", pm.id).maybeSingle(),
-    db
-      .from("voice_clients")
-      .select("id, slug, version")
-      .eq("program_id", program.id)
-      .eq("slug", body.clientSlug)
-      .eq("enabled", true)
-      .maybeSingle(),
-  ]);
+  const { data: mode } = await db
+    .from("voice_modes")
+    .select("client_slugs, max_seconds, drill_moments")
+    .eq("program_mode_id", pm.id)
+    .maybeSingle();
+  // «Трудный момент»: клиент берётся из выбранного момента.
+  const moment = body.momentId
+    ? ((mode?.drill_moments as { id: string; client_slug: string }[] | null) ?? []).find((m) => m.id === body.momentId)
+    : null;
+  if (body.momentId && !moment) return apiError("Трудный момент не найден", 404);
+  const clientSlug = moment?.client_slug ?? body.clientSlug;
+  const { data: client } = await db
+    .from("voice_clients")
+    .select("id, slug, version")
+    .eq("program_id", program.id)
+    .eq("slug", clientSlug)
+    .eq("enabled", true)
+    .maybeSingle();
   if (!mode || !client || !(mode.client_slugs as string[]).includes(client.slug)) {
     return apiError("Учебный клиент недоступен в этом режиме", 404);
   }
@@ -93,7 +101,8 @@ export async function POST(req: Request) {
       program_mode_id: pm.id,
       client_id: client.id,
       client_version: client.version,
-      kind: body.modeKey === "voice_hard_moments" ? "drill" : "full",
+      kind: moment ? "drill" : "full",
+      drill_moment_id: moment?.id ?? null,
       engine_model: process.env.VOICE_GEMINI_MODEL || "gemini-3.8-live",
       seconds_limit: secondsLimit,
       ticket_hash: t.hash,

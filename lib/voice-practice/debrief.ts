@@ -65,7 +65,7 @@ async function runDebrief(sessionId: string): Promise<void> {
     const turns = (turnsRaw ?? []) as TurnLite[];
     const counters = computeCounters(turns);
 
-    if (!s || counters.student_turns < MIN_STUDENT_TURNS) {
+    if (!s || counters.student_turns < (s.kind === "drill" ? 1 : MIN_STUDENT_TURNS)) {
       await db
         .from("voice_debriefs")
         .update({ status: "none", counters, rubric_version: RUBRIC_VERSION, updated_at: new Date().toISOString() })

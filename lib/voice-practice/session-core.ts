@@ -34,6 +34,27 @@ interface SessionRow {
   started_at: string | null;
   usage: Record<string, number> | null;
   reconnects: number;
+  kind: string;
+  drill_moment_id: string | null;
+}
+
+export interface DrillMoment {
+  id: string;
+  client_slug: string;
+  title: string;
+  context: string;
+  line: string;
+  tone?: string;
+}
+
+/** Рамка «Трудного момента»: клиент сам начинает с трудной реплики и отвечает один раз. */
+function drillFrame(m: DrillMoment): string {
+  return [
+    "РЕЖИМ: ТРУДНЫЙ МОМЕНТ",
+    `Это середина встречи. ${m.context}`,
+    `Когда получишь сигнал [СИСТЕМА: начинай], сразу произнеси ровно эту реплику${m.tone ? ` (${m.tone})` : ""}: «${m.line}». Не здоровайся, ничего не добавляй до неё.`,
+    "Потом жди ответа психолога. На его ответ отреагируй одной репликой строго по своим правилам: если он попал — чуть теплеешь и говоришь больше; если оправдывался, советовал, утешал шаблонно или спорил — закрываешься. После этой реплики замолчи.",
+  ].join("\n");
 }
 
 export async function runVoiceSession(ws: WebSocket): Promise<void> {
@@ -55,7 +76,7 @@ export async function runVoiceSession(ws: WebSocket): Promise<void> {
     .eq("ticket_hash", hashTicket(ticket))
     .gt("ticket_expires_at", new Date().toISOString())
     .in("status", LIVE)
-    .select("id, user_id, program_mode_id, client_id, status, seconds_limit, seconds_used, started_at, usage, reconnects, conn_id")
+    .select("id, user_id, program_mode_id, client_id, status, seconds_limit, seconds_used, started_at, usage, reconnects, kind, drill_moment_id, conn_id")
     .maybeSingle();
   if (!session) return fail("ticket_invalid", "Билет недействителен — обновите страницу");
 
@@ -77,6 +98,9 @@ class VoiceConnection {
   private signalsSent = new Set<string>();
   private usage = { prompt: 0, response: 0 };
   private sessionStartMs = 0;
+  private drill: DrillMoment | null = null;
+  private clientTurns = 0;
+  private clientSpoke = false;
 
   constructor(
     private ws: WebSocket,
@@ -94,7 +118,7 @@ class VoiceConnection {
     if (this.secondsLeft <= 0) return this.end("time_limit");
 
     const [{ data: mode }, { data: client }, cfg, { data: turns }] = await Promise.all([
-      db.from("voice_modes").select("frame_prompt, engine").eq("program_mode_id", s.program_mode_id).maybeSingle(),
+      db.from("voice_modes").select("frame_prompt, engine, drill_moments").eq("program_mode_id", s.program_mode_id).maybeSingle(),
       s.client_id
         ? db.from("voice_clients").select("prompt, voice_name").eq("id", s.client_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -109,6 +133,14 @@ class VoiceConnection {
     const history: HistoryTurn[] = (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text }));
     this.seq = turns?.length ? Math.max(...turns.map((t) => t.seq)) : 0;
     const resumed = history.length > 0;
+    if (s.kind === "drill") {
+      const moments = (mode.drill_moments as DrillMoment[] | null) ?? [];
+      this.drill = moments.find((m) => m.id === s.drill_moment_id) ?? null;
+      if (!this.drill) {
+        this.send({ t: "error", code: "session_not_found", message: "Трудный момент не найден" });
+        return this.end("engine_error");
+      }
+    }
     const startedAt = s.started_at ? new Date(s.started_at).getTime() : Date.now();
     this.sessionStartMs = startedAt;
 
@@ -119,7 +151,9 @@ class VoiceConnection {
         {
           instruction: buildInstruction({
             globalRules: String(cfg.voice_global_rules ?? ""),
-            framePrompt: mode.frame_prompt,
+            framePrompt: this.drill
+              ? `${mode.frame_prompt}\n\n${drillFrame(this.drill)}`
+              : mode.frame_prompt,
             personaPrompt: client.prompt,
             resumed,
           }),
@@ -129,6 +163,7 @@ class VoiceConnection {
         },
         {
           onAudio: (pcm) => {
+            this.clientSpoke = true;
             this.clearSilenceTimer();
             this.setSpeaking("client");
             if (this.ws.readyState === this.ws.OPEN) this.ws.send(pcm, { binary: true });
@@ -136,6 +171,12 @@ class VoiceConnection {
           onTranscript: (t) => this.addTranscript(t.role, t.text),
           onInterrupted: () => this.send({ t: "interrupted" }),
           onTurnComplete: () => {
+            if (this.drill && this.clientSpoke) {
+              this.clientSpoke = false;
+              this.clientTurns += 1;
+              // Реплика + одна реакция на ответ студента — попытка окончена.
+              if (this.clientTurns >= 2) this.timers.push(setTimeout(() => void this.end("student"), 1500));
+            }
             this.flushTurn();
             this.setSpeaking("idle");
           },
@@ -185,6 +226,7 @@ class VoiceConnection {
     });
     this.timers.push(setInterval(() => void this.tick(), TICK_MS));
     this.timers.push(setTimeout(() => this.send({ t: "rotate" }), ROTATE_AFTER_MS));
+    if (this.drill && !resumed) this.engine.kick("[СИСТЕМА: начинай]");
     this.lastTickAt = Date.now();
   }
 
