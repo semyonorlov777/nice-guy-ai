@@ -2,6 +2,14 @@ import { createClient } from "@/lib/supabase-server";
 import { ProfileScreen } from "@/components/ProfileScreen";
 import { isLegacyPortrait } from "@/types/portrait";
 import { resolveUserIdentifier } from "@/lib/user-identifier";
+import type { ProgramFeatures } from "@/types/program";
+
+const LOGIN_METHODS: Record<string, string> = {
+  google: "Вход через Google",
+  yandex: "Вход через Яндекс",
+  telegram: "Вход через Telegram",
+  email: "Вход по ссылке на почту",
+};
 
 const PLAN_NAMES: Record<string, string> = {
   sub_pro: "Про",
@@ -108,11 +116,11 @@ export default async function ProfilePage({
     supabase
       .from("profiles")
       .select(
-        "name, email, avatar_url, balance_tokens, subscription_plan, telegram_id, telegram_username, subscription_expires_at",
+        "name, email, avatar_url, balance_tokens, subscription_plan, telegram_id, telegram_username, subscription_expires_at, auth_provider",
       )
       .eq("id", user.id)
       .single(),
-    supabase.from("programs").select("id").eq("slug", slug).single(),
+    supabase.from("programs").select("id, features").eq("slug", slug).single(),
   ]);
 
   const profile = profileRes.data;
@@ -132,6 +140,29 @@ export default async function ProfilePage({
     email: profile?.email ?? user.email ?? null,
     telegramId: profile?.telegram_id ?? null,
   });
+
+  // Голосовой практикум: без баланса, тарифов и портрета.
+  if ((program?.features as ProgramFeatures | null)?.voice) {
+    const method =
+      profile?.auth_provider ??
+      (profile?.telegram_id ? "telegram" : user.app_metadata?.provider === "email" ? "email" : null);
+    const voiceName = profile?.name || identifier || "Без имени";
+    return (
+      <ProfileScreen
+        slug={slug}
+        isAuthed={true}
+        name={voiceName}
+        identifier={identifier !== voiceName ? identifier : null}
+        avatarUrl={avatarUrl}
+        balance={0}
+        planLabel=""
+        hasSubscription={false}
+        hasPortrait={false}
+        portraitUpdatedAt={null}
+        voice={{ loginMethod: LOGIN_METHODS[method ?? ""] ?? "" }}
+      />
+    );
+  }
 
   // Fetch portrait if program found
   let hasPortrait = false;

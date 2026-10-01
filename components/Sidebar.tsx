@@ -216,7 +216,13 @@ export function Sidebar({
       </div>
 
       {/* Profile footer */}
-      <ProfileMenu user={user ?? null} slug={slug} collapsed={collapsed} balance={balance} />
+      <ProfileMenu
+        user={user ?? null}
+        slug={slug}
+        collapsed={collapsed}
+        balance={features?.voice ? undefined : balance}
+        voice={!!features?.voice}
+      />
     </nav>
   );
 }

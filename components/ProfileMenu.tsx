@@ -11,6 +11,7 @@ import {
   MoonIcon,
   MonitorIcon,
   LogoutIcon,
+  UserIcon,
 } from "@/components/icons/hub-icons";
 
 interface ProfileMenuProps {
@@ -23,9 +24,11 @@ interface ProfileMenuProps {
   slug: string;
   collapsed?: boolean;
   balance?: number;
+  /** Голосовой практикум: вместо «Тариф и оплата» — профиль, выход ведёт на его вход. */
+  voice?: boolean;
 }
 
-export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps) {
+export function ProfileMenu({ user, slug, collapsed, balance, voice }: ProfileMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { mode: themeMode, setMode: applyTheme, mounted } = useTheme();
@@ -46,8 +49,8 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth");
-  }, [router]);
+    router.push(voice ? `/auth?redirect=${encodeURIComponent(`/program/${slug}/hub`)}` : "/auth");
+  }, [router, voice, slug]);
 
   // Приоритет на name (реальное имя из Telegram/Google), а не на @username —
   // identifier (@username, email, Telegram ID) уходит в подзаголовок dropdown'а.
@@ -100,6 +103,15 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
             <div className="pd-divider" />
           </>
         )}
+        {voice ? (
+        <button
+          className="pd-item"
+          onClick={() => { setOpen(false); router.push(`/program/${slug}/profile`); }}
+        >
+          <span className="pd-item-icon"><UserIcon size={16} /></span>
+          Профиль
+        </button>
+        ) : (
         <button
           className="pd-item"
           onClick={() => { setOpen(false); router.push(`/program/${slug}/balance`); }}
@@ -110,6 +122,7 @@ export function ProfileMenu({ user, slug, collapsed, balance }: ProfileMenuProps
             <span className="pd-item-right"><LightningIcon size={14} /> {balance}</span>
           )}
         </button>
+        )}
 
         <div className="pd-divider" />
 

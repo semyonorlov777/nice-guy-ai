@@ -39,6 +39,11 @@ export interface ProfileScreenProps {
   hasPortrait: boolean;
   portraitUpdatedAt: string | null;
   debugState?: string | null;
+  /**
+   * Голосовой практикум: без баланса, тарифов и портрета —
+   * имя, способ входа, «Моя практика», тема и выход.
+   */
+  voice?: { loginMethod: string };
 }
 
 export function ProfileScreen({
@@ -53,6 +58,7 @@ export function ProfileScreen({
   hasPortrait,
   portraitUpdatedAt,
   debugState,
+  voice,
 }: ProfileScreenProps) {
   const router = useRouter();
   const debugMode = !!debugState;
@@ -62,8 +68,9 @@ export function ProfileScreen({
   const handleSignOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth");
-  }, [router]);
+    // Практикум: после выхода — его же вход (со своим названием и способами входа).
+    router.push(voice ? `/auth?redirect=${encodeURIComponent(`/program/${slug}/hub`)}` : "/auth");
+  }, [router, voice, slug]);
 
   const initial = isAuthed ? (name || "П")[0].toUpperCase() : "Я";
 
@@ -122,11 +129,12 @@ export function ProfileScreen({
                 {identifier}
               </div>
             )}
-            <div className="profile-plan">{planLabel}</div>
+            <div className="profile-plan">{voice ? voice.loginMethod : planLabel}</div>
           </div>
         </div>
 
         {/* ═══ BALANCE CARD ═══ */}
+        {!voice && (
         <div className="profile-balance-card">
           <div className="profile-balance-left">
             <div className="profile-balance-label">Баланс сообщений</div>
@@ -144,13 +152,29 @@ export function ProfileScreen({
             </Link>
           )}
         </div>
+        )}
       </div>
 
       {/* ═══ SECTION GAP ═══ */}
       <div className="profile-section-gap" />
 
-      {/* ═══ PORTRAIT CARD / AUTH CTA ═══ */}
-      {isAuthed ? (
+      {/* ═══ MY PRACTICE (voice) / PORTRAIT CARD / AUTH CTA ═══ */}
+      {voice ? (
+        <div className="profile-portrait-wrap">
+          <Link href={`/program/${slug}/voice`} className="profile-portrait-card">
+            <div className="profile-portrait-orb">
+              <UserIcon size={20} />
+            </div>
+            <div className="profile-portrait-body">
+              <div className="profile-portrait-title">Моя практика</div>
+              <div className="profile-portrait-meta">Учебные консультации и разборы</div>
+            </div>
+            <div className="profile-portrait-arrow">
+              <ArrowRightIcon size={18} />
+            </div>
+          </Link>
+        </div>
+      ) : isAuthed ? (
         <div className="profile-portrait-wrap">
           <Link
             href={`/program/${slug}/portrait`}
