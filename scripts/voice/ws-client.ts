@@ -24,12 +24,15 @@ const MODE = arg("--mode", "voice_first_minutes")!;
 const CLIENT = arg("--client", "vera")!;
 const OUT = arg("--out", "./ws-client-out")!;
 const ROTATE = args.includes("--rotate");
+const MOMENT = arg("--moment");
 
-const LINES = [
+const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
+const FULL_LINES = [
   "Здравствуйте, Вера. Меня зовут Мария, я психолог. Расскажите, что вас привело?",
   "Похоже, вы очень устали за эти два месяца. Чего вы ожидаете от нашего разговора?",
   "У нас сегодня около сорока минут, и к концу я хотела бы понять, с чем именно вы хотите работать.",
 ];
+const LINES = MOMENT ? DRILL_LINES : FULL_LINES;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -55,7 +58,9 @@ async function main() {
       program_id: (pm.programs as unknown as { id: string }).id,
       program_mode_id: pm.id,
       client_id: client.id,
-      seconds_limit: 240,
+      seconds_limit: MOMENT ? 120 : 240,
+      kind: MOMENT ? "drill" : "full",
+      drill_moment_id: MOMENT ?? null,
       ticket_hash: t.hash,
       ticket_expires_at: t.expiresAt,
     })
@@ -93,6 +98,16 @@ async function main() {
   }
   wire(ws);
 
+  if (MOMENT) {
+    // Клиент начинает сам: ждём его реплику.
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) {
+      ws.send(quietNoise(40, 16000));
+      await sleep(40);
+      if (lastAudio && Date.now() - lastAudio > 1500) break;
+    }
+    console.log(`  (реплика клиента: ${clientAudio.length} кадров)`);
+  }
   for (let i = 0; i < audio.length; i++) {
     if (ROTATE && i === 1) {
       console.log("— переподключение по новому билету —");
