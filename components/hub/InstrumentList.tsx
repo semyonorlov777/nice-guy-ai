@@ -99,14 +99,18 @@ export function InstrumentList({ slug, modes, exerciseCount, hasTestResult }: In
       ? `${base}/chat/new?tool=${toolKey}`
       : `${base}${mode.route_suffix}`;
 
+    const voiceSoon =
+      mode.interaction === "voice" &&
+      (mode.config as { voice?: { coming_soon?: boolean } } | null)?.voice?.coming_soon === true;
+
     return {
       icon: IconComponent ? <IconComponent size={16} /> : null,
       colorClass: (isTestMode ? "green" : (mode.color_class ?? "accent")) as "accent" | "green",
       name: mode.name,
       description,
-      badge: mode.badge ?? undefined,
+      badge: voiceSoon ? "скоро" : (mode.badge ?? undefined),
       isDone: isTestMode ? hasTestResult : undefined,
-      href,
+      href: voiceSoon ? undefined : href,
     };
   });
 

@@ -8,7 +8,8 @@ interface InstrumentCardProps {
   badge?: string;
   progress?: string;
   isDone?: boolean;
-  href: string;
+  /** Без ссылки — карточка «скоро», не кликается. */
+  href?: string;
 }
 
 export function InstrumentCard({
@@ -21,8 +22,8 @@ export function InstrumentCard({
   isDone,
   href,
 }: InstrumentCardProps) {
-  return (
-    <a href={href} className="hub-instrument">
+  const content = (
+    <>
       <div className={`inst-icon ${colorClass}`}>{icon}</div>
       <div className="inst-body">
         <div className="inst-name">{name}</div>
@@ -33,8 +34,21 @@ export function InstrumentCard({
       {isDone ? (
         <span className="inst-check"><CheckIcon size={16} /></span>
       ) : (
-        <span className="inst-arrow"><ArrowRightIcon size={16} /></span>
+        href && <span className="inst-arrow"><ArrowRightIcon size={16} /></span>
       )}
+    </>
+  );
+
+  if (!href) {
+    return (
+      <div className="hub-instrument" aria-disabled="true" style={{ opacity: 0.55, cursor: "default" }}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <a href={href} className="hub-instrument">
+      {content}
     </a>
   );
 }

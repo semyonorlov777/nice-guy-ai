@@ -1,3 +1,5 @@
+import { hasVoiceAccess } from "@/lib/queries/voice";
+import type { ProgramFeatures } from "@/types/program";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
@@ -71,13 +73,36 @@ export default async function HubPage({
     supabase.auth.getUser(),
     supabase
       .from("programs")
-      .select("id, title, landing_data, hub_messages")
+      .select("id, title, landing_data, hub_messages, features")
       .eq("slug", slug)
       .single(),
   ]);
 
   if (!user) redirect("/auth");
   if (!program) redirect("/");
+
+  // Голосовой практикум: свой короткий путь — без анкеты платформы, теста, тем и чатов.
+  if ((program.features as ProgramFeatures | null)?.voice) {
+    const [modes, hasAccess] = await Promise.all([
+      getProgramModes(supabase, program.id),
+      hasVoiceAccess(user.id, program.id),
+    ]);
+    const msgs = (program.hub_messages as Record<string, string> | null) ?? {};
+    return (
+      <HubScreen
+        state="first"
+        modes={modes}
+        lastActive={null}
+        program={{ title: program.title, author: "", coverUrl: null, slug }}
+        themes={[]}
+        engagedKeys={[]}
+        recommendedKeys={[]}
+        hasTestResult={false}
+        aiMessage={msgs.first ?? ""}
+        voice={{ hasAccess }}
+      />
+    );
+  }
 
   const landingData = program.landing_data as Record<string, unknown> | null;
   const authorName =

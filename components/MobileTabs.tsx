@@ -12,18 +12,21 @@ interface MobileTabsProps {
   currentProgram: ProgramSwitcherItem;
 }
 
-export function MobileTabs({ slug, programs }: MobileTabsProps) {
+export function MobileTabs({ slug, programs, currentProgram }: MobileTabsProps) {
   const pathname = usePathname();
   const base = `/program/${slug}`;
 
   const tabs = [
     { key: "hub", path: "/hub", icon: HomeIcon, label: "Главная" },
-    { key: "chats", path: "/chats", icon: ChatIcon, label: "Чаты" },
+    currentProgram.features?.voice
+      ? { key: "practice", path: "/voice", icon: ChatIcon, label: "Практика" }
+      : { key: "chats", path: "/chats", icon: ChatIcon, label: "Чаты" },
     { key: "profile", path: "/profile", icon: UserIcon, label: "Профиль" },
   ];
 
   function getActiveKey(): string {
     if (pathname.startsWith(`${base}/hub`)) return "hub";
+    if (pathname.startsWith(`${base}/voice`)) return "practice";
     if (pathname.startsWith(`${base}/chats`)) return "chats";
     if (pathname.startsWith(`${base}/chat`) || pathname.startsWith(`${base}/exercise`) || pathname.startsWith(`${base}/author-chat`)) return "chats";
     if (pathname.startsWith(`${base}/profile`) || pathname.startsWith(`${base}/portrait`)) return "profile";

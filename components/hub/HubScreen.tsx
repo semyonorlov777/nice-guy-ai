@@ -37,6 +37,8 @@ interface HubScreenProps {
   balance?: number;
   aiMessage: string;
   showAnketaCta?: boolean;
+  /** Голосовой практикум: без теста, тем и текстового ввода. */
+  voice?: { hasAccess: boolean };
 }
 
 export function HubScreen({
@@ -51,6 +53,7 @@ export function HubScreen({
   balance,
   aiMessage,
   showAnketaCta = false,
+  voice,
 }: HubScreenProps) {
   const router = useRouter();
   const isFirst = state === "first";
@@ -85,7 +88,18 @@ export function HubScreen({
 
           <AIMessage text={aiMessage} />
 
-          {showAnketaCta && (
+          {voice && !voice.hasAccess && (
+            <div className="hub-anketa-cta">
+              <div className="hub-anketa-cta-content">
+                <div className="hub-anketa-cta-title">Доступ к практикуму выдаёт куратор</div>
+                <div className="hub-anketa-cta-body">
+                  Напишите куратору своего потока — после этого здесь откроются учебные консультации.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!voice && showAnketaCta && (
             <a href={`/program/${program.slug}/anketa`} className="hub-anketa-cta">
               <div className="hub-anketa-cta-content">
                 <div className="hub-anketa-cta-title">Расскажи о себе</div>
@@ -97,7 +111,7 @@ export function HubScreen({
             </a>
           )}
 
-          {showTestCta && (
+          {!voice && showTestCta && (
             <>
               <a href={`/program/${program.slug}/test`} className="hub-cta-primary">
                 Пройти тест
@@ -108,7 +122,7 @@ export function HubScreen({
             </>
           )}
 
-          {isReturning && themes.length > 0 && (
+          {!voice && isReturning && themes.length > 0 && (
             <>
               <div className="hub-section-label">
                 {hasTestResult ? "Твои темы" : "Темы для работы"}
@@ -133,6 +147,7 @@ export function HubScreen({
           />
         </div>
       </div>
+      {!voice && (
       <div className="hub-input-wrap">
         <InputBar
           mode="chat"
@@ -150,6 +165,7 @@ export function HubScreen({
           }
         />
       </div>
+      )}
     </>
   );
 }
