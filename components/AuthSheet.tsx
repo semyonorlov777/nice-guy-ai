@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase";
 import { isAllowedRedirect } from "@/lib/constants";
+import type { AuthProvider } from "@/lib/queries/program-brand";
 import { MaxTrollingScreen } from "./auth/MaxTrollingScreen";
 
 const MAX_TROLL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MAX_TROLL === "1";
@@ -16,6 +17,10 @@ interface AuthSheetProps {
   onClose?: () => void;
   redirectTo?: string;
   initialError?: string;
+  /** Своё название программы (практикум института): вместо логотипа платформы, тексты на «вы». */
+  brandName?: string;
+  /** Разрешённые способы входа; не задано — все. */
+  providers?: AuthProvider[];
 }
 
 const CONTEXT_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -31,6 +36,12 @@ const CONTEXT_TITLES: Record<string, { title: string; subtitle: string }> = {
     title: 'Войти в <em>аккаунт</em>',
     subtitle: 'Чтобы продолжить работу с программой.',
   },
+};
+
+// Для программ со своим брендом: обращение на «вы», без бренда платформы.
+const FORMAL_TITLE = {
+  title: 'Вход',
+  subtitle: 'Чтобы продолжить занятия, войдите в аккаунт.',
 };
 
 const EMAIL_PROVIDERS: Record<string, { name: string; url: string }> = {
@@ -133,7 +144,7 @@ function TrustLine() {
   );
 }
 
-export function AuthSheet({ mode, open, onSuccess, onClose, context = "default", initialError, redirectTo }: AuthSheetProps) {
+export function AuthSheet({ mode, open, onSuccess, onClose, context = "default", initialError, redirectTo, brandName, providers }: AuthSheetProps) {
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -146,7 +157,15 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   const tgPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { title, subtitle } = CONTEXT_TITLES[context] || CONTEXT_TITLES.default;
+  const formal = !!brandName;
+  // Текст на «ты» (книги) или на «вы» (программа со своим брендом).
+  const t = (informal: string, polite: string) => (formal ? polite : informal);
+  const allowed = (p: AuthProvider) => !providers || providers.includes(p);
+  const hasOAuthButtons = allowed("yandex") || allowed("google") || allowed("telegram") || (MAX_TROLL_ENABLED && !formal);
+
+  const { title, subtitle } = formal
+    ? FORMAL_TITLE
+    : CONTEXT_TITLES[context] || CONTEXT_TITLES.default;
 
   // Idempotent success handler
   const handleSuccess = useCallback(() => {
@@ -277,7 +296,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
       const popup = window.open(botUrl, "_blank", "noopener,noreferrer");
       if (!popup) {
         setError(
-          `Браузер заблокировал переход в Telegram. Открой ссылку вручную: ${botUrl}`,
+          formal
+            ? `Браузер заблокировал переход в Telegram. Откройте ссылку вручную: ${botUrl}`
+            : `Браузер заблокировал переход в Telegram. Открой ссылку вручную: ${botUrl}`,
         );
       }
 
@@ -298,7 +319,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               tgPollRef.current = null;
             }
             setTgLoading(false);
-            setError("Ссылка входа истекла. Попробуй ещё раз.");
+            setError(formal ? "Ссылка входа устарела. Попробуйте ещё раз." : "Ссылка входа истекла. Попробуй ещё раз.");
             return;
           }
 
@@ -340,13 +361,13 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
         }
       }, 10 * 60 * 1000);
     } catch (err) {
-      setError("Ошибка сети. Попробуй ещё раз.");
+      setError(formal ? "Нет связи. Попробуйте ещё раз." : "Ошибка сети. Попробуй ещё раз.");
       setTgLoading(false);
       Sentry.captureException(err, {
         tags: { provider: "telegram", step: "start" },
       });
     }
-  }, [handleSuccess]);
+  }, [handleSuccess, formal]);
 
   // Open OAuth popup (shared logic for Yandex and Google)
   const openOAuthPopup = useCallback((providerPath: string) => {
@@ -375,11 +396,13 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     // Without this, the button appears completely dead — no feedback at all.
     if (!popup || popup.closed || typeof popup.closed === "undefined") {
       setError(
-        "Браузер заблокировал всплывающее окно. Разреши их для этого сайта или войди по email ниже.",
+        formal
+          ? "Браузер заблокировал всплывающее окно. Разрешите их для этого сайта или войдите по почте ниже."
+          : "Браузер заблокировал всплывающее окно. Разреши их для этого сайта или войди по email ниже.",
       );
       emailInputRef.current?.focus();
     }
-  }, [redirectTo]);
+  }, [redirectTo, formal]);
 
   // Yandex auth (popup)
   const handleYandex = useCallback(() => {
@@ -396,7 +419,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!email || !email.includes("@")) {
-        setError("Введи корректный email");
+        setError(formal ? "Введите адрес почты полностью" : "Введи корректный email");
         return;
       }
       setError("");
@@ -431,7 +454,7 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
       setEmailSent(true);
     },
-    [email, redirectTo],
+    [email, redirectTo, formal],
   );
 
   // Close on Escape (sheet mode only)
@@ -475,7 +498,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
 
           {error && <div className="auth-sheet-error">{error}</div>}
 
+          {hasOAuthButtons && (
           <div className="auth-sheet-buttons">
+            {allowed("yandex") && (
             <button
               className="auth-sheet-btn ya"
               onClick={handleYandex}
@@ -483,7 +508,9 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               <YandexIcon />
               Войти через Яндекс
             </button>
+            )}
 
+            {allowed("google") && (
             <button
               className="auth-sheet-btn google"
               onClick={handleGoogle}
@@ -491,17 +518,20 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               <GoogleIcon />
               Войти через Google
             </button>
+            )}
 
+            {allowed("telegram") && (
             <button
               className="auth-sheet-btn tg"
               onClick={handleTelegram}
               disabled={tgLoading}
             >
               <TelegramIcon />
-              {tgLoading ? "Подтверди вход в Telegram..." : "Войти через Telegram"}
+              {tgLoading ? t("Подтверди вход в Telegram...", "Подтвердите вход в Telegram…") : "Войти через Telegram"}
             </button>
+            )}
 
-            {MAX_TROLL_ENABLED && (
+            {MAX_TROLL_ENABLED && !formal && (
               <button
                 type="button"
                 className="auth-sheet-btn max"
@@ -512,16 +542,21 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
               </button>
             )}
           </div>
+          )}
 
+          {allowed("email") && (
+          <>
+          {hasOAuthButtons && (
           <div className="auth-sheet-divider">
             <span>или</span>
           </div>
+          )}
 
           <form className="auth-sheet-email-form" onSubmit={handleEmailSubmit}>
             <input
               ref={emailInputRef}
               type="email"
-              placeholder="Email"
+              placeholder={t("Email", "Электронная почта")}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -551,6 +586,8 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
           <div className="auth-sheet-email-hint">
             Пришлём ссылку для входа — никаких паролей
           </div>
+          </>
+          )}
 
           <TrustLine />
         </div>
@@ -559,13 +596,13 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
           <div className="auth-sheet-check-circle">
             <CheckIcon />
           </div>
-          <h3>Проверь почту</h3>
+          <h3>{t("Проверь почту", "Проверьте почту")}</h3>
           <p>
             Мы отправили ссылку на<br />
             <strong>{email}</strong>
           </p>
           <p className="auth-sheet-sent-subhint">
-            Проверь папку &laquo;Входящие&raquo; и &laquo;Спам&raquo;
+            {t("Проверь", "Проверьте")} папку &laquo;Входящие&raquo; и &laquo;Спам&raquo;
           </p>
           {(() => {
             const provider = getEmailProvider(email);
@@ -609,12 +646,18 @@ export function AuthSheet({ mode, open, onSuccess, onClose, context = "default",
   if (mode === "fullscreen") {
     return (
       <div className="auth-sheet-fullscreen-wrap">
-        <div className="auth-sheet-logo">
-          <div className="auth-sheet-logo-icon">К</div>
-          <div className="auth-sheet-logo-text">
-            Книжный <span>Спарринг</span>
+        {brandName ? (
+          <div className="auth-sheet-logo">
+            <div className="auth-sheet-logo-text auth-sheet-brand-name">{brandName}</div>
           </div>
-        </div>
+        ) : (
+          <div className="auth-sheet-logo">
+            <div className="auth-sheet-logo-icon">К</div>
+            <div className="auth-sheet-logo-text">
+              Книжный <span>Спарринг</span>
+            </div>
+          </div>
+        )}
         <div className="auth-sheet mode-full">
           {cardContent}
         </div>

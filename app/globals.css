@@ -4052,6 +4052,13 @@ html:not(.no-transition) .app-main {
 .auth-sheet-logo-text span {
   color: var(--auth-accent);
 }
+/* Своё название программы (практикум) вместо логотипа платформы */
+.auth-sheet-brand-name {
+  font-size: 24px;
+  line-height: 1.2;
+  max-width: 320px;
+  margin: 0 auto;
+}
 
 /* Grab handle (sheet only) */
 .auth-sheet-handle {
