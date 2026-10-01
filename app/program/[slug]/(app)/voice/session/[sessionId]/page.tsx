@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import "@/components/voice-practice/voice-practice.css";
+import { DebriefPanel } from "@/components/voice-practice/DebriefPanel";
 
 export const dynamic = "force-dynamic";
 
-// Итог консультации. Подробный разбор появится здесь следующим шагом;
-// пока — расшифровка разговора, чтобы было что перечитать.
+// Итог консультации: разбор по критериям курса и расшифровка разговора.
 export default async function VoiceSessionPage({ params }: { params: Promise<{ slug: string; sessionId: string }> }) {
   const { slug, sessionId } = await params;
   const supabase = await createClient();
@@ -29,7 +29,8 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
     <div className="vp-screen">
       <p className="vp-kicker">Учебная консультация · {minutes} мин</p>
       <h1 className="vp-title">Консультация завершена</h1>
-      <p className="vp-lead">Разбор по критериям курса появится здесь. Ниже — расшифровка разговора.</p>
+      <DebriefPanel sessionId={sessionId} />
+      <p className="vp-kicker" style={{ marginTop: 20 }}>Расшифровка</p>
       <div className="vp-card">
         {turns.length === 0 ? (
           <p className="vp-hint">Разговор был слишком коротким — расшифровки нет.</p>
