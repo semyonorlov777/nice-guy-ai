@@ -4,5 +4,6 @@ public/*.html
 !public/anketa-redesign.html
 !public/spiral-test-analysis.html
 !public/chat-demo.html
+!public/voice-probe.html
 docs/
 .claude/
