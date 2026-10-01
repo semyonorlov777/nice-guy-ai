@@ -64,10 +64,9 @@ export function WarmupScreen(props: {
       // Вызов play() внутри нажатия разблокирует элемент на iOS; дальше он играет и без жеста.
       void audio.play().catch(() => {
         // Звук не пошёл (редко на iOS после сворачивания) — просим нажать ещё раз.
-        if (kind === "line") {
-          playingRef.current = null;
-          setPhase("ready");
-        }
+        playingRef.current = null;
+        // Реплика не прозвучала — просим нажать ещё раз; реакция не прозвучала — сразу к разбору.
+        setPhase(kind === "line" ? "ready" : "result");
       });
     },
     [props.audioBase],
@@ -118,7 +117,8 @@ export function WarmupScreen(props: {
       setPending(null);
       setAttempts((a) => [...a, attempt]);
       setCurrent({ ...attempt, lineText: data.lineText });
-      setPhase("result");
+      // Сначала клиент реагирует голосом, карточка разбора — после реакции.
+      setPhase("playing");
       play(attempt.reaction, lineN);
     },
     [play, props.programSlug, props.setId],
@@ -127,6 +127,10 @@ export function WarmupScreen(props: {
   const onAudioEnded = useCallback(async () => {
     const what = playingRef.current;
     playingRef.current = null;
+    if (what === "reaction") {
+      setPhase("result");
+      return;
+    }
     if (what !== "line") return;
     setPhase("recording");
     try {
