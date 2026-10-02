@@ -106,19 +106,27 @@ async function main() {
   let serverEnded = false;
   // Подтверждения «звук дошёл» (heard): сколько пришло и самое долгое затишье между ними.
   const heard = { count: 0, lastAt: 0, maxGapMs: 0, speechMs: 0, bytes: 0 };
+  // Живой студент дослушивает реплику: звук приходит быстрее, чем звучит, поэтому
+  // ждём, пока реплика «доиграла бы» в наушниках (24 кГц PCM16 = 48 байт/мс).
+  let replyStartAt = 0;
+  let replyBytes = 0;
+  const playedOut = () => replyStartAt > 0 && Date.now() >= replyStartAt + replyBytes / 48 + 600;
   const replyOver = () =>
     UNTIL_ENDED && serverEnded
       ? true
-      : (clientDone && lastAudio > 0 && !UNTIL_ENDED) || (lastAudio > 0 && Date.now() - lastAudio > (UNTIL_ENDED ? 8000 : 4000));
+      : (clientDone && playedOut() && !UNTIL_ENDED) || (lastAudio > 0 && playedOut() && Date.now() - lastAudio > (UNTIL_ENDED ? 8000 : 4000));
   function wire(sock: WebSocket) {
     sock.on("message", (data, isBinary) => {
       if (isBinary) {
         clientAudio.push(data as Buffer);
         clientBytes += (data as Buffer).length;
+        if (!replyStartAt) replyStartAt = Date.now();
+        replyBytes += (data as Buffer).length;
         lastAudio = Date.now();
       } else {
         const m = JSON.parse(String(data));
-        if (m.t === "state" && m.speaking === "idle") clientDone = true;
+        // idle до первого звука ответа — не конец реплики клиента.
+        if (m.t === "state" && m.speaking === "idle" && replyStartAt) clientDone = true;
         if (m.t === "ended") serverEnded = true;
         if (m.t === "heard") {
           const now = Date.now();
@@ -141,7 +149,7 @@ async function main() {
     while (Date.now() - t0 < 25000) {
       ws.send(quietNoise(40, 16000));
       await sleep(40);
-      if ((clientDone && lastAudio > 0) || (lastAudio > 0 && Date.now() - lastAudio > 4000)) break;
+      if (replyOver()) break;
     }
     console.log(`  (реплика клиента: ${clientAudio.length} кадров)`);
     steps.push({ student: "(клиент начинает)", clientSec: clientBytes / 2 / CLIENT_RATE, latencyMs: null });
@@ -164,6 +172,8 @@ async function main() {
     let firstAudio = 0;
     lastAudio = 0;
     clientDone = false;
+    replyStartAt = 0;
+    replyBytes = 0;
     for (let o = 0; o < audio[i].length; o += 1280) {
       ws.send(audio[i].subarray(o, o + 1280));
       if (BURST) continue;

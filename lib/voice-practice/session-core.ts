@@ -319,7 +319,20 @@ class VoiceConnection {
       const v = buf.readInt16LE(i * 2);
       sum += v * v;
     }
-    if (Math.sqrt(sum / n) / 0x8000 > VOICE_RMS) this.rxSpeechMs += buf.length / 32;
+    if (Math.sqrt(sum / n) / 0x8000 > VOICE_RMS) {
+      this.rxSpeechMs += buf.length / 32;
+      // Студент заговорил после того, как реплика клиента доиграла (раньше — это эхо динамика):
+      // пауза кончилась, расшифровка придёт позже.
+      if (this.pauseTimer && Date.now() > this.clientPlaybackEndAt()) {
+        clearTimeout(this.pauseTimer);
+        this.pauseTimer = null;
+      }
+    }
+  }
+
+  /** Звук генерируется быстрее, чем звучит: когда реплика клиента доиграет у студента. */
+  private clientPlaybackEndAt(): number {
+    return this.turnAudioStartAt + this.turnAudioBytes / 48; // PCM16 24 кГц = 48 байт/мс
   }
 
   private ackHeard() {
@@ -335,11 +348,13 @@ class VoiceConnection {
   /** Модель Live сама на тишину не отвечает: без сигнала выдержанная пауза студента повисает. */
   private armStudentPause() {
     if (this.pauseTimer) clearTimeout(this.pauseTimer);
+    // Тишину студента считаем с момента, когда клиент договорил вслух, а не когда модель закончила ответ.
+    const playLeft = Math.max(0, this.clientPlaybackEndAt() - Date.now());
     this.pauseTimer = setTimeout(() => {
       this.pauseTimer = null;
       if (this.ended || this.paused) return;
       this.engine?.kick("[СИСТЕМА: психолог молчит]");
-    }, STUDENT_PAUSE_MS);
+    }, STUDENT_PAUSE_MS + playLeft);
   }
 
   private farewellHeard = false;
