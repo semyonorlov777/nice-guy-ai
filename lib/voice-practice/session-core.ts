@@ -24,6 +24,12 @@ const MODEL_SILENCE_MS = 7_000;
 const AFTER_TIME_UP_MS = 25_000;
 /** Прощание студента: после ответа клиента встреча закрывается сама, без «до свидания» по кругу. */
 const FAREWELL_RE = /(до свидания|всего (хорошего|доброго)|до (встречи|следующей)|увидимся|прощайте|на сегодня (всё|все|заканчиваем))/iu;
+/** Распознавание иногда пишет «угу» студента латиницей («mhm», «y»): в расшифровке — по-русски. */
+const LATIN_BACKCHANNEL_RE = /(^|\s)(m+-?h+-?m+|uh-?huh|a+-?ha|y|u+)(?=[\s.,!?…]|$)/giu;
+function cyrillicBackchannel(text: string): string {
+  return text.replace(LATIN_BACKCHANNEL_RE, (_m, sp: string, w: string) => sp + (/^a/i.test(w) ? "ага" : "угу"));
+}
+
 /** Прощание — в конце реплики и не вопросом: «что попробуете до следующей встречи?» и
  *  «на сегодня заканчиваем, давайте подведём итоги» встречу не закрывают. */
 function isFarewell(text: string): boolean {
@@ -154,7 +160,10 @@ class VoiceConnection {
     const history: HistoryTurn[] = (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text }));
     this.seq = turns?.length ? Math.max(...turns.map((t) => t.seq)) : 0;
     const resumed = history.length > 0;
-    const pm = mode?.program_modes as unknown as { config: { voice?: { client_starts?: boolean } } | null; mode_templates: { key: string } } | null;
+    const pm = mode?.program_modes as unknown as {
+      config: { voice?: { client_starts?: boolean; silence_ms?: number } } | null;
+      mode_templates: { key: string };
+    } | null;
     const modeKey = pm?.mode_templates?.key;
     // «Мягкая посадка»: встреча идёт давно, первым говорит клиент.
     this.clientStarts = pm?.config?.voice?.client_starts === true;
@@ -185,7 +194,8 @@ class VoiceConnection {
           }),
           voiceName: client.voice_name,
           history: resumed ? history : undefined,
-          silenceMs: Number(cfg.voice_silence_ms ?? 900),
+          // Режим может ждать паузу дольше: в «Мягкой посадке» студент говорит длинно и подбирает слова.
+          silenceMs: Number(pm?.config?.voice?.silence_ms ?? cfg.voice_silence_ms ?? 900),
         },
         {
           onAudio: (pcm) => {
@@ -385,6 +395,7 @@ class VoiceConnection {
     this.buf = null;
     // Реплика из одних многоточий/знаков — это молчание модели, в расшифровку не пишем.
     if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
+    if (b.role === "student") b.text = cyrillicBackchannel(b.text);
     if (b.role === "student" && isFarewell(b.text)) this.farewellHeard = true;
     this.seq += 1;
     void this.db
