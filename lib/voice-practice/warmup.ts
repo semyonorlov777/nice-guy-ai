@@ -1,5 +1,6 @@
-// Разминка «Первые слова»: наборы реплик живут в app_config.voice_warmup_lines (тексты вне git),
-// звук — в public/audio/warmup/<set>/<n>-{line,warm,neutral,cold}.mp3.
+// Разминка «Первые слова»: попытки идут живым голосом (voice_modes.drill_moments режима voice_warmup,
+// поле n связывает момент с репликой); условия реакции и рубрика подсказки —
+// app_config.voice_warmup_lines (тексты вне git).
 import { getConfig } from "@/lib/config";
 
 export type WarmupReaction = "warm" | "neutral" | "cold";
@@ -40,8 +41,4 @@ export async function getWarmupConfig(): Promise<WarmupConfig | null> {
     console.error("[warmup] voice_warmup_lines: не JSON");
     return null;
   }
-}
-
-export function warmupAudioBase(setId: string): string {
-  return `/audio/warmup/${setId}`;
 }

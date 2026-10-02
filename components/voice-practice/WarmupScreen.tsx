@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+// «Первые слова»: серия коротких живых попыток. Каждая попытка — своя сессия на движке звонка
+// (kind=drill): клиент сам говорит реплику, студент отвечает, клиент живо реагирует, сервер
+// закрывает попытку. Микрофон и звук открываются один раз (нажатие «Начать») и живут всю серию.
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useWarmupRecorder, type WarmupRecording } from "@/hooks/useWarmupRecorder";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
 import "./voice-practice.css";
 
 type Reaction = "warm" | "neutral" | "cold";
@@ -11,17 +14,25 @@ interface Attempt {
   n: number;
   transcript: string;
   reaction: Reaction;
-  got: string;
-  try: string;
   firstWordMs: number | null;
   flags: { reflection: boolean; openQ: boolean; why: boolean; advice: boolean };
 }
 
-type Phase = "intro" | "ready" | "playing" | "recording" | "sending" | "result" | "silent" | "offline" | "mic" | "summary";
+interface Card {
+  loading: boolean;
+  speech?: boolean;
+  transcript?: string;
+  clientReply?: string;
+  lineText?: string;
+  reaction?: Reaction;
+  got?: string;
+  try?: string;
+  cardFailed?: boolean;
+  firstWordMs: number | null;
+}
 
-const SEND_TIMEOUT_MS = 25_000;
-/** Меньше полсекунды голоса — ответа не было: в тишине модель «слышит» несказанные фразы. */
-const MIN_VOICED_MS = 500;
+type Phase = "intro" | "call" | "result" | "summary";
+
 /** Ответ «без долгой паузы» — первое слово раньше трёх секунд после реплики. */
 const QUICK_START_MS = 3000;
 const RANK: Record<Reaction, number> = { cold: 0, neutral: 1, warm: 2 };
@@ -34,304 +45,270 @@ function seconds(ms: number): string {
   return (ms / 1000).toFixed(1).replace(".", ",");
 }
 
-export function WarmupScreen(props: {
-  programSlug: string;
-  setId: string;
-  lineNumbers: number[];
-  clientName: string;
-  audioBase: string;
-}) {
-  const { clientName, lineNumbers } = props;
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const playingRef = useRef<"line" | "reaction" | null>(null);
-  const rec = useWarmupRecorder();
+type Created = { ok: true; sessionId: string; ticket: string } | { ok: false; error: string };
+
+/** Новая попытка — новая сессия. Прошлая не успела закрыться (обрыв, сворачивание) — закрываем и пробуем снова. */
+async function createSession(body: { programSlug: string; modeKey: string; momentId: string }, retry = true): Promise<Created> {
+  const r = await fetch("/api/practice/sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => null);
+  const d = (await r?.json().catch(() => null)) as { sessionId?: string; ticket?: string; error?: string; activeSessionId?: string } | null;
+  if (r?.ok && d?.sessionId && d.ticket) return { ok: true, sessionId: d.sessionId, ticket: d.ticket };
+  if (r?.status === 409 && d?.activeSessionId && retry) {
+    await fetch(`/api/practice/sessions/${d.activeSessionId}/finish`, { method: "POST" }).catch(() => undefined);
+    return createSession(body, false);
+  }
+  if (r?.status === 401) return { ok: false, error: "Вход истёк. Обновите страницу и войдите снова." };
+  return { ok: false, error: d?.error ?? "Нет связи. Попробуйте ещё раз." };
+}
+
+export function WarmupScreen(props: { programSlug: string; modeKey: string; momentIds: string[]; clientName: string }) {
+  const { clientName, momentIds } = props;
   const [phase, setPhase] = useState<Phase>("intro");
   const [idx, setIdx] = useState(0);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [current, setCurrent] = useState<(Attempt & { lineText?: string }) | null>(null);
+  const [card, setCard] = useState<Card | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [clientTalking, setClientTalking] = useState(false);
-  /** Записанный ответ, который не удалось отправить, — для «Отправить ещё раз». */
-  const [pending, setPending] = useState<WarmupRecording | null>(null);
-  const n = lineNumbers[idx];
+  /** Клиент уже сказал реплику в этой попытке — дальше ждём ответа студента. */
+  const [heard, setHeard] = useState(false);
+  const sessionRef = useRef<string | null>(null);
+  /** Попытка идёт на сервере — при уходе со страницы её надо закрыть. */
+  const liveRef = useRef(false);
+  const heardRef = useRef(false);
+  const idxRef = useRef(0);
+  /** Конец последней реплики клиента и первый голос студента после неё — для «начали отвечать через». */
+  const timingRef = useRef<{ lineEnd: number | null; voiceAt: number | null }>({ lineEnd: null, voiceAt: null });
 
-  const play = useCallback(
-    (kind: "line" | Reaction, lineN: number) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      playingRef.current = kind === "line" ? "line" : "reaction";
-      audio.src = `${props.audioBase}/${lineN}-${kind}.mp3`;
-      // Вызов play() внутри нажатия разблокирует элемент на iOS; дальше он играет и без жеста.
-      void audio.play().catch(() => {
-        // Звук не пошёл (редко на iOS после сворачивания) — просим нажать ещё раз.
-        playingRef.current = null;
-        // Реплика не прозвучала — просим нажать ещё раз; реакция не прозвучала — сразу к разбору.
-        setPhase(kind === "line" ? "ready" : "result");
-      });
-    },
-    [props.audioBase],
-  );
+  const onVoice = useCallback(() => {
+    const t = timingRef.current;
+    if (t.lineEnd != null && t.voiceAt == null) t.voiceAt = Date.now();
+  }, []);
 
-  const loadCard = useCallback(
-    async (attempt: Attempt, lineN: number) => {
-      const form = new FormData();
-      form.append("stage", "card");
-      form.append("programSlug", props.programSlug);
-      form.append("set", props.setId);
-      form.append("n", String(lineN));
-      form.append("transcript", attempt.transcript);
-      form.append("reaction", attempt.reaction);
-      const r = await fetch("/api/practice/warmup/answer", { method: "POST", body: form }).catch(() => null);
-      const d = (await r?.json().catch(() => null)) as { got?: string; try?: string; flags?: Attempt["flags"] } | null;
-      if (!r?.ok || !d) return;
-      const patch = { got: d.got ?? "", try: d.try ?? "", flags: d.flags ?? attempt.flags };
-      setAttempts((list) => list.map((a) => (a === attempt ? { ...a, ...patch } : a)));
-      setCurrent((c) => (c && c.n === attempt.n && c.transcript === attempt.transcript ? { ...c, ...patch } : c));
-    },
-    [props.programSlug, props.setId],
-  );
-
-  const send = useCallback(
-    async (recording: WarmupRecording, lineN: number) => {
-      setPhase("sending");
-      if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        setPhase("offline");
-        return;
-      }
-      const form = new FormData();
-      const ext = recording.mimeType.includes("mp4") ? "m4a" : recording.mimeType.includes("ogg") ? "ogg" : "webm";
-      form.append("audio", recording.blob, `answer.${ext}`);
-      form.append("programSlug", props.programSlug);
-      form.append("set", props.setId);
-      form.append("n", String(lineN));
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), SEND_TIMEOUT_MS);
-      const r = await fetch("/api/practice/warmup/answer", { method: "POST", body: form, signal: ctrl.signal }).catch(() => null);
-      clearTimeout(t);
-      const data = (await r?.json().catch(() => null)) as
-        | (Partial<Attempt> & { speech?: boolean; lineText?: string; error?: string })
-        | null;
-      if (!r || r.status >= 500 || !data) {
-        setPhase("offline");
-        return;
-      }
-      if (!r.ok) {
-        setNotice(r.status === 401 ? "Вход истёк. Обновите страницу и войдите снова." : (data.error ?? "Не удалось оценить ответ"));
-        setPhase("offline");
-        return;
-      }
-      if (!data.speech) {
-        setPhase("silent");
-        return;
-      }
+  const onEnded = useCallback(async () => {
+    liveRef.current = false;
+    const sessionId = sessionRef.current;
+    const t = timingRef.current;
+    const firstWordMs = t.lineEnd != null && t.voiceAt != null ? t.voiceAt - t.lineEnd : null;
+    setPhase("result");
+    setCard({ loading: true, firstWordMs });
+    if (!sessionId) return setCard({ loading: false, speech: false, firstWordMs });
+    const r = await fetch("/api/practice/warmup/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    }).catch(() => null);
+    const d = (await r?.json().catch(() => null)) as (Omit<Card, "loading" | "firstWordMs"> & { flags?: Attempt["flags"] }) | null;
+    if (sessionRef.current !== sessionId) return;
+    if (!r?.ok || !d) return setCard({ loading: false, speech: true, cardFailed: true, firstWordMs });
+    setCard({ ...d, loading: false, firstWordMs });
+    if (d.speech && d.reaction) {
       const attempt: Attempt = {
-        n: lineN,
-        transcript: data.transcript ?? "",
-        reaction: (data.reaction as Reaction) ?? "neutral",
-        got: data.got ?? "",
-        try: data.try ?? "",
-        firstWordMs: recording.firstWordMs,
-        flags: data.flags ?? { reflection: false, openQ: false, why: false, advice: false },
+        n: idxRef.current + 1,
+        transcript: d.transcript ?? "",
+        reaction: d.reaction,
+        firstWordMs,
+        flags: d.flags ?? { reflection: false, openQ: false, why: false, advice: false },
       };
-      setPending(null);
       setAttempts((a) => [...a, attempt]);
-      setCurrent({ ...attempt, lineText: data.lineText });
-      // Клиент реагирует сразу; карточка «получилось / попробуйте» готовится, пока звучит реакция.
-      setPhase("playing");
-      play(attempt.reaction, lineN);
-      void loadCard(attempt, lineN);
+    }
+  }, []);
+
+  // Реплика клиента доиграла — от этого момента считаем паузу до ответа.
+  const onPlaying = useCallback((playing: boolean) => {
+    if (!liveRef.current) return;
+    const t = timingRef.current;
+    if (playing) {
+      heardRef.current = true;
+      setHeard(true);
+    } else if (heardRef.current && t.voiceAt == null) t.lineEnd = Date.now();
+  }, []);
+
+  const voice = useVoiceSession("", onEnded, { halfDuplex: true, keepAudio: true, onVoice, onPlaying });
+  const { state } = voice;
+
+  // Ушли со страницы посреди попытки — закрыть сессию, иначе она займёт место следующего звонка.
+  useEffect(
+    () => () => {
+      if (liveRef.current && sessionRef.current) navigator.sendBeacon(`/api/practice/sessions/${sessionRef.current}/finish`);
     },
-    [play, props.programSlug, props.setId, loadCard],
+    [],
   );
 
-  const onAudioEnded = useCallback(async () => {
-    const what = playingRef.current;
-    playingRef.current = null;
-    if (what === "reaction") {
-      setPhase("result");
+  /** Вызывается из нажатия: микрофон и звук открываются внутри жеста (iOS). */
+  async function beginAttempt(i: number) {
+    idxRef.current = i;
+    sessionRef.current = null;
+    timingRef.current = { lineEnd: null, voiceAt: null };
+    setIdx(i);
+    setCard(null);
+    setNotice(null);
+    setHeard(false);
+    heardRef.current = false;
+    setPhase("call");
+    const [ok, created] = await Promise.all([voice.prepare(), createSession({ programSlug: props.programSlug, modeKey: props.modeKey, momentId: momentIds[i] })]);
+    if (!created.ok) {
+      setNotice(created.error);
       return;
     }
-    if (what !== "line") return;
-    setPhase("recording");
-    try {
-      const recording = await rec.record();
-      if (recording.firstWordMs == null || recording.voicedMs < MIN_VOICED_MS) {
-        setPhase("silent");
-        return;
-      }
-      setPending(recording);
-      await send(recording, n);
-    } catch {
-      setPhase("mic");
+    if (!ok) {
+      await fetch(`/api/practice/sessions/${created.sessionId}/finish`, { method: "POST" }).catch(() => undefined);
+      return;
     }
-  }, [rec, send, n]);
-
-  /** «Начать»: доступ к микрофону (жест), затем «Слушать». */
-  async function begin() {
-    setNotice(null);
-    try {
-      await rec.prepare();
-      setPhase("ready");
-    } catch {
-      setPhase("mic");
-    }
-  }
-
-  function listen(lineIdx: number) {
-    setNotice(null);
-    setPending(null);
-    setCurrent(null);
-    setIdx(lineIdx);
-    setPhase("playing");
-    play("line", lineNumbers[lineIdx]);
-    void rec.prepare().catch(() => setPhase("mic"));
+    sessionRef.current = created.sessionId;
+    liveRef.current = true;
+    await voice.connect({ sessionId: created.sessionId, ticket: created.ticket });
   }
 
   function next() {
-    if (idx + 1 < lineNumbers.length) listen(idx + 1);
+    if (idx + 1 < momentIds.length) void beginAttempt(idx + 1);
     else {
-      audioRef.current?.pause();
-      rec.release();
+      voice.release();
       setPhase("summary");
     }
   }
 
   function restart() {
     setAttempts([]);
-    setCurrent(null);
+    setCard(null);
     setIdx(0);
     setPhase("intro");
   }
 
-  const orbState = clientTalking ? "client" : phase === "recording" && rec.speaking ? "student" : undefined;
+  const clientTalking = state.playing || state.speaking === "client";
+  const callStatus =
+    state.phase === "connecting"
+      ? `Соединяем… ${clientName} сейчас скажет фразу.`
+      : state.phase === "reconnecting"
+        ? "Восстанавливаем связь…"
+        : state.phase === "paused"
+          ? "Разминка на паузе."
+          : state.phase === "ending"
+            ? "Завершаем…"
+            : state.clientSilent
+              ? `${clientName} молчит. Повторите последнюю фразу.`
+              : clientTalking
+                ? `Говорит ${clientName}`
+                : state.speaking === "student"
+                  ? "Вы говорите"
+                  : heard
+                    ? "Ваш ответ"
+                    : `${clientName} сейчас скажет фразу`;
+  const callError = notice ?? (state.phase === "error" ? state.error : null);
 
   return (
     <div className="vp-screen">
-      <audio
-        ref={audioRef}
-        playsInline
-        preload="auto"
-        onPlaying={() => setClientTalking(true)}
-        onPause={() => setClientTalking(false)}
-        onEnded={() => {
-          setClientTalking(false);
-          void onAudioEnded();
-        }}
-      />
       <p className="vp-kicker">
         Первые слова · {clientName}
-        {phase !== "intro" && phase !== "summary" && phase !== "mic" ? ` · реплика ${idx + 1} из ${lineNumbers.length}` : ""}
+        {phase === "call" || phase === "result" ? ` · реплика ${idx + 1} из ${momentIds.length}` : ""}
       </p>
 
       {phase === "intro" && (
         <>
           <h1 className="vp-title">Первые слова</h1>
           <div className="vp-card vp-hint">
-            Клиент скажет одну фразу. Ответьте так, как ответили бы живому человеку. Это не экзамен, а разминка, чтобы слова
-            включались.
+            {clientName} скажет одну фразу. Ответьте так, как ответили бы живому человеку, — она отреагирует сразу. Это не
+            экзамен, а разминка, чтобы слова включались.
           </div>
           <div className="vp-card vp-hint">
-            Несколько коротких реплик, около трёх минут. Отвечайте, когда клиент договорит: запись начнётся сама и
-            остановится, когда вы замолчите. Ответ не сохраняется — только оценивается.
+            {momentIds.length} коротких реплики подряд, около трёх минут. Отвечайте, когда {clientName} договорит. После
+            каждой реплики — короткая подсказка.
           </div>
-          <button type="button" className="vp-btn" onClick={begin}>
+          <button type="button" className="vp-btn" onClick={() => void beginAttempt(0)}>
             Начать
           </button>
-          <p className="vp-small">Понадобится микрофон. Учебного клиента играет ИИ, голос записан заранее.</p>
+          <p className="vp-small">Понадобится микрофон, наушники не нужны. Учебного клиента играет ИИ, звук не записывается.</p>
         </>
       )}
 
-      {phase === "mic" && (
-        <>
-          <div className="vp-error">
-            Нет доступа к микрофону. Разрешите его в настройках браузера для этого сайта и попробуйте ещё раз.
-          </div>
-          <button type="button" className="vp-btn" onClick={begin}>
-            Попробовать ещё раз
-          </button>
-        </>
-      )}
-
-      {(phase === "ready" || phase === "playing" || phase === "recording" || phase === "sending") && (
+      {phase === "call" && (
         <div className="vp-warmup">
-          <div className="vp-orb" data-speaking={orbState} style={phase === "recording" ? { transform: `scale(${0.96 + rec.level * 0.1})` } : undefined} />
-          <p className="vp-status">
-            {phase === "ready"
-              ? `Нажмите «Слушать» — ${clientName} скажет фразу. Отвечайте, когда она договорит.`
-              : phase === "playing"
-                ? `Говорит ${clientName}`
-                : phase === "recording"
-                  ? rec.speaking
-                    ? "Вы говорите"
-                    : "Ваш ответ"
-                  : `${clientName} думает…`}
-          </p>
-          {phase === "ready" && (
-            <button type="button" className="vp-btn" onClick={() => listen(idx)}>
-              Слушать
-            </button>
-          )}
-          {phase === "recording" && (
-            <button type="button" className="vp-btn vp-btn-quiet" onClick={rec.stop}>
-              Готово
-            </button>
+          <div className="vp-orb" data-speaking={clientTalking ? "client" : state.speaking} aria-hidden />
+          {callError ? (
+            <>
+              <div className="vp-error">{callError}</div>
+              <button type="button" className="vp-btn" onClick={() => void beginAttempt(idx)}>
+                Попробовать ещё раз
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="vp-status" role="status">
+                {callStatus}
+              </p>
+              {state.phase === "paused" ? (
+                <button type="button" className="vp-btn" onClick={() => void voice.start()}>
+                  Продолжить
+                </button>
+              ) : (
+                (state.phase === "live" || state.phase === "reconnecting") && (
+                  <button type="button" className="vp-btn vp-btn-quiet" onClick={() => void voice.end()}>
+                    Закончить попытку
+                  </button>
+                )
+              )}
+            </>
           )}
         </div>
       )}
 
-      {phase === "silent" && (
+      {phase === "result" && card && (
         <>
-          <div className="vp-card vp-hint">Ответ не прозвучал. Ничего страшного — попробуйте ещё раз, можно начать с простого.</div>
-          <button type="button" className="vp-btn" onClick={() => listen(idx)}>
-            Ещё раз
-          </button>
-        </>
-      )}
-
-      {phase === "offline" && (
-        <>
-          <div className="vp-error">{notice ?? "Нет связи. Ответ не оценён, попробуйте ещё раз."}</div>
-          {pending && (
-            <button type="button" className="vp-btn" onClick={() => send(pending, n)}>
-              Отправить ответ ещё раз
-            </button>
-          )}
-          <button type="button" className={pending ? "vp-btn vp-btn-quiet vp-gap" : "vp-btn"} onClick={() => listen(idx)}>
-            Ответить заново
-          </button>
-        </>
-      )}
-
-      {phase === "result" && current && (
-        <>
-          <div className="vp-card">
-            <p className="vp-reaction" data-reaction={current.reaction}>
-              {reactionText(current.reaction, clientName)}
-            </p>
-            {current.lineText && (
-              <p className="vp-small vp-left">
-                {clientName}: «{current.lineText}»
+          {state.playing || card.loading ? (
+            <div className="vp-warmup">
+              <div className="vp-orb" data-speaking={state.playing ? "client" : undefined} aria-hidden />
+              <p className="vp-status" role="status">
+                {state.playing ? `Говорит ${clientName}` : "Готовим подсказку…"}
               </p>
-            )}
-            <p className="vp-quote vp-quote-was">Вы: «{current.transcript}»</p>
-            <div className="vp-row vp-row-stack">
-              <span className="vp-ok">Получилось</span>
-              <span>{current.got || "Готовим подсказку…"}</span>
             </div>
-            <div className="vp-row vp-row-stack">
-              <span className="vp-warn">Попробуйте</span>
-              <span>{current.try || "…"}</span>
+          ) : card.speech === false ? (
+            <div className="vp-card vp-hint">Ответ не прозвучал. Ничего страшного — попробуйте ещё раз, можно начать с простого.</div>
+          ) : (
+            <div className="vp-card">
+              {card.reaction && (
+                <p className="vp-reaction" data-reaction={card.reaction}>
+                  {reactionText(card.reaction, clientName)}
+                </p>
+              )}
+              {card.lineText && (
+                <p className="vp-small vp-left">
+                  {clientName}: «{card.lineText}»
+                </p>
+              )}
+              {card.transcript && <p className="vp-quote vp-quote-was">Вы: «{card.transcript}»</p>}
+              {card.clientReply && (
+                <p className="vp-small vp-left">
+                  {clientName}: «{card.clientReply}»
+                </p>
+              )}
+              {card.cardFailed ? (
+                <p className="vp-small vp-left">Подсказка не собралась. Попробуйте ещё раз или идите дальше.</p>
+              ) : (
+                <>
+                  <div className="vp-row vp-row-stack">
+                    <span className="vp-ok">Получилось</span>
+                    <span>{card.got}</span>
+                  </div>
+                  <div className="vp-row vp-row-stack">
+                    <span className="vp-warn">Попробуйте</span>
+                    <span>{card.try}</span>
+                  </div>
+                </>
+              )}
+              {card.firstWordMs != null && <p className="vp-small vp-left">Вы начали отвечать через {seconds(card.firstWordMs)} с.</p>}
             </div>
-            {current.firstWordMs != null && (
-              <p className="vp-small vp-left">Вы начали отвечать через {seconds(current.firstWordMs)} с.</p>
-            )}
-          </div>
-          <button type="button" className="vp-btn" onClick={() => listen(idx)}>
-            Ещё раз
-          </button>
-          <button type="button" className="vp-btn vp-btn-quiet vp-gap" onClick={next}>
-            {idx + 1 < lineNumbers.length ? "Дальше" : "Итог"}
-          </button>
+          )}
+          {!state.playing && !card.loading && (
+            <>
+              <button type="button" className="vp-btn" onClick={() => void beginAttempt(idx)}>
+                Ещё раз
+              </button>
+              <button type="button" className="vp-btn vp-btn-quiet vp-gap" onClick={next}>
+                {idx + 1 < momentIds.length ? "Дальше" : "Итог"}
+              </button>
+            </>
+          )}
         </>
       )}
 
