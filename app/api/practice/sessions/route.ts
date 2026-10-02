@@ -82,12 +82,21 @@ export async function POST(req: Request) {
     .eq("user_id", user.id)
     .in("status", LIVE)
     .or(`last_heartbeat_at.lt.${stale},and(last_heartbeat_at.is.null,created_at.lt.${stale})`)
-    .select("id");
-  if (abandoned?.length) {
+    .select("id, kind");
+  // Голосовой разбор встречи — не консультация: своего текстового разбора у него нет.
+  const toDebrief = (abandoned ?? []).filter((a) => a.kind !== "debrief");
+  if (toDebrief.length) {
     await db
       .from("voice_debriefs")
-      .upsert(abandoned.map((a) => ({ session_id: a.id, status: "queued" })), { onConflict: "session_id", ignoreDuplicates: true });
+      .upsert(toDebrief.map((a) => ({ session_id: a.id, status: "queued" })), { onConflict: "session_id", ignoreDuplicates: true });
   }
+  // Недоговорённый голосовой разбор прошлой встречи не мешает начать новую: закрываем его.
+  await db
+    .from("voice_sessions")
+    .update({ status: "ended", end_reason: "student", ended_at: new Date().toISOString(), conn_id: null })
+    .eq("user_id", user.id)
+    .eq("kind", "debrief")
+    .in("status", LIVE);
 
   const { data: live } = await db
     .from("voice_sessions")

@@ -165,6 +165,7 @@ export async function loadRealStudents(programId: string, now: number): Promise<
       .eq("program_id", programId)
       .in("user_id", owners)
       .eq("status", "ended")
+      .neq("kind", "debrief")
       .order("created_at"),
     db.from("profiles").select("id, name, email").in("id", owners),
     db.from("voice_clients").select("id, display_name").eq("program_id", programId),

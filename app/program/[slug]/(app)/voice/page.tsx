@@ -23,6 +23,7 @@ export default async function VoicePracticePage({ params }: { params: Promise<{ 
     .select("id, status, seconds_used, created_at, client_id, program_mode_id")
     .eq("user_id", user.id)
     .eq("program_id", programId)
+    .neq("kind", "debrief")
     .order("created_at", { ascending: false })
     .limit(50);
 

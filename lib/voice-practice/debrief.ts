@@ -104,7 +104,8 @@ export async function prepareDebriefInput(db: SupabaseClient, sessionId: string)
   if (clientFlags.length) {
     await db.from("voice_sessions").update({ integrity_flags: clientFlags }).eq("id", sessionId);
   }
-  if (!s || counters.student_turns < (s.kind === "drill" ? 1 : MIN_STUDENT_TURNS)) return { kind: "short", counters };
+  // Голосовой разбор встречи сам не разбирается (страховка: очередь на него не ставится).
+  if (!s || s.kind === "debrief" || counters.student_turns < (s.kind === "drill" ? 1 : MIN_STUDENT_TURNS)) return { kind: "short", counters };
 
   const [{ data: client }, { data: pm }] = await Promise.all([
     s.client_id

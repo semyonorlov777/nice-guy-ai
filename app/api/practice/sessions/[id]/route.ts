@@ -17,14 +17,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // RLS: владелец читает свою сессию и разбор.
   const { data: s } = await supabase
     .from("voice_sessions")
-    .select("id, status, end_reason, seconds_limit, seconds_used, started_at, ended_at, voice_debriefs(status, is_fallback, strength, fix, repeat, summary, counters, result)")
+    .select("id, kind, status, end_reason, seconds_limit, seconds_used, started_at, ended_at, voice_debriefs(status, is_fallback, strength, fix, repeat, summary, counters, result)")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!s) return apiError("Не найдено", 404);
 
   const d = (s.voice_debriefs as unknown as { status: string } | null) ?? null;
-  if ((s.status === "ended" || s.status === "failed") && (!d || d.status === "queued" || d.status === "processing")) {
+  // У голосового разбора встречи своего текстового разбора нет.
+  if (s.kind !== "debrief" && (s.status === "ended" || s.status === "failed") && (!d || d.status === "queued" || d.status === "processing")) {
     const run = await claimDebrief(id);
     if (run) after(run);
   }

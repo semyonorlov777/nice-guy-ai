@@ -12,7 +12,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (response) return response;
 
   const db = createServiceClient();
-  const { data: s } = await db.from("voice_sessions").select("id, status").eq("id", id).eq("user_id", user.id).maybeSingle();
+  const { data: s } = await db.from("voice_sessions").select("id, kind, status").eq("id", id).eq("user_id", user.id).maybeSingle();
   if (!s) return apiError("Не найдено", 404);
 
   if (s.status !== "ended" && s.status !== "failed") {
@@ -22,6 +22,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       .eq("id", id)
       .in("status", ["created", "active", "paused", "reconnecting"]);
   }
-  await db.from("voice_debriefs").upsert({ session_id: id, status: "queued" }, { onConflict: "session_id", ignoreDuplicates: true });
+  if (s.kind !== "debrief") {
+    await db.from("voice_debriefs").upsert({ session_id: id, status: "queued" }, { onConflict: "session_id", ignoreDuplicates: true });
+  }
   return Response.json({ ok: true });
 }
