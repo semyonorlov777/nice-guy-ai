@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { VoiceOrb, LOST_TEXT, REPEAT_TEXT } from "./VoiceOrb";
 import "./voice-practice.css";
 
 type Reaction = "warm" | "neutral" | "cold";
@@ -180,13 +181,15 @@ export function WarmupScreen(props: { programSlug: string; modeKey: string; mome
   const callStatus =
     state.phase === "connecting"
       ? `Соединяем… ${clientName} сейчас скажет фразу.`
-      : state.phase === "reconnecting"
-        ? "Восстанавливаем связь…"
+      : state.phase === "reconnecting" || (state.phase === "live" && state.link === "lost")
+        ? LOST_TEXT
         : state.phase === "paused"
           ? "Разминка на паузе."
           : state.phase === "ending"
             ? "Завершаем…"
-            : state.clientSilent
+            : state.recovered === "repeat"
+              ? REPEAT_TEXT
+              : state.clientSilent
               ? `${clientName} молчит. Повторите последнюю фразу.`
               : clientTalking
                 ? `Говорит ${clientName}`
@@ -224,7 +227,12 @@ export function WarmupScreen(props: { programSlug: string; modeKey: string; mome
 
       {phase === "call" && (
         <div className="vp-warmup">
-          <div className="vp-orb" data-speaking={clientTalking ? "client" : state.speaking} aria-hidden />
+          <VoiceOrb
+            speaking={clientTalking ? "client" : state.speaking}
+            link={state.link}
+            heard={state.heard}
+            micLevel={voice.micLevel}
+          />
           {callError ? (
             <>
               <div className="vp-error">{callError}</div>

@@ -30,6 +30,23 @@
 .vp-orb { width: 168px; height: 168px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--accent-grad-hi), var(--accent-grad-mid) 55%, var(--accent-grad-lo)); transition: transform .25s ease, box-shadow .25s ease, opacity .25s; opacity: .85; }
 .vp-orb[data-speaking="client"] { transform: scale(1.08); box-shadow: 0 0 0 14px var(--accent-glow), 0 0 0 28px var(--accent-soft); opacity: 1; }
 .vp-orb[data-speaking="student"] { transform: scale(.96); box-shadow: 0 0 0 6px var(--accent-border); }
+/* «Меня слышат?»: кольцо голоса студента (громкость — --vp-lvl с микрофона) и знак под кругом. */
+.vp-voice { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.vp-orb-wrap { --vp-lvl: 0; position: relative; display: grid; place-items: center; }
+.vp-mic-ring { position: absolute; inset: -14px; border-radius: 50%; border: 2px solid var(--text-secondary); opacity: 0; transform: scale(calc(1 + var(--vp-lvl) * .16)); transition: opacity .3s, border-color .3s; pointer-events: none; }
+.vp-orb-wrap[data-link="ok"] .vp-mic-ring { opacity: calc(.14 + var(--vp-lvl) * .7); transition: border-color .3s; }
+.vp-orb-wrap[data-link="lost"] .vp-mic-ring { opacity: .45; border-style: dashed; border-color: var(--text-muted); }
+.vp-orb-wrap[data-link="lost"] .vp-orb { opacity: .55; }
+.vp-sign { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 20px; margin: 0; font-size: 13px; line-height: 1.35; color: var(--text-muted); text-align: center; }
+.vp-sign-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); transition: background .2s, box-shadow .2s; }
+.vp-sign[data-link="ok"] { color: var(--text-secondary); }
+.vp-sign[data-link="ok"] .vp-sign-dot { background: var(--success); }
+.vp-sign[data-link="ok"][data-heard="true"] .vp-sign-dot { box-shadow: 0 0 0 5px var(--success-soft); }
+.vp-sign[data-link="muted"] .vp-sign-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-muted); }
+.vp-sign[data-link="lost"] { color: var(--accent-dark); }
+.vp-sign[data-link="lost"] .vp-sign-dot { background: var(--accent-dark); animation: vp-blink 1.6s ease-in-out infinite; }
+@keyframes vp-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .vp-sign[data-link="lost"] .vp-sign-dot { animation: none; } }
 .vp-status { min-height: 44px; text-align: center; color: var(--text-secondary); font-size: 15px; line-height: 1.45; max-width: 320px; }
 .vp-timer { font-variant-numeric: tabular-nums; font-size: 18px; color: var(--text-secondary); }
 .vp-timer[data-warn="true"] { color: var(--accent-dark); font-weight: 600; }

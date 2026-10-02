@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { VoiceOrb, LOST_TEXT, REPEAT_TEXT } from "./VoiceOrb";
 import "./voice-practice.css";
 
 function mmss(sec: number | null): string {
@@ -23,7 +24,7 @@ export function CallScreen(props: {
   const onEnded = useCallback(() => {
     router.replace(`/program/${props.programSlug}/voice/session/${props.sessionId}`);
   }, [router, props.programSlug, props.sessionId]);
-  const { state, start, end } = useVoiceSession(props.sessionId, onEnded, { halfDuplex: !!props.drill });
+  const { state, start, end, micLevel } = useVoiceSession(props.sessionId, onEnded, { halfDuplex: !!props.drill });
   const { phase } = state;
 
   const status =
@@ -35,21 +36,25 @@ export function CallScreen(props: {
         : "Нажмите «Начать звонок»."
       : phase === "connecting"
         ? "Соединяем с учебным клиентом…"
-        : phase === "reconnecting"
-          ? "Восстанавливаем связь…"
+        : phase === "reconnecting" || (phase === "live" && state.link === "lost")
+          ? LOST_TEXT
           : phase === "paused"
             ? "Консультация на паузе."
             : phase === "ending"
               ? "Завершаем…"
               : phase === "error"
                 ? state.error
-                : state.clientSilent
+                : state.recovered === "repeat"
+                  ? REPEAT_TEXT
+                  : state.clientSilent
                   ? "Клиент молчит. Повторите последнюю фразу."
                   : state.speaking === "client"
                     ? "Говорит клиент"
                     : state.speaking === "student"
                       ? "Вы говорите"
-                      : props.drill && state.attemptDone
+                      : state.recovered === "ok"
+                        ? "Связь восстановлена."
+                        : props.drill && state.attemptDone
                         ? "Ответ засчитан. Можете продолжить разговор с клиентом или перейти к разбору."
                         : props.drill
                         ? "Ваш ответ"
@@ -66,7 +71,7 @@ export function CallScreen(props: {
         {props.drill && <p style={{ marginTop: 6, maxWidth: 320 }}>{props.drill.context}</p>}
       </div>
 
-      <div className="vp-orb" data-speaking={inCall ? state.speaking : "idle"} aria-hidden />
+      <VoiceOrb speaking={inCall ? state.speaking : "idle"} link={state.link} heard={state.heard} micLevel={micLevel} />
 
       <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
         {inCall && (
