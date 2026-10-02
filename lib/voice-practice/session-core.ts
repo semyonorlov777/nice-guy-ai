@@ -22,6 +22,8 @@ const TICK_MS = 15_000;
 const ROTATE_AFTER_MS = 270_000;
 const MODEL_SILENCE_MS = 7_000;
 const AFTER_TIME_UP_MS = 25_000;
+/** Прощание студента: после ответа клиента встреча закрывается сама, без «до свидания» по кругу. */
+const FAREWELL_RE = /(до свидания|всего (хорошего|доброго)|до (встречи|следующей)|увидимся|прощайте|на сегодня (всё|все|заканчиваем))/iu;
 /** Студент молчит после реплики клиента — клиенту сигнал «психолог выдерживает паузу». */
 const STUDENT_PAUSE_MS = 8_000;
 
@@ -169,6 +171,11 @@ class VoiceConnection {
         },
         {
           onAudio: (pcm) => {
+            if (!this.clientSpoke) {
+              this.turnAudioBytes = 0;
+              this.turnAudioStartAt = Date.now();
+            }
+            this.turnAudioBytes += pcm.length;
             this.clientSpoke = true;
             this.clearSilenceTimer();
             this.setSpeaking("client");
@@ -181,6 +188,13 @@ class VoiceConnection {
           },
           onTurnComplete: () => {
             const spoke = this.clientSpoke;
+            // Студент попрощался (или время вышло) — клиент ответил, закрываем встречу.
+            if (spoke && !this.drill && (this.farewellHeard || this.signalsSent.has("time_up"))) {
+              // Звук генерируется быстрее, чем звучит: ждём, пока реплика доиграет у студента.
+              const playMs = this.turnAudioBytes / 48; // PCM16 24 кГц = 48 байт/мс
+              const wait = Math.max(1500, this.turnAudioStartAt + playMs - Date.now() + 800);
+              this.timers.push(setTimeout(() => void this.end(this.signalsSent.has("time_up") ? "time_limit" : "student"), wait));
+            }
             const cut = this.clientInterrupted;
             this.clientSpoke = false;
             this.clientInterrupted = false;
@@ -192,7 +206,8 @@ class VoiceConnection {
               // Попытка окончена, когда после настоящего ответа студента (≥2 слов)
               // клиент отреагировал. Эхо и «угу» ответом не считаются.
               if (this.studentWords >= 2 && this.clientTurns >= 2) {
-                this.timers.push(setTimeout(() => void this.end("student"), 1500));
+                const wait = Math.max(1500, this.turnAudioStartAt + this.turnAudioBytes / 48 - Date.now() + 800);
+                this.timers.push(setTimeout(() => void this.end("student"), wait));
               }
             }
             this.flushTurn();
@@ -278,7 +293,12 @@ class VoiceConnection {
     }, STUDENT_PAUSE_MS);
   }
 
+  private farewellHeard = false;
+  private turnAudioBytes = 0;
+  private turnAudioStartAt = 0;
+
   private addTranscript(role: "student" | "client", text: string) {
+    if (role === "student" && FAREWELL_RE.test(text)) this.farewellHeard = true;
     if (role === "student" && this.pauseTimer) {
       clearTimeout(this.pauseTimer);
       this.pauseTimer = null;
