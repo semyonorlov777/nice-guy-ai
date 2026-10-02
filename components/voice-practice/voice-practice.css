@@ -170,7 +170,7 @@
 /* Компьютер: разминка и звонок — по центру экрана, без пустоты снизу и «прилипания» к верху. */
 @media (min-width: 900px) {
   .vp-center { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; padding-top: 32px; padding-bottom: 64px; }
-  .vp-center .vp-warmup { padding-top: 8px; }
+  .vp-center .vp-warmup { padding-top: 40px; }
   .vp-call { justify-content: center; gap: 40px; }
   .vp-call .vp-orb { width: 200px; height: 200px; }
 }
@@ -192,6 +192,8 @@
   /* Внутри разминки и звонка — центрированная стопка, как было. */
   .vp-screen .vp-warmup .vp-btn { width: 100%; min-width: 0; max-width: 360px; }
   .vp-screen .vp-warmup .vp-small { text-align: center; }
+  /* Пока идёт реплика (круг по центру) — и заголовок над ним по центру. */
+  .vp-center:has(> .vp-warmup) > .vp-kicker { text-align: center; }
   .vp-chip { padding: 14px 18px; }
   .vp-chips { gap: 10px; margin-bottom: 8px; }
 
