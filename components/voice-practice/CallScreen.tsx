@@ -49,7 +49,9 @@ export function CallScreen(props: {
                     ? "Говорит клиент"
                     : state.speaking === "student"
                       ? "Вы говорите"
-                      : props.drill
+                      : props.drill && state.attemptDone
+                        ? "Ответ засчитан. Можете продолжить разговор с клиентом или перейти к разбору."
+                        : props.drill
                         ? "Ваш ответ"
                         : "Слушает";
 
@@ -89,8 +91,12 @@ export function CallScreen(props: {
           </button>
         )}
         {(inCall || phase === "paused" || phase === "error") && (
-          <button type="button" className="vp-btn vp-btn-quiet" onClick={() => void end()}>
-            Завершить
+          <button
+            type="button"
+            className={props.drill && state.attemptDone ? "vp-btn" : "vp-btn vp-btn-quiet"}
+            onClick={() => void end()}
+          >
+            {props.drill && state.attemptDone ? "К разбору" : "Завершить"}
           </button>
         )}
       </div>

@@ -23,6 +23,8 @@ export interface CallState {
   secondsLeft: number | null;
   warn: boolean;
   clientSilent: boolean;
+  /** «Трудный момент»: попытка засчитана. */
+  attemptDone: boolean;
   /** Голос клиента звучит в динамике (может звучать и после конца сессии). */
   playing: boolean;
   error: string | null;
@@ -58,6 +60,7 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
     secondsLeft: null,
     warn: false,
     clientSilent: false,
+    attemptDone: false,
     playing: false,
     error: null,
   });
@@ -154,6 +157,9 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
             break;
           case "interrupted":
             playbackRef.current?.port.postMessage({ t: "flush" });
+            break;
+          case "attempt_done":
+            patch({ attemptDone: true });
             break;
           case "client_silent":
             patch({ clientSilent: true });

@@ -59,7 +59,7 @@ function drillFrame(m: DrillMoment): string {
     m.scene ?? "РЕЖИМ: ТРУДНЫЙ МОМЕНТ",
     m.scene ? m.context : `Это середина встречи. ${m.context}`,
     `Когда получишь сигнал [СИСТЕМА: начинай], сразу произнеси ровно эту реплику${m.tone ? ` (${m.tone})` : ""}: «${m.line}». Не здоровайся, ничего не добавляй до неё.`,
-    "Потом жди ответа психолога. На его ответ отреагируй одной репликой строго по своим правилам: если он попал — чуть теплеешь и говоришь больше; если оправдывался, советовал, утешал шаблонно или спорил — закрываешься. После этой реплики замолчи.",
+    "Потом жди ответа психолога. На его ответ отреагируй одной репликой строго по своим правилам: если он попал — чуть теплеешь и говоришь больше; если оправдывался, советовал, утешал шаблонно или спорил — закрываешься. Если психолог продолжает разговор — продолжай по своим правилам, как на обычной встрече: тема та же, скрытое по-прежнему раскрывается только при выполнении условий.",
   ].join("\n");
 }
 
@@ -126,7 +126,7 @@ class VoiceConnection {
     if (this.secondsLeft <= 0) return this.end("time_limit");
 
     const [{ data: mode }, { data: client }, cfg, { data: turns }] = await Promise.all([
-      db.from("voice_modes").select("frame_prompt, engine, drill_moments").eq("program_mode_id", s.program_mode_id).maybeSingle(),
+      db.from("voice_modes").select("frame_prompt, engine, drill_moments, program_modes!inner(mode_templates!inner(key))").eq("program_mode_id", s.program_mode_id).maybeSingle(),
       s.client_id
         ? db.from("voice_clients").select("prompt, voice_name").eq("id", s.client_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -141,6 +141,8 @@ class VoiceConnection {
     const history: HistoryTurn[] = (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text }));
     this.seq = turns?.length ? Math.max(...turns.map((t) => t.seq)) : 0;
     const resumed = history.length > 0;
+    const modeKey = (mode?.program_modes as unknown as { mode_templates: { key: string } } | null)?.mode_templates?.key;
+    this.autoEndDrill = modeKey !== "voice_hard_moments";
     if (s.kind === "drill") {
       const moments = (mode.drill_moments as DrillMoment[] | null) ?? [];
       this.drill = moments.find((m) => m.id === s.drill_moment_id) ?? null;
@@ -205,9 +207,17 @@ class VoiceConnection {
               this.clientTurns += 1;
               // Попытка окончена, когда после настоящего ответа студента (≥2 слов)
               // клиент отреагировал. Эхо и «угу» ответом не считаются.
-              if (this.studentWords >= 2 && this.clientTurns >= 2) {
-                const wait = Math.max(1500, this.turnAudioStartAt + this.turnAudioBytes / 48 - Date.now() + 800);
-                this.timers.push(setTimeout(() => void this.end("student"), wait));
+              if (this.studentWords >= 2 && this.clientTurns >= 2 && !this.attemptDone) {
+                this.attemptDone = true;
+                if (this.autoEndDrill) {
+                  // Разминка: одна реплика — один ответ — одна реакция, дальше подсказка.
+                  const wait = Math.max(1500, this.turnAudioStartAt + this.turnAudioBytes / 48 - Date.now() + 800);
+                  this.timers.push(setTimeout(() => void this.end("student"), wait));
+                } else {
+                  // Трудный момент: попытка засчитана, но студент может продолжить разговор
+                  // и «дожать» клиента; к разбору — кнопкой.
+                  this.send({ t: "attempt_done" });
+                }
               }
             }
             this.flushTurn();
@@ -294,6 +304,9 @@ class VoiceConnection {
   }
 
   private farewellHeard = false;
+  private attemptDone = false;
+  /** Разминка закрывает попытку сама; «Трудный момент» — по кнопке студента. */
+  private autoEndDrill = true;
   private turnAudioBytes = 0;
   private turnAudioStartAt = 0;
 

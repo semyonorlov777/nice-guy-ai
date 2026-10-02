@@ -20,6 +20,8 @@ export type ServerMessage =
   | { t: "interrupted" }
   | { t: "rotate" }
   | { t: "client_silent" }
+  /** «Трудный момент»: ответ засчитан, можно продолжать разговор или идти к разбору. */
+  | { t: "attempt_done" }
   | { t: "ended"; reason: EndReason }
   | { t: "error"; code: ErrorCode; message: string };
 
