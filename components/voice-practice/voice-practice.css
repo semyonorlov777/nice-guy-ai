@@ -148,3 +148,11 @@
 .vp-gap { margin-top: 10px; }
 .vp-row-stack { flex-direction: column; gap: 4px; line-height: 1.45; }
 .vp-row-stack > span:first-child { font-size: 13px; font-weight: 600; }
+
+/* Компьютер: разминка и звонок — по центру экрана, без пустоты снизу и «прилипания» к верху. */
+@media (min-width: 900px) {
+  .vp-center { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; padding-top: 32px; padding-bottom: 64px; }
+  .vp-center .vp-warmup { padding-top: 8px; }
+  .vp-call { justify-content: center; gap: 40px; }
+  .vp-call .vp-orb { width: 200px; height: 200px; }
+}

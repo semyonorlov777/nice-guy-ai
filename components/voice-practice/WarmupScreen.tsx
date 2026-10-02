@@ -198,7 +198,7 @@ export function WarmupScreen(props: { programSlug: string; modeKey: string; mome
   const callError = notice ?? (state.phase === "error" ? state.error : null);
 
   return (
-    <div className="vp-screen">
+    <div className="vp-screen vp-center">
       <p className="vp-kicker">
         Первые слова · {clientName}
         {phase === "call" || phase === "result" ? ` · реплика ${idx + 1} из ${momentIds.length}` : ""}
