@@ -240,6 +240,9 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
           return;
         }
         const m = JSON.parse(String(e.data)) as ServerMessage;
+        // Старое соединение живёт до «ready» нового и ещё может прислать «продолжается в другом окне»
+        // (новое уже забрало сессию), «ended» или «rotate» — к текущему разговору это не относится.
+        if (ws !== wsRef.current && (m.t === "error" || m.t === "ended" || m.t === "rotate")) return;
         switch (m.t) {
           case "ready": {
             reconnectsRef.current = 0;
