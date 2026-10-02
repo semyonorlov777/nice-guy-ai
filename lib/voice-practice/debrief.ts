@@ -10,6 +10,8 @@ import { getConfig } from "@/lib/config";
 import { computeClientFlags, computeCounters, type CodeCounters, type TurnLite } from "./counters";
 
 const MODEL = process.env.VOICE_DEBRIEF_MODEL || "gemini-3.8-flash";
+// Разбор идёт в фоне, пока студент вспоминает встречу сам: запас — сначала сильная модель, быстрая — последней.
+const DEBRIEF_FALLBACKS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
 export const RUBRIC_VERSION = "2026-10-02.troika";
 const MIN_STUDENT_TURNS = 2;
 
@@ -158,6 +160,7 @@ export async function generateDebrief(
           },
         }),
       "voice-debrief",
+      DEBRIEF_FALLBACKS,
     );
     usedModel = model;
     return result;
@@ -234,8 +237,11 @@ export function checkFeedback(result: DebriefResult, labeled: LabeledTurn[]) {
 function unverified(result: DebriefResult): number {
   const fb = result.feedback ?? {};
   const items = [fb.client_voice, ...(fb.worked ?? []), ...(fb.try ?? [])] as ({ verified?: boolean } | null | undefined)[];
-  return items.filter((x) => x && x.verified === false).length;
+  // Готовая фраза с пустым вступлением («Я слышу…», «Понимаю.») — тоже повод для второй попытки.
+  const emptyOpeners = (fb.try ?? []).filter((t) => EMPTY_OPENER.test(String(t.alternative ?? ""))).length;
+  return items.filter((x) => x && x.verified === false).length + emptyOpeners;
 }
+const EMPTY_OPENER = /^\s*(я слышу|я понимаю|понимаю|давайте сфокусируемся)/i;
 
 /** Разбор с проверкой цитат: если что-то в главном блоке не сходится с расшифровкой — ещё одна попытка, берём точнее. */
 export async function debriefChecked(rubric: string, input: Extract<DebriefInput, { kind: "ready" }>) {

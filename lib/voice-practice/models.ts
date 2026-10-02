@@ -15,9 +15,10 @@ export async function withModelFallback<T>(
   primary: string,
   call: (model: string) => Promise<T>,
   tag: string,
+  fallbacks: string[] = TEXT_FALLBACK_MODELS,
 ): Promise<{ result: T; model: string }> {
   let lastErr: unknown;
-  for (const model of [primary, ...TEXT_FALLBACK_MODELS.filter((m) => m !== primary)]) {
+  for (const model of [primary, ...fallbacks.filter((m) => m !== primary)]) {
     try {
       return { result: await call(model), model };
     } catch (e) {
