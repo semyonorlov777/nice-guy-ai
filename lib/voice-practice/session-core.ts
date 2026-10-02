@@ -106,6 +106,7 @@ class VoiceConnection {
   private drill: DrillMoment | null = null;
   private clientTurns = 0;
   private clientSpoke = false;
+  private clientInterrupted = false;
   private studentWords = 0;
 
   constructor(
@@ -174,12 +175,19 @@ class VoiceConnection {
             if (this.ws.readyState === this.ws.OPEN) this.ws.send(pcm, { binary: true });
           },
           onTranscript: (t) => this.addTranscript(t.role, t.text),
-          onInterrupted: () => this.send({ t: "interrupted" }),
+          onInterrupted: () => {
+            this.clientInterrupted = true;
+            this.send({ t: "interrupted" });
+          },
           onTurnComplete: () => {
             const spoke = this.clientSpoke;
+            const cut = this.clientInterrupted;
             this.clientSpoke = false;
+            this.clientInterrupted = false;
             if (spoke) this.armStudentPause();
-            if (this.drill && spoke) {
+            // Студент сделал паузу посреди ответа, клиент начал реагировать, студент продолжил —
+            // перебитая реплика реакцией не считается: клиент ответит, когда студент договорит.
+            if (this.drill && spoke && !(cut && this.clientTurns >= 1)) {
               this.clientTurns += 1;
               // Попытка окончена, когда после настоящего ответа студента (≥2 слов)
               // клиент отреагировал. Эхо и «угу» ответом не считаются.
