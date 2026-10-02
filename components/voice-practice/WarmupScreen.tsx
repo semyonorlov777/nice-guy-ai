@@ -72,6 +72,25 @@ export function WarmupScreen(props: {
     [props.audioBase],
   );
 
+  const loadCard = useCallback(
+    async (attempt: Attempt, lineN: number) => {
+      const form = new FormData();
+      form.append("stage", "card");
+      form.append("programSlug", props.programSlug);
+      form.append("set", props.setId);
+      form.append("n", String(lineN));
+      form.append("transcript", attempt.transcript);
+      form.append("reaction", attempt.reaction);
+      const r = await fetch("/api/practice/warmup/answer", { method: "POST", body: form }).catch(() => null);
+      const d = (await r?.json().catch(() => null)) as { got?: string; try?: string; flags?: Attempt["flags"] } | null;
+      if (!r?.ok || !d) return;
+      const patch = { got: d.got ?? "", try: d.try ?? "", flags: d.flags ?? attempt.flags };
+      setAttempts((list) => list.map((a) => (a === attempt ? { ...a, ...patch } : a)));
+      setCurrent((c) => (c && c.n === attempt.n && c.transcript === attempt.transcript ? { ...c, ...patch } : c));
+    },
+    [props.programSlug, props.setId],
+  );
+
   const send = useCallback(
     async (recording: WarmupRecording, lineN: number) => {
       setPhase("sending");
@@ -117,11 +136,12 @@ export function WarmupScreen(props: {
       setPending(null);
       setAttempts((a) => [...a, attempt]);
       setCurrent({ ...attempt, lineText: data.lineText });
-      // Сначала клиент реагирует голосом, карточка разбора — после реакции.
+      // Клиент реагирует сразу; карточка «получилось / попробуйте» готовится, пока звучит реакция.
       setPhase("playing");
       play(attempt.reaction, lineN);
+      void loadCard(attempt, lineN);
     },
-    [play, props.programSlug, props.setId],
+    [play, props.programSlug, props.setId, loadCard],
   );
 
   const onAudioEnded = useCallback(async () => {
@@ -244,7 +264,7 @@ export function WarmupScreen(props: {
                   ? rec.speaking
                     ? "Вы говорите"
                     : "Ваш ответ"
-                  : `${clientName} слушает…`}
+                  : `${clientName} думает…`}
           </p>
           {phase === "ready" && (
             <button type="button" className="vp-btn" onClick={() => listen(idx)}>
@@ -296,11 +316,11 @@ export function WarmupScreen(props: {
             <p className="vp-quote vp-quote-was">Вы: «{current.transcript}»</p>
             <div className="vp-row vp-row-stack">
               <span className="vp-ok">Получилось</span>
-              <span>{current.got}</span>
+              <span>{current.got || "Готовим подсказку…"}</span>
             </div>
             <div className="vp-row vp-row-stack">
               <span className="vp-warn">Попробуйте</span>
-              <span>{current.try}</span>
+              <span>{current.try || "…"}</span>
             </div>
             {current.firstWordMs != null && (
               <p className="vp-small vp-left">Вы начали отвечать через {seconds(current.firstWordMs)} с.</p>

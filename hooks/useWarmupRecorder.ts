@@ -5,7 +5,8 @@
 // useVoiceInput не подходит: он выбирает Web Speech API и не отдаёт аудио.
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const SILENCE_MS = 2000;
+// Сколько тишины считать концом ответа: 2 с ощущались как «она долго слушает».
+const SILENCE_MS = 1300;
 const MAX_MS = 20_000;
 const TICK_MS = 50;
 /** Минимальный порог громкости (RMS 0..1); реальный — от шума комнаты, замеренного в начале. */
