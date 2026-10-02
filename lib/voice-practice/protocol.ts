@@ -18,6 +18,11 @@ export type ServerMessage =
   | { t: "ready"; sessionId: string; secondsLeft: number; resumed: boolean }
   | { t: "state"; speaking: "client" | "student" | "idle"; secondsLeft: number; warn?: boolean }
   | { t: "interrupted" }
+  /**
+   * Звук студента дошёл до сервера (раз в секунду, пока он идёт): всего байт за это
+   * соединение и сколько из них — речь, а не тишина. По нему браузер видит, что его слышно.
+   */
+  | { t: "heard"; bytes: number; speechMs: number }
   | { t: "rotate" }
   | { t: "client_silent" }
   /** «Трудный момент»: ответ засчитан, можно продолжать разговор или идти к разбору. */

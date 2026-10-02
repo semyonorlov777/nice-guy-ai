@@ -8,6 +8,7 @@
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
 // --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
 // --until-ended  (с --moment) ждать, пока сервер сам закроет попытку, а не конца хода клиента.
+// --burst   реплики студента слать разом, а не в темпе речи (как браузер досылает звук после обрыва).
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
@@ -37,6 +38,7 @@ const JSON_OUT = arg("--json");
 const TTS_CACHE = arg("--tts-cache", "./ws-client-out/tts-cache")!;
 const TTS_ENGINE = arg("--tts", "gemini")!;
 const UNTIL_ENDED = args.includes("--until-ended");
+const BURST = args.includes("--burst");
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -99,6 +101,8 @@ async function main() {
   // и ждём конца реплики — паузы внутри реплики бывают длиннее секунды.
   let clientDone = false;
   let serverEnded = false;
+  // Подтверждения «звук дошёл» (heard): сколько пришло и самое долгое затишье между ними.
+  const heard = { count: 0, lastAt: 0, maxGapMs: 0, speechMs: 0, bytes: 0 };
   const replyOver = () =>
     UNTIL_ENDED && serverEnded
       ? true
@@ -113,6 +117,15 @@ async function main() {
         const m = JSON.parse(String(data));
         if (m.t === "state" && m.speaking === "idle") clientDone = true;
         if (m.t === "ended") serverEnded = true;
+        if (m.t === "heard") {
+          const now = Date.now();
+          if (heard.lastAt) heard.maxGapMs = Math.max(heard.maxGapMs, now - heard.lastAt);
+          heard.lastAt = now;
+          heard.count += 1;
+          heard.speechMs = m.speechMs;
+          heard.bytes = m.bytes;
+          return;
+        }
         if (m.t !== "state") console.log("  ←", JSON.stringify(m));
       }
     });
@@ -150,6 +163,7 @@ async function main() {
     clientDone = false;
     for (let o = 0; o < audio[i].length; o += 1280) {
       ws.send(audio[i].subarray(o, o + 1280));
+      if (BURST) continue;
       await sleep(40);
       if (lastAudio && !firstAudio) firstAudio = lastAudio;
     }
@@ -177,6 +191,10 @@ async function main() {
   console.log("\nРасшифровка из БД:");
   for (const tr of turns ?? []) console.log(`  ${tr.seq}. ${tr.role === "client" ? "КЛИЕНТ" : "СТУДЕНТ"}: ${tr.text}`);
   console.log("\nСессия:", JSON.stringify(fin));
+  console.log(
+    `Подтверждения heard: ${heard.count}, самое долгое затишье ${heard.maxGapMs} мс, ` +
+      `последнее: ${heard.bytes} байт, речи ${(heard.speechMs / 1000).toFixed(1)} с`,
+  );
   mkdirSync(OUT, { recursive: true });
   writeFileSync(join(OUT, "client.wav"), wavFile(Buffer.concat(clientAudio), 24000));
   console.log("звук:", join(OUT, "client.wav"));

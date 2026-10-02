@@ -26,6 +26,10 @@ const AFTER_TIME_UP_MS = 25_000;
 const FAREWELL_RE = /(до свидания|всего (хорошего|доброго)|до (встречи|следующей)|увидимся|прощайте|на сегодня (всё|все|заканчиваем))/iu;
 /** Студент молчит после реплики клиента — клиенту сигнал «психолог выдерживает паузу». */
 const STUDENT_PAUSE_MS = 8_000;
+/** Подтверждение «звук дошёл» — не чаще раза в секунду. */
+const HEARD_MS = 1_000;
+/** Порог громкости кадра (RMS 0..1), выше — речь. Тот же, что в браузере. */
+const VOICE_RMS = 0.03;
 
 interface SessionRow {
   id: string;
@@ -110,6 +114,9 @@ class VoiceConnection {
   private clientSpoke = false;
   private clientInterrupted = false;
   private studentWords = 0;
+  private rxBytes = 0;
+  private rxSpeechMs = 0;
+  private heardBytes = 0;
 
   constructor(
     private ws: WebSocket,
@@ -268,6 +275,7 @@ class VoiceConnection {
       void this.onSocketClose();
     });
     this.timers.push(setInterval(() => void this.tick(), TICK_MS));
+    this.timers.push(setInterval(() => this.ackHeard(), HEARD_MS));
     this.timers.push(setTimeout(() => this.send({ t: "rotate" }), ROTATE_AFTER_MS));
     if (this.drill && !resumed) this.engine.kick("[СИСТЕМА: начинай]");
     this.lastTickAt = Date.now();
@@ -276,7 +284,9 @@ class VoiceConnection {
   private onMessage(data: RawData, isBinary: boolean) {
     if (this.ended) return;
     if (isBinary) {
-      if (!this.paused) this.engine?.sendAudio(data as Buffer);
+      const buf = data as Buffer;
+      this.countHeard(buf);
+      if (!this.paused) this.engine?.sendAudio(buf);
       return;
     }
     let msg: ClientMessage;
@@ -287,6 +297,25 @@ class VoiceConnection {
     }
     if (msg.t === "end") void this.end("student");
     else if (msg.t === "pause") this.paused = true;
+  }
+
+  /** PCM16 16 кГц: 32 байта на миллисекунду. Речь — кадр громче порога. */
+  private countHeard(buf: Buffer) {
+    this.rxBytes += buf.length;
+    const n = buf.length >> 1;
+    if (!n) return;
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const v = buf.readInt16LE(i * 2);
+      sum += v * v;
+    }
+    if (Math.sqrt(sum / n) / 0x8000 > VOICE_RMS) this.rxSpeechMs += buf.length / 32;
+  }
+
+  private ackHeard() {
+    if (this.ended || this.rxBytes === this.heardBytes) return;
+    this.heardBytes = this.rxBytes;
+    this.send({ t: "heard", bytes: this.rxBytes, speechMs: Math.round(this.rxSpeechMs) });
   }
 
   private setSpeaking(speaking: "client" | "student" | "idle") {
