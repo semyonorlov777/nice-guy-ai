@@ -25,16 +25,20 @@ export default async function VoicePracticePage({ params }: { params: Promise<{ 
     .eq("program_id", programId)
     .order("created_at", { ascending: false })
     .limit(50);
-  const list = sessions ?? [];
 
   const db = createServiceClient();
   const [{ data: clients }, { data: modes }, reports] = await Promise.all([
     db.from("voice_clients").select("id, display_name").eq("program_id", programId),
-    db.from("program_modes").select("id, mode_templates!inner(name)").eq("program_id", programId),
+    db.from("program_modes").select("id, mode_templates!inner(name, key)").eq("program_id", programId),
     getSelfReports(supabase, user.id, programId),
   ]);
   const clientName = new Map((clients ?? []).map((c) => [c.id, c.display_name as string]));
   const modeName = new Map((modes ?? []).map((m) => [m.id, (m.mode_templates as unknown as { name: string }).name]));
+  // Попытки разминки «Первые слова» — не консультации: у них нет разбора, итог показывает сама разминка.
+  const warmupIds = new Set(
+    (modes ?? []).filter((m) => (m.mode_templates as unknown as { key: string }).key === "voice_warmup").map((m) => m.id),
+  );
+  const list = (sessions ?? []).filter((s) => !warmupIds.has(s.program_mode_id));
   const done = list.filter((s) => s.status === "ended" && s.seconds_used >= 60);
   const minutes = Math.round(done.reduce((n, s) => n + s.seconds_used, 0) / 60);
   const fmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" });
