@@ -173,3 +173,36 @@
   .vp-call { justify-content: center; gap: 40px; }
   .vp-call .vp-orb { width: 200px; height: 200px; }
 }
+
+/* Компьютер: остальные экраны практикума. Колонка читаемой ширины по центру, воздух сверху,
+   кнопки по ширине текста (не на всю колонку), короткие экраны (первый вход, карточка
+   перед звонком) — по центру по вертикали через .vp-center. Телефон не меняется. */
+@media (min-width: 900px) {
+  .vp-screen { width: 100%; padding: 56px 32px 80px; }
+  .vp-screen:not(.vp-wide) { max-width: 680px; }
+  /* Сводка куратора — своя широкая вёрстка: ширину таблицы не трогаем, только воздух сверху. */
+  .vp-screen.vp-wide { padding: 40px 16px 64px; }
+  .vp-title { font-size: 36px; margin-bottom: 16px; }
+  .vp-lead { font-size: 17px; margin-bottom: 24px; }
+  .vp-kicker { margin-bottom: 8px; }
+  .vp-screen:not(.vp-wide) .vp-card:not(.vp-chip) { padding: 18px 20px; }
+  .vp-screen .vp-btn { width: fit-content; min-width: 320px; max-width: 100%; padding: 16px 32px; }
+  .vp-screen .vp-small { text-align: left; }
+  /* Внутри разминки и звонка — центрированная стопка, как было. */
+  .vp-screen .vp-warmup .vp-btn { width: 100%; min-width: 0; max-width: 360px; }
+  .vp-screen .vp-warmup .vp-small { text-align: center; }
+  .vp-chip { padding: 14px 18px; }
+  .vp-chips { gap: 10px; margin-bottom: 8px; }
+
+  /* Хаб практикума: содержимое по центру экрана, без пустоты снизу. */
+  .hub-inner.vp-hub { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; padding-bottom: 48px; }
+
+  /* Профиль практикума: та же колонка, что у остальных экранов, тонкие разделители. */
+  .profile-screen.vp-profile { width: 100%; max-width: 680px; padding: 56px 32px 80px; }
+  .vp-profile .profile-section-gap { height: 1px; margin: 28px 0; background: var(--border-light); border: 0; }
+  .vp-profile .profile-portrait-wrap { padding-top: 0; }
+}
+/* Мышь: кликабельные карточки (клиенты, ответы анкеты, консультации в «Моей практике») откликаются на наведение. */
+@media (hover: hover) {
+  a.vp-card:hover, button.vp-card:not([aria-pressed="true"]):not([aria-checked="true"]):hover { border-color: var(--accent-border); }
+}

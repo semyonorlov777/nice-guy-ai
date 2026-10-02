@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import "@/components/voice-practice/voice-practice.css";
 import { createClient } from "@/lib/supabase";
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import {
@@ -90,7 +91,7 @@ export function ProfileScreen({
   ];
 
   return (
-    <div className="profile-screen">
+    <div className={voice ? "profile-screen vp-profile" : "profile-screen"}>
 
       {/* ═══ DEBUG BAR ═══ */}
       {debugMode && (

@@ -11,6 +11,7 @@ import { InstrumentList } from "./InstrumentList";
 import { useRouter } from "next/navigation";
 import InputBar from "@/components/InputBar/InputBar";
 import { LockIcon } from "@/components/icons/hub-icons";
+import "@/components/voice-practice/voice-practice.css";
 
 type HubState =
   | "first"
@@ -73,7 +74,7 @@ export function HubScreen({
         balance={balance}
       />
       <div className="hub-scroll">
-        <div className="hub-inner">
+        <div className={voice ? "hub-inner vp-hub" : "hub-inner"}>
           <HubHero
             title={program.title}
             author={program.author}

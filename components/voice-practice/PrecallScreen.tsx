@@ -62,7 +62,7 @@ export function PrecallScreen(props: {
   }
 
   return (
-    <div className="vp-screen">
+    <div className="vp-screen vp-center">
       <p className="vp-kicker">Учебная консультация · до {props.maxMinutes} мин</p>
       <h1 className="vp-title">{props.modeName}</h1>
       {props.modeDescription && <p className="vp-lead">{props.modeDescription}</p>}

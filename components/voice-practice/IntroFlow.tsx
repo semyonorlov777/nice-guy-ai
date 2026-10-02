@@ -54,7 +54,7 @@ export function IntroFlow({ programSlug }: { programSlug: string }) {
 
   if (step === "how") {
     return (
-      <div className="vp-screen">
+      <div className="vp-screen vp-center">
         <p className="vp-kicker">Практикум учебных консультаций</p>
         <h1 className="vp-title">Как это устроено</h1>
         <ol className="vp-card vp-list">
@@ -72,7 +72,7 @@ export function IntroFlow({ programSlug }: { programSlug: string }) {
 
   if (step === "confidence") {
     return (
-      <div className="vp-screen">
+      <div className="vp-screen vp-center">
         <p className="vp-kicker">Точка отсчёта</p>
         <h1 className="vp-title">Насколько это про вас сейчас?</h1>
         <p className="vp-lead">Это не оценка, а точка отсчёта. Через несколько консультаций сравним.</p>
@@ -103,7 +103,7 @@ export function IntroFlow({ programSlug }: { programSlug: string }) {
   };
 
   return (
-    <div className="vp-screen">
+    <div className="vp-screen vp-center">
       <p className="vp-kicker">Вопрос {step + 1} из 3</p>
       <h1 className="vp-title">{q.title}</h1>
       <div className="vp-chips" role="radiogroup" aria-label={q.title}>
