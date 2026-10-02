@@ -4024,6 +4024,11 @@ html:not(.no-transition) .app-main {
   align-items: center;
 }
 
+/* Вход в программу со своим брендом (практикум института) на компьютере — карточка по центру экрана. */
+@media (min-width: 900px) {
+  .auth-sheet-fullscreen-wrap:has(.auth-sheet-brand-name) { justify-content: center; padding-top: 40px; padding-bottom: 96px; }
+}
+
 /* Logo (fullscreen only) */
 .auth-sheet-logo {
   text-align: center;
