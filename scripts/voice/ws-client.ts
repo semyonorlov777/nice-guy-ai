@@ -7,6 +7,7 @@
 //   [--lines <файл>] [--seconds <лимит>] [--json <файл>] [--tts-cache <папка>] [--tts gemini|say]
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
 // --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
+// --client-first  клиент заговорит первым (режим без момента, например voice_closing).
 // --until-ended  (с --moment) ждать, пока сервер сам закроет попытку, а не конца хода клиента.
 // --burst   реплики студента слать разом, а не в темпе речи (как браузер досылает звук после обрыва).
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
@@ -38,6 +39,8 @@ const JSON_OUT = arg("--json");
 const TTS_CACHE = arg("--tts-cache", "./ws-client-out/tts-cache")!;
 const TTS_ENGINE = arg("--tts", "gemini")!;
 const UNTIL_ENDED = args.includes("--until-ended");
+// --client-first  клиент говорит первым и без момента («Мягкая посадка»).
+const CLIENT_FIRST = args.includes("--client-first");
 const BURST = args.includes("--burst");
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
@@ -132,7 +135,7 @@ async function main() {
   }
   wire(ws);
 
-  if (MOMENT) {
+  if (MOMENT || CLIENT_FIRST) {
     // Клиент начинает сам: ждём его реплику.
     const t0 = Date.now();
     while (Date.now() - t0 < 25000) {
