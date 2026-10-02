@@ -329,7 +329,8 @@ class VoiceConnection {
   private flushTurn() {
     const b = this.buf;
     this.buf = null;
-    if (!b || !b.text.trim()) return;
+    // Реплика из одних многоточий/знаков — это молчание модели, в расшифровку не пишем.
+    if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
     this.seq += 1;
     void this.db
       .from("voice_turns")
