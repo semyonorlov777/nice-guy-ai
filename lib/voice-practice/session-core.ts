@@ -22,6 +22,8 @@ const TICK_MS = 15_000;
 const ROTATE_AFTER_MS = 270_000;
 const MODEL_SILENCE_MS = 7_000;
 const AFTER_TIME_UP_MS = 25_000;
+/** Студент молчит после реплики клиента — клиенту сигнал «психолог выдерживает паузу». */
+const STUDENT_PAUSE_MS = 8_000;
 
 interface SessionRow {
   id: string;
@@ -95,6 +97,7 @@ class VoiceConnection {
   private buf: { role: "student" | "client"; text: string; startMs: number } | null = null;
   private timers: NodeJS.Timeout[] = [];
   private silenceTimer: NodeJS.Timeout | null = null;
+  private pauseTimer: NodeJS.Timeout | null = null;
   private signalsSent = new Set<string>();
   private usage = { prompt: 0, response: 0 };
   private sessionStartMs = 0;
@@ -171,12 +174,14 @@ class VoiceConnection {
           onTranscript: (t) => this.addTranscript(t.role, t.text),
           onInterrupted: () => this.send({ t: "interrupted" }),
           onTurnComplete: () => {
-            if (this.drill && this.clientSpoke) {
-              this.clientSpoke = false;
+            const spoke = this.clientSpoke;
+            this.clientSpoke = false;
+            if (spoke) this.armStudentPause();
+            if (this.drill && spoke) {
               this.clientTurns += 1;
-              // Попытка окончена, когда после настоящего ответа студента (≥3 слов)
+              // Попытка окончена, когда после настоящего ответа студента (≥2 слов)
               // клиент отреагировал. Эхо и «угу» ответом не считаются.
-              if (this.studentWords >= 3 && this.clientTurns >= 2) {
+              if (this.studentWords >= 2 && this.clientTurns >= 2) {
                 this.timers.push(setTimeout(() => void this.end("student"), 1500));
               }
             }
@@ -253,7 +258,21 @@ class VoiceConnection {
     this.send({ t: "state", speaking, secondsLeft: this.secondsLeft });
   }
 
+  /** Модель Live сама на тишину не отвечает: без сигнала выдержанная пауза студента повисает. */
+  private armStudentPause() {
+    if (this.pauseTimer) clearTimeout(this.pauseTimer);
+    this.pauseTimer = setTimeout(() => {
+      this.pauseTimer = null;
+      if (this.ended || this.paused) return;
+      this.engine?.kick("[СИСТЕМА: психолог молчит]");
+    }, STUDENT_PAUSE_MS);
+  }
+
   private addTranscript(role: "student" | "client", text: string) {
+    if (role === "student" && this.pauseTimer) {
+      clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+    }
     if (role === "student" && this.clientTurns >= 1) this.studentWords += text.split(/\s+/).filter(Boolean).length;
     if (this.buf && this.buf.role !== role) this.flushTurn();
     if (!this.buf) this.buf = { role, text: "", startMs: Date.now() - this.sessionStartMs };
@@ -353,6 +372,8 @@ class VoiceConnection {
   private stopTimers() {
     this.timers.forEach((t) => clearTimeout(t));
     this.timers = [];
+    if (this.pauseTimer) clearTimeout(this.pauseTimer);
+    this.pauseTimer = null;
     this.clearSilenceTimer();
   }
 

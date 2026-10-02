@@ -66,3 +66,18 @@ export function computeCounters(turns: TurnLite[]): CodeCounters {
     stage_markers: STAGE_MARKERS.filter(([, re]) => re.test(text)).map(([name]) => name),
   };
 }
+
+/**
+ * Сбои учебного клиента по расшифровке: вышел из роли, назвал себя человеком или
+ * программой, назвал телефон или службу помощи, перешёл на латиницу. Студента
+ * за это не оцениваем — такие сессии помечаются.
+ */
+export function computeClientFlags(turns: TurnLite[]): string[] {
+  const text = turns.filter((t) => t.role === "client").map((t) => t.text).join("\n").toLowerCase();
+  const flags: string[] = [];
+  if (/я (ж[иы]вой|обычный|настоящий|реальный) человек|я не (программа|робот|ии)/iu.test(text)) flags.push("client_claims_human");
+  if (/(искусственн[а-я]* интеллект|нейросет|языков[а-я]* модел|ассистент|gemini|google)/iu.test(text)) flags.push("client_ai_words");
+  if (/(\b8[\s-]?800|телефон довери|горяч[а-я]* лини|112)/iu.test(text)) flags.push("client_phone_leak");
+  if (/[a-z]{4,}/i.test(text.replace(/[^a-z\s]/gi, " "))) flags.push("client_latin");
+  return flags;
+}

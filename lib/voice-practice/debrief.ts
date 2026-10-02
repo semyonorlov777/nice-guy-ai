@@ -3,9 +3,11 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
-import { computeCounters, type TurnLite } from "./counters";
+import { computeClientFlags, computeCounters, type TurnLite } from "./counters";
 
 const MODEL = process.env.VOICE_DEBRIEF_MODEL || "gemini-3.8-flash";
+/** Запасные модели: основную Google временами часами отдаёт с 503 (перегрузка). */
+const FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"];
 const RUBRIC_VERSION = "2026-10-01.1";
 const MIN_STUDENT_TURNS = 2;
 
@@ -64,6 +66,10 @@ async function runDebrief(sessionId: string): Promise<void> {
       .order("seq");
     const turns = (turnsRaw ?? []) as TurnLite[];
     const counters = computeCounters(turns);
+    const clientFlags = computeClientFlags(turns);
+    if (clientFlags.length) {
+      await db.from("voice_sessions").update({ integrity_flags: clientFlags }).eq("id", sessionId);
+    }
 
     if (!s || counters.student_turns < (s.kind === "drill" ? 1 : MIN_STUDENT_TURNS)) {
       await db
@@ -95,7 +101,7 @@ async function runDebrief(sessionId: string): Promise<void> {
       `РЕЖИМ: ${s.kind === "drill" ? "drill" : "full"} («${mt?.name ?? ""}»).`,
       `КАРТОЧКА ПЕРСОНАЖА (для оценщика, студент её не видел):\nУровень ${client?.level ?? "?"}. ${client?.display_name ?? ""}. ${client?.summary_public ?? ""}\nСкрытый слой: ${JSON.stringify(client?.hidden_layer ?? [])}\nОписание роли:\n${client?.prompt ?? ""}`,
       `СЧЁТЧИКИ ПРОГРАММЫ: ${JSON.stringify(counters)}`,
-      `ОТМЕТКИ СБОЕВ КЛИЕНТА: ${JSON.stringify(s.integrity_flags ?? [])}`,
+      `ОТМЕТКИ СБОЕВ КЛИЕНТА: ${JSON.stringify(clientFlags)}`,
       `УВЕРЕННОСТЬ СТУДЕНТА ДО СЕССИИ: null`,
       `РАСШИФРОВКА (распознана автоматически, возможны ошибки распознавания — не вини за них студента):\n${labeled.map((t) => `[${t.at} ${t.id}] ${t.text}`).join("\n")}`,
       `ФОРМА ОТВЕТА (JSON, поля как в примере; лишних полей не добавляй):\n${OUTPUT_SHAPE}`,
@@ -104,9 +110,10 @@ async function runDebrief(sessionId: string): Promise<void> {
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
     // Длинная встреча (40+ реплик) не помещалась в 8k вместе с размышлениями модели —
     // ответ обрывался посреди JSON. Запас больше, размышления короче, одна повторная попытка.
-    const ask = () =>
+    let usedModel = MODEL;
+    const askOnce = (model: string) =>
       ai.models.generateContent({
-        model: MODEL,
+        model,
         contents: [{ role: "user", parts: [{ text: userMessage }] }],
         config: {
           systemInstruction: rubric,
@@ -115,6 +122,20 @@ async function runDebrief(sessionId: string): Promise<void> {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         },
       });
+    const ask = async () => {
+      let lastErr: unknown;
+      for (const model of [MODEL, ...FALLBACK_MODELS]) {
+        try {
+          const r = await askOnce(model);
+          usedModel = model;
+          return r;
+        } catch (e) {
+          lastErr = e;
+          console.error("[voice-debrief] model failed", model, String(e).slice(0, 200));
+        }
+      }
+      throw lastErr;
+    };
     let resp = await ask();
     let parsed: unknown;
     try {
@@ -148,7 +169,7 @@ async function runDebrief(sessionId: string): Promise<void> {
         status: "ready",
         is_fallback: false,
         rubric_version: RUBRIC_VERSION,
-        model: MODEL,
+        model: usedModel,
         result,
         counters,
         strength: fb.strength ? { ...fb.strength, verified: strengthOk } : null,
