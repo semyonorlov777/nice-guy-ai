@@ -23,8 +23,11 @@ export type CallPhase =
   | "ended"
   | "error";
 
-/** Доходит ли звук студента: ok — подтверждения идут, lost — нет, muted — микрофон ждёт, пока клиент договорит. */
-export type MicLink = "ok" | "lost" | "muted";
+/**
+ * Доходит ли звук студента: ok — подтверждения идут, lost — нет (связь), nomic — микрофон не даёт
+ * звука (выключен в системе, сменилось устройство), muted — микрофон ждёт, пока клиент договорит.
+ */
+export type MicLink = "ok" | "lost" | "nomic" | "muted";
 
 export interface CallState {
   phase: CallPhase;
@@ -485,10 +488,18 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
       // Микрофон не выдаёт кадров (звук браузера приостановлен) — будим и не говорим «Вас слышно».
       const micIdle = now - lastFrameAtRef.current > 1500;
       if (micIdle) void ctxRef.current?.resume().catch(() => undefined);
-      const stalled = micIdle || Math.max(unacked, pend ? now - pend.at : 0) > STALL_MS;
+      const stalled = Math.max(unacked, pend ? now - pend.at : 0) > STALL_MS;
       const link: MicLink =
-        phase === "reconnecting" || stalled ? "lost" : halfDuplex && now < playingUntilRef.current ? "muted" : "ok";
-      if (link === "lost") wasLostRef.current = true;
+        phase === "reconnecting" || stalled
+          ? "lost"
+          : micIdle
+            ? "nomic"
+            : halfDuplex && now < playingUntilRef.current
+              ? "muted"
+              : "ok";
+      // Без микрофона сказанное не записалось — после возврата тоже попросим повторить.
+      if (link === "nomic") droppedRef.current = true;
+      if (link === "lost" || link === "nomic") wasLostRef.current = true;
       else if (wasLostRef.current) {
         wasLostRef.current = false;
         recoveredRef.current = { kind: droppedRef.current ? "repeat" : "ok", until: now + RECOVERED_MS };

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
-import { VoiceOrb, LOST_TEXT, REPEAT_TEXT } from "./VoiceOrb";
+import { VoiceOrb, LOST_TEXT, NOMIC_TEXT, REPEAT_TEXT } from "./VoiceOrb";
 import "./voice-practice.css";
 
 type Reaction = "warm" | "neutral" | "cold";
@@ -187,7 +187,9 @@ export function WarmupScreen(props: { programSlug: string; modeKey: string; mome
           ? "Разминка на паузе."
           : state.phase === "ending"
             ? "Завершаем…"
-            : state.recovered === "repeat"
+            : state.link === "nomic"
+              ? NOMIC_TEXT
+              : state.recovered === "repeat"
               ? REPEAT_TEXT
               : state.clientSilent
               ? `${clientName} молчит. Повторите последнюю фразу.`

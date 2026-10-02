@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVoiceSession } from "@/hooks/useVoiceSession";
-import { VoiceOrb, LOST_TEXT, REPEAT_TEXT } from "./VoiceOrb";
+import { VoiceOrb, LOST_TEXT, NOMIC_TEXT, REPEAT_TEXT } from "./VoiceOrb";
 import "./voice-practice.css";
 
 function mmss(sec: number | null): string {
@@ -48,7 +48,9 @@ export function CallScreen(props: {
               ? "Завершаем…"
               : phase === "error"
                 ? state.error
-                : state.recovered === "repeat"
+                : state.link === "nomic"
+                  ? NOMIC_TEXT
+                  : state.recovered === "repeat"
                   ? REPEAT_TEXT
                   : state.clientSilent
                   ? "Клиент молчит. Повторите последнюю фразу."
@@ -57,7 +59,7 @@ export function CallScreen(props: {
                     : state.speaking === "student"
                       ? "Вы говорите"
                       : state.recovered === "ok"
-                        ? "Связь восстановлена."
+                        ? "Вас снова слышно."
                         : props.drill && state.attemptDone
                         ? "Ответ засчитан. Можете продолжить разговор с клиентом или перейти к разбору."
                         : props.drill
