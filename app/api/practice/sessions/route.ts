@@ -72,6 +72,23 @@ export async function POST(req: Request) {
     return apiError("Учебный клиент недоступен в этом режиме", 404);
   }
 
+  // Брошенные сессии (закрыли вкладку посреди звонка): нет признаков жизни 3 минуты —
+  // закрываем и ставим разбор по тому, что успели сказать. Иначе они навсегда
+  // занимают место «одной живой сессии» и не получают разбора.
+  const stale = new Date(Date.now() - 3 * 60_000).toISOString();
+  const { data: abandoned } = await db
+    .from("voice_sessions")
+    .update({ status: "ended", end_reason: "relay_lost_client", ended_at: new Date().toISOString(), conn_id: null })
+    .eq("user_id", user.id)
+    .in("status", LIVE)
+    .or(`last_heartbeat_at.lt.${stale},and(last_heartbeat_at.is.null,created_at.lt.${stale})`)
+    .select("id");
+  if (abandoned?.length) {
+    await db
+      .from("voice_debriefs")
+      .upsert(abandoned.map((a) => ({ session_id: a.id, status: "queued" })), { onConflict: "session_id", ignoreDuplicates: true });
+  }
+
   const { data: live } = await db
     .from("voice_sessions")
     .select("id")
