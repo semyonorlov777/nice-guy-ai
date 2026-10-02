@@ -7,6 +7,7 @@
 //   [--lines <файл>] [--seconds <лимит>] [--json <файл>] [--tts-cache <папка>] [--tts gemini|say]
 // --rotate  после первой реплики переподключиться по новому билету (проверка продолжения разговора).
 // --lines   свои реплики студента: по одной в строке, «#» — комментарий, «[тишина N]» — молчать N секунд.
+// --until-ended  (с --moment) ждать, пока сервер сам закроет попытку, а не конца хода клиента.
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
@@ -35,6 +36,7 @@ const SECONDS = arg("--seconds");
 const JSON_OUT = arg("--json");
 const TTS_CACHE = arg("--tts-cache", "./ws-client-out/tts-cache")!;
 const TTS_ENGINE = arg("--tts", "gemini")!;
+const UNTIL_ENDED = args.includes("--until-ended");
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -96,7 +98,11 @@ async function main() {
   // Сервер шлёт state idle, когда клиент закончил ход (turnComplete): по нему
   // и ждём конца реплики — паузы внутри реплики бывают длиннее секунды.
   let clientDone = false;
-  const replyOver = () => (clientDone && lastAudio > 0) || (lastAudio > 0 && Date.now() - lastAudio > 4000);
+  let serverEnded = false;
+  const replyOver = () =>
+    UNTIL_ENDED && serverEnded
+      ? true
+      : (clientDone && lastAudio > 0 && !UNTIL_ENDED) || (lastAudio > 0 && Date.now() - lastAudio > (UNTIL_ENDED ? 8000 : 4000));
   function wire(sock: WebSocket) {
     sock.on("message", (data, isBinary) => {
       if (isBinary) {
@@ -106,6 +112,7 @@ async function main() {
       } else {
         const m = JSON.parse(String(data));
         if (m.t === "state" && m.speaking === "idle") clientDone = true;
+        if (m.t === "ended") serverEnded = true;
         if (m.t !== "state") console.log("  ←", JSON.stringify(m));
       }
     });
@@ -118,7 +125,7 @@ async function main() {
     while (Date.now() - t0 < 25000) {
       ws.send(quietNoise(40, 16000));
       await sleep(40);
-      if (replyOver()) break;
+      if ((clientDone && lastAudio > 0) || (lastAudio > 0 && Date.now() - lastAudio > 4000)) break;
     }
     console.log(`  (реплика клиента: ${clientAudio.length} кадров)`);
     steps.push({ student: "(клиент начинает)", clientSec: clientBytes / 2 / CLIENT_RATE, latencyMs: null });
