@@ -20,6 +20,7 @@ export default async function WarmupPage({ params }: { params: Promise<{ slug: s
 
   const mode = await getVoiceModeByTool(programId, "warmup");
   if (!mode || mode.comingSoon || !mode.moments.length) redirect(`/program/${slug}/hub`);
+  // display_name — «Вера, 34 года»; в репликах разминки нужно только имя.
   const client = mode.clients.find((c) => c.slug === mode.moments[0].clientSlug);
 
   // Тексты реплик и условия реакции на клиент не уходят — только номера моментов.
@@ -28,7 +29,7 @@ export default async function WarmupPage({ params }: { params: Promise<{ slug: s
       programSlug={slug}
       modeKey={mode.key}
       momentIds={mode.moments.map((m) => m.id)}
-      clientName={client?.displayName ?? "Клиент"}
+      clientName={client?.displayName.split(",")[0] ?? "Клиент"}
     />
   );
 }
