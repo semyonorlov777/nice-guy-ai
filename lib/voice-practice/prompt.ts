@@ -1,7 +1,7 @@
 // Сборка системной инструкции учебного клиента. Тексты — из закрытых таблиц
 // (voice_modes.frame_prompt, voice_clients.prompt) и app_config.voice_global_rules.
 
-const LANG_LOCK = "ВСЕГДА ГОВОРИ ТОЛЬКО ПО-РУССКИ. RESPOND IN RUSSIAN. YOU MUST RESPOND UNMISTAKABLY IN RUSSIAN.";
+export const LANG_LOCK = "ВСЕГДА ГОВОРИ ТОЛЬКО ПО-РУССКИ. RESPOND IN RUSSIAN. YOU MUST RESPOND UNMISTAKABLY IN RUSSIAN.";
 
 export function buildInstruction(parts: {
   globalRules: string;

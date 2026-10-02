@@ -11,6 +11,8 @@
 // --until-ended  (с --moment) ждать, пока сервер сам закроет попытку, а не конца хода клиента.
 // --burst   реплики студента слать разом, а не в темпе речи (как браузер досылает звук после обрыва).
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
+// --debrief <id встречи>  голосовой разбор этой встречи (встреча — того же --user): голоса говорят первыми,
+//           реплики студента — после каждой их реплики; передача слова между голосами — через rotate.
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import WebSocket from "ws";
@@ -19,6 +21,8 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { newTicket } from "../../lib/voice-practice/ticket";
+import { createOrResumeDebrief } from "../../lib/voice-practice/debrief-voice";
+import { claimDebrief } from "../../lib/voice-practice/debrief";
 import { quietNoise, resamplePcm16, wavFile } from "../../lib/voice-practice/audio/pcm";
 
 const args = process.argv.slice(2);
@@ -42,6 +46,7 @@ const UNTIL_ENDED = args.includes("--until-ended");
 // --client-first  клиент говорит первым и без момента («Мягкая посадка»).
 const CLIENT_FIRST = args.includes("--client-first");
 const BURST = args.includes("--burst");
+const DEBRIEF = arg("--debrief");
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -49,9 +54,23 @@ const FULL_LINES = [
   "Похоже, вы очень устали за эти два месяца. Чего вы ожидаете от нашего разговора?",
   "У нас сегодня около сорока минут, и к концу я хотела бы понять, с чем именно вы хотите работать.",
 ];
+// Разбор: реплики по этапам («## 1» — о себе, «## 2» — клиенту вне роли, «## 3» — наблюдателю).
+const DEBRIEF_LINES = [
+  "## 1",
+  "Немного волновалась, но в целом нормально.",
+  "Мне кажется, получилось подвести итог. А труднее всего было, когда она сказала, что муж говорит, что она выдумывает. Я не знала, что ответить.",
+  "Растерянность, наверное.",
+  "## 2",
+  "Да. Что бы вам помогло, когда я посоветовала побыть одной?",
+  "Спасибо, понятно.",
+  "## 3",
+  "Я хотела её поддержать, дать что-то полезное.",
+  "Вы так устали, а ещё и вините себя за то, что срываетесь. Это очень тяжело.",
+  "Сначала откликаться на чувства клиента, а советы потом.",
+];
 const LINES = LINES_FILE
   ? readFileSync(LINES_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
-  : MOMENT ? DRILL_LINES : FULL_LINES;
+  : DEBRIEF ? DEBRIEF_LINES : MOMENT ? DRILL_LINES : FULL_LINES;
 const silenceOf = (line: string) => Number(/^\[тишина (\d+)\]$/.exec(line)?.[1] ?? 0);
 const CLIENT_RATE = 24000;
 
@@ -65,7 +84,8 @@ async function main() {
   // Озвучка до создания сессии; кэш на диске — у TTS лимит 10 запросов в минуту.
   console.log("озвучиваю реплики…");
   const audio: Buffer[] = [];
-  for (const text of LINES) audio.push(silenceOf(text) ? Buffer.alloc(0) : await tts(ai, text));
+  for (const text of LINES) audio.push(silenceOf(text) || text.startsWith("## ") ? Buffer.alloc(0) : await tts(ai, text));
+  if (DEBRIEF) return runDebrief(db, DEBRIEF, audio);
 
   const { data: pm } = await db
     .from("program_modes")
@@ -215,6 +235,142 @@ async function main() {
     writeFileSync(JSON_OUT, JSON.stringify({ sessionId: s.id, mode: MODE, client: CLIENT, moment: MOMENT ?? null, steps, turns, session: fin }, null, 2));
     console.log("итог:", JSON_OUT);
   }
+  process.exit(0);
+}
+
+/**
+ * Голосовой разбор встречи: голоса говорят первыми; после каждой их реплики (когда она «доиграла»)
+ * бот говорит следующую свою. Передача слова: сервер шлёт handover и rotate с билетом — бот
+ * переподключается и ждёт реплику следующего голоса.
+ */
+async function runDebrief(db: ReturnType<typeof createClient>, parentId: string, audio: Buffer[]) {
+  // Текстовый разбор встречи считается в фоне, пока студент говорит о себе (как в браузере).
+  const run = await claimDebrief(parentId);
+  const notesT0 = Date.now();
+  if (run) void run().then(() => console.log(`  (текстовый разбор встречи готов за ${Math.round((Date.now() - notesT0) / 1000)} с)`));
+  const r = await createOrResumeDebrief(db as never, USER!, parentId);
+  if (!r.ok) throw new Error(`разбор недоступен: ${r.reason}`);
+  console.log("разбор", r.sessionId, r.resumed ? "(продолжение)" : "");
+  const t0 = Date.now();
+  const at = () => `${((Date.now() - t0) / 1000).toFixed(1)}с`;
+  const aiAudio: Buffer[] = [];
+  let ws = await connect(r.ticket);
+  let replyStartAt = 0;
+  let replyBytes = 0;
+  let aiDone = false;
+  let ended = false;
+  let handover = false;
+  let rotateAt = 0;
+  let curSeg = 1;
+  const marks: string[] = [];
+  // Реплики по этапам: у каждого этапа своя очередь (голоса могут задать лишний вопрос — бот не сбивается).
+  const queues: Record<number, number[]> = { 1: [], 2: [], 3: [] };
+  let sec = 1;
+  LINES.forEach((l, i) => {
+    const m = /^## (\d)/.exec(l);
+    if (m) sec = Number(m[1]);
+    else queues[sec].push(i);
+  });
+  const playedOut = () => replyStartAt > 0 && Date.now() >= replyStartAt + replyBytes / 48 + 600;
+  const wire = (sock: WebSocket) => {
+    sock.on("message", (data, isBinary) => {
+      if (sock !== ws) return;
+      if (isBinary) {
+        aiAudio.push(data as Buffer);
+        if (!replyStartAt) {
+          replyStartAt = Date.now();
+          if (rotateAt) {
+            marks.push(`переход: ${Date.now() - rotateAt} мс от rotate до первого звука`);
+            rotateAt = 0;
+          }
+        }
+        replyBytes += (data as Buffer).length;
+        return;
+      }
+      const m = JSON.parse(String(data));
+      if (m.t === "heard") return;
+      if (m.t === "state") {
+        if (m.speaking === "idle" && replyStartAt) aiDone = true;
+        return;
+      }
+      console.log(`  ${at()} ←`, JSON.stringify(m));
+      if (m.t === "ended") ended = true;
+      if (m.t === "handover") handover = true;
+      if (m.t === "speaker") curSeg = m.segment;
+      if (m.t === "rotate") {
+        rotateAt = Date.now();
+        void (async () => {
+          const old = sock;
+          ws = await connect(m.ticket);
+          wire(ws);
+          old.close();
+        })();
+      }
+    });
+  };
+  wire(ws);
+  const tick = async () => {
+    if (ws.readyState === ws.OPEN) ws.send(quietNoise(40, 16000));
+    await sleep(40);
+  };
+  /** Дождаться, пока реплика голоса доиграет; после передачи слова — реплику следующего голоса. */
+  const waitAi = async (limitMs: number) => {
+    const s0 = Date.now();
+    while (Date.now() - s0 < limitMs && !ended) {
+      await tick();
+      if (aiDone && playedOut()) {
+        // Передача слова приходит чуть позже конца реплики.
+        for (let k = 0; k < 20; k++) await tick();
+        aiDone = false;
+        replyStartAt = 0;
+        replyBytes = 0;
+        if (handover) {
+          handover = false;
+          continue;
+        }
+        return;
+      }
+    }
+  };
+  while (!ended) {
+    await waitAi(60_000);
+    if (ended) break;
+    const i = queues[curSeg]?.shift();
+    if (i === undefined) {
+      // Реплики этапа кончились — молчим до следующей реплики голоса.
+      console.log(`  ${at()} → (молчу)`);
+      const s0 = Date.now();
+      while (!ended && !replyStartAt && Date.now() - s0 < 40_000) await tick();
+      if (!replyStartAt) break;
+      continue;
+    }
+    console.log(`  ${at()} → ${LINES[i]}`);
+    const hush = silenceOf(LINES[i]) * 1000;
+    if (hush) {
+      const s0 = Date.now();
+      while (Date.now() - s0 < hush && !ended && !replyStartAt) await tick();
+      continue;
+    }
+    for (let o = 0; o < audio[i].length; o += 1280) {
+      if (ws.readyState === ws.OPEN) ws.send(audio[i].subarray(o, o + 1280));
+      await sleep(40);
+    }
+  }
+  // Реплики кончились — молчим и ждём, пока разбор закончится сам.
+  const s0 = Date.now();
+  while (!ended && Date.now() - s0 < 150_000) await tick();
+  await sleep(1500);
+  const { data: turns } = await db.from("voice_turns").select("seq, role, text, segment").eq("session_id", r.sessionId).order("seq");
+  const { data: fin } = await db.from("voice_sessions").select("status, end_reason, seconds_used, reconnects, usage, script_state").eq("id", r.sessionId).single();
+  const who: Record<string, string> = { student: "СТУДЕНТ", client: "КЛИЕНТ ВНЕ РОЛИ", observer: "НАБЛЮДАТЕЛЬ" };
+  console.log("\nРасшифровка разбора из БД:");
+  for (const tr of turns ?? []) console.log(`  ${tr.segment}.${tr.seq} ${who[tr.role as string] ?? tr.role}: ${tr.text}`);
+  console.log("\nСессия:", JSON.stringify(fin));
+  for (const m of marks) console.log(" ", m);
+  mkdirSync(OUT, { recursive: true });
+  writeFileSync(join(OUT, "debrief.wav"), wavFile(Buffer.concat(aiAudio), 24000));
+  console.log("звук:", join(OUT, "debrief.wav"));
+  if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify({ sessionId: r.sessionId, parentId, turns, session: fin, marks }, null, 2));
   process.exit(0);
 }
 

@@ -80,6 +80,8 @@ export interface VoiceSessionOptions {
   onVoice?: () => void;
   /** Голос клиента зазвучал / затих в динамике. */
   onPlaying?: (playing: boolean) => void;
+  /** Каждое служебное сообщение текущего соединения (голосовой разбор: кто говорит). */
+  onMessage?: (m: ServerMessage) => void;
 }
 
 export function useVoiceSession(sessionId: string, onEnded: () => void, opts: VoiceSessionOptions = {}) {
@@ -133,11 +135,13 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
   const onEndedRef = useRef(onEnded);
   const onVoiceRef = useRef(opts.onVoice);
   const onPlayingRef = useRef(opts.onPlaying);
+  const onMessageRef = useRef(opts.onMessage);
   useEffect(() => {
     onEndedRef.current = onEnded;
     onVoiceRef.current = opts.onVoice;
     onPlayingRef.current = opts.onPlaying;
-  }, [onEnded, opts.onVoice, opts.onPlaying]);
+    onMessageRef.current = opts.onMessage;
+  }, [onEnded, opts.onVoice, opts.onPlaying, opts.onMessage]);
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
@@ -227,7 +231,8 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
         return;
       }
       const proto = location.protocol === "https:" ? "wss" : "ws";
-      const ws = new WebSocket(`${proto}://${location.host}/api/practice/ws`);
+      // Локальная проверка: Next в разработке WebSocket не держит — свой сервер (scripts/voice/local-relay.ts).
+      const ws = new WebSocket(process.env.NEXT_PUBLIC_VOICE_WS_URL || `${proto}://${location.host}/api/practice/ws`);
       ws.binaryType = "arraybuffer";
       const prev = wsRef.current;
       wsRef.current = ws;
@@ -243,6 +248,7 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
         // Старое соединение живёт до «ready» нового и ещё может прислать «продолжается в другом окне»
         // (новое уже забрало сессию), «ended» или «rotate» — к текущему разговору это не относится.
         if (ws !== wsRef.current && (m.t === "error" || m.t === "ended" || m.t === "rotate")) return;
+        onMessageRef.current?.(m);
         switch (m.t) {
           case "ready": {
             reconnectsRef.current = 0;
@@ -283,6 +289,8 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: Vo
           case "rotate":
             if (!rotating) {
               rotating = true;
+              // Билет в самом сообщении — без лишнего запроса (передача слова в разборе).
+              if (m.ticket) ticketRef.current = m.ticket;
               void reopenRef.current(true);
             }
             break;

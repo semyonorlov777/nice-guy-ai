@@ -10,7 +10,8 @@ const cspDirectives = [
   "img-src 'self' data: blob: *.yandex.ru *.yandex.net cdn.litres.ru imo10.labirint.ru lh3.googleusercontent.com *.googleusercontent.com *.cdn-telegram.org",
   "font-src 'self'",
   "worker-src 'self' blob:",
-  "connect-src 'self' *.supabase.co generativelanguage.googleapis.com oauth.telegram.org *.sentry.io",
+  // Локальная проверка голоса: адрес своего сервера звонка (на проде переменная не задана).
+  `connect-src 'self' *.supabase.co generativelanguage.googleapis.com oauth.telegram.org *.sentry.io${process.env.NEXT_PUBLIC_VOICE_WS_URL ? ` ${new URL(process.env.NEXT_PUBLIC_VOICE_WS_URL).origin}` : ""}`,
   "frame-src oauth.telegram.org oauth.yandex.ru",
   "object-src 'none'",
   "base-uri 'self'",

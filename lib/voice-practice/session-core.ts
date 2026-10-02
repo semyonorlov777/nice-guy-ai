@@ -11,6 +11,7 @@ import { createEngine } from "./engine";
 import type { HistoryTurn, VoiceEngine } from "./engine/types";
 import { EngineUnavailableError } from "./engine/types";
 import { buildInstruction } from "./prompt";
+import { DebriefConnection } from "./debrief-connection";
 import { hashTicket } from "./ticket";
 import type { ClientMessage, EndReason, ErrorCode, ServerMessage } from "./protocol";
 
@@ -103,6 +104,8 @@ export async function runVoiceSession(ws: WebSocket): Promise<void> {
   if (!session) return fail("ticket_invalid", "Билет недействителен — обновите страницу");
 
   const s = session as SessionRow & { conn_id: string };
+  // Голосовой разбор встречи — свой сценарий из трёх голосов (lib/voice-practice/debrief-connection.ts).
+  if (s.kind === "debrief") return new DebriefConnection(ws, db, s, send).start();
   const conn = new VoiceConnection(ws, db, s, send);
   await conn.start();
 }
