@@ -6,7 +6,7 @@ import { apiError, requireAuth } from "@/lib/api-helpers";
 import { claimDebrief } from "@/lib/voice-practice/debrief";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 150; // разбор с повторной попыткой при несошедшихся цитатах
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
