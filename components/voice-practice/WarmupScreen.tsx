@@ -295,11 +295,11 @@ export function WarmupScreen(props: { programSlug: string; modeKey: string; mome
               ) : (
                 <>
                   <div className="vp-row vp-row-stack">
-                    <span className="vp-ok">Получилось</span>
+                    <span className="vp-ok">Сработало</span>
                     <span>{card.got}</span>
                   </div>
                   <div className="vp-row vp-row-stack">
-                    <span className="vp-warn">Попробуйте</span>
+                    <span className="vp-warn">Попробуйте иначе</span>
                     <span>{card.try}</span>
                   </div>
                 </>

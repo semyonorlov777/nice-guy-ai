@@ -2,59 +2,18 @@
 // Вера сказала реплику, студент ответил, Вера отреагировала голосом. Здесь — только карточка
 // «получилось / попробуйте» по расшифровке из voice_turns, без аудио (~1 с).
 // Условия реакции и рубрика — app_config.voice_warmup_lines (тексты вне git).
-import { lowThinking, withModelFallback } from "@/lib/voice-practice/models";
-import { GoogleGenAI, Type } from "@google/genai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { apiError, requireAuth } from "@/lib/api-helpers";
 import { createRateLimit } from "@/lib/rate-limit";
 import { hasVoiceAccess } from "@/lib/queries/voice";
-import { DEFAULT_WARMUP_SET, getWarmupConfig, type WarmupReaction } from "@/lib/voice-practice/warmup";
+import { DEFAULT_WARMUP_SET, getWarmupConfig, splitAttempt, warmupVerdict, type WarmupTurn } from "@/lib/voice-practice/warmup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-// 2.5-flash отвечает за ~1 с и реже перегружен, чем 3.8-flash.
-const MODEL = process.env.VOICE_WARMUP_MODEL || "gemini-2.5-flash";
 const limiter = createRateLimit({ windowMs: 60_000, max: 20 });
 /** Реплика студента пишется в voice_turns без ожидания — если её ещё нет, читаем ещё раз. */
 const TURNS_RETRY_MS = 800;
-
-const SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    reaction: { type: Type.STRING, enum: ["warm", "neutral", "cold"] },
-    got: { type: Type.STRING },
-    try: { type: Type.STRING },
-    reflection: { type: Type.BOOLEAN },
-    open_q: { type: Type.BOOLEAN },
-    why: { type: Type.BOOLEAN },
-    advice: { type: Type.BOOLEAN },
-  },
-  required: ["reaction", "got", "try", "reflection", "open_q", "why", "advice"],
-};
-
-interface Verdict {
-  reaction: WarmupReaction;
-  got: string;
-  try: string;
-  reflection: boolean;
-  open_q: boolean;
-  why: boolean;
-  advice: boolean;
-}
-
-type Turn = { seq: number; role: "student" | "client"; text: string };
-
-/** Ответ студента — всё, что он сказал после первой реплики клиента; реакция — что клиент сказал после ответа. */
-function splitAttempt(turns: Turn[]): { answer: string; reply: string } {
-  const first = turns.findIndex((t) => t.role === "client");
-  const after = first < 0 ? [] : turns.slice(first + 1);
-  const firstStudent = after.findIndex((t) => t.role === "student");
-  if (firstStudent < 0) return { answer: "", reply: "" };
-  const rest = after.slice(firstStudent);
-  const join = (role: Turn["role"]) => rest.filter((t) => t.role === role).map((t) => t.text).join(" ").trim();
-  return { answer: join("student"), reply: join("client") };
-}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -79,7 +38,7 @@ export async function POST(req: Request) {
   }
 
   const loadTurns = async () =>
-    ((await db.from("voice_turns").select("seq, role, text").eq("session_id", s.id).order("seq")).data ?? []) as Turn[];
+    ((await db.from("voice_turns").select("seq, role, text").eq("session_id", s.id).order("seq")).data ?? []) as WarmupTurn[];
   const [{ data: mode }, cfg, firstTurns] = await Promise.all([
     db.from("voice_modes").select("drill_moments").eq("program_mode_id", s.program_mode_id).maybeSingle(),
     getWarmupConfig(),
@@ -100,47 +59,16 @@ export async function POST(req: Request) {
     return Response.json({ speech: false, lineText: line.line });
   }
 
-  const task = [
-    `Учебный клиент: ${set.client_name}. Что тренируем на этой реплике: ${line.focus}.`,
-    `Реплика клиента: «${line.line}»`,
-    `Реакция warm, если: ${line.warm_if}`,
-    `Реакция neutral, если: ${line.neutral_if}`,
-    `Реакция cold, если: ${line.cold_if}`,
-    `Пример хорошего ответа (для ориентира, студенту дословно не повторять): «${line.example}»`,
-    `Ответ студента (расшифровка живой речи, возможны ошибки распознавания): «${answer}»`,
-    reply ? `Клиент на это ответил голосом: «${reply}»` : "Клиент на ответ не отреагировал.",
-    "Аудио нет — оценивай по тексту. reaction — как клиент отреагировал на самом деле, по его ответу и условиям выше.",
-    "Верни JSON по схеме.",
-  ].join("\n");
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
     const t0 = Date.now();
-    const { result: r } = await withModelFallback(
-      MODEL,
-      (model) =>
-        ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: task }] }],
-          config: {
-            systemInstruction: cfg.rubric,
-            responseMimeType: "application/json",
-            responseSchema: SCHEMA,
-            maxOutputTokens: 1024,
-            thinkingConfig: lowThinking(model),
-          },
-        }),
-      "warmup",
-    );
+    const v = await warmupVerdict(cfg.rubric, set.client_name, line, answer, reply);
     console.log("[warmup] card", { modelMs: Date.now() - t0 });
-    const v = JSON.parse(r.text ?? "") as Verdict;
-    const reaction: WarmupReaction = ["warm", "neutral", "cold"].includes(v.reaction) ? v.reaction : "neutral";
     return Response.json({
       speech: true,
       transcript: answer,
       clientReply: reply,
       lineText: line.line,
-      reaction,
+      reaction: v.reaction,
       got: v.got,
       try: v.try,
       flags: { reflection: !!v.reflection, openQ: !!v.open_q, why: !!v.why, advice: !!v.advice },
