@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { requireProgramFeature } from "@/lib/queries/program";
-import { SKILLS, isCurator, loadCuratorBoard, type CuratorFlag, type CuratorStudent, type SkillPair } from "@/lib/voice-practice/curator";
+import { SKILLS, isCurator, loadCuratorBoard, type CuratorDebrief, type CuratorFlag, type CuratorStudent, type SkillPair } from "@/lib/voice-practice/curator";
 import "@/components/voice-practice/voice-practice.css";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +125,7 @@ function StudentCard({ st, slug, viewerId }: { st: CuratorStudent; slug: string;
               {d.fix.alternative ? <span className="vp-cur-alt"> → «{d.fix.alternative}»</span> : null}
             </p>
           ) : null}
+          {d.voice ? <VoiceReflection v={d.voice} /> : null}
           {d.attention.length ? (
             <ul className="vp-cur-att">
               {d.attention.map((a) => (
@@ -259,6 +260,34 @@ export default async function CuratorPage({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+const REFLECTION: Record<"self" | "prompted" | "none" | "skipped", string> = {
+  self: "студент разобрал встречу сам",
+  prompted: "о себе — после подсказки",
+  none: "о себе не сказал",
+  skipped: "разбор голосом пропущен, прочитан текстом",
+};
+
+/** Голосовой разбор «как в тройке»: самооценка и вывод студента его словами. */
+function VoiceReflection({ v }: { v: NonNullable<CuratorDebrief["voice"]> }) {
+  return (
+    <div className="vp-cur-voice">
+      <p className="vp-cur-q">
+        <span className="vp-cur-voice-k">Разбор голосом:</span> {REFLECTION[v.level]}
+      </p>
+      {v.self ? (
+        <p className="vp-cur-q">
+          <span className="vp-cur-voice-k">О себе:</span> «{v.self}»
+        </p>
+      ) : null}
+      {v.takeaway ? (
+        <p className="vp-cur-q">
+          <span className="vp-cur-voice-k">Вывод:</span> «{v.takeaway}»
+        </p>
+      ) : null}
     </div>
   );
 }

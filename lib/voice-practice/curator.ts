@@ -1,6 +1,7 @@
 // Сводка куратора по потоку (макет к показу): демо-студенты из app_config + реальные сессии владельцев.
 // Демо-данные вымышленные и лежат вне git (app_config.voice_curator_demo, исходник — приватная папка).
 import { createServiceClient } from "@/lib/supabase-server";
+import { reflectionFromTurns, type DebriefScriptState, type DebriefTurn } from "./debrief-voice";
 import { getConfig } from "@/lib/config";
 
 export const SKILLS = [
@@ -29,6 +30,12 @@ export interface CuratorDebrief {
   fix: { skill?: string; quote: string; alternative?: string } | null;
   attention: string[];
   sessionId?: string;
+  /**
+   * Голосовой разбор «как в тройке»: самооценка и вывод студента его словами; была ли рефлексия
+   * сама, после подсказки, не было; «пропущен» — режим предлагал разбор голосом, студент выбрал текст.
+   * Ответ «как вы сейчас» сюда не попадает (решение владельца 02.10).
+   */
+  voice?: { level: "self" | "prompted" | "none" | "skipped"; self: string | null; takeaway: string | null } | null;
 }
 
 export interface CuratorStudent {
@@ -169,7 +176,7 @@ export async function loadRealStudents(programId: string, now: number): Promise<
       .order("created_at"),
     db.from("profiles").select("id, name, email").in("id", owners),
     db.from("voice_clients").select("id, display_name").eq("program_id", programId),
-    db.from("program_modes").select("id, mode_templates!inner(name)").eq("program_id", programId),
+    db.from("program_modes").select("id, config, mode_templates!inner(name)").eq("program_id", programId),
     db.from("voice_self_reports").select("user_id, kind, sum, created_at").eq("program_id", programId).in("user_id", owners).in("kind", ["confidence_pre", "confidence_post"]).order("created_at"),
   ]);
   const sessions = (sessionsRaw ?? []) as SessionRow[];
@@ -179,6 +186,25 @@ export async function loadRealStudents(programId: string, now: number): Promise<
     .select("session_id, status, is_fallback, integrity_valid, counters, result, strength, fix, curator")
     .in("session_id", sessions.map((s) => s.id));
   const debriefs = new Map(((debriefsRaw ?? []) as DebriefRow[]).map((d) => [d.session_id, d]));
+  // Голосовые разборы встреч: слова студента о себе и его вывод.
+  const { data: voiceRaw } = await db
+    .from("voice_sessions")
+    .select("parent_session_id, script_state, voice_turns(seq, role, text, segment)")
+    .in("parent_session_id", sessions.map((s) => s.id))
+    .eq("kind", "debrief")
+    .neq("status", "failed");
+  const voiceByParent = new Map(
+    (voiceRaw ?? []).map((v) => [
+      v.parent_session_id as string,
+      reflectionFromTurns(
+        ((v.voice_turns ?? []) as DebriefTurn[]).sort((a, b) => a.seq - b.seq),
+        v.script_state as DebriefScriptState | null,
+      ),
+    ]),
+  );
+  const voiceModes = new Set(
+    (modes ?? []).filter((m) => (m.config as { voice?: { voice_debrief?: boolean } } | null)?.voice?.voice_debrief === true).map((m) => m.id as string),
+  );
   const clientName = new Map((clients ?? []).map((c) => [c.id as string, c.display_name as string]));
   const modeName = new Map((modes ?? []).map((m) => [m.id as string, (m.mode_templates as unknown as { name: string }).name]));
 
@@ -251,6 +277,11 @@ export async function loadRealStudents(programId: string, now: number): Promise<
           fix: d.fix?.quote ? { skill: d.fix.skill, quote: d.fix.quote, alternative: d.fix.alternative } : null,
           attention: d.curator?.attention ?? [],
           sessionId: s.id,
+          voice: (() => {
+            const r = voiceByParent.get(s.id);
+            if (r) return { level: r.level, self: r.self, takeaway: r.takeaway };
+            return s.kind === "full" && voiceModes.has(s.program_mode_id) ? { level: "skipped" as const, self: null, takeaway: null } : null;
+          })(),
         };
       });
 

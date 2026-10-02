@@ -209,3 +209,18 @@
 @media (hover: hover) {
   a.vp-card:hover, button.vp-card:not([aria-pressed="true"]):not([aria-checked="true"]):hover { border-color: var(--accent-border); }
 }
+
+/* Голосовой разбор после встречи: три места учебной тройки — подсвечен тот, кто говорит. */
+.vp-seats { display: flex; justify-content: center; align-items: flex-start; gap: 28px; }
+.vp-seat { display: grid; justify-items: center; align-content: start; gap: 6px; min-width: 76px; opacity: .55; transition: opacity .25s; }
+.vp-seat[data-active="true"] { opacity: 1; }
+.vp-seat-dot { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-elevated); border: 2px solid var(--border); transition: background .25s, box-shadow .25s, border-color .25s; }
+.vp-seat[data-active="true"] .vp-seat-dot { background: radial-gradient(circle at 35% 30%, var(--accent-grad-hi), var(--accent-grad-mid) 55%, var(--accent-grad-lo)); border-color: var(--accent-border); box-shadow: 0 0 0 6px var(--accent-soft); }
+.vp-seat-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.vp-seat-note { font-size: 12px; color: var(--text-muted); margin-top: -4px; }
+.vp-troika-intro { max-width: 420px; text-align: center; }
+.vp-troika-intro .vp-lead { margin: 0 0 10px; }
+.vp-troika .vp-orb { width: 150px; height: 150px; }
+@media (prefers-reduced-motion: reduce) { .vp-seat, .vp-seat-dot { transition: none; } }
+.vp-cur-voice { margin: 6px 0 4px; padding-left: 10px; border-left: 2px solid var(--accent-border); }
+.vp-cur-voice-k { color: var(--text-muted); }

@@ -21,11 +21,13 @@ export function CallScreen(props: {
   drill?: { title: string; context: string } | null;
   /** «Мягкая посадка»: встреча уже идёт, клиент говорит первым; briefing — что было до звонка. */
   lateStart?: { briefing: string | null } | null;
+  /** После встречи — голосовой разбор «как в тройке» (режим включил его); страница разбора сама решит, хватает ли встречи. */
+  voiceDebrief?: boolean;
 }) {
   const router = useRouter();
   const onEnded = useCallback(() => {
-    router.replace(`/program/${props.programSlug}/voice/session/${props.sessionId}`);
-  }, [router, props.programSlug, props.sessionId]);
+    router.replace(`/program/${props.programSlug}/voice/${props.voiceDebrief ? "debrief" : "session"}/${props.sessionId}`);
+  }, [router, props.programSlug, props.sessionId, props.voiceDebrief]);
   const { state, start, end, micLevel } = useVoiceSession(props.sessionId, onEnded, { halfDuplex: !!props.drill });
   const { phase } = state;
 

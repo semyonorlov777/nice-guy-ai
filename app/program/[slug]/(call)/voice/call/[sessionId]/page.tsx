@@ -14,11 +14,13 @@ export default async function VoiceCallPage({ params }: { params: Promise<{ slug
 
   const { data: s } = await supabase
     .from("voice_sessions")
-    .select("id, status, client_id, started_at, kind, drill_moment_id, program_mode_id")
+    .select("id, status, client_id, started_at, kind, drill_moment_id, program_mode_id, parent_session_id")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!s) notFound();
+  // Голосовой разбор встречи живёт на своей странице.
+  if (s.kind === "debrief" && s.parent_session_id) redirect(`/program/${slug}/voice/debrief/${s.parent_session_id}`);
   if (s.status === "ended" || s.status === "failed") redirect(`/program/${slug}/voice/session/${sessionId}`);
 
   const svc = createServiceClient();
@@ -31,7 +33,8 @@ export default async function VoiceCallPage({ params }: { params: Promise<{ slug
       : Promise.resolve({ data: null }),
     svc.from("program_modes").select("config").eq("id", s.program_mode_id).maybeSingle(),
   ]);
-  const clientStarts = (pm?.config as { voice?: { client_starts?: boolean } } | null)?.voice?.client_starts === true;
+  const voiceCfg = (pm?.config as { voice?: { client_starts?: boolean; voice_debrief?: boolean } } | null)?.voice;
+  const clientStarts = voiceCfg?.client_starts === true;
   const briefing = (client?.config as { briefing?: string } | null)?.briefing ?? null;
   const moment = ((mode?.drill_moments as { id: string; title: string; context: string }[] | null) ?? []).find(
     (m) => m.id === s.drill_moment_id,
@@ -45,6 +48,7 @@ export default async function VoiceCallPage({ params }: { params: Promise<{ slug
       resumable={!!s.started_at}
       drill={moment ? { title: moment.title, context: moment.context } : null}
       lateStart={!moment && clientStarts ? { briefing } : null}
+      voiceDebrief={s.kind === "full" && voiceCfg?.voice_debrief === true}
     />
   );
 }
