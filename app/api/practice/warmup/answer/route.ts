@@ -1,7 +1,8 @@
 // «Первые слова»: ответ студента (аудио) → расшифровка и оценка одним вызовом Gemini Flash →
 // реакция клиента (warm | neutral | cold) + «получилось» / «попробуйте».
 // Без списания токенов и без квоты; аудио нигде не сохраняется.
-import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
+import { lowThinking, withModelFallback } from "@/lib/voice-practice/models";
+import { GoogleGenAI, Type } from "@google/genai";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { apiError, requireAuth } from "@/lib/api-helpers";
 import { createRateLimit } from "@/lib/rate-limit";
@@ -88,22 +89,23 @@ export async function POST(req: Request) {
   let verdict: Verdict;
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
-    const r = await ai.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [{ inlineData: { mimeType, data: Buffer.from(await audio.arrayBuffer()).toString("base64") } }, { text: task }],
-        },
-      ],
-      config: {
-        systemInstruction: cfg.rubric,
-        responseMimeType: "application/json",
-        responseSchema: SCHEMA,
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    });
+    const audioB64 = Buffer.from(await audio.arrayBuffer()).toString("base64");
+    const { result: r } = await withModelFallback(
+      MODEL,
+      (model) =>
+        ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: audioB64 } }, { text: task }] }],
+          config: {
+            systemInstruction: cfg.rubric,
+            responseMimeType: "application/json",
+            responseSchema: SCHEMA,
+            maxOutputTokens: 2048,
+            thinkingConfig: lowThinking(model),
+          },
+        }),
+      "warmup",
+    );
     verdict = JSON.parse(r.text ?? "") as Verdict;
   } catch (e) {
     console.error("[warmup] evaluation failed", e);

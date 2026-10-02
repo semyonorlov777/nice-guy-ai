@@ -1,13 +1,12 @@
 // Разбор учебной консультации: счётчики кодом → оценщик (Gemini, JSON) → проверка цитат кодом.
 // ensureDebrief — единственная точка входа, идемпотентна: строку захватывает один вызов.
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import { lowThinking, withModelFallback } from "./models";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
 import { computeClientFlags, computeCounters, type TurnLite } from "./counters";
 
 const MODEL = process.env.VOICE_DEBRIEF_MODEL || "gemini-3.8-flash";
-/** Запасные модели: основную Google временами часами отдаёт с 503 (перегрузка). */
-const FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"];
 const RUBRIC_VERSION = "2026-10-01.1";
 const MIN_STUDENT_TURNS = 2;
 
@@ -111,30 +110,24 @@ async function runDebrief(sessionId: string): Promise<void> {
     // Длинная встреча (40+ реплик) не помещалась в 8k вместе с размышлениями модели —
     // ответ обрывался посреди JSON. Запас больше, размышления короче, одна повторная попытка.
     let usedModel = MODEL;
-    const askOnce = (model: string) =>
-      ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        config: {
-          systemInstruction: rubric,
-          responseMimeType: "application/json",
-          maxOutputTokens: 32768,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        },
-      });
     const ask = async () => {
-      let lastErr: unknown;
-      for (const model of [MODEL, ...FALLBACK_MODELS]) {
-        try {
-          const r = await askOnce(model);
-          usedModel = model;
-          return r;
-        } catch (e) {
-          lastErr = e;
-          console.error("[voice-debrief] model failed", model, String(e).slice(0, 200));
-        }
-      }
-      throw lastErr;
+      const { result, model } = await withModelFallback(
+        MODEL,
+        (m) =>
+          ai.models.generateContent({
+            model: m,
+            contents: [{ role: "user", parts: [{ text: userMessage }] }],
+            config: {
+              systemInstruction: rubric,
+              responseMimeType: "application/json",
+              maxOutputTokens: 32768,
+              thinkingConfig: lowThinking(m),
+            },
+          }),
+        "voice-debrief",
+      );
+      usedModel = model;
+      return result;
     };
     let resp = await ask();
     let parsed: unknown;
