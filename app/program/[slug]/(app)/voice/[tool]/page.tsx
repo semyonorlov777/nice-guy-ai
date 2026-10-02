@@ -36,6 +36,7 @@ export default async function VoiceModePage({
       precallText={mode.precallText}
       maxMinutes={Math.max(1, Math.round(mode.maxSeconds / 60))}
       clients={mode.clients}
+      clientStarts={mode.clientStarts}
       moments={mode.moments}
       initialMoment={moment}
     />

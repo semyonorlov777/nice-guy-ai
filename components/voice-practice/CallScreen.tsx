@@ -19,6 +19,8 @@ export function CallScreen(props: {
   resumable: boolean;
   /** «Трудный момент»: клиент начинает сам, после его реакции попытка заканчивается. */
   drill?: { title: string; context: string } | null;
+  /** «Мягкая посадка»: встреча уже идёт, клиент говорит первым; briefing — что было до звонка. */
+  lateStart?: { briefing: string | null } | null;
 }) {
   const router = useRouter();
   const onEnded = useCallback(() => {
@@ -30,6 +32,8 @@ export function CallScreen(props: {
   const status =
     phase === "idle" && props.drill
       ? "Клиент скажет одну трудную фразу. Дослушайте и ответьте так, как ответили бы живому человеку. После реакции клиента попытка закончится и откроется разбор."
+      : phase === "idle" && props.lateStart && !props.resumable
+      ? "Встреча идёт уже 45 минут, до конца около пяти. Клиент заговорит первым — бережно завершите встречу."
       : phase === "idle"
       ? props.resumable
         ? "Консультация прервалась. Нажмите «Продолжить» — клиент продолжит с того же места."
@@ -69,6 +73,7 @@ export function CallScreen(props: {
         <h1>{props.clientName}</h1>
         <p>{props.drill ? `Трудный момент · ${props.drill.title}` : "учебный клиент"}</p>
         {props.drill && <p style={{ marginTop: 6, maxWidth: 320 }}>{props.drill.context}</p>}
+        {props.lateStart?.briefing && <p style={{ marginTop: 6, maxWidth: 360 }}>{props.lateStart.briefing}</p>}
       </div>
 
       <VoiceOrb speaking={inCall ? state.speaking : "idle"} link={state.link} heard={state.heard} micLevel={micLevel} />

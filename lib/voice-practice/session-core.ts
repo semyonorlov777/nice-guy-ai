@@ -24,6 +24,12 @@ const MODEL_SILENCE_MS = 7_000;
 const AFTER_TIME_UP_MS = 25_000;
 /** Прощание студента: после ответа клиента встреча закрывается сама, без «до свидания» по кругу. */
 const FAREWELL_RE = /(до свидания|всего (хорошего|доброго)|до (встречи|следующей)|увидимся|прощайте|на сегодня (всё|все|заканчиваем))/iu;
+/** Прощание — в конце реплики и не вопросом: «что попробуете до следующей встречи?» и
+ *  «на сегодня заканчиваем, давайте подведём итоги» встречу не закрывают. */
+function isFarewell(text: string): boolean {
+  const t = text.trim();
+  return !/\?\s*$/.test(t) && FAREWELL_RE.test(t.slice(-70));
+}
 /** Студент молчит после реплики клиента — клиенту сигнал «психолог выдерживает паузу». */
 const STUDENT_PAUSE_MS = 8_000;
 /** Подтверждение «звук дошёл» — не чаще раза в секунду. */
@@ -133,7 +139,7 @@ class VoiceConnection {
     if (this.secondsLeft <= 0) return this.end("time_limit");
 
     const [{ data: mode }, { data: client }, cfg, { data: turns }] = await Promise.all([
-      db.from("voice_modes").select("frame_prompt, engine, drill_moments, program_modes!inner(mode_templates!inner(key))").eq("program_mode_id", s.program_mode_id).maybeSingle(),
+      db.from("voice_modes").select("frame_prompt, engine, drill_moments, program_modes!inner(config, mode_templates!inner(key))").eq("program_mode_id", s.program_mode_id).maybeSingle(),
       s.client_id
         ? db.from("voice_clients").select("prompt, voice_name").eq("id", s.client_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -148,7 +154,10 @@ class VoiceConnection {
     const history: HistoryTurn[] = (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text }));
     this.seq = turns?.length ? Math.max(...turns.map((t) => t.seq)) : 0;
     const resumed = history.length > 0;
-    const modeKey = (mode?.program_modes as unknown as { mode_templates: { key: string } } | null)?.mode_templates?.key;
+    const pm = mode?.program_modes as unknown as { config: { voice?: { client_starts?: boolean } } | null; mode_templates: { key: string } } | null;
+    const modeKey = pm?.mode_templates?.key;
+    // «Мягкая посадка»: встреча идёт давно, первым говорит клиент.
+    this.clientStarts = pm?.config?.voice?.client_starts === true;
     this.autoEndDrill = modeKey !== "voice_hard_moments";
     if (s.kind === "drill") {
       const moments = (mode.drill_moments as DrillMoment[] | null) ?? [];
@@ -197,6 +206,7 @@ class VoiceConnection {
           },
           onTurnComplete: () => {
             const spoke = this.clientSpoke;
+            if (this.buf?.role === "student" && isFarewell(this.buf.text)) this.farewellHeard = true;
             // Студент попрощался (или время вышло) — клиент ответил, закрываем встречу.
             if (spoke && !this.drill && (this.farewellHeard || this.signalsSent.has("time_up"))) {
               // Звук генерируется быстрее, чем звучит: ждём, пока реплика доиграет у студента.
@@ -277,7 +287,7 @@ class VoiceConnection {
     this.timers.push(setInterval(() => void this.tick(), TICK_MS));
     this.timers.push(setInterval(() => this.ackHeard(), HEARD_MS));
     this.timers.push(setTimeout(() => this.send({ t: "rotate" }), ROTATE_AFTER_MS));
-    if (this.drill && !resumed) this.engine.kick("[СИСТЕМА: начинай]");
+    if ((this.drill || this.clientStarts) && !resumed) this.engine.kick("[СИСТЕМА: начинай]");
     this.lastTickAt = Date.now();
   }
 
@@ -336,11 +346,11 @@ class VoiceConnection {
   private attemptDone = false;
   /** Разминка закрывает попытку сама; «Трудный момент» — по кнопке студента. */
   private autoEndDrill = true;
+  private clientStarts = false;
   private turnAudioBytes = 0;
   private turnAudioStartAt = 0;
 
   private addTranscript(role: "student" | "client", text: string) {
-    if (role === "student" && FAREWELL_RE.test(text)) this.farewellHeard = true;
     if (role === "student" && this.pauseTimer) {
       clearTimeout(this.pauseTimer);
       this.pauseTimer = null;
@@ -360,6 +370,7 @@ class VoiceConnection {
     this.buf = null;
     // Реплика из одних многоточий/знаков — это молчание модели, в расшифровку не пишем.
     if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
+    if (b.role === "student" && isFarewell(b.text)) this.farewellHeard = true;
     this.seq += 1;
     void this.db
       .from("voice_turns")

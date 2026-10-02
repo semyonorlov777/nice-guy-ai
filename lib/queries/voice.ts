@@ -10,7 +10,10 @@ export interface VoiceModeView {
   comingSoon: boolean;
   precallText: string | null;
   maxSeconds: number;
-  clients: { slug: string; displayName: string; level: string; summary: string }[];
+  /** Первым говорит клиент («Мягкая посадка»: встреча уже идёт). */
+  clientStarts: boolean;
+  /** briefing — что было на встрече до звонка (для режимов, которые начинаются с середины). */
+  clients: { slug: string; displayName: string; level: string; summary: string; briefing: string | null }[];
   /** «Трудный момент»: список моментов (только публичные поля). */
   moments: { id: string; title: string; context: string; clientSlug: string }[];
 }
@@ -53,7 +56,7 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
     .maybeSingle();
   if (!pm || !pm.enabled) return null;
   const mt = pm.mode_templates as unknown as { key: string; name: string; description: string | null };
-  const voiceCfg = (pm.config as { voice?: { coming_soon?: boolean; max_seconds?: number } } | null)?.voice;
+  const voiceCfg = (pm.config as { voice?: { coming_soon?: boolean; max_seconds?: number; client_starts?: boolean } } | null)?.voice;
 
   const { data: mode } = await db
     .from("voice_modes")
@@ -64,7 +67,7 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
   const { data: clients } = slugs.length
     ? await db
         .from("voice_clients")
-        .select("slug, display_name, level, summary_public, sort_order")
+        .select("slug, display_name, level, summary_public, config, sort_order")
         .eq("program_id", programId)
         .eq("enabled", true)
         .in("slug", slugs)
@@ -78,6 +81,7 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
     description: mt.description,
     comingSoon: voiceCfg?.coming_soon === true || !mode,
     precallText: mode?.precall_text ?? null,
+    clientStarts: voiceCfg?.client_starts === true,
     maxSeconds: mode?.max_seconds ?? voiceCfg?.max_seconds ?? 0,
     moments: ((mode?.drill_moments as { id: string; title: string; context: string; client_slug: string }[] | null) ?? []).map(
       (m) => ({ id: m.id, title: m.title, context: m.context, clientSlug: m.client_slug }),
@@ -87,6 +91,7 @@ export async function getVoiceModeByTool(programId: string, tool: string): Promi
       displayName: c.display_name,
       level: c.level,
       summary: c.summary_public,
+      briefing: (c.config as { briefing?: string } | null)?.briefing ?? null,
     })),
   };
 }

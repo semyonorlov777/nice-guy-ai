@@ -9,6 +9,7 @@ export interface PrecallClient {
   displayName: string;
   level: string;
   summary: string;
+  briefing: string | null;
 }
 
 const LEVEL_LABEL: Record<string, string> = { A: "А", B: "Б", V: "В", G: "Г" };
@@ -21,6 +22,7 @@ export function PrecallScreen(props: {
   precallText: string | null;
   maxMinutes: number;
   clients: PrecallClient[];
+  clientStarts?: boolean;
   moments: { id: string; title: string; context: string; clientSlug: string }[];
   initialMoment?: string;
 }) {
@@ -30,6 +32,7 @@ export function PrecallScreen(props: {
   );
   const router = useRouter();
   const [client, setClient] = useState(props.clients[0]?.slug ?? "");
+  const briefing = isDrill ? null : props.clients.find((c) => c.slug === client)?.briefing;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,6 +110,11 @@ export function PrecallScreen(props: {
         </button>
       ))}
 
+      {briefing && (
+        <div className="vp-card vp-hint">
+          <b>Что было на встрече.</b> {briefing}
+        </div>
+      )}
       {props.precallText && (
         <div className="vp-card vp-hint">
           <b>Что тренируем.</b> {props.precallText}
@@ -114,7 +122,11 @@ export function PrecallScreen(props: {
       )}
       <div className="vp-card vp-hint">
         Если есть наушники — наденьте, звук будет чище. Найдите тихое место и не сворачивайте страницу.{" "}
-        {isDrill ? "Клиент начнёт сам: выслушайте реплику и ответьте." : "Разговор начинаете вы."}
+        {isDrill
+          ? "Клиент начнёт сам: выслушайте реплику и ответьте."
+          : props.clientStarts
+            ? "Клиент заговорит первым — встреча уже идёт."
+            : "Разговор начинаете вы."}
       </div>
 
       {error && <div className="vp-error">{error}</div>}

@@ -82,11 +82,13 @@ async function runDebrief(sessionId: string): Promise<void> {
       s.client_id
         ? db.from("voice_clients").select("display_name, level, summary_public, prompt, hidden_layer, version").eq("id", s.client_id).single()
         : Promise.resolve({ data: null }),
-      db.from("program_modes").select("mode_templates!inner(name, key)").eq("id", s.program_mode_id).single(),
+      db.from("program_modes").select("config, mode_templates!inner(name, key)").eq("id", s.program_mode_id).single(),
       getConfig<string>("voice_debrief_prompt", ""),
     ]);
     if (!rubric) throw new Error("voice_debrief_prompt не задан");
     const mt = pm?.mode_templates as unknown as { name: string; key: string } | undefined;
+    // Режим оценки задаёт program_modes.config.voice.debrief_mode («closing» — только завершение встречи).
+    const debriefMode = s.kind === "drill" ? "drill" : (pm?.config as { voice?: { debrief_mode?: string } } | null)?.voice?.debrief_mode ?? "full";
 
     let sN = 0;
     let cN = 0;
@@ -97,7 +99,7 @@ async function runDebrief(sessionId: string): Promise<void> {
     });
 
     const userMessage = [
-      `РЕЖИМ: ${s.kind === "drill" ? "drill" : "full"} («${mt?.name ?? ""}»).`,
+      `РЕЖИМ: ${debriefMode} («${mt?.name ?? ""}»).`,
       `КАРТОЧКА ПЕРСОНАЖА (для оценщика, студент её не видел):\nУровень ${client?.level ?? "?"}. ${client?.display_name ?? ""}. ${client?.summary_public ?? ""}\nСкрытый слой: ${JSON.stringify(client?.hidden_layer ?? [])}\nОписание роли:\n${client?.prompt ?? ""}`,
       `СЧЁТЧИКИ ПРОГРАММЫ: ${JSON.stringify(counters)}`,
       `ОТМЕТКИ СБОЕВ КЛИЕНТА: ${JSON.stringify(clientFlags)}`,
