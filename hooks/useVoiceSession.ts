@@ -23,22 +23,42 @@ export interface CallState {
   secondsLeft: number | null;
   warn: boolean;
   clientSilent: boolean;
+  /** Голос клиента звучит в динамике (может звучать и после конца сессии). */
+  playing: boolean;
   error: string | null;
 }
 
 const MAX_RECONNECTS = 5;
 
-/**
- * halfDuplex: пока звучит голос клиента, микрофон не передаётся (без наушников
- * динамик телефона иначе «перебивает» клиента его же голосом). Для «Трудного момента».
- */
-export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { halfDuplex?: boolean } = {}) {
+/** Порог громкости (RMS 0..1) для отметки «студент заговорил». */
+const VOICE_RMS = 0.03;
+
+export interface VoiceSessionOptions {
+  /**
+   * Пока звучит голос клиента, микрофон не передаётся (без наушников динамик телефона
+   * иначе «перебивает» клиента его же голосом). Для «Трудного момента» и разминки.
+   */
+  halfDuplex?: boolean;
+  /**
+   * Серия сессий (разминка): после конца сессии звук и микрофон не закрываются —
+   * реакция клиента доигрывает, следующая попытка стартует через connect() без нового
+   * доступа к микрофону. Закрыть — release().
+   */
+  keepAudio?: boolean;
+  /** Микрофон услышал голос (кадр громче порога, передан на сервер). */
+  onVoice?: () => void;
+  /** Голос клиента зазвучал / затих в динамике. */
+  onPlaying?: (playing: boolean) => void;
+}
+
+export function useVoiceSession(sessionId: string, onEnded: () => void, opts: VoiceSessionOptions = {}) {
   const [state, setState] = useState<CallState>({
     phase: "idle",
     speaking: "idle",
     secondsLeft: null,
     warn: false,
     clientSilent: false,
+    playing: false,
     error: null,
   });
   const ctxRef = useRef<AudioContext | null>(null);
@@ -51,20 +71,34 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
   const reconnectsRef = useRef(0);
   const playingUntilRef = useRef(0);
   const halfDuplex = !!opts.halfDuplex;
+  const keepAudio = !!opts.keepAudio;
+  const sessionIdRef = useRef(sessionId);
+  /** Билет из ответа на создание сессии — первый connect обходится без лишнего запроса. */
+  const ticketRef = useRef<string | null>(null);
   const onEndedRef = useRef(onEnded);
+  const onVoiceRef = useRef(opts.onVoice);
+  const onPlayingRef = useRef(opts.onPlaying);
   useEffect(() => {
     onEndedRef.current = onEnded;
-  }, [onEnded]);
+    onVoiceRef.current = opts.onVoice;
+    onPlayingRef.current = opts.onPlaying;
+  }, [onEnded, opts.onVoice, opts.onPlaying]);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
   // Повторное открытие сокета из его же обработчиков — через ссылку.
   const reopenRef = useRef<(isReconnect: boolean) => Promise<void>>(async () => undefined);
 
   const patch = useCallback((p: Partial<CallState>) => setState((s) => ({ ...s, ...p })), []);
 
   const getTicket = useCallback(async (): Promise<string | null> => {
-    const r = await fetch(`/api/practice/sessions/${sessionId}/ticket`, { method: "POST" });
+    const ready = ticketRef.current;
+    ticketRef.current = null;
+    if (ready) return ready;
+    const r = await fetch(`/api/practice/sessions/${sessionIdRef.current}/ticket`, { method: "POST" });
     if (!r.ok) return null;
     return ((await r.json()) as { ticket: string }).ticket;
-  }, [sessionId]);
+  }, []);
 
   const teardownAudio = useCallback(() => {
     captureRef.current?.port.close();
@@ -82,10 +116,10 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
     if (endedRef.current) return;
     endedRef.current = true;
     wsRef.current?.close();
-    teardownAudio();
+    if (!keepAudio) teardownAudio();
     patch({ phase: "ended", speaking: "idle" });
     onEndedRef.current();
-  }, [patch, teardownAudio]);
+  }, [keepAudio, patch, teardownAudio]);
 
   const openSocket = useCallback(
     async (isReconnect: boolean): Promise<void> => {
@@ -161,11 +195,11 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
     reopenRef.current = openSocket;
   }, [openSocket]);
 
-  /** Вызывать из обработчика нажатия. */
-  const start = useCallback(async () => {
+  /** Микрофон и звук. Вызывать из обработчика нажатия; false — доступа нет (ошибка уже в state). */
+  const prepare = useCallback(async (): Promise<boolean> => {
     endedRef.current = false;
     pausedRef.current = false;
-    patch({ phase: "connecting", error: null });
+    patch({ phase: "connecting", error: null, clientSilent: false, warn: false });
     try {
       if (!streamRef.current || streamRef.current.getAudioTracks().every((t) => t.readyState === "ended")) {
         streamRef.current = await navigator.mediaDevices.getUserMedia({
@@ -184,7 +218,14 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
         capture.port.onmessage = (e) => {
           if (halfDuplex && Date.now() < playingUntilRef.current) return;
           const ws = wsRef.current;
-          if (ws && ws.readyState === WebSocket.OPEN && !pausedRef.current) ws.send(e.data as ArrayBuffer);
+          if (!ws || ws.readyState !== WebSocket.OPEN || pausedRef.current) return;
+          if (onVoiceRef.current) {
+            const pcm = new Int16Array(e.data as ArrayBuffer);
+            let sum = 0;
+            for (let i = 0; i < pcm.length; i++) sum += pcm[i] * pcm[i];
+            if (Math.sqrt(sum / pcm.length) / 0x8000 > VOICE_RMS) onVoiceRef.current();
+          }
+          ws.send(e.data as ArrayBuffer);
         };
         src.connect(capture);
         const playback = new AudioWorkletNode(ctx, "pcm-playback", { outputChannelCount: [1] });
@@ -193,6 +234,8 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
           if (d?.t !== "playing") return;
           // Хвост 400 мс: отзвук динамика после конца реплики.
           playingUntilRef.current = d.playing ? Number.MAX_SAFE_INTEGER : Date.now() + 400;
+          patch({ playing: !!d.playing });
+          onPlayingRef.current?.(!!d.playing);
         };
         playback.connect(ctx.destination);
         captureRef.current = capture;
@@ -208,18 +251,51 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
           ? "Нет доступа к микрофону. Разрешите микрофон для этого сайта в настройках браузера и попробуйте снова."
           : "Не удалось включить звук. Попробуйте ещё раз.",
       });
-      return;
+      return false;
     }
-    await openSocket(false);
-  }, [halfDuplex, openSocket, patch]);
+    return true;
+  }, [halfDuplex, patch]);
+
+  /** Подключиться к сессии (по умолчанию — к текущей). Для серии — новая сессия и её билет. */
+  const connect = useCallback(
+    async (next?: { sessionId: string; ticket?: string }) => {
+      if (next) {
+        sessionIdRef.current = next.sessionId;
+        ticketRef.current = next.ticket ?? null;
+      }
+      endedRef.current = false;
+      pausedRef.current = false;
+      reconnectsRef.current = 0;
+      patch({ phase: "connecting", error: null, clientSilent: false, warn: false, secondsLeft: null });
+      await openSocket(false);
+    },
+    [openSocket, patch],
+  );
+
+  /** Вызывать из обработчика нажатия. */
+  const start = useCallback(async () => {
+    if (await prepare()) await connect();
+  }, [prepare, connect]);
+
+  /** Закрыть звук и микрофон (keepAudio: конец серии). */
+  const release = useCallback(() => {
+    endedRef.current = true;
+    wsRef.current?.close();
+    teardownAudio();
+    patch({ playing: false });
+  }, [patch, teardownAudio]);
 
   const end = useCallback(async () => {
     patch({ phase: "ending" });
+    const sid = sessionIdRef.current;
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: "end" }));
-    else await fetch(`/api/practice/sessions/${sessionId}/finish`, { method: "POST" }).catch(() => undefined);
-    setTimeout(finish, 2500);
-  }, [finish, patch, sessionId]);
+    else await fetch(`/api/practice/sessions/${sid}/finish`, { method: "POST" }).catch(() => undefined);
+    // Запасное закрытие — только если за это время не началась следующая сессия серии.
+    setTimeout(() => {
+      if (sessionIdRef.current === sid) finish();
+    }, 2500);
+  }, [finish, patch]);
 
   // Свернули страницу — пауза (сервер не считает минуты), вернулись — «Продолжить».
   useEffect(() => {
@@ -246,5 +322,5 @@ export function useVoiceSession(sessionId: string, onEnded: () => void, opts: { 
     teardownAudio();
   }, [teardownAudio]);
 
-  return { state, start, end };
+  return { state, start, end, prepare, connect, release };
 }

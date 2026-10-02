@@ -8,7 +8,8 @@ import { practiceDay } from "@/lib/voice-practice/day";
 
 export const dynamic = "force-dynamic";
 
-const limiter = createRateLimit({ windowMs: 60_000, max: 6 });
+// Разминка — серия коротких попыток подряд, каждая — своя сессия.
+const limiter = createRateLimit({ windowMs: 60_000, max: 12 });
 const LIVE = ["created", "active", "paused", "reconnecting"];
 const MIN_START_SECONDS = 60;
 
@@ -79,17 +80,21 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (live) return apiError("У вас уже идёт учебная консультация", 409, { activeSessionId: live.id });
 
-  const dailyCap = await getConfig<number>("voice_daily_sec_per_user", 1800);
-  const { data: usage } = await db
-    .from("voice_daily_usage")
-    .select("seconds")
-    .eq("user_id", user.id)
-    .eq("day", practiceDay())
-    .maybeSingle();
-  const left = Math.max(0, dailyCap - Number(usage?.seconds ?? 0));
-  const secondsLimit = Math.min(mode.max_seconds, left);
-  if (secondsLimit < MIN_START_SECONDS) {
-    return apiError("Сегодняшние минуты закончились. Разминка доступна без ограничений", 403, { code: "quota_exhausted" });
+  // Разминка «Первые слова» (попытки по минуте) не расходует дневные минуты консультаций.
+  const free = body.modeKey === "voice_warmup";
+  let secondsLimit = mode.max_seconds;
+  if (!free) {
+    const dailyCap = await getConfig<number>("voice_daily_sec_per_user", 1800);
+    const { data: usage } = await db
+      .from("voice_daily_usage")
+      .select("seconds")
+      .eq("user_id", user.id)
+      .eq("day", practiceDay())
+      .maybeSingle();
+    secondsLimit = Math.min(mode.max_seconds, Math.max(0, dailyCap - Number(usage?.seconds ?? 0)));
+    if (secondsLimit < MIN_START_SECONDS) {
+      return apiError("Сегодняшние минуты закончились. Разминка доступна без ограничений", 403, { code: "quota_exhausted" });
+    }
   }
 
   const t = newTicket();
@@ -105,6 +110,7 @@ export async function POST(req: Request) {
       drill_moment_id: moment?.id ?? null,
       engine_model: process.env.VOICE_GEMINI_MODEL || "gemini-3.8-live",
       seconds_limit: secondsLimit,
+      counts_toward_quota: !free,
       ticket_hash: t.hash,
       ticket_expires_at: t.expiresAt,
     })
