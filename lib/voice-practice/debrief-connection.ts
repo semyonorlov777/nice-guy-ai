@@ -47,8 +47,8 @@ export interface DebriefSessionRow {
 const LIVE = ["created", "active", "paused", "reconnecting"];
 const TICK_MS = 15_000;
 /** Предел функции 300 с: после 240 с соединение меняется в ближайшей паузе, после 285 — сразу. */
-const ROTATE_SOFT_MS = 240_000;
-const ROTATE_HARD_MS = 285_000;
+const ROTATE_SOFT_MS = Number(process.env.VOICE_DEBRIEF_ROTATE_SOFT_MS) || 240_000; // меньше — только для проверки
+const ROTATE_HARD_MS = ROTATE_SOFT_MS + 45_000;
 /** Студент молчит после реплики голоса (считая от конца звучания). */
 const STUDENT_PAUSE_MS = 8_000;
 /** Студент договорил, а голос молчит. */
@@ -69,6 +69,10 @@ const FORCE_AFTER_TURNS = 2;
 const PENDING_MAX_BYTES = 32 * 10_000;
 /** Этап 1: «разбор готов» — не раньше второго ответа студента (иначе голос передаёт слово после «как вы»). */
 const SEG1_MIN_ANSWERS = 2;
+/** Итог сказан: после последнего звука столько тишины — и разбор закрывается (не резко, но сам). */
+const CLOSE_AFTER_MS = 1_800;
+/** Итог сказан, а конец хода не пришёл: столько без нового звука — считаем, что голос договорил. */
+const CLOSE_QUIET_MS = 2_500;
 /** Распознавание иногда пишет «угу» студента латиницей — в расшифровке по-русски (как в звонке). */
 const LATIN_BACKCHANNEL_RE = /(^|\s)(m+-?h+-?m+|uh-?huh|a+-?ha|y|u+)(?=[\s.,!?…]|$)/giu;
 const cyrillicBackchannel = (text: string) =>
@@ -129,6 +133,9 @@ export class DebriefConnection {
   private heardBytes = 0;
   /** Звук студента во время смены голоса на пробу (клиент в роли): досылается новому движку. */
   private pendingAudio: Buffer[] | null = null;
+  /** Наблюдатель сказал «Разбор окончен» — закрываемся, даже если конец хода затерялся. */
+  private closingSaid = false;
+  private closeQuietTimer: NodeJS.Timeout | null = null;
   /** Паузы в речи наблюдателя и клиента вне роли длиннее, чем у модели (в пробе клиент звучит как на встрече). */
   private stretcher: PauseStretcher | null = null;
 
@@ -202,6 +209,13 @@ export class DebriefConnection {
     this.timers.push(setTimeout(() => void this.rotate(), ROTATE_HARD_MS));
     this.lastTickAt = Date.now();
 
+    // Итог уже прозвучал до переподключения — разговор не продолжаем, разбор закрывается.
+    const lastAi = [...segTurns].reverse().find((t) => t.role !== "student");
+    if (seg === 3 && lastAi && segTurns[segTurns.length - 1] === lastAi && endsSegment(cfg, 3, lastAi.text, ctx.client)) {
+      console.log("[voice-debrief] closing already said — finish", s.id);
+      this.timers.push(setTimeout(() => this.finishAfterPlayback("completed"), 500));
+      return;
+    }
     const wait = Math.min(MAX_KICK_WAIT_MS, Math.max(0, (this.state.kickAt ?? 0) - Date.now() - VOICE_LEAD_MS));
     this.timers.push(setTimeout(() => this.begin(segTurns), wait));
   }
@@ -262,13 +276,20 @@ export class DebriefConnection {
           const out = this.stretcher ? this.stretcher.process(pcm) : pcm;
           this.turnAudioBytes += out.length;
           this.aiSpoke = true;
+          if (this.closingSaid) this.armCloseQuiet();
           this.clearSilenceTimer();
           this.setSpeaking("client");
           if (out.length && this.ws.readyState === this.ws.OPEN) this.ws.send(out, { binary: true });
         },
         onTranscript: (t) => {
           if (!mine()) return;
-          if (t.role === "client") this.aiText += t.text;
+          if (t.role === "client") {
+            this.aiText += t.text;
+            if (this.seg === 3 && !this.closingSaid && this.segStudentTurns > 0 && endsSegment(this.cfg, 3, this.aiText, this.ctx.client)) {
+              this.closingSaid = true;
+              this.armCloseQuiet();
+            }
+          }
           this.addTranscript(t.role === "client" ? this.aiRole : "student", t.text);
         },
         onInterrupted: () => {
@@ -512,14 +533,28 @@ export class DebriefConnection {
     }, 15_000);
   }
 
-  /** Итог сказан: дождаться, пока он доиграет у студента, и закрыть разбор. */
+  /** Итог сказан, а конец хода не пришёл: нет нового звука CLOSE_QUIET_MS — закрываемся. */
+  private armCloseQuiet() {
+    if (this.closeQuietTimer) clearTimeout(this.closeQuietTimer);
+    this.closeQuietTimer = setTimeout(() => {
+      this.closeQuietTimer = null;
+      if (!this.closing && !this.ended && !this.rotated) {
+        this.flushTurn();
+        this.finishAfterPlayback("completed");
+      }
+    }, CLOSE_QUIET_MS);
+  }
+
+  /** Итог сказан: дождаться, пока он доиграет у студента, выдержать паузу и закрыть разбор. */
   private finishAfterPlayback(reason: EndReason) {
     if (this.closing) return;
     this.closing = true;
     this.live = false;
     this.clearPauseTimer();
     this.clearSilenceTimer();
-    const wait = Math.max(1500, this.playbackEndAt() - Date.now() + 800);
+    if (this.closeQuietTimer) clearTimeout(this.closeQuietTimer);
+    this.closeQuietTimer = null;
+    const wait = Math.max(CLOSE_AFTER_MS, this.playbackEndAt() - Date.now() + CLOSE_AFTER_MS);
     console.log("[voice-debrief] finish", this.s.id, reason, "in", wait, "ms");
     this.timers.push(setTimeout(() => void this.end(reason), wait));
   }
@@ -625,7 +660,7 @@ export class DebriefConnection {
     if (which === "student") this.studentBuf = null;
     else this.aiBuf = null;
     // Служебные пометки распознавания («<no speech detected>») — не речь.
-    if (b) b.text = b.text.replace(/<[^>]*>/g, "");
+    if (b) b.text = b.text.replace(/<[^>]*>|\{[^}]*\}/g, "");
     if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
     if (b.role === "student") {
       b.text = cyrillicBackchannel(b.text);
@@ -708,6 +743,8 @@ export class DebriefConnection {
     this.timers = [];
     this.clearPauseTimer();
     this.clearSilenceTimer();
+    if (this.closeQuietTimer) clearTimeout(this.closeQuietTimer);
+    this.closeQuietTimer = null;
   }
 
   async end(reason: EndReason) {

@@ -16,6 +16,9 @@ import "./voice-practice.css";
 
 type Seat = "student" | DebriefSpeaker;
 
+/** Сколько держится экран «Разбор окончен» перед записью разбора. */
+const FINISH_HOLD_MS = 2800;
+
 export function VoiceDebriefScreen(props: {
   programSlug: string;
   parentId: string;
@@ -33,8 +36,13 @@ export function VoiceDebriefScreen(props: {
   const [pending, setPending] = useState<DebriefSpeaker | null>(null);
   const [pendingSeg, setPendingSeg] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Разбор договорён: пара секунд «Разбор окончен», потом сама открывается запись. */
+  const [finished, setFinished] = useState(false);
 
-  const onEnded = useCallback(() => router.replace(resultHref), [router, resultHref]);
+  const onEnded = useCallback(() => {
+    setFinished(true);
+    setTimeout(() => router.replace(resultHref), FINISH_HOLD_MS);
+  }, [router, resultHref]);
   const onMessage = useCallback((m: ServerMessage) => {
     if (m.t === "handover") {
       setPending(m.to);
@@ -76,7 +84,7 @@ export function VoiceDebriefScreen(props: {
 
   const { phase } = state;
   const aiTalking = state.playing || state.speaking === "client";
-  const active: Seat | null = !started
+  const active: Seat | null = !started || finished
     ? null
     : state.speaking === "student"
       ? "student"
@@ -84,7 +92,9 @@ export function VoiceDebriefScreen(props: {
         ? speaker
         : pending ?? (speaker && !aiTalking ? "student" : null);
 
-  const status = !started
+  const status = finished
+    ? "Разбор окончен. Сейчас откроется запись — в ней ваши слова, правка и готовая фраза."
+    : !started
     ? null
     : phase === "connecting"
       ? "Соединяем…"
@@ -127,9 +137,9 @@ export function VoiceDebriefScreen(props: {
   const inCall = phase === "live" || phase === "reconnecting" || phase === "connecting";
 
   return (
-    <div className="vp-call vp-troika">
+    <div className="vp-call vp-troika" data-finished={finished}>
       <div className="vp-call-head">
-        <h1>{started ? "Разбор встречи" : "Встреча окончена"}</h1>
+        <h1>{finished ? "Разбор окончен" : started ? "Разбор встречи" : "Встреча окончена"}</h1>
         <p>
           {!started ? "Роли сняты" : segment === 4 ? `Проба · ${client.name} снова в роли` : `${stepIdx + 1} из ${steps.length} · ${steps[stepIdx]}`}
         </p>
@@ -171,7 +181,7 @@ export function VoiceDebriefScreen(props: {
             Попробовать ещё раз
           </button>
         )}
-        {started && phase !== "ended" ? (
+        {started && phase !== "ended" && !finished ? (
           <button type="button" className="vp-btn vp-btn-quiet" onClick={() => void voice.end()}>
             Завершить разбор
           </button>

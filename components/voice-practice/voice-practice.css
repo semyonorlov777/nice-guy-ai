@@ -224,3 +224,6 @@
 @media (prefers-reduced-motion: reduce) { .vp-seat, .vp-seat-dot { transition: none; } }
 .vp-cur-voice { margin: 6px 0 4px; padding-left: 10px; border-left: 2px solid var(--accent-border); }
 .vp-cur-voice-k { color: var(--text-muted); }
+/* Разбор договорён: всё мягко гаснет, пока открывается запись. */
+.vp-troika[data-finished="true"] .vp-voice, .vp-troika[data-finished="true"] .vp-seats { opacity: .35; transition: opacity 1.2s ease; }
+@media (prefers-reduced-motion: reduce) { .vp-troika[data-finished="true"] .vp-voice, .vp-troika[data-finished="true"] .vp-seats { transition: none; } }
