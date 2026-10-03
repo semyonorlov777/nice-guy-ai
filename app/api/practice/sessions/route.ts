@@ -1,6 +1,7 @@
 // Старт голосовой сессии: проверки доступа, режима, клиента, квоты → строка сессии + билет.
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { apiError, requireAuth } from "@/lib/api-helpers";
+import { hasVoiceAccess } from "@/lib/queries/voice";
 import { createRateLimit } from "@/lib/rate-limit";
 import { getConfig } from "@/lib/config";
 import { newTicket } from "@/lib/voice-practice/ticket";
@@ -32,13 +33,7 @@ export async function POST(req: Request) {
     .single();
   if (!program || !(program.features as { voice?: boolean } | null)?.voice) return apiError("Не найдено", 404);
 
-  const { data: access } = await db
-    .from("voice_access")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .eq("program_id", program.id)
-    .maybeSingle();
-  if (!access) return apiError("Доступ к практикуму выдаёт куратор", 403, { code: "no_access" });
+  if (!(await hasVoiceAccess(user.id, program.id))) return apiError("Доступ к практикуму выдаёт куратор", 403, { code: "no_access" });
 
   const { data: pm } = await db
     .from("program_modes")

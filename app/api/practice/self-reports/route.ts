@@ -2,6 +2,7 @@
 // Запись — service role (у таблицы только политика чтения для владельца).
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { apiError, requireAuth } from "@/lib/api-helpers";
+import { hasVoiceAccess } from "@/lib/queries/voice";
 import { createRateLimit } from "@/lib/rate-limit";
 import { practiceDay } from "@/lib/voice-practice/day";
 import {
@@ -36,13 +37,7 @@ export async function POST(req: Request) {
   const db = createServiceClient();
   const { data: program } = await db.from("programs").select("id, features").eq("slug", body.programSlug).single();
   if (!program || !(program.features as { voice?: boolean } | null)?.voice) return apiError("Не найдено", 404);
-  const { data: access } = await db
-    .from("voice_access")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .eq("program_id", program.id)
-    .maybeSingle();
-  if (!access) return apiError("Доступ к практикуму выдаёт куратор", 403, { code: "no_access" });
+  if (!(await hasVoiceAccess(user.id, program.id))) return apiError("Доступ к практикуму выдаёт куратор", 403, { code: "no_access" });
 
   const day = practiceDay();
   const rows: { kind: Kind; answers: Record<string, unknown>; sum: number | null; session_id: string | null }[] = [];

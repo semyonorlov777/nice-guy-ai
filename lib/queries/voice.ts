@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase-server";
+import { getConfig } from "@/lib/config";
 
 export interface VoiceModeView {
   programModeId: string;
@@ -18,8 +19,12 @@ export interface VoiceModeView {
   moments: { id: string; title: string; context: string; clientSlug: string }[];
 }
 
-/** Есть ли у пользователя доступ к голосовому практикуму программы. */
+/**
+ * Есть ли у пользователя доступ к голосовому практикуму программы. Открытый доступ
+ * (app_config.voice_open_access = true) — любой вошедший; иначе — строка в voice_access.
+ */
 export const hasVoiceAccess = cache(async (userId: string, programId: string): Promise<boolean> => {
+  if (await getConfig<boolean>("voice_open_access", false)) return true;
   const { data } = await createServiceClient()
     .from("voice_access")
     .select("user_id")
