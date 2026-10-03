@@ -2,7 +2,8 @@
 
 // Голосовой разбор после встречи — «как в учебной тройке». Сначала пауза «роли сняты» и кнопка
 // (iPhone даёт звук и микрофон только по нажатию), потом три голоса по очереди: вы о себе →
-// клиент уже не в роли → наблюдатель (что сработало, одна правка, фраза вслух, ваш вывод, итог).
+// клиент уже не в роли → наблюдатель (что сработало, одна правка, ваш вывод, итог). Новую фразу
+// студент говорит клиенту: тот на одну реплику снова в роли и отвечает, как ответил бы на встрече (этап 4).
 // Кто говорит — по сообщениям сервера: handover (слово переходит), speaker (голос зазвучал).
 // В конце — запись разбора текстом на странице итога.
 import { useCallback, useEffect, useState } from "react";
@@ -30,11 +31,15 @@ export function VoiceDebriefScreen(props: {
   const [speaker, setSpeaker] = useState<DebriefSpeaker | null>(null);
   const [segment, setSegment] = useState(1);
   const [pending, setPending] = useState<DebriefSpeaker | null>(null);
+  const [pendingSeg, setPendingSeg] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
 
   const onEnded = useCallback(() => router.replace(resultHref), [router, resultHref]);
   const onMessage = useCallback((m: ServerMessage) => {
-    if (m.t === "handover") setPending(m.to);
+    if (m.t === "handover") {
+      setPending(m.to);
+      setPendingSeg(m.segment);
+    }
     if (m.t === "speaker") {
       setSpeaker(m.who);
       setSegment(m.segment);
@@ -97,34 +102,42 @@ export function VoiceDebriefScreen(props: {
                   ? REPEAT_TEXT
                   : pending && !aiTalking
                     ? pending === "client"
-                      ? `${client.name} выходит из роли…`
+                      ? pendingSeg === 4
+                        ? `${client.name} снова в роли…`
+                        : `${client.name} выходит из роли…`
                       : "Слово переходит к наблюдателю…"
                     : aiTalking && speaker
                       ? speaker === "client"
-                        ? `Говорит ${client.name} — уже не в роли`
+                        ? segment === 4
+                          ? `Отвечает ${client.name} — в роли, как на встрече`
+                          : `Говорит ${client.name} — уже не в роли`
                         : "Говорит наблюдатель"
                       : state.speaking === "student"
                         ? "Вы говорите"
-                        : speaker
-                          ? "Ваша очередь — ответьте вслух"
-                          : "Наблюдатель начинает разбор…";
+                        : segment === 4
+                          ? `Скажите фразу ${client.dat} — ${client.female ? "она ответит" : "он ответит"}, как на встрече`
+                          : speaker
+                            ? "Ваша очередь — ответьте вслух"
+                            : "Наблюдатель начинает разбор…";
 
   const steps = props.skipClient
     ? ["Вы о себе", "Наблюдатель и ваш вывод"]
     : ["Вы о себе", `${client.name} вне роли`, "Наблюдатель и ваш вывод"];
-  const stepIdx = props.skipClient ? (segment >= 3 ? 1 : 0) : segment - 1;
+  const stepIdx = props.skipClient ? (segment >= 3 ? 1 : 0) : Math.min(segment, 3) - 1;
   const inCall = phase === "live" || phase === "reconnecting" || phase === "connecting";
 
   return (
     <div className="vp-call vp-troika">
       <div className="vp-call-head">
         <h1>{started ? "Разбор встречи" : "Встреча окончена"}</h1>
-        <p>{started ? `${stepIdx + 1} из ${steps.length} · ${steps[stepIdx]}` : "Роли сняты"}</p>
+        <p>
+          {!started ? "Роли сняты" : segment === 4 ? `Проба · ${client.name} снова в роли` : `${stepIdx + 1} из ${steps.length} · ${steps[stepIdx]}`}
+        </p>
       </div>
 
       <div className="vp-seats" aria-label="Участники разбора">
         <SeatView label="Вы" active={active === "student"} />
-        {!props.skipClient && <SeatView label={client.name} note="вне роли" active={active === "client"} />}
+        {!props.skipClient && <SeatView label={client.name} note={segment === 4 ? "в роли" : "вне роли"} active={active === "client"} />}
         <SeatView label="Наблюдатель" active={active === "observer"} />
       </div>
 

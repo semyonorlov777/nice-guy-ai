@@ -54,7 +54,7 @@ const FULL_LINES = [
   "Похоже, вы очень устали за эти два месяца. Чего вы ожидаете от нашего разговора?",
   "У нас сегодня около сорока минут, и к концу я хотела бы понять, с чем именно вы хотите работать.",
 ];
-// Разбор: реплики по этапам («## 1» — о себе, «## 2» — клиенту вне роли, «## 3» — наблюдателю).
+// Разбор: реплики по этапам («## 1» — о себе, «## 2» — клиенту вне роли, «## 3» — наблюдателю, «## 4» — проба фразы клиенту в роли).
 const DEBRIEF_LINES = [
   "## 1",
   "Немного волновалась, но в целом нормально.",
@@ -64,9 +64,11 @@ const DEBRIEF_LINES = [
   "Да. Что бы вам помогло, когда я посоветовала побыть одной?",
   "Спасибо, понятно.",
   "## 3",
-  "Я хотела её поддержать, дать что-то полезное.",
-  "Вы так устали, а ещё и вините себя за то, что срываетесь. Это очень тяжело.",
+  "Да, давайте.",
+  "Наверное, ей стало неловко, будто я её не слышу и сразу советую.",
   "Сначала откликаться на чувства клиента, а советы потом.",
+  "## 4",
+  "Вы так устали, а ещё и вините себя за то, что срываетесь. Это очень тяжело.",
 ];
 const LINES = LINES_FILE
   ? readFileSync(LINES_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
@@ -262,9 +264,11 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
   let handover = false;
   let rotateAt = 0;
   let curSeg = 1;
+  // Проба (этап 4): клиент в роли ждёт фразу студента — ход сразу за ботом.
+  let studentFirst = false;
   const marks: string[] = [];
   // Реплики по этапам: у каждого этапа своя очередь (голоса могут задать лишний вопрос — бот не сбивается).
-  const queues: Record<number, number[]> = { 1: [], 2: [], 3: [] };
+  const queues: Record<number, number[]> = { 1: [], 2: [], 3: [], 4: [] };
   let sec = 1;
   LINES.forEach((l, i) => {
     const m = /^## (\d)/.exec(l);
@@ -296,7 +300,10 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
       console.log(`  ${at()} ←`, JSON.stringify(m));
       if (m.t === "ended") ended = true;
       if (m.t === "handover") handover = true;
-      if (m.t === "speaker") curSeg = m.segment;
+      if (m.t === "speaker") {
+        curSeg = m.segment;
+        if (m.segment === 4) studentFirst = true;
+      }
       if (m.t === "rotate") {
         rotateAt = Date.now();
         void (async () => {
@@ -318,6 +325,14 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
     const s0 = Date.now();
     while (Date.now() - s0 < limitMs && !ended) {
       await tick();
+      if (studentFirst && (!replyStartAt || playedOut())) {
+        studentFirst = false;
+        handover = false;
+        aiDone = false;
+        replyStartAt = 0;
+        replyBytes = 0;
+        return;
+      }
       if (aiDone && playedOut()) {
         // Передача слова приходит чуть позже конца реплики.
         for (let k = 0; k < 20; k++) await tick();

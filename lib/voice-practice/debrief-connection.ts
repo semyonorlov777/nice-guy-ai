@@ -12,10 +12,14 @@ import { createEngine } from "./engine";
 import type { VoiceEngine } from "./engine/types";
 import { EngineUnavailableError } from "./engine/types";
 import { newTicket } from "./ticket";
+import { PauseStretcher } from "./audio/pause-stretch";
 import type { ClientMessage, EndReason, ServerMessage } from "./protocol";
+import type { HistoryTurn } from "./engine/types";
 import {
   SIGNAL,
   buildDebriefInstruction,
+  buildRehearsal,
+  rehearsalTarget,
   endsSegment,
   getDebriefConfig,
   loadDebriefContext,
@@ -61,6 +65,8 @@ const MAX_KICK_WAIT_MS = 8_000;
 const RESUME_REPEAT_MS = 15_000;
 /** После сигнала «пора» — сколько ещё реплик голоса до принудительного конца этапа. */
 const FORCE_AFTER_TURNS = 2;
+/** Проба: звук студента, пока открывается голос клиента в роли, копим (до ~10 с) и досылаем. */
+const PENDING_MAX_BYTES = 32 * 10_000;
 /** Этап 1: «разбор готов» — не раньше второго ответа студента (иначе голос передаёт слово после «как вы»). */
 const SEG1_MIN_ANSWERS = 2;
 /** Распознавание иногда пишет «угу» студента латиницей — в расшифровке по-русски (как в звонке). */
@@ -68,6 +74,8 @@ const LATIN_BACKCHANNEL_RE = /(^|\s)(m+-?h+-?m+|uh-?huh|a+-?ha|y|u+)(?=[\s.,!?�
 const cyrillicBackchannel = (text: string) =>
   text.replace(LATIN_BACKCHANNEL_RE, (_m, sp: string, w: string) => sp + (/^a/i.test(w) ? "ага" : "угу"));
 const wordCount = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+
+type TurnBuf = { role: DebriefTurn["role"]; text: string; startMs: number };
 
 export class DebriefConnection {
   private cfg!: DebriefVoiceConfig;
@@ -93,7 +101,12 @@ export class DebriefConnection {
   private connOpenedAt = Date.now();
   private sessionStartMs = 0;
   private seq = 0;
-  private buf: { role: DebriefTurn["role"]; text: string; startMs: number } | null = null;
+  /**
+   * Расшифровка копится отдельно для студента и голоса: распознавание речи студента часто приходит,
+   * когда голос уже отвечает, — так реплика студента ложится перед ответом, а не разрывает его.
+   */
+  private studentBuf: TurnBuf | null = null;
+  private aiBuf: TurnBuf | null = null;
   private inserts: Promise<unknown> = Promise.resolve();
   private timers: NodeJS.Timeout[] = [];
   private pauseTimer: NodeJS.Timeout | null = null;
@@ -114,6 +127,10 @@ export class DebriefConnection {
   private rxBytes = 0;
   private rxSpeechMs = 0;
   private heardBytes = 0;
+  /** Звук студента во время смены голоса на пробу (клиент в роли): досылается новому движку. */
+  private pendingAudio: Buffer[] | null = null;
+  /** Паузы в речи наблюдателя и клиента вне роли длиннее, чем у модели (в пробе клиент звучит как на встрече). */
+  private stretcher: PauseStretcher | null = null;
 
   constructor(
     private ws: WebSocket,
@@ -193,7 +210,7 @@ export class DebriefConnection {
   private async openSegment(seg: DebriefSegment) {
     const { cfg, ctx } = this;
     // Этапам 2–3 нужны заметки текстового разбора: если ещё считаются — подождать немного, иначе без них.
-    if (seg > 1 && !this.state.notes) {
+    if ((seg === 2 || seg === 3) && !this.state.notes) {
       const deadline = Date.now() + cfg.limits.wait_notes_seconds * 1000;
       while (ctx.notesStatus === "pending" && Date.now() < deadline && !this.ended) {
         await new Promise((r) => setTimeout(r, 2000));
@@ -202,7 +219,7 @@ export class DebriefConnection {
       this.state.notes = ctx.notesStatus === "ready" ? "notes" : "transcript";
     }
     this.seg = seg;
-    this.aiRole = seg === 2 ? "client" : "observer";
+    this.aiRole = seg === 2 || seg === 4 ? "client" : "observer";
     const segTurns = this.turns.filter((t) => t.segment === seg);
     this.segStudentTurns = segTurns.filter((t) => t.role === "student").length;
     this.segAiTurns = segTurns.filter((t) => t.role !== "student").length;
@@ -211,14 +228,25 @@ export class DebriefConnection {
     this.aiTurnsSinceSignal = 0;
     const seg1Students = this.turns.filter((t) => t.segment === 1 && t.role === "student");
     const selfWords = seg1Students.slice(1).reduce((n, t) => n + wordCount(t.text), 0);
-    const instruction = buildDebriefInstruction({ cfg, ctx, segment: seg, state: this.state, turns: this.turns, selfMissing: selfWords < 4 });
-    const voiceName = seg === 2 ? ctx.clientVoice : observerVoice(cfg, ctx.clientVoice);
+    let instruction: string;
+    let history: HistoryTurn[] | undefined;
+    if (seg === 4) {
+      // Проба: клиент снова в роли — та же карточка и встреча до его реплики.
+      const r = await buildRehearsal(this.db, cfg, ctx);
+      if (!r) throw new Error("проба недоступна");
+      instruction = r.instruction;
+      history = r.history;
+    } else {
+      instruction = buildDebriefInstruction({ cfg, ctx, segment: seg, state: this.state, turns: this.turns, selfMissing: selfWords < 4 });
+    }
+    const voiceName = seg === 2 || seg === 4 ? ctx.clientVoice : observerVoice(cfg, ctx.clientVoice);
 
+    this.stretcher = seg !== 4 && cfg.pause_stretch ? new PauseStretcher(cfg.pause_stretch) : null;
     const gen = ++this.gen;
     const engine = createEngine(process.env.VOICE_ENGINE || "gemini");
     const mine = () => gen === this.gen;
     await engine.connect(
-      { instruction, voiceName, silenceMs: cfg.silence_ms },
+      { instruction, voiceName, history, silenceMs: cfg.silence_ms },
       {
         onAudio: (pcm) => {
           if (!mine()) return;
@@ -231,11 +259,12 @@ export class DebriefConnection {
             this.turnAudioBytes = 0;
             this.turnAudioStartAt = Date.now();
           }
-          this.turnAudioBytes += pcm.length;
+          const out = this.stretcher ? this.stretcher.process(pcm) : pcm;
+          this.turnAudioBytes += out.length;
           this.aiSpoke = true;
           this.clearSilenceTimer();
           this.setSpeaking("client");
-          if (this.ws.readyState === this.ws.OPEN) this.ws.send(pcm, { binary: true });
+          if (out.length && this.ws.readyState === this.ws.OPEN) this.ws.send(out, { binary: true });
         },
         onTranscript: (t) => {
           if (!mine()) return;
@@ -249,10 +278,19 @@ export class DebriefConnection {
           if (!mine()) return;
           const spoke = this.aiSpoke;
           this.aiSpoke = false;
+          if (this.stretcher) {
+            const tail = this.stretcher.flush();
+            this.stretcher.reset();
+            this.turnAudioBytes += tail.length;
+            if (tail.length && this.ws.readyState === this.ws.OPEN) this.ws.send(tail, { binary: true });
+          }
           this.setSpeaking("idle");
           if (!spoke || this.ended || this.switching || this.rotated) return;
           // Фраза передачи уже в расшифровке — решаем сразу (быстрее переход), иначе ждём её хвост.
-          const now = endsSegment(this.cfg, this.seg, this.aiText, this.ctx.client);
+          const now =
+            this.seg === 4 ||
+            endsSegment(this.cfg, this.seg, this.aiText, this.ctx.client) ||
+            (this.seg === 3 && endsSegment(this.cfg, "rehearse", this.aiText, this.ctx.client));
           this.timers.push(setTimeout(() => void this.afterAiTurn(), now ? 0 : TRANSCRIPT_TAIL_MS));
         },
         onGoAway: () => {
@@ -313,7 +351,12 @@ export class DebriefConnection {
     const mayEnd = seg === 2 || answered || this.segSilences >= 2 || this.signals.size > 0;
     const segSec = (Date.now() - (this.state.startedAt ?? this.connOpenedAt)) / 1000;
 
+    // Проба: клиент в роли ответил на новую фразу студента — слово снова наблюдателю.
+    if (seg === 4) return this.switchTo(3, SIGNAL.afterRehearsal);
+
     if (seg === 3) {
+      // Наблюдатель зовёт сказать фразу клиенту — клиент на одну реплику возвращается в роль.
+      if (!this.state.rehearsed && endsSegment(cfg, "rehearse", text, ctx.client) && rehearsalTarget(ctx)) return this.switchTo(4, null);
       if (mayEnd && this.segAiTurns > 1 && endsSegment(cfg, 3, text, ctx.client)) return this.finishAfterPlayback("completed");
       const totalSec = this.s.seconds_limit - this.secondsLeft;
       if (!this.signals.has("wrap") && (segSec >= cfg.limits.seg3_seconds || totalSec >= cfg.limits.total_seconds)) {
@@ -365,26 +408,38 @@ export class DebriefConnection {
   }
 
   /** Передать слово следующему голосу — на сервере, без переподключения браузера. */
-  private async handover() {
+  private handover(): Promise<void> {
+    return this.switchTo(this.seg === 1 ? (this.state.skipClient ? 3 : 2) : 3, null);
+  }
+
+  /**
+   * Сменить голос: старый движок закрыть, новый открыть со своей инструкцией и голосом.
+   * signal — с чем новый голос начинает (по умолчанию «начинай»); на пробу (этап 4) клиент
+   * в роли не начинает сам — ждёт фразу студента, его звук за время смены досылается.
+   */
+  private async switchTo(next: DebriefSegment, signal: string | null): Promise<void> {
     if (this.switching || this.ended || this.rotated) return;
     const from = this.seg;
-    const next: DebriefSegment = from === 1 ? (this.state.skipClient ? 3 : 2) : 3;
     this.switching = true;
     this.live = false;
     this.clearPauseTimer();
     this.clearSilenceTimer();
     this.flushTurn();
+    if (next === 4) this.pendingAudio = [];
     const kickAt = Math.max(Date.now(), this.playbackEndAt()) + 300;
-    this.send({ t: "handover", to: next === 2 ? "client" : "observer", segment: next });
+    this.send({ t: "handover", to: next === 2 || next === 4 ? "client" : "observer", segment: next });
     const old = this.engine;
     this.engine = null;
     this.gen += 1;
     void old?.close();
+    // Проба — вставка внутри этапа 3: его время идёт дальше.
+    const keepClock = next === 4 || from === 4;
     this.state = {
       ...this.state,
       segment: next,
       kickAt,
-      startedAt: undefined,
+      startedAt: keepClock ? this.state.startedAt : undefined,
+      rehearsed: this.state.rehearsed || next === 4,
       silences: { ...(this.state.silences ?? {}), [String(from)]: this.segSilences },
     };
     const t0 = Date.now();
@@ -392,17 +447,38 @@ export class DebriefConnection {
       await this.inserts;
       await this.openSegment(next);
     } catch (e) {
-      // Не открылся новый голос — пусть браузер переподключится: новое соединение попробует ещё раз.
-      console.error("[voice-debrief] next voice failed", this.s.id, e);
+      console.error("[voice-debrief] next voice failed", this.s.id, next, e);
       this.switching = false;
+      this.pendingAudio = null;
+      // Проба не открылась — продолжает наблюдатель; иначе пусть браузер переподключится.
+      if (next === 4) return this.switchTo(3, SIGNAL.rehearsalSkipped);
       return this.rotate();
     }
     this.switching = false;
     if (this.ended) return;
     void this.saveState();
-    console.log("[voice-debrief] handover", this.s.id, from, "→", next, "voice open in", Date.now() - t0, "ms");
+    console.log("[voice-debrief] switch", this.s.id, from, "→", next, "voice open in", Date.now() - t0, "ms");
+    if (next === 4) {
+      // Клиент в роли ждёт фразу студента: сказанное за время смены — в движок.
+      this.send({ t: "speaker", who: "client", segment: 4 });
+      this.live = true;
+      // openSegment уже поставил новый движок (поток выполнения TS этого не видит).
+      const eng = this.engine as VoiceEngine | null;
+      for (const b of this.pendingAudio ?? []) eng?.sendAudio(b);
+      this.pendingAudio = null;
+      this.armStudentPause();
+      return;
+    }
     const wait = Math.max(0, kickAt - Date.now() - VOICE_LEAD_MS);
-    this.timers.push(setTimeout(() => this.begin([]), wait));
+    this.timers.push(
+      setTimeout(() => {
+        if (this.ended || this.rotated || this.switching) return;
+        if (!signal) return this.begin([]);
+        this.awaitingVoice = true;
+        this.live = false;
+        this.engine?.kick(signal);
+      }, wait),
+    );
   }
 
   /** Переподключение браузера (предел функции, сбой движка): новое соединение продолжит тот же этап. */
@@ -454,6 +530,7 @@ export class DebriefConnection {
       const buf = data as Buffer;
       this.countHeard(buf);
       if (this.live && !this.paused) this.engine?.sendAudio(buf);
+      else if (this.pendingAudio && this.pendingAudio.reduce((n, b) => n + b.length, 0) < PENDING_MAX_BYTES) this.pendingAudio.push(buf);
       return;
     }
     let msg: ClientMessage;
@@ -503,6 +580,8 @@ export class DebriefConnection {
     this.pauseTimer = setTimeout(() => {
       this.pauseTimer = null;
       if (this.ended || this.paused || this.switching || this.rotated || this.closing) return;
+      // Проба: студент не стал говорить фразу — дальше наблюдатель.
+      if (this.seg === 4) return void this.switchTo(3, SIGNAL.rehearsalSkipped);
       this.segSilences += 1;
       if (this.segSilences === 1) this.engine?.kick(SIGNAL.silent);
       else if (this.segSilences === 2) this.engine?.kick(SIGNAL.silentAgain);
@@ -517,19 +596,34 @@ export class DebriefConnection {
   }
 
   private addTranscript(role: DebriefTurn["role"], text: string) {
-    if (role === "student") this.clearPauseTimer();
-    if (this.buf && this.buf.role !== role) this.flushTurn();
-    if (!this.buf) this.buf = { role, text: "", startMs: Date.now() - this.sessionStartMs };
-    this.buf.text += text;
+    const at = Date.now() - this.sessionStartMs;
     if (role === "student") {
+      this.clearPauseTimer();
+      // Голос уже договорил — его реплика была раньше: записать её первой.
+      if (this.aiBuf && !this.aiSpoke) this.flushBuf("ai");
+      if (!this.studentBuf) this.studentBuf = { role, text: "", startMs: at };
+      this.studentBuf.text += text;
       this.setSpeaking("student");
       this.armSilenceTimer();
+      return;
     }
+    // Голос заговорил — сказанное студентом до этого ложится перед ним.
+    if (this.studentBuf) this.flushBuf("student");
+    if (this.aiBuf && this.aiBuf.role !== role) this.flushBuf("ai");
+    if (!this.aiBuf) this.aiBuf = { role, text: "", startMs: at };
+    this.aiBuf.text += text;
   }
 
+  /** Записать накопленное: сначала студента, потом голос. */
   private flushTurn() {
-    const b = this.buf;
-    this.buf = null;
+    this.flushBuf("student");
+    this.flushBuf("ai");
+  }
+
+  private flushBuf(which: "student" | "ai") {
+    const b = which === "student" ? this.studentBuf : this.aiBuf;
+    if (which === "student") this.studentBuf = null;
+    else this.aiBuf = null;
     // Служебные пометки распознавания («<no speech detected>») — не речь.
     if (b) b.text = b.text.replace(/<[^>]*>/g, "");
     if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
@@ -557,7 +651,9 @@ export class DebriefConnection {
     this.clearSilenceTimer();
     this.silenceTimer = setTimeout(() => {
       this.silenceTimer = null;
-      if (!this.ended && !this.switching && !this.rotated && !this.closing) this.engine?.kick(SIGNAL.resume);
+      if (this.ended || this.switching || this.rotated || this.closing) return;
+      // Клиент в роли не отвечает на фразу — как в звонке: «продолжай».
+      this.engine?.kick(this.seg === 4 ? "[СИСТЕМА: продолжай]" : SIGNAL.resume);
     }, MODEL_SILENCE_MS);
   }
 

@@ -108,7 +108,7 @@ export default async function VoiceSessionPage({ params }: { params: Promise<{ s
           <ol className="vp-transcript" style={{ marginTop: 10 }}>
             {vdTurns.map((t) => (
               <li key={t.seq}>
-                <b>{t.role === "student" ? "Вы" : t.role === "client" ? `${cName} вне роли` : "Наблюдатель"}</b>
+                <b>{t.role === "student" ? "Вы" : t.role === "client" ? (t.segment === 4 ? `${cName} в роли · проба` : `${cName} вне роли`) : "Наблюдатель"}</b>
                 {t.text}
               </li>
             ))}

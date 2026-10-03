@@ -7,11 +7,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getConfig } from "@/lib/config";
 import { computeClientFlags, type TurnLite } from "./counters";
-import { LANG_LOCK } from "./prompt";
+import { LANG_LOCK, buildInstruction } from "./prompt";
+import type { HistoryTurn } from "./engine/types";
+import type { PauseStretchConfig } from "./audio/pause-stretch";
 import { newTicket } from "./ticket";
 import type { DebriefResult } from "./debrief";
 
-export type DebriefSegment = 1 | 2 | 3;
+/** 1 — студент о себе (наблюдатель), 2 — клиент вне роли, 3 — наблюдатель, 4 — проба: клиент снова в роли на одну реплику. */
+export type DebriefSegment = 1 | 2 | 3 | 4;
 
 /** Закрытая настройка app_config.voice_debrief (файл _mipp-praktika/seed/voice-debrief.json). */
 export interface DebriefVoiceConfig {
@@ -31,8 +34,16 @@ export interface DebriefVoiceConfig {
   no_notes: string;
   /** Фокус наблюдателя по режиму: ключ — mode_templates.key или debrief_mode. */
   modes: Record<string, string>;
-  /** Фразы конца этапа (регулярные выражения, {name} — основа имени клиента). */
-  phrases: Record<"1" | "2" | "3", string>;
+  /** Фразы конца этапа (регулярные выражения, {name} — основа имени клиента); rehearse — наблюдатель зовёт к пробе. */
+  phrases: Record<"1" | "2" | "3" | "rehearse", string>;
+  /** Наблюдатель, этап 3: как позвать к пробе — с клиентом в роли или просто вслух (нет заметки о правке). */
+  rehearse_line: { client: string; aloud: string };
+  /** Клиент снова в роли на одну реплику — добавка к рамке режима ({client_line} — его реплика на встрече). */
+  rehearsal_frame: string;
+  /** Напоминание в самом конце инструкции (модели лучше помнят последнее): запретные слова и т. п. */
+  final_reminder?: string;
+  /** Воздух между фразами наблюдателя и клиента вне роли (просьба «говори медленнее» на темп не влияет); null — без. */
+  pause_stretch?: PauseStretchConfig | null;
   limits: {
     seg1_student_turns: number;
     seg1_seconds: number;
@@ -59,7 +70,9 @@ export interface DebriefScriptState {
   /** Когда начался текущий этап (мс). */
   startedAt?: number;
   /** Сколько раз студент промолчал на этапе. */
-  silences?: Partial<Record<"1" | "2" | "3", number>>;
+  silences?: Partial<Record<"1" | "2" | "3" | "4", number>>;
+  /** Проба с клиентом в роли уже была (один раз за разбор). */
+  rehearsed?: boolean;
 }
 
 export const SIGNAL = {
@@ -70,6 +83,8 @@ export const SIGNAL = {
   notesReady: "[СИСТЕМА: разбор готов]",
   pass: "[СИСТЕМА: пора передавать слово]",
   wrap: "[СИСТЕМА: время на исходе — переходи к итогу]",
+  afterRehearsal: "[СИСТЕМА: студент сказал фразу клиенту, клиент ответил в роли — продолжай]",
+  rehearsalSkipped: "[СИСТЕМА: студент не стал пробовать — не настаивай, продолжай]",
 } as const;
 
 export async function getDebriefConfig(): Promise<DebriefVoiceConfig | null> {
@@ -124,6 +139,10 @@ export interface DebriefContext {
   transcript: string;
   notesStatus: "ready" | "pending" | "none";
   notes: DebriefResult | null;
+  /** Расшифровка встречи по ходам — для пробы с клиентом в роли. */
+  callTurns: HistoryTurn[];
+  programModeId: string;
+  clientId: string | null;
 }
 
 interface ParentRow {
@@ -182,6 +201,9 @@ export async function loadDebriefContext(db: SupabaseClient, parentId: string): 
     transcript,
     notesStatus: notes.status,
     notes: notes.result,
+    callTurns: (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text as string })),
+    programModeId: parent.program_mode_id,
+    clientId: parent.client_id,
   };
 }
 
@@ -333,6 +355,8 @@ function fill(text: string, c: ClientName): string {
     .replaceAll("{client_name_acc}", c.acc)
     .replaceAll("{client_name}", c.name)
     .replaceAll("{client_gender}", c.female ? "женский род («я почувствовала»)" : "мужской род («я почувствовал»)")
+    .replaceAll("{she_he}", c.female ? "она" : "он")
+    .replaceAll("{a}", c.female ? "а" : "")
     .replaceAll("{played}", c.female ? "играла" : "играл")
     .replaceAll("{decided}", c.female ? "решилась" : "решился");
 }
@@ -386,7 +410,16 @@ function clientNotes(r: DebriefResult): string {
 
 function debriefSoFar(turns: DebriefTurn[], c: ClientName): string {
   return turns
-    .map((t) => `${t.role === "student" ? "Студент" : t.role === "client" ? `${c.name} (вне роли)` : "Наблюдатель"}: ${t.text}`)
+    .map((t) => {
+      // Этап 4 — проба: студент говорит новую фразу клиенту, клиент отвечает снова в роли.
+      const who =
+        t.role === "student"
+          ? t.segment === 4 ? "Студент (проба новой фразы)" : "Студент"
+          : t.role === "client"
+            ? t.segment === 4 ? `${c.name} (снова в роли, ответ на пробу)` : `${c.name} (вне роли)`
+            : "Наблюдатель";
+      return `${who}: ${t.text}`;
+    })
     .join("\n");
 }
 
@@ -406,6 +439,7 @@ export function buildDebriefInstruction(p: {
   if (focus) blocks.push(fill(focus, c));
   let seg = cfg.segments[String(segment) as "1" | "2" | "3"];
   if (segment === 1) seg = seg.replaceAll("{handover_line}", state.skipClient ? cfg.handover_line.self : cfg.handover_line.client);
+  if (segment === 3) seg = seg.replaceAll("{rehearse_line}", !state.rehearsed && rehearsalTarget(ctx) ? cfg.rehearse_line.client : cfg.rehearse_line.aloud);
   // Студент в начале о себе не сказал — бережный возврат идёт первым, до обратной связи.
   if (segment === 3 && p.selfMissing) blocks.push(fill(cfg.self_missing, c));
   blocks.push(fill(seg, c));
@@ -417,6 +451,7 @@ export function buildDebriefInstruction(p: {
   if (useNotes && ctx.notes) data.push(segment === 2 ? clientNotes(ctx.notes) : `ЗАМЕТКИ РАЗБОРА (проверены по расшифровке; говори своими словами, не зачитывай):\n${observerNotes(ctx.notes)}`);
   if (p.turns.length) data.push(`РАЗБОР ДО ЭТОГО МОМЕНТА:\n${debriefSoFar(p.turns, c)}`);
   blocks.push(data.join("\n\n"));
+  if (cfg.final_reminder) blocks.push(fill(cfg.final_reminder, c));
   blocks.push(LANG_LOCK);
   return blocks.filter(Boolean).join("\n\n");
 }
@@ -427,8 +462,8 @@ export function observerVoice(cfg: DebriefVoiceConfig, clientVoice: string): str
 }
 
 /** Фраза конца этапа в речи голоса. */
-export function endsSegment(cfg: DebriefVoiceConfig, segment: DebriefSegment, text: string, c: ClientName): boolean {
-  const src = cfg.phrases[String(segment) as "1" | "2" | "3"];
+export function endsSegment(cfg: DebriefVoiceConfig, segment: DebriefSegment | "rehearse", text: string, c: ClientName): boolean {
+  const src = cfg.phrases[String(segment) as "1" | "2" | "3" | "rehearse"];
   if (!src) return false;
   try {
     return new RegExp(src.replaceAll("{name}", c.stem), "iu").test(text.toLowerCase().replace(/ё/g, "е"));
@@ -470,4 +505,41 @@ export function reflectionFromTurns(turns: DebriefTurn[], state: DebriefScriptSt
 export async function loadDebriefTurns(db: SupabaseClient, debriefId: string): Promise<DebriefTurn[]> {
   const { data } = await db.from("voice_turns").select("seq, role, text, segment").eq("session_id", debriefId).order("seq");
   return (data ?? []) as DebriefTurn[];
+}
+
+// ——— Проба: клиент снова в роли на одну реплику ———
+
+/** Реплика клиента из правки текстового разбора, на которую студент пробует ответить иначе. */
+export function rehearsalTarget(ctx: DebriefContext): { upTo: number; clientLine: string } | null {
+  const t = ctx.notes?.feedback?.try?.[0] as { client_turn?: string; client_line?: string } | undefined;
+  const n = Number(/^C(\d+)$/.exec(t?.client_turn ?? "")?.[1] ?? 0);
+  if (!n) return null;
+  let cN = 0;
+  const idx = ctx.callTurns.findIndex((x) => x.role === "client" && ++cN === n);
+  if (idx < 0) return null;
+  return { upTo: idx, clientLine: ctx.callTurns[idx].text };
+}
+
+/**
+ * Инструкция и история клиента в роли для пробы: та же карточка, рамка режима и общие правила,
+ * что во встрече, — разговор засеян до его реплики; студент отвечает на неё заново.
+ */
+export async function buildRehearsal(
+  db: SupabaseClient,
+  cfg: DebriefVoiceConfig,
+  ctx: DebriefContext,
+): Promise<{ instruction: string; history: HistoryTurn[] } | null> {
+  const target = rehearsalTarget(ctx);
+  if (!target || !ctx.clientId) return null;
+  const [{ data: client }, { data: mode }, globalRules] = await Promise.all([
+    db.from("voice_clients").select("prompt").eq("id", ctx.clientId).maybeSingle(),
+    db.from("voice_modes").select("frame_prompt").eq("program_mode_id", ctx.programModeId).maybeSingle(),
+    getConfig<string>("voice_global_rules", ""),
+  ]);
+  if (!client?.prompt || !mode) return null;
+  const frame = `${mode.frame_prompt ?? ""}\n\n${fill(cfg.rehearsal_frame, ctx.client).replaceAll("{client_line}", target.clientLine)}`;
+  return {
+    instruction: buildInstruction({ globalRules: String(globalRules ?? ""), framePrompt: frame, personaPrompt: client.prompt as string, resumed: false }),
+    history: ctx.callTurns.slice(0, target.upTo + 1),
+  };
 }
