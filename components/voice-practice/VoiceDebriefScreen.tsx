@@ -135,10 +135,6 @@ export function VoiceDebriefScreen(props: {
           <p className="vp-lead">
             Вы больше не психолог {client.gen}, а {client.name} — не {client.female ? "ваша клиентка" : "ваш клиент"}. Сделайте вдох и выдох.
           </p>
-          <p className="vp-hint">
-            Дальше — разбор, как в учебной тройке: сначала вы скажете, как вам было,
-            {props.skipClient ? " потом" : ` потом ${client.name} — уже не в роли, потом`} наблюдатель. Три-четыре минуты, голосом.
-          </p>
         </div>
       )}
 
