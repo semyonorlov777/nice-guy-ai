@@ -530,6 +530,8 @@ export class DebriefConnection {
   private flushTurn() {
     const b = this.buf;
     this.buf = null;
+    // Служебные пометки распознавания («<no speech detected>») — не речь.
+    if (b) b.text = b.text.replace(/<[^>]*>/g, "");
     if (!b || !/[\p{L}\p{N}]/u.test(b.text)) return;
     if (b.role === "student") {
       b.text = cyrillicBackchannel(b.text);
