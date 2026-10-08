@@ -13,7 +13,7 @@ import { EngineUnavailableError } from "./engine/types";
 import { buildInstruction } from "./prompt";
 import { DebriefConnection } from "./debrief-connection";
 import { hashTicket } from "./ticket";
-import type { ClientMessage, EndReason, ErrorCode, ServerMessage } from "./protocol";
+import { isStandUser, type ClientMessage, type EndReason, type ErrorCode, type ServerMessage } from "./protocol";
 
 type Db = ReturnType<typeof createServiceClient>;
 
@@ -152,7 +152,7 @@ class VoiceConnection {
       s.client_id
         ? db.from("voice_clients").select("prompt, voice_name").eq("id", s.client_id).maybeSingle()
         : Promise.resolve({ data: null }),
-      getConfigs(["voice_global_rules", "voice_silence_ms", "voice_engine"]),
+      getConfigs(["voice_global_rules", "voice_silence_ms", "voice_engine", "voice_stand_users"]),
       db.from("voice_turns").select("seq, role, text").eq("session_id", s.id).order("seq"),
     ]);
     if (!mode || !client) {
@@ -160,6 +160,7 @@ class VoiceConnection {
       return this.end("engine_error");
     }
 
+    this.stand = isStandUser(cfg.voice_stand_users, s.user_id);
     const history: HistoryTurn[] = (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text }));
     this.seq = turns?.length ? Math.max(...turns.map((t) => t.seq)) : 0;
     const resumed = history.length > 0;
@@ -320,6 +321,15 @@ class VoiceConnection {
     }
     if (msg.t === "end") void this.end("student");
     else if (msg.t === "pause") this.paused = true;
+    else if (msg.t === "say" && this.stand && typeof msg.text === "string") this.sayText(msg.text);
+  }
+
+  /** Стенд проверки: реплика студента текстом — как распознанная речь, клиент отвечает голосом. */
+  private sayText(text: string) {
+    if (this.paused || !this.engine || !text.trim()) return;
+    this.addTranscript("student", text);
+    this.flushTurn();
+    this.engine.kick(text);
   }
 
   /** PCM16 16 кГц: 32 байта на миллисекунду. Речь — кадр громче порога. */
@@ -375,6 +385,8 @@ class VoiceConnection {
   /** Разминка закрывает попытку сама; «Трудный момент» — по кнопке студента. */
   private autoEndDrill = true;
   private clientStarts = false;
+  /** Пользователь стенда проверки: может говорить текстом. */
+  private stand = false;
   private turnAudioBytes = 0;
   private turnAudioStartAt = 0;
 

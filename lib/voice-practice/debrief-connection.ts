@@ -13,7 +13,8 @@ import type { VoiceEngine } from "./engine/types";
 import { EngineUnavailableError } from "./engine/types";
 import { newTicket } from "./ticket";
 import { PauseStretcher } from "./audio/pause-stretch";
-import type { ClientMessage, EndReason, ServerMessage } from "./protocol";
+import { isStandUser, type ClientMessage, type EndReason, type ServerMessage } from "./protocol";
+import { getConfig } from "@/lib/config";
 import type { HistoryTurn } from "./engine/types";
 import {
   SIGNAL,
@@ -36,6 +37,7 @@ type Db = ReturnType<typeof createServiceClient>;
 
 export interface DebriefSessionRow {
   id: string;
+  user_id: string;
   status: string;
   seconds_limit: number;
   seconds_used: number;
@@ -138,6 +140,10 @@ export class DebriefConnection {
   private closeQuietTimer: NodeJS.Timeout | null = null;
   /** Паузы в речи наблюдателя и клиента вне роли длиннее, чем у модели (в пробе клиент звучит как на встрече). */
   private stretcher: PauseStretcher | null = null;
+  /** Пользователь стенда проверки: может говорить текстом. */
+  private stand = false;
+  /** Текст студента, сказанный, пока голос ещё не открылся (стенд). */
+  private pendingText: string[] = [];
 
   constructor(
     private ws: WebSocket,
@@ -151,11 +157,13 @@ export class DebriefConnection {
   async start() {
     const { db, s } = this;
     if (this.secondsLeft <= 0) return this.end("time_limit");
-    const [{ data: extra }, cfg, { data: turnsRaw }] = await Promise.all([
+    const [{ data: extra }, cfg, { data: turnsRaw }, standUsers] = await Promise.all([
       db.from("voice_sessions").select("parent_session_id, script_state").eq("id", s.id).single(),
       getDebriefConfig(),
       db.from("voice_turns").select("seq, role, text, segment").eq("session_id", s.id).order("seq"),
+      getConfig<unknown>("voice_stand_users", []),
     ]);
+    this.stand = isStandUser(standUsers, s.user_id);
     const parentId = extra?.parent_session_id as string | null;
     const ctx = parentId ? await loadDebriefContext(db, parentId) : null;
     if (!cfg || !ctx) {
@@ -344,6 +352,7 @@ export class DebriefConnection {
       this.send({ t: "speaker", who: this.aiRole, segment: this.seg });
       this.live = true;
       this.armStudentPause();
+      this.flushPendingText();
       return;
     }
     if (!last && !this.state.startedAt) {
@@ -399,6 +408,7 @@ export class DebriefConnection {
     }
     if (this.wantRotate) return this.rotate();
     this.armStudentPause();
+    this.flushPendingText();
   }
 
   /** Сигнал модели: если она только что задала вопрос — учтёт после ответа студента, иначе — сразу. */
@@ -488,6 +498,7 @@ export class DebriefConnection {
       for (const b of this.pendingAudio ?? []) eng?.sendAudio(b);
       this.pendingAudio = null;
       this.armStudentPause();
+      this.flushPendingText();
       return;
     }
     const wait = Math.max(0, kickAt - Date.now() - VOICE_LEAD_MS);
@@ -576,6 +587,21 @@ export class DebriefConnection {
     }
     if (msg.t === "end") void this.end("student");
     else if (msg.t === "pause") this.paused = true;
+    else if (msg.t === "say" && this.stand && typeof msg.text === "string" && msg.text.trim()) {
+      this.pendingText.push(msg.text);
+      this.flushPendingText();
+    }
+  }
+
+  /** Стенд проверки: реплика студента текстом — как распознанная речь; голос отвечает. */
+  private flushPendingText() {
+    if (!this.live || this.paused || this.switching || this.rotated || !this.engine || this.aiSpoke) return;
+    const text = this.pendingText.join(" ");
+    this.pendingText = [];
+    if (!text) return;
+    this.addTranscript("student", text);
+    this.flushBuf("student");
+    this.engine.kick(text);
   }
 
   private countHeard(buf: Buffer) {

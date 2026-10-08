@@ -5,7 +5,9 @@ export type ClientMessage =
   | { t: "auth"; ticket: string }
   | { t: "end" }
   | { t: "pause" }
-  | { t: "mic"; muted: boolean };
+  | { t: "mic"; muted: boolean }
+  /** Стенд проверки: реплика студента текстом вместо звука (только для пользователей из app_config.voice_stand_users). */
+  | { t: "say"; text: string };
 
 export type EndReason =
   | "student"
@@ -46,6 +48,11 @@ export type ErrorCode =
 
 /** Голоса разбора после встречи: наблюдатель (этапы 1 и 3) и клиент вне роли (этап 2). */
 export type DebriefSpeaker = "observer" | "client";
+
+/** Пользователи стенда проверки (app_config.voice_stand_users): им можно говорить текстом. */
+export function isStandUser(list: unknown, userId: string): boolean {
+  return Array.isArray(list) && list.includes(userId);
+}
 
 export const PCM_IN_RATE = 16000;
 export const PCM_OUT_RATE = 24000;
