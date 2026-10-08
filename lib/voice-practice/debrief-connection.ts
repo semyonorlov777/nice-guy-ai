@@ -15,7 +15,7 @@ import { newTicket } from "./ticket";
 import { PauseStretcher } from "./audio/pause-stretch";
 import { isStandUser, type ClientMessage, type EndReason, type ServerMessage } from "./protocol";
 import { getConfig } from "@/lib/config";
-import { classifyProbe } from "./meaning";
+import { classifyProbe, isProbeInvite } from "./meaning";
 import type { HistoryTurn } from "./engine/types";
 import {
   SIGNAL,
@@ -390,7 +390,7 @@ export class DebriefConnection {
 
     if (seg === 3) {
       // Наблюдатель зовёт сказать фразу клиенту — клиент на одну реплику возвращается в роль.
-      if (!this.state.rehearsed && endsSegment(cfg, "rehearse", text, ctx.client) && rehearsalTarget(ctx)) return this.switchTo(4, null);
+      if (!this.state.rehearsed && endsSegment(cfg, "rehearse", text, ctx.client) && rehearsalTarget(ctx)) return this.maybeProbe(text);
       if (mayEnd && this.segAiTurns > 1 && endsSegment(cfg, 3, text, ctx.client)) return this.finishAfterPlayback("completed");
       const totalSec = this.s.seconds_limit - this.secondsLeft;
       if (!this.signals.has("wrap") && (segSec >= cfg.limits.seg3_seconds || totalSec >= cfg.limits.total_seconds)) {
@@ -411,6 +411,16 @@ export class DebriefConnection {
       }
     }
     if (this.wantRotate) return this.rotate();
+    this.armStudentPause();
+    this.flushPendingText();
+  }
+
+  /** Правило фраз увидело приглашение к пробе — проверяем смысл; не приглашение — разговор идёт дальше. */
+  private async maybeProbe(text: string) {
+    const gen = this.gen;
+    const invite = await isProbeInvite({ observerText: text, clientName: this.ctx.client.name });
+    if (this.ended || this.rotated || this.switching || gen !== this.gen) return;
+    if (invite) return this.switchTo(4, null);
     this.armStudentPause();
     this.flushPendingText();
   }

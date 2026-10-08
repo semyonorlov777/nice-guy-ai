@@ -48,3 +48,30 @@ refusal — студент отказывается пробовать.`;
   const timeout = new Promise<ProbeMove>((resolve) => setTimeout(() => resolve(guess(p.studentLine)), TIMEOUT_MS));
   return Promise.race([ask.catch(() => guess(p.studentLine)), timeout]);
 }
+
+/**
+ * Зовёт ли наблюдатель студента прямо сейчас сказать фразу клиенту (начать пробу)?
+ * Простое правило фраз отбирает кандидатов, здесь — проверка смысла: вопрос студенту
+ * о клиенте («скажите, что вы почувствовали, когда Вера…») пробой не считается.
+ */
+export async function isProbeInvite(p: { observerText: string; clientName: string }): Promise<boolean> {
+  const prompt = `Учебный разбор консультации. Наблюдатель сказал студенту: «${p.observerText}».
+Зовёт ли наблюдатель студента прямо сейчас обратиться к клиенту (${p.clientName}) и сказать ему фразу, чтобы клиент ответил? Ответь одним словом: yes или no.
+yes — например: «скажите это ${p.clientName}», «попробуйте сказать ей», «скажите эту фразу — она ответит».
+no — вопрос самому студенту («скажите, что вы почувствовали», «как вы думаете…»), рассказ, вывод.`;
+  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
+  const ask = withModelFallback(
+    "gemini-2.5-flash",
+    async (model) => {
+      const r = await ai.models.generateContent({ model, contents: prompt, config: { temperature: 0, maxOutputTokens: 10, thinkingConfig: lowThinking(model) } });
+      const word = (r.text ?? "").trim().toLowerCase();
+      if (!word.startsWith("yes") && !word.startsWith("no")) throw new Error(`непонятный ответ: ${word}`);
+      return word.startsWith("yes");
+    },
+    "voice-probe-invite",
+    ["gemini-3.8-flash"],
+  ).then((r) => r.result);
+  // Без ответа модели — верим правилу фраз (кандидат уже отобран им).
+  const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), TIMEOUT_MS));
+  return Promise.race([ask.catch(() => true), timeout]);
+}
