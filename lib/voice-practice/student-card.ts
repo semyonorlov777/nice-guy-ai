@@ -47,8 +47,8 @@ export function studentCardText(card: StudentCard): string | null {
   const p = card.previous;
   if (!p || (!p.takeaway && !p.focus)) return null;
   return [
-    `ПРОШЛАЯ ВСТРЕЧА СТУДЕНТА (${p.date}; всего встреч до этой: ${card.meetingsBefore}):`,
-    p.takeaway ? `— его собственный вывод на следующий раз: «${p.takeaway}»` : null,
+    `ПРОШЛАЯ ВСТРЕЧА СТУДЕНТА (${p.date}, НЕ эта встреча и НЕ этот разбор; всего встреч до этой: ${card.meetingsBefore}):`,
+    p.takeaway ? `— его вывод В ПРОШЛЫЙ РАЗ: «${p.takeaway}» (в итоге этого разбора «Вы сами сказали…» — только его слова из этого разбора, не этот прошлый вывод)` : null,
     p.focus ? `— фокус прошлого разбора: ${p.focus}` : null,
   ]
     .filter(Boolean)
