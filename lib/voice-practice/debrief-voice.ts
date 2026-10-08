@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getConfig } from "@/lib/config";
 import { computeClientFlags, type TurnLite } from "./counters";
 import { LANG_LOCK, buildInstruction } from "./prompt";
+import { loadStudentCard, studentCardText, type StudentCard } from "./student-card";
 import type { HistoryTurn } from "./engine/types";
 import type { PauseStretchConfig } from "./audio/pause-stretch";
 import { newTicket } from "./ticket";
@@ -73,6 +74,8 @@ export interface DebriefScriptState {
   silences?: Partial<Record<"1" | "2" | "3" | "4", number>>;
   /** Проба с клиентом в роли уже была (один раз за разбор). */
   rehearsed?: boolean;
+  /** Сколько раз студента звали к пробе (переспрос или сомнение — ещё одна попытка). */
+  probeTries?: number;
 }
 
 export const SIGNAL = {
@@ -84,6 +87,14 @@ export const SIGNAL = {
   pass: "[СИСТЕМА: пора передавать слово]",
   wrap: "[СИСТЕМА: время на исходе — переходи к итогу]",
   afterRehearsal: "[СИСТЕМА: студент сказал фразу клиенту, клиент ответил в роли — продолжай]",
+  /** Проба состоялась: что сказал студент и что на самом деле ответил клиент. */
+  probeDone: (student: string, reply: string, client: string) =>
+    `[СИСТЕМА: студент сказал фразу клиенту, клиент ответил в роли — продолжай. Студент сказал: «${student}». ${client} ответил(а): «${reply || "(промолчал(а))"}». Об изменении говори только по этому ответу: если ответ короткий или клиент закрылся — честно скажи это, не приукрашивай]`,
+  /** Не проба: переспрос или сомнение — ответить и позвать ещё раз. */
+  probeNotYet: (move: "question" | "hesitation", student: string) =>
+    move === "question"
+      ? `[СИСТЕМА: это ещё не проба — студент спросил: «${student}». Одной фразой ответь на его вопрос (да, прямо сейчас и прямо клиенту, своими словами) и снова позови сказать фразу клиенту — так же, как звал в первый раз]`
+      : `[СИСТЕМА: это ещё не проба — студент ${student ? `засомневался: «${student}»` : "промолчал"}. Одной фразой поддержи (можно своими словами, не идеально) и снова позови сказать фразу клиенту — так же, как звал в первый раз]`,
   rehearsalSkipped: "[СИСТЕМА: студент не стал пробовать — не настаивай, продолжай]",
 } as const;
 
@@ -143,6 +154,8 @@ export interface DebriefContext {
   callTurns: HistoryTurn[];
   programModeId: string;
   clientId: string | null;
+  /** Что было на прошлой встрече студента — разбор проверяет его прошлый вывод. */
+  card: StudentCard;
 }
 
 interface ParentRow {
@@ -172,13 +185,14 @@ export async function loadDebriefContext(db: SupabaseClient, parentId: string): 
   const { data: p } = await db.from("voice_sessions").select(PARENT_COLS).eq("id", parentId).maybeSingle();
   if (!p) return null;
   const parent = p as ParentRow;
-  const [{ data: client }, { data: pm }, { data: turns }, notes] = await Promise.all([
+  const [{ data: client }, { data: pm }, { data: turns }, notes, card] = await Promise.all([
     parent.client_id
       ? db.from("voice_clients").select("display_name, summary_public, voice_name").eq("id", parent.client_id).maybeSingle()
       : Promise.resolve({ data: null }),
     db.from("program_modes").select("config, mode_templates!inner(key, name)").eq("id", parent.program_mode_id).maybeSingle(),
     db.from("voice_turns").select("seq, role, text").eq("session_id", parentId).order("seq"),
     loadNotes(db, parentId),
+    loadStudentCard(db, parent.user_id, parentId),
   ]);
   const display = (client?.display_name as string | undefined) ?? "Учебный клиент";
   const cn = clientName(display);
@@ -204,6 +218,7 @@ export async function loadDebriefContext(db: SupabaseClient, parentId: string): 
     callTurns: (turns ?? []).map((t) => ({ role: t.role as HistoryTurn["role"], text: t.text as string })),
     programModeId: parent.program_mode_id,
     clientId: parent.client_id,
+    card,
   };
 }
 
@@ -341,6 +356,15 @@ export async function createOrResumeDebrief(
 
 // ——— Сборка инструкции голоса ———
 
+/** Откуда голос знает то, что говорит: у каждого факта свой источник, чужие слова не приписываются. */
+const SOURCES = `ОТКУДА ТЫ ЗНАЕШЬ ТО, ЧТО ГОВОРИШЬ
+— Что сказали студент и {client_name} на встрече — только из расшифровки встречи.
+— Что {client_name} сказал{a} вне роли — только из реплик «вне роли» в разборе выше. Чего там нет, того {she_he} не говорил{a}: не начинай с «{client_name} сказал{a}…».
+— Заметки разбора — выводы анализа, а не чьи-то слова: говори их от себя («мне кажется», «я заметил»).
+— Как {client_name} ответил{a} на пробу — только то, что прозвучало в ответ; если ответа по существу не было, так и скажи.
+— Что студент сказал о себе — только его реплики в разборе.
+Не уверен, что кто-то это говорил, — не приписывай. Если студент задал тебе прямой вопрос — сначала коротко ответь на него.`;
+
 export interface DebriefTurn {
   seq: number;
   role: "student" | "client" | "observer";
@@ -368,14 +392,18 @@ const unsure = (v?: boolean) => (v === false ? " (цитата не сверил
 function observerNotes(r: DebriefResult): string {
   const fb = r.feedback ?? {};
   const lines: string[] = [];
-  if (fb.client_voice?.text) lines.push(`— Как клиенту было (это скажет клиент на этапе 2): ${fb.client_voice.text}`);
+  if (fb.client_voice?.text) lines.push(`— Предположение анализа, как могло быть клиенту (это НЕ слова клиента; что он сказал на самом деле — его реплики «вне роли» в разборе): ${fb.client_voice.text}`);
+  const main = fb.main;
+  if (main?.note) lines.push(`— Главное по карте важного курса${main.name ? ` (${main.name})` : ""}: ${main.note}${main.quote ? ` — ${q(main.quote)} (${main.turn ?? "?"})` : ""}`);
+  const progress = fb.progress;
+  if (progress?.note) lines.push(`— Рост с прошлой встречи: ${progress.note}${progress.quote ? ` — ${q(progress.quote)} (${progress.turn ?? "?"})` : ""}`);
   for (const w of fb.worked ?? []) {
     lines.push(`— Сработало: ${q(w.quote)} (${w.turn ?? "?"})${w.skill ? ` — ${w.skill}` : ""}${w.effect ? `; после этого: ${w.effect}` : ""}${unsure(w.verified as boolean | undefined)}`);
   }
   for (const t of fb.try ?? []) {
     lines.push(
       `— Правка: клиент сказал ${q(t.client_line as string)} (${t.client_turn ?? "?"}), студент ответил ${q(t.quote)} (${t.turn ?? "?"})${unsure(t.verified as boolean | undefined)}; ` +
-        `можно было: ${q(t.alternative as string)}${t.why ? `; это дало бы клиенту: ${t.why}` : ""}`,
+        `можно было: ${q(t.alternative as string)}${t.why ? `; по оценке анализа, это дало бы клиенту: ${t.why}` : ""}`,
     );
   }
   if (fb.focus?.text) lines.push(`— Фокус на следующую попытку: ${fb.focus.text}`);
@@ -395,16 +423,22 @@ function observerNotes(r: DebriefResult): string {
   return lines.join("\n");
 }
 
-/** Заметки для клиента вне роли: его ощущения и то, что могло помочь, — без карточки персонажа и скрытого слоя. */
+/**
+ * Заметки для клиента вне роли: его ощущения и то, что могло помочь, — без карточки персонажа и скрытого слоя.
+ * Момент, где захотелось закрыться, — тот же, что правка наблюдателя (один главный момент на весь разбор).
+ */
 function clientNotes(r: DebriefResult): string {
   const cv = r.feedback?.client_voice;
+  const t = r.feedback?.try?.[0] as { turn?: string; quote?: string; alternative?: string; why?: string } | undefined;
+  const sameMoment = !t?.turn || !cv?.closed?.turn || cv.closed.turn === t.turn;
   const lines: string[] = [];
-  if (cv?.text) lines.push(`Заметка «как мне было» (опирайся на неё, но говори своими словами): ${cv.text}`);
+  if (cv?.text && sameMoment) lines.push(`Заметка «как мне было» (опирайся на неё, но говори своими словами): ${cv.text}`);
   if (cv?.heard?.quote) lines.push(`— Где стало легче: после слов студента ${q(cv.heard.quote)}`);
-  if (cv?.closed?.quote) lines.push(`— Где захотелось закрыться: после слов студента ${q(cv.closed.quote)}`);
-  if (cv?.unsaid) lines.push(`— Что так и не решился сказать (только общими словами): ${cv.unsaid}`);
-  const t = r.feedback?.try?.[0];
-  if (t?.alternative) lines.push(`Если студент спросит, что помогло бы, — отвечай ощущением, по смыслу этого: ${q(t.alternative as string)}${t.why ? ` (${t.why})` : ""}`);
+  const closedQuote = t?.quote ?? cv?.closed?.quote;
+  if (closedQuote) lines.push(`— Где захотелось закрыться или стало тяжелее (это главный момент разбора — говори о нём, а не о другом): после слов студента ${q(closedQuote)}`);
+  if (r.hidden_layer?.reached) lines.push("— Скрытое из роли ты на встрече уже рассказал(а) — не говори, что так и не решился(ась).");
+  else if (cv?.unsaid) lines.push(`— Что так и не решился сказать (только общими словами): ${cv.unsaid}`);
+  if (t?.alternative) lines.push(`Если студент спросит, что помогло бы, — отвечай ощущением, по смыслу этого: ${q(t.alternative)}${t.why ? ` (${t.why})` : ""}`);
   return lines.join("\n");
 }
 
@@ -448,9 +482,12 @@ export function buildDebriefInstruction(p: {
   const data = [`ВСТРЕЧА: режим «${ctx.modeName}», учебный клиент — ${ctx.clientDisplay}, около ${ctx.minutes} мин.`];
   if (segment === 2 && ctx.summaryPublic) data.push(`КОГО ТЫ ИГРАЛ(А): ${ctx.clientDisplay}. ${ctx.summaryPublic}`);
   data.push(`РАСШИФРОВКА ВСТРЕЧИ (распознана автоматически, номера ходов вслух не называй):\n${ctx.transcript || "(пусто)"}`);
-  if (useNotes && ctx.notes) data.push(segment === 2 ? clientNotes(ctx.notes) : `ЗАМЕТКИ РАЗБОРА (проверены по расшифровке; говори своими словами, не зачитывай):\n${observerNotes(ctx.notes)}`);
+  if (useNotes && ctx.notes) data.push(segment === 2 ? clientNotes(ctx.notes) : `ЗАМЕТКИ РАЗБОРА (выводы анализа; проверены по расшифровке; говори своими словами, не зачитывай):\n${observerNotes(ctx.notes)}`);
+  const card = segment !== 2 ? studentCardText(ctx.card) : null;
+  if (card) data.push(`${card}\nЕсли в этой встрече видно, что студент применил свой прошлый вывод, — назови это одной фразой с его цитатой (в шаге 1). Если не видно — не упрекай и не упоминай.`);
   if (p.turns.length) data.push(`РАЗБОР ДО ЭТОГО МОМЕНТА:\n${debriefSoFar(p.turns, c)}`);
   blocks.push(data.join("\n\n"));
+  if (segment !== 2) blocks.push(fill(SOURCES, c));
   if (cfg.final_reminder) blocks.push(fill(cfg.final_reminder, c));
   blocks.push(LANG_LOCK);
   return blocks.filter(Boolean).join("\n\n");

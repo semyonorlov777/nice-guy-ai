@@ -8,11 +8,12 @@ import { lowThinking, withModelFallback } from "./models";
 import { createServiceClient } from "@/lib/supabase-server";
 import { getConfig } from "@/lib/config";
 import { computeClientFlags, computeCounters, type CodeCounters, type TurnLite } from "./counters";
+import { loadStudentCard, studentCardText } from "./student-card";
 
 const MODEL = process.env.VOICE_DEBRIEF_MODEL || "gemini-3.8-flash";
 // Разбор идёт в фоне, пока студент вспоминает встречу сам: запас — сначала сильная модель, быстрая — последней.
 const DEBRIEF_FALLBACKS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
-export const RUBRIC_VERSION = "2026-10-02.troika";
+export const RUBRIC_VERSION = "2026-10-08.roots";
 const MIN_STUDENT_TURNS = 2;
 
 // Порядок полей важен: модель сначала находит поворотные моменты, потом пишет разбор.
@@ -37,6 +38,8 @@ const OUTPUT_SHAPE = `{
     "worked": [{ "turn": "S11", "quote": "...", "skill": "...", "effect": "...", "client_turn": "C12" }],
     "try": [{ "client_turn": "C7", "client_line": "...", "turn": "S8", "quote": "...", "skill": "...", "alternative": "...", "why": "..." }],
     "stuck_stage": { "stage": 3, "name": "Жалоба → запрос → цель", "note": "..." },
+    "main": { "rank": 2, "name": "...", "note": "...", "turn": "S8", "quote": "..." },
+    "progress": { "note": "...", "turn": "S12", "quote": "..." },
     "focus": { "text": "В следующий раз ...", "practice_turn": "C7", "client_line": "...", "skill": "..." }
   },
   "curator": { "headline": "...", "attention": ["..."], "ai_context": "..." }
@@ -53,13 +56,17 @@ export interface DebriefFeedback {
   worked?: Item[] | null;
   try?: Item[] | null;
   stuck_stage?: { stage?: number; name?: string; note?: string } | null;
+  /** Главное упущение встречи по карте важного курса (app_config.voice_course_map). */
+  main?: (Item & { rank?: number; name?: string; note?: string }) | null;
+  /** Прошлый вывод или фокус студента виден в этой встрече. */
+  progress?: (Item & { note?: string }) | null;
   focus?: { text?: string; practice_turn?: string; client_line?: string; skill?: string } | null;
 }
 
 export type DebriefResult = Record<string, unknown> & {
   feedback?: DebriefFeedback;
   curator?: Record<string, unknown>;
-  hidden_layer?: { reached?: boolean };
+  hidden_layer?: { reached?: boolean; disclosed_at_turn?: string | null };
   integrity?: { valid?: boolean };
 };
 
@@ -90,7 +97,7 @@ export async function claimDebrief(sessionId: string): Promise<(() => Promise<vo
 export async function prepareDebriefInput(db: SupabaseClient, sessionId: string): Promise<DebriefInput> {
   const { data: s } = await db
     .from("voice_sessions")
-    .select("id, kind, client_id, program_mode_id, integrity_flags, status")
+    .select("id, user_id, kind, client_id, program_mode_id, integrity_flags, status")
     .eq("id", sessionId)
     .single();
   const { data: turnsRaw } = await db
@@ -107,11 +114,13 @@ export async function prepareDebriefInput(db: SupabaseClient, sessionId: string)
   // Голосовой разбор встречи сам не разбирается (страховка: очередь на него не ставится).
   if (!s || s.kind === "debrief" || counters.student_turns < (s.kind === "drill" ? 1 : MIN_STUDENT_TURNS)) return { kind: "short", counters };
 
-  const [{ data: client }, { data: pm }] = await Promise.all([
+  const [{ data: client }, { data: pm }, courseMap, card] = await Promise.all([
     s.client_id
       ? db.from("voice_clients").select("display_name, level, summary_public, prompt, hidden_layer, version").eq("id", s.client_id).single()
       : Promise.resolve({ data: null }),
     db.from("program_modes").select("config, mode_templates!inner(name, key)").eq("id", s.program_mode_id).single(),
+    getConfig<Record<string, string> | null>("voice_course_map", null),
+    loadStudentCard(db, s.user_id as string, s.id as string),
   ]);
   const mt = pm?.mode_templates as unknown as { name: string; key: string } | undefined;
   // Режим оценки задаёт program_modes.config.voice.debrief_mode («closing» — только завершение встречи).
@@ -131,6 +140,8 @@ export async function prepareDebriefInput(db: SupabaseClient, sessionId: string)
     `СЧЁТЧИКИ ПРОГРАММЫ: ${JSON.stringify(counters)}`,
     `ОТМЕТКИ СБОЕВ КЛИЕНТА: ${JSON.stringify(clientFlags)}`,
     `УВЕРЕННОСТЬ СТУДЕНТА ДО СЕССИИ: null`,
+    `КАРТА ВАЖНОГО КУРСА (порядок важности для этого режима):\n${courseMap?.[debriefMode] ?? courseMap?.full ?? "(нет)"}`,
+    studentCardText(card) ?? "ПРОШЛАЯ ВСТРЕЧА СТУДЕНТА: нет (это первая).",
     `РАСШИФРОВКА (распознана автоматически, возможны ошибки распознавания — не вини за них студента):\n${labeled.map((t) => `[${t.at} ${t.id}] ${t.text}`).join("\n")}`,
     `ФОРМА ОТВЕТА (JSON, поля и их порядок как в примере; лишних полей не добавляй):\n${OUTPUT_SHAPE}`,
   ].join("\n\n");
@@ -221,7 +232,11 @@ export function checkFeedback(result: DebriefResult, labeled: LabeledTurn[]) {
     : null;
   const worked = (fb.worked ?? []).map((w) => ({ ...w, verified: verify(w) }));
   const tries = (fb.try ?? []).map((t) => ({ ...t, verified: verify(t) }));
-  result.feedback = { ...fb, client_voice: cv, worked, try: tries };
+  // Разбор не противоречит сам себе: скрытое раскрыто — клиент не говорит, что «так и не решился».
+  if (cv && result.hidden_layer?.reached) cv.unsaid = null;
+  const main = fb.main ? { ...fb.main, verified: fb.main.quote ? verify(fb.main) : null } : null;
+  const progress = fb.progress ? { ...fb.progress, verified: verify(fb.progress) } : null;
+  result.feedback = { ...fb, client_voice: cv, worked, try: tries, main, progress: progress?.verified ? progress : null };
 
   const w0 = worked[0];
   const t0 = tries[0];
