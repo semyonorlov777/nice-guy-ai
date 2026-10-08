@@ -11,6 +11,9 @@
 // --until-ended  (с --moment) ждать, пока сервер сам закроет попытку, а не конца хода клиента.
 // --burst   реплики студента слать разом, а не в темпе речи (как браузер досылает звук после обрыва).
 // --json    сохранить итог прогона: реплики, длительность и задержку ответа клиента, расшифровку из БД.
+// --text    реплики студента текстом, без озвучки (стенд проверки: пользователь должен быть в app_config.voice_stand_users).
+// --persona <файл>  студент-бот: следующую реплику пишет модель по описанию студента и ходу разговора
+//           (вместо готовых строк; во встрече — до конца времени или «[КОНЕЦ]», в разборе — по этапам).
 // --debrief <id встречи>  голосовой разбор этой встречи (встреча — того же --user): голоса говорят первыми,
 //           реплики студента — после каждой их реплики; передача слова между голосами — через rotate.
 import { GoogleGenAI, Modality } from "@google/genai";
@@ -47,6 +50,11 @@ const UNTIL_ENDED = args.includes("--until-ended");
 const CLIENT_FIRST = args.includes("--client-first");
 const BURST = args.includes("--burst");
 const DEBRIEF = arg("--debrief");
+const TEXT = args.includes("--text") || args.includes("--persona");
+const PERSONA_FILE = arg("--persona");
+const PERSONA = PERSONA_FILE ? readFileSync(PERSONA_FILE, "utf8") : null;
+/** Студент-бот: сколько реплик во встрече самое большее. */
+const PERSONA_MAX_TURNS = 60;
 
 const DRILL_LINES = ["Да, я учусь. А что для вас важно в этом вопросе?"];
 const FULL_LINES = [
@@ -70,8 +78,8 @@ const DEBRIEF_LINES = [
   "## 4",
   "Вы так устали, а ещё и вините себя за то, что срываетесь. Это очень тяжело.",
 ];
-const LINES = LINES_FILE
-  ? readFileSync(LINES_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+const LINES: string[] = PERSONA ? [] : LINES_FILE
+  ? readFileSync(LINES_FILE, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && (!l.startsWith("#") || l.startsWith("## ")))
   : DEBRIEF ? DEBRIEF_LINES : MOMENT ? DRILL_LINES : FULL_LINES;
 const silenceOf = (line: string) => Number(/^\[тишина (\d+)\]$/.exec(line)?.[1] ?? 0);
 const CLIENT_RATE = 24000;
@@ -86,8 +94,9 @@ async function main() {
   // Озвучка до создания сессии; кэш на диске — у TTS лимит 10 запросов в минуту.
   console.log("озвучиваю реплики…");
   const audio: Buffer[] = [];
-  for (const text of LINES) audio.push(silenceOf(text) || text.startsWith("## ") ? Buffer.alloc(0) : await tts(ai, text));
-  if (DEBRIEF) return runDebrief(db, DEBRIEF, audio);
+  for (const text of LINES) audio.push(TEXT || silenceOf(text) || text.startsWith("## ") ? Buffer.alloc(0) : await tts(ai, text));
+  if (PERSONA && !DEBRIEF) for (let k = 0; k < PERSONA_MAX_TURNS; k++) audio.push(Buffer.alloc(0));
+  if (DEBRIEF) return runDebrief(db, DEBRIEF, audio, ai);
 
   const { data: pm } = await db
     .from("program_modes")
@@ -97,7 +106,8 @@ async function main() {
     .single();
   const { data: client } = await db.from("voice_clients").select("id").eq("slug", CLIENT).single();
   if (!pm || !client) throw new Error("режим или клиент не найдены");
-  await db.from("voice_sessions").update({ status: "ended", end_reason: "student" }).eq("user_id", USER).in("status", ["created", "active", "paused", "reconnecting"]);
+  // Стенд гоняет несколько встреч одного бота параллельно — чужие не закрываем.
+  if (!TEXT) await db.from("voice_sessions").update({ status: "ended", end_reason: "student" }).eq("user_id", USER).in("status", ["created", "active", "paused", "reconnecting"]);
   const t = newTicket();
   const { data: s, error } = await db
     .from("voice_sessions")
@@ -186,6 +196,12 @@ async function main() {
       ws = await connect(nt.ticket);
       wire(ws);
     }
+    if (serverEnded) break;
+    if (PERSONA) {
+      const line = await personaLine(ai, db, s.id, "встреча");
+      if (line === null) break;
+      LINES[i] = line;
+    }
     console.log(`→ ${LINES[i]}`);
     if (ws.readyState !== ws.OPEN) break;
     // Счёт начинаем до отправки: клиент может заговорить, пока реплика студента ещё идёт
@@ -196,6 +212,7 @@ async function main() {
     clientDone = false;
     replyStartAt = 0;
     replyBytes = 0;
+    if (TEXT && !silenceOf(LINES[i])) ws.send(JSON.stringify({ t: "say", text: LINES[i] }));
     for (let o = 0; o < audio[i].length; o += 1280) {
       ws.send(audio[i].subarray(o, o + 1280));
       if (BURST) continue;
@@ -245,7 +262,7 @@ async function main() {
  * бот говорит следующую свою. Передача слова: сервер шлёт handover и rotate с билетом — бот
  * переподключается и ждёт реплику следующего голоса.
  */
-async function runDebrief(db: ReturnType<typeof createClient>, parentId: string, audio: Buffer[]) {
+async function runDebrief(db: ReturnType<typeof createClient>, parentId: string, audio: Buffer[], ai: GoogleGenAI) {
   // Текстовый разбор встречи считается в фоне, пока студент говорит о себе (как в браузере).
   const run = await claimDebrief(parentId);
   const notesT0 = Date.now();
@@ -350,7 +367,15 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
   while (!ended) {
     await waitAi(60_000);
     if (ended) break;
-    const i = queues[curSeg]?.shift();
+    let i = queues[curSeg]?.shift();
+    if (PERSONA) {
+      const line = await personaLine(ai, db, r.sessionId, `разбор, этап ${curSeg}`);
+      if (line !== null) {
+        LINES.push(line);
+        audio.push(Buffer.alloc(0));
+        i = LINES.length - 1;
+      }
+    }
     if (i === undefined) {
       // Реплики этапа кончились — молчим до следующей реплики голоса.
       console.log(`  ${at()} → (молчу)`);
@@ -366,6 +391,7 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
       while (Date.now() - s0 < hush && !ended && !replyStartAt) await tick();
       continue;
     }
+    if (TEXT && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ t: "say", text: LINES[i] }));
     for (let o = 0; o < audio[i].length; o += 1280) {
       if (ws.readyState === ws.OPEN) ws.send(audio[i].subarray(o, o + 1280));
       await sleep(40);
@@ -387,6 +413,29 @@ async function runDebrief(db: ReturnType<typeof createClient>, parentId: string,
   console.log("звук:", join(OUT, "debrief.wav"));
   if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify({ sessionId: r.sessionId, parentId, turns, session: fin, marks }, null, 2));
   process.exit(0);
+}
+
+/**
+ * Студент-бот: следующая реплика по описанию студента и расшифровке (из БД, как её видит сервер).
+ * null — бот закончил («[КОНЕЦ]») или молчит.
+ */
+async function personaLine(ai: GoogleGenAI, db: ReturnType<typeof createClient>, sessionId: string, where: string): Promise<string | null> {
+  const { data: turns } = await db.from("voice_turns").select("role, text").eq("session_id", sessionId).order("seq");
+  const who: Record<string, string> = { student: "Я (психолог)", client: "Клиент", observer: "Наблюдатель" };
+  const log = (turns ?? []).map((t) => `${who[t.role as string] ?? t.role}: ${t.text}`).join("\n") || "(разговор ещё не начался)";
+  const prompt = `${PERSONA}\n\nСЕЙЧАС: ${where}.\nРАСШИФРОВКА ДО ЭТОГО МОМЕНТА:\n${log}\n\nНапиши только свою следующую реплику — одну, устной речью, как сказал бы вслух (без кавычек, без ремарок). Если по описанию тебе пора закончить или сказать нечего — напиши [КОНЕЦ].`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await ai.models.generateContent({ model: "gemini-3.8-flash", contents: prompt, config: { temperature: 1 } });
+      const text = (r.text ?? "").trim().replace(/^["«]|["»]$/g, "");
+      if (!text || text.includes("[КОНЕЦ]")) return null;
+      return text;
+    } catch (e) {
+      console.log("  студент-бот: повтор после ошибки", String(e).slice(0, 120));
+      await sleep(3000 * (attempt + 1));
+    }
+  }
+  return null;
 }
 
 /** Голос macOS (Milena) — запасной путь, когда у Gemini TTS кончился дневной лимит. */
