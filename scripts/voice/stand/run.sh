@@ -44,4 +44,4 @@ for sc in "$@"; do
 done
 wait
 ids=($(for f in $R/*.json; do [[ $f == *-d.json ]] || node -e "console.log(require('$f').sessionId)"; done))
-npx tsx --env-file=.env.local scripts/voice/stand/judge.ts --out $R/judge --tag $TAG $ids
+npx tsx --env-file=.env.local scripts/voice/stand/judge.ts --out $R/judge --tag $TAG ${QUOTES_FROM:+--quotes-from $QUOTES_FROM} $ids
