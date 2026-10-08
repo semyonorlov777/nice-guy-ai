@@ -106,8 +106,8 @@ async function main() {
     .single();
   const { data: client } = await db.from("voice_clients").select("id").eq("slug", CLIENT).single();
   if (!pm || !client) throw new Error("режим или клиент не найдены");
-  // Стенд гоняет несколько встреч одного бота параллельно — чужие не закрываем.
-  if (!TEXT) await db.from("voice_sessions").update({ status: "ended", end_reason: "student" }).eq("user_id", USER).in("status", ["created", "active", "paused", "reconnecting"]);
+  // Брошенные сессии бота закрываем: живая сессия у пользователя одна (стенд гоняет встречи бота по очереди).
+  await db.from("voice_sessions").update({ status: "ended", end_reason: "student" }).eq("user_id", USER).in("status", ["created", "active", "paused", "reconnecting"]);
   const t = newTicket();
   const { data: s, error } = await db
     .from("voice_sessions")
@@ -264,6 +264,13 @@ async function main() {
  */
 async function runDebrief(db: ReturnType<typeof createClient>, parentId: string, audio: Buffer[], ai: GoogleGenAI) {
   // Текстовый разбор встречи считается в фоне, пока студент говорит о себе (как в браузере).
+  // Сервер закрывает встречу чуть позже, чем бот попрощался: ждём, иначе разбор «not_ended».
+  for (let k = 0; k < 30; k++) {
+    const { data } = await db.from("voice_sessions").select("status").eq("id", parentId).single();
+    if (data?.status === "ended") break;
+    if (k === 29) await db.from("voice_sessions").update({ status: "ended", end_reason: "student" }).eq("id", parentId);
+    await sleep(2000);
+  }
   const run = await claimDebrief(parentId);
   const notesT0 = Date.now();
   if (run) void run().then(() => console.log(`  (текстовый разбор встречи готов за ${Math.round((Date.now() - notesT0) / 1000)} с)`));
@@ -426,7 +433,8 @@ async function personaLine(ai: GoogleGenAI, db: ReturnType<typeof createClient>,
   const prompt = `${PERSONA}\n\nСЕЙЧАС: ${where}.\nРАСШИФРОВКА ДО ЭТОГО МОМЕНТА:\n${log}\n\nНапиши только свою следующую реплику — одну, устной речью, как сказал бы вслух (без кавычек, без ремарок). Если по описанию тебе пора закончить или сказать нечего — напиши [КОНЕЦ].`;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const r = await ai.models.generateContent({ model: "gemini-3.8-flash", contents: prompt, config: { temperature: 1 } });
+      // Быстрая модель без размышлений: живой студент отвечает за секунды, а не за полминуты.
+      const r = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { temperature: 1, thinkingConfig: { thinkingBudget: 0 } } });
       const text = (r.text ?? "").trim().replace(/^["«]|["»]$/g, "");
       if (!text || text.includes("[КОНЕЦ]")) return null;
       return text;
