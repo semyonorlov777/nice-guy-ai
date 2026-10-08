@@ -15,6 +15,7 @@ import { newTicket } from "./ticket";
 import { PauseStretcher } from "./audio/pause-stretch";
 import { isStandUser, type ClientMessage, type EndReason, type ServerMessage } from "./protocol";
 import { getConfig } from "@/lib/config";
+import { classifyProbe } from "./meaning";
 import type { HistoryTurn } from "./engine/types";
 import {
   SIGNAL,
@@ -51,8 +52,11 @@ const TICK_MS = 15_000;
 /** Предел функции 300 с: после 240 с соединение меняется в ближайшей паузе, после 285 — сразу. */
 const ROTATE_SOFT_MS = Number(process.env.VOICE_DEBRIEF_ROTATE_SOFT_MS) || 240_000; // меньше — только для проверки
 const ROTATE_HARD_MS = ROTATE_SOFT_MS + 45_000;
+const OPEN_TIMEOUT_MS = 20_000;
 /** Студент молчит после реплики голоса (считая от конца звучания). */
 const STUDENT_PAUSE_MS = 8_000;
+/** Проба: студенту нужно время придумать фразу клиенту — молчание дольше этого = «не знаю, что сказать». */
+const PROBE_PAUSE_MS = 15_000;
 /** Студент договорил, а голос молчит. */
 const MODEL_SILENCE_MS = 7_000;
 /** Хвост расшифровки реплики приходит чуть позже конца хода. */
@@ -381,8 +385,8 @@ export class DebriefConnection {
     const mayEnd = seg === 2 || answered || this.segSilences >= 2 || this.signals.size > 0;
     const segSec = (Date.now() - (this.state.startedAt ?? this.connOpenedAt)) / 1000;
 
-    // Проба: клиент в роли ответил на новую фразу студента — слово снова наблюдателю.
-    if (seg === 4) return this.switchTo(3, SIGNAL.afterRehearsal);
+    // Проба: клиент в роли ответил — слово снова наблюдателю; что это было, решаем по смыслу.
+    if (seg === 4) return this.afterProbe();
 
     if (seg === 3) {
       // Наблюдатель зовёт сказать фразу клиенту — клиент на одну реплику возвращается в роль.
@@ -409,6 +413,35 @@ export class DebriefConnection {
     if (this.wantRotate) return this.rotate();
     this.armStudentPause();
     this.flushPendingText();
+  }
+
+  /**
+   * После пробы: была ли это фраза клиенту, а не переспрос или сомнение. Наблюдатель получает то,
+   * что реально прозвучало, — оценка пробы опирается на настоящий ответ клиента. Переспрос или
+   * сомнение — не проба: наблюдатель отвечает и зовёт ещё раз (одна повторная попытка).
+   */
+  private async afterProbe() {
+    this.live = false;
+    // Только последняя попытка: после переспроса студента зовут к пробе ещё раз.
+    const lastOther = this.turns.findLastIndex((t) => t.segment !== 4);
+    const seg4 = this.turns.slice(lastOther + 1);
+    const studentLine = seg4.filter((t) => t.role === "student").map((t) => t.text).join(" ").trim();
+    const reply = [...seg4].reverse().find((t) => t.role !== "student")?.text ?? "";
+    const target = rehearsalTarget(this.ctx);
+    const move = studentLine
+      ? await classifyProbe({ clientLine: target?.clientLine ?? "", studentLine, clientName: this.ctx.client.name })
+      : "hesitation";
+    console.log("[voice-debrief] probe", this.s.id, move);
+    if (this.ended || this.rotated) return;
+    const tries = (this.state.probeTries ?? 0) + 1;
+    this.state.probeTries = tries;
+    if (move === "attempt") {
+      this.state.rehearsed = true;
+      return this.switchTo(3, SIGNAL.probeDone(studentLine, reply, this.ctx.client.name));
+    }
+    if (move !== "refusal" && tries < 2) return this.switchTo(3, SIGNAL.probeNotYet(move, studentLine));
+    this.state.rehearsed = true;
+    return this.switchTo(3, SIGNAL.rehearsalSkipped);
   }
 
   /** Сигнал модели: если она только что задала вопрос — учтёт после ответа студента, иначе — сразу. */
@@ -470,23 +503,31 @@ export class DebriefConnection {
       segment: next,
       kickAt,
       startedAt: keepClock ? this.state.startedAt : undefined,
-      rehearsed: this.state.rehearsed || next === 4,
+      // Проба засчитана только по смыслу (afterProbe) или если студент не стал пробовать.
       silences: { ...(this.state.silences ?? {}), [String(from)]: this.segSilences },
     };
     const t0 = Date.now();
     try {
       await this.inserts;
-      await this.openSegment(next);
+      // Голос не открылся за разумное время — не ждём минутами: проба пропускается, иначе переподключение.
+      await Promise.race([
+        this.openSegment(next),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("voice open timeout")), OPEN_TIMEOUT_MS)),
+      ]);
     } catch (e) {
       console.error("[voice-debrief] next voice failed", this.s.id, next, e);
       this.switching = false;
       this.pendingAudio = null;
       // Проба не открылась — продолжает наблюдатель; иначе пусть браузер переподключится.
-      if (next === 4) return this.switchTo(3, SIGNAL.rehearsalSkipped);
+      if (next === 4) {
+        this.state.rehearsed = true;
+        return this.switchTo(3, SIGNAL.rehearsalSkipped);
+      }
       return this.rotate();
     }
     this.switching = false;
-    if (this.ended) return;
+    // Пока открывался голос, соединение сменилось (плановое переподключение) — продолжает новое.
+    if (this.ended || this.rotated) return;
     void this.saveState();
     console.log("[voice-debrief] switch", this.s.id, from, "→", next, "voice open in", Date.now() - t0, "ms");
     if (next === 4) {
@@ -516,6 +557,11 @@ export class DebriefConnection {
   /** Переподключение браузера (предел функции, сбой движка): новое соединение продолжит тот же этап. */
   private async rotate() {
     if (this.rotated || this.ended) return;
+    // Посреди передачи слова не переподключаемся — дождёмся её конца.
+    if (this.switching) {
+      this.timers.push(setTimeout(() => void this.rotate(), 2_000));
+      return;
+    }
     this.rotated = true;
     this.live = false;
     this.stopTimers();
@@ -641,14 +687,14 @@ export class DebriefConnection {
     this.pauseTimer = setTimeout(() => {
       this.pauseTimer = null;
       if (this.ended || this.paused || this.switching || this.rotated || this.closing) return;
-      // Проба: студент не стал говорить фразу — дальше наблюдатель.
-      if (this.seg === 4) return void this.switchTo(3, SIGNAL.rehearsalSkipped);
+      // Проба: студент молчит — как «не знаю, что сказать»: наблюдатель поддержит и позовёт ещё раз (один раз).
+      if (this.seg === 4) return void this.afterProbe();
       this.segSilences += 1;
       if (this.segSilences === 1) this.engine?.kick(SIGNAL.silent);
       else if (this.segSilences === 2) this.engine?.kick(SIGNAL.silentAgain);
       else if (this.seg === 3) this.signal("wrap", SIGNAL.wrap, false);
       else this.signal("pass", SIGNAL.pass, false);
-    }, STUDENT_PAUSE_MS + playLeft);
+    }, (this.seg === 4 ? PROBE_PAUSE_MS : STUDENT_PAUSE_MS) + playLeft);
   }
 
   private clearPauseTimer() {
