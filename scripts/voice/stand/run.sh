@@ -12,7 +12,8 @@ TAG=$1; N=$2; shift 2
 : ${STAND_DIR:?нужна STAND_DIR}
 CLIENT=${CLIENT:-vera}; MODE=${MODE:-voice_first_meeting}; SECONDS_LIMIT=${LIMIT:-600}
 WS_URL=${WS_URL:-wss://nice-guy-ai.vercel.app/api/practice/ws}; PAR=${PAR:-1}
-U=${STAND_USER:-e80f43d6-81be-4bdf-89ce-4918a28a5ba7}
+: ${STAND_USER:?нужна STAND_USER=<id пользователя-бота стенда; он должен быть в app_config.voice_stand_users>}
+U=$STAND_USER
 R=$STAND_DIR/runs/$TAG; mkdir -p $R
 one() {
   local sc=$1 k=$2 kind=${1%%:*} name=${1#*:}
